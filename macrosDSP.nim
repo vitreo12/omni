@@ -1,7 +1,94 @@
+#Here I should just import all the macros functions that I am using, to not compile the entire macros module.
 import macros
 
 const
     max_inputs_outputs  = 32
+
+#Generate in1, in2, in3...etc templates
+macro generate_inputs_templates(num_of_inputs : typed) : untyped =
+    var final_statement = nnkStmtList.newTree()
+
+    #Tree retrieved thanks to:
+    #[
+        dumpAstGen:
+            template in1*() : untyped =
+                ins[0][audio_index_loop] 
+    ]#
+
+    let 
+        num_of_inputs_VAL = num_of_inputs.intVal()
+
+    for i in 1..num_of_inputs_VAL:
+        var temp_in_stmt_list = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+            newIdentNode("*"),
+            newIdentNode("in" & $i), #name of template
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+            newIdentNode("untyped")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+            nnkBracketExpr.newTree(
+                nnkBracketExpr.newTree(
+                newIdentNode("ins"),             #name of the ins buffer
+                newLit(int(i - 1))                    #literal value
+                ),
+                newIdentNode("audio_index_loop") #name of the looping variable
+            )
+            )
+        )
+
+        #Accumulate result
+        final_statement.add(temp_in_stmt_list)
+
+    return final_statement
+
+#Generate out1, out2, out3...etc templates
+macro generate_outputs_templates(num_of_outputs : typed) : untyped =
+    var final_statement = nnkStmtList.newTree()
+
+    #Tree retrieved thanks to:
+    #[
+        dumpAstGen:
+            template ouy1*() : untyped =
+                outs[0][audio_index_loop] 
+    ]#
+
+    let 
+        num_of_outputs_VAL = num_of_outputs.intVal()
+
+    for i in 1..num_of_outputs_VAL:
+        var temp_out_stmt_list = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+            newIdentNode("*"),
+            newIdentNode("out" & $i), #name of template
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+            newIdentNode("untyped")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+            nnkBracketExpr.newTree(
+                nnkBracketExpr.newTree(
+                newIdentNode("outs"),             #name of the ins buffer
+                newLit(int(i - 1))                  #literal value
+                ),
+                newIdentNode("audio_index_loop") #name of the looping variable
+            )
+            )
+        )
+
+        #Accumulate result
+        final_statement.add(temp_out_stmt_list)
+
+    return final_statement
 
 #The block form (derived from using num_of_inputs as int literal, and param_names as a code block.):
 #inputs 1:
@@ -40,10 +127,11 @@ macro inputs*(num_of_inputs : untyped, param_names : untyped) : untyped =
     if statement_counter != num_of_inputs_VAL:
         error("Expected " & $num_of_inputs_VAL & " param names, got " & $statement_counter)
 
-    result = quote do: 
+    return quote do: 
         const 
             ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+        generate_inputs_templates(`num_of_inputs_VAL`)
 
 macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
     
@@ -86,15 +174,17 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
             if param_names_counter != num_of_inputs_VAL:
                 error("Expected " & $num_of_inputs_VAL & " param names, got " & $param_names_counter)
 
-            result = quote do: 
+            return quote do: 
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                generate_inputs_templates(`num_of_inputs_VAL`)
         else:
-            result = quote do:
+            return quote do:
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL`  
                     ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]
+                generate_inputs_templates(`num_of_inputs_VAL`)
 
     #The standard form (derived by using num_of_inputs as int literal, and successive param_names as varargs[untyped]):
     #inputs 1, "freq"  OR inputs(1, "freq")
@@ -137,15 +227,17 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
             ]#
             
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
-            result = quote do: 
+            return quote do: 
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                generate_inputs_templates(`num_of_inputs_VAL`)
         else:
-            result = quote do:
+            return quote do:
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` 
                     ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]  
+                generate_inputs_templates(`num_of_inputs_VAL`)
         
 #The block form (derived from using num_of_outputs as int literal, and param_names as a code block.):
 #outputs 1:
@@ -184,10 +276,11 @@ macro outputs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     if statement_counter != num_of_outputs_VAL:
         error("Expected " & $num_of_outputs_VAL & " param names, got " & $statement_counter)
 
-    result = quote do: 
+    return quote do: 
         const 
             ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+        generate_outputs_templates(`num_of_outputs_VAL`)
 
 macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
     
@@ -230,15 +323,17 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
             if param_names_counter != num_of_outputs_VAL:
                 error("Expected " & $num_of_outputs_VAL & " param names, got " & $param_names_counter)
 
-            result = quote do: 
+            return quote do: 
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                generate_outputs_templates(`num_of_outputs_VAL`)
         else:
-            result = quote do:
+            return quote do:
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL`  
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]
+                generate_outputs_templates(`num_of_outputs_VAL`)
 
     #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
     #outputs 1, "freq"  OR outputs(1, "freq")
@@ -281,87 +376,14 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
             ]#
             
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
-            result = quote do: 
+            return quote do: 
                 const
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                generate_outputs_templates(`num_of_outputs_VAL`)
         else:
-            result = quote do:
+            return quote do:
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` 
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
-
-#Generate in1, in2, in3... out1, out2, out3... templates
-macro generate_inputs_and_outputs_templates(num_of_inputs : typed, num_of_outputs : typed) : untyped =
-    var final_statement = nnkStmtList.newTree()
-
-    #Tree retrieved thanks to:
-    #[
-        dumpAstGen:
-            template in1*() : untyped =
-                ins[0][audio_index_loop] 
-    ]#
-
-    let 
-        num_of_inputs_VAL = num_of_inputs.intVal()
-        num_of_outputs_VAL = num_of_outputs.intVal()
-
-    for i in 1..max(num_of_inputs_VAL, num_of_outputs_VAL):
-        if i <= num_of_inputs_VAL:
-            var temp_in_stmt_list = nnkTemplateDef.newTree(
-                nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("in" & $i), #name of template
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
-                newIdentNode("untyped")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                    newIdentNode("ins"),             #name of the ins buffer
-                    newLit(i - 1)                    #literal value
-                    ),
-                    newIdentNode("audio_index_loop") #name of the looping variable
-                )
-                )
-            )
-
-            #Accumulate result
-            final_statement.add(temp_in_stmt_list)
-        
-        if i <= num_of_outputs_VAL:
-            var temp_out_stmt_list = nnkTemplateDef.newTree(
-                nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("out" & $i), #name of template
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
-                newIdentNode("untyped")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                    newIdentNode("outs"),             #name of the ins buffer
-                    newLit(i - 1)                    #literal value
-                    ),
-                    newIdentNode("audio_index_loop") #name of the looping variable
-                )
-                )
-            )
-            
-            #Accumulate result
-            final_statement.add(temp_out_stmt_list)
-
-    return final_statement
-
-#Max ins/outs
-generate_inputs_and_outputs_templates(max_inputs_outputs, max_inputs_outputs)
+                generate_outputs_templates(`num_of_outputs_VAL`)

@@ -14,6 +14,8 @@ inputs:
 
 #expandMacros(inputs(2, "freq", "phase"))
 
+#expandMacros(outputs(2))
+
 #expandMacros(inputs(2))
 
 inputs 2:
