@@ -38,8 +38,9 @@ macro inputs*(num_of_inputs : untyped, param_names : untyped) : untyped =
         error("Expected " & $num_of_inputs_VAL & " param names, got " & $statement_counter)
 
     result = quote do: 
-        let ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-        let ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+        const 
+            ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
 
 macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
     
@@ -83,12 +84,14 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
                 error("Expected " & $num_of_inputs_VAL & " param names, got " & $param_names_counter)
 
             result = quote do: 
-                let ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                let ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                const 
+                    ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                    ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
         else:
             result = quote do:
-                let ugen_inputs {.inject.} = `num_of_inputs_VAL`  
-                let ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]
+                const 
+                    ugen_inputs {.inject.} = `num_of_inputs_VAL`  
+                    ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]
 
     #The standard form (derived by using num_of_inputs as int literal, and successive param_names as varargs[untyped]):
     #inputs 1, "freq"  OR inputs(1, "freq")
@@ -132,12 +135,14 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
             
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
             result = quote do: 
-                let ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                let ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                const 
+                    ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                    ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
         else:
             result = quote do:
-                let ugen_inputs {.inject.} = `num_of_inputs_VAL` 
-                let ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]  
+                const 
+                    ugen_inputs {.inject.} = `num_of_inputs_VAL` 
+                    ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]  
         
 #The block form (derived from using num_of_outputs as int literal, and param_names as a code block.):
 #outputs 1:
@@ -177,8 +182,9 @@ macro outputs*(num_of_outputs : untyped, param_names : untyped) : untyped =
         error("Expected " & $num_of_outputs_VAL & " param names, got " & $statement_counter)
 
     result = quote do: 
-        let ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-        let ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+        const 
+            ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
 
 macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
     
@@ -222,12 +228,14 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
                 error("Expected " & $num_of_outputs_VAL & " param names, got " & $param_names_counter)
 
             result = quote do: 
-                let ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                let ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                const 
+                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                    ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
         else:
             result = quote do:
-                let ugen_outputs {.inject.} = `num_of_outputs_VAL`  
-                let ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]
+                const 
+                    ugen_outputs {.inject.} = `num_of_outputs_VAL`  
+                    ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]
 
     #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
     #outputs 1, "freq"  OR outputs(1, "freq")
@@ -271,9 +279,11 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
             
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
             result = quote do: 
-                let ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                let ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                const
+                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                    ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
         else:
             result = quote do:
-                let ugen_outputs {.inject.} = `num_of_outputs_VAL` 
-                let ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
+                const 
+                    ugen_outputs {.inject.} = `num_of_outputs_VAL` 
+                    ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
