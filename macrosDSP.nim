@@ -1,5 +1,8 @@
 import macros
 
+const
+    max_inputs_outputs  = 32
+
 #The block form (derived from using num_of_inputs as int literal, and param_names as a code block.):
 #inputs 1:
 #   "freq"
@@ -20,9 +23,9 @@ macro inputs*(num_of_inputs : untyped, param_names : untyped) : untyped =
 
     if num_of_inputs_VAL < 0:
         error("Expected a positive number for inputs number")
-
-    if num_of_inputs_VAL > 32:
-        error("Exceeded maximum number of inputs, 32")
+    
+    if num_of_inputs_VAL > max_inputs_outputs:
+        error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
 
     var 
         statement_counter = 0
@@ -68,8 +71,8 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
                 if num_of_inputs_VAL < 0:
                     error("Expected a positive number for inputs number")
         
-                if num_of_inputs_VAL > 32:
-                    error("Exceeded maximum number of inputs, 32")
+                if num_of_inputs_VAL > max_inputs_outputs:
+                    error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
             else:
                 if statement.kind != nnkStrLit:
                     error("Expected parameter name number " & $statement_counter & " to be a string literal value")
@@ -105,8 +108,8 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
         if num_of_inputs_VAL < 0:
             error("Expected a positive number for inputs number")
 
-        if num_of_inputs_VAL > 32:
-            error("Exceeded maximum number of inputs, 32")
+        if num_of_inputs_VAL > max_inputs_outputs:
+            error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
         
         #Empty bracket statement: []
         param_names_array_node = nnkBracket.newTree()
@@ -165,8 +168,8 @@ macro outputs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     if num_of_outputs_VAL < 0:
         error("Expected a positive number for outputs number")
 
-    if num_of_outputs_VAL > 32:
-        error("Exceeded maximum number of outputs, 32")
+    if num_of_outputs_VAL > max_inputs_outputs:
+        error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
 
     var 
         statement_counter = 0
@@ -212,8 +215,8 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
                 if num_of_outputs_VAL < 0:
                     error("Expected a positive number for outputs number")
         
-                if num_of_outputs_VAL > 32:
-                    error("Exceeded maximum number of outputs, 32")
+                if num_of_outputs_VAL > max_inputs_outputs:
+                    error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
             else:
                 if statement.kind != nnkStrLit:
                     error("Expected parameter name number " & $statement_counter & " to be a string literal value")
@@ -249,8 +252,8 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
         if num_of_outputs_VAL < 0:
             error("Expected a positive number for outputs number")
 
-        if num_of_outputs_VAL > 32:
-            error("Exceeded maximum number of outputs, 32")
+        if num_of_outputs_VAL > max_inputs_outputs:
+            error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
         
         #Empty bracket statement: []
         param_names_array_node = nnkBracket.newTree()
@@ -287,3 +290,78 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` 
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
+
+#Generate in1, in2, in3... out1, out2, out3... templates
+macro generate_inputs_and_outputs_templates(num_of_inputs : typed, num_of_outputs : typed) : untyped =
+    var final_statement = nnkStmtList.newTree()
+
+    #Tree retrieved thanks to:
+    #[
+        dumpAstGen:
+            template in1*() : untyped =
+                ins[0][audio_index_loop] 
+    ]#
+
+    let 
+        num_of_inputs_VAL = num_of_inputs.intVal()
+        num_of_outputs_VAL = num_of_outputs.intVal()
+
+    for i in 1..max(num_of_inputs_VAL, num_of_outputs_VAL):
+        if i <= num_of_inputs_VAL:
+            var temp_in_stmt_list = nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("in" & $i), #name of template
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("ins"),             #name of the ins buffer
+                    newLit(i - 1)                    #literal value
+                    ),
+                    newIdentNode("audio_index_loop") #name of the looping variable
+                )
+                )
+            )
+
+            #Accumulate result
+            final_statement.add(temp_in_stmt_list)
+        
+        if i <= num_of_outputs_VAL:
+            var temp_out_stmt_list = nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("out" & $i), #name of template
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("outs"),             #name of the ins buffer
+                    newLit(i - 1)                    #literal value
+                    ),
+                    newIdentNode("audio_index_loop") #name of the looping variable
+                )
+                )
+            )
+            
+            #Accumulate result
+            final_statement.add(temp_out_stmt_list)
+
+    return final_statement
+
+#Max ins/outs
+generate_inputs_and_outputs_templates(max_inputs_outputs, max_inputs_outputs)

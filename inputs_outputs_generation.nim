@@ -8,7 +8,7 @@ template in2() : untyped =
     ins[1][audio_index_loop]  
 ]#
 #etc...
-macro generate_inputs_and_outputs_templates() : untyped =
+macro generate_inputs_and_outputs_templates(num_of_inputs : typed, num_of_outputs : typed) : untyped =
     var final_statement = nnkStmtList.newTree()
 
     #Tree retrieved thanks to:
@@ -17,55 +17,71 @@ macro generate_inputs_and_outputs_templates() : untyped =
             template in1() : untyped =
                 ins[0][audio_index_loop] 
     ]#
-    for i in 1..32:
-        var temp_in_stmt_list = nnkTemplateDef.newTree(
-            newIdentNode("in" & $i), #name of template
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkBracketExpr.newTree(
-                nnkBracketExpr.newTree(
-                newIdentNode("ins"),             #name of the ins buffer
-                newLit(i - 1)                    #literal value
-                ),
-                newIdentNode("audio_index_loop") #name of the looping variable
-            )
-            )
-        )
 
-        var temp_out_stmt_list = nnkTemplateDef.newTree(
-            newIdentNode("out" & $i), #name of template
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkBracketExpr.newTree(
-                nnkBracketExpr.newTree(
-                newIdentNode("outs"),             #name of the ins buffer
-                newLit(i - 1)                    #literal value
+    let 
+        num_of_inputs_VAL = num_of_inputs.intVal()
+        num_of_outputs_VAL = num_of_outputs.intVal()
+
+    for i in 1..max(num_of_inputs_VAL, num_of_outputs_VAL):
+        if i <= num_of_inputs_VAL:
+            var temp_in_stmt_list = nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("in" & $i), #name of template
                 ),
-                newIdentNode("audio_index_loop") #name of the looping variable
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("ins"),             #name of the ins buffer
+                    newLit(i - 1)                    #literal value
+                    ),
+                    newIdentNode("audio_index_loop") #name of the looping variable
+                )
+                )
             )
-            )
-        )
+
+            #Accumulate result
+            final_statement.add(temp_in_stmt_list)
         
-        #Accumulate results
-        final_statement.add(temp_in_stmt_list)
-        final_statement.add(temp_out_stmt_list)
+        if i <= num_of_outputs_VAL:
+            var temp_out_stmt_list = nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("out" & $i), #name of template
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("outs"),             #name of the ins buffer
+                    newLit(i - 1)                    #literal value
+                    ),
+                    newIdentNode("audio_index_loop") #name of the looping variable
+                )
+                )
+            )
+            
+            #Accumulate result
+            final_statement.add(temp_out_stmt_list)
 
     return final_statement
 
 
-generate_inputs_and_outputs_templates()
+
+generate_inputs_and_outputs_templates(1, 1)
 
 var ins = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
 
@@ -76,8 +92,7 @@ echo ins
     
 #expandMacros(generate_inputs_templates())
 
-#[ 
+
 dumpAstGen:
-    template in1() : untyped =
+    template in1*() : untyped =
         ins[0][audio_index_loop] 
-]#
