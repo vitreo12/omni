@@ -35,7 +35,7 @@ macro generate_inputs_templates(num_of_inputs : typed) : untyped =
             nnkBracketExpr.newTree(
                 nnkBracketExpr.newTree(
                 newIdentNode("ins"),             #name of the ins buffer
-                newLit(int(i - 1))                    #literal value
+                newLit(int(i - 1))               #literal value
                 ),
                 newIdentNode("audio_index_loop") #name of the looping variable
             )
@@ -78,9 +78,9 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
             nnkBracketExpr.newTree(
                 nnkBracketExpr.newTree(
                 newIdentNode("outs"),             #name of the ins buffer
-                newLit(int(i - 1))                  #literal value
+                newLit(int(i - 1))                #literal value
                 ),
-                newIdentNode("audio_index_loop") #name of the looping variable
+                newIdentNode("audio_index_loop")  #name of the looping variable
             )
             )
         )
