@@ -13,32 +13,62 @@ macro generate_inputs_templates(num_of_inputs : typed) : untyped =
         dumpAstGen:
             template in1*() : untyped =
                 ins[0][audio_index_loop] 
+
+            template in1_kr*() : untyped =
+                ins[0][0] 
     ]#
 
     let 
         num_of_inputs_VAL = num_of_inputs.intVal()
 
     for i in 1..num_of_inputs_VAL:
-        var temp_in_stmt_list = nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("in" & $i), #name of template
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkBracketExpr.newTree(
-                nnkBracketExpr.newTree(
-                newIdentNode("ins"),             #name of the ins buffer
-                newLit(int(i - 1))               #literal value
+        var temp_in_stmt_list = nnkStmtList.newTree(
+            #template for AR input, named in1, in2, etc...
+            nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("in" & $i),             #name of template
                 ),
-                newIdentNode("audio_index_loop") #name of the looping variable
-            )
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("ins"),             #name of the ins buffer
+                    newLit(int(i - 1))               #literal value
+                    ),
+                    newIdentNode("audio_index_loop") #name of the looping variable
+                )
+                )
+            ),
+
+            #template for KR input, named in1_kr, in2_kr, etc...
+            nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("in" & $i & "_kr"),      #name of template 
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("ins"),             #name of the ins buffer
+                    newLit(int(i - 1))               #literal value
+                    ),
+                    newLit(0)                        # ins[...][0]
+                )
+                )
             )
         )
 
@@ -54,34 +84,64 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
     #Tree retrieved thanks to:
     #[
         dumpAstGen:
-            template ouy1*() : untyped =
+            template out1*() : untyped =
                 outs[0][audio_index_loop] 
+
+            template out1_kr*() : untyped =
+                outs[0][0] 
     ]#
 
     let 
         num_of_outputs_VAL = num_of_outputs.intVal()
 
     for i in 1..num_of_outputs_VAL:
-        var temp_out_stmt_list = nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("out" & $i), #name of template
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkBracketExpr.newTree(
-                nnkBracketExpr.newTree(
-                newIdentNode("outs"),             #name of the ins buffer
-                newLit(int(i - 1))                #literal value
+        var temp_out_stmt_list = nnkStmtList.newTree(
+            #template for AR input, named out1, out2, etc...
+            nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("out" & $i), #name of template
                 ),
-                newIdentNode("audio_index_loop")  #name of the looping variable
-            )
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("outs"),             #name of the ins buffer
+                    newLit(int(i - 1))                #literal value
+                    ),
+                    newIdentNode("audio_index_loop")  #name of the looping variable
+                )
+                )
+            ),
+
+            #template for KR input, named out1_kr, out2_kr, etc...
+            nnkTemplateDef.newTree(
+                nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("out" & $i & "_kr"),      #name of template
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                    newIdentNode("outs"),             #name of the ins buffer
+                    newLit(int(i - 1))                #literal value
+                    ),
+                    newLit(0)                         # outs[...][0]
+                )
+                )
             )
         )
 
