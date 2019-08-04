@@ -447,3 +447,89 @@ macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyp
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` 
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
                 generate_outputs_templates(`num_of_outputs_VAL`)
+
+macro constructor*(code_block : untyped) =
+
+    #new: ... syntax could be built by parsing directly this block of code,
+    #and construct the types by looking at IntLits, StrLits, and ObjConstr (for custom objects)
+    #echo treeRepr code_block
+
+    #ALSO, I could have my own parser that looks for assignment NimNodes, and add the var names to a seq[NimNode] (with nnkIdents).
+    #On first occurance of a name, add a "var" prefix. (Or a "let", without allowing the changing of the values.)
+    #In the case of using the same method in the "perform" macro, always prepend the "var".
+    #HOWEVER, this would slow parsing and compilation times. Is it worth it?
+
+    var 
+        empty_var_statements : seq[NimNode]
+        call_to_new_macro : NimNode
+
+    #Look if "new" macro call is the last statement in the block.
+    if code_block.last().kind != nnkCall and code_block.last().kind != nnkCommand:
+        error("Last constructor statement must be a call to \"new\".")
+    elif code_block.last()[0].strVal() != "new":
+        error("Last constructor statement must be a call to \"new\".")
+    else:
+        call_to_new_macro = code_block.last()
+
+    #[
+        REDUCE ALL THESE FOR LOOPS IN A BETTER WAY!!
+    ]#
+
+    #Look for empty var statements
+    for statement in code_block:
+        if statement.kind == nnkVarSection:
+            for var_declaration in statement:
+                #Found one! add the sym to seq. It's a nnkIdent.
+                if var_declaration[2].kind == nnkEmpty:
+                    empty_var_statements.add(var_declaration[0])
+    
+    #Find the "new" call, and check if any empty_var_statements is passed through the call
+    for new_macro_var_name in call_to_new_macro:
+        for empty_var_statement in empty_var_statements:
+            if empty_var_statement == new_macro_var_name: #They both are nnkIdents. They can be compared.
+                error("\"" & $(empty_var_statement.strVal()) & "\" is a non-initialized variable. It can't be an input to a \"new\" statement.")
+
+    return quote do:
+        `code_block`
+
+#[
+    new(a, b, c)
+]#
+macro new*(var_names : varargs[typed]) =    
+    result = nnkStmtList.newTree()
+    
+    for var_name in var_names:
+        let var_type = var_name.getTypeImpl()
+
+        #object type
+        if var_type.kind == nnkObjectTy:
+            let fully_parametrized_object = var_name.getImpl()[2][0] #Extract the BracketExpr that represents the "MyObject[T, Y, ...]" syntax from the type.
+            
+            #object is not built from generics
+            if fully_parametrized_object.kind == nnkSym:
+                echo $var_name & " : " & $(fully_parametrized_object.strVal())
+            
+            #object is built from generics form
+            else:
+                var full_type_string = $(fully_parametrized_object[0].strVal()) & "["   #First entry is the type name as symbol. All remaining children are the parametrized generic types.
+                
+                #skip first step, already extracted
+                for i in 1..fully_parametrized_object.len() - 1:
+                    let parametrized_type = fully_parametrized_object[i].strVal()
+                    full_type_string.add(parametrized_type)
+                    if i != fully_parametrized_object.len() - 1:
+                        full_type_string.add(", ")
+                
+                full_type_string.add("]")
+                
+                echo $var_name & " : " & $full_type_string
+
+        #ref object type. Don't support them as of now.
+        elif var_type.kind == nnkRefTy:
+            error("\"" & $var_name & "\"" & " is a ref object. ref objects are not supported.")
+            #This should work just fine... Don't support it for now.
+            #echo treeRepr var_name.getImpl()
+        
+        #builtin type, expressed here as a nnkSym
+        else:
+            echo $var_name & " : " & $(var_type.strVal())

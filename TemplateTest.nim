@@ -1,23 +1,6 @@
 from macros import expandMacros
 import macrosDSP
     
-#inputs 2, "freq", "phase"
-
-#[ inputs 2:
-    "freq"
-    "phase"
-
-inputs:
-    2
-    "freq"
-    "phase" ]#
-
-#expandMacros(inputs(2, "freq", "phase"))
-
-#expandMacros(outputs(2))
-
-#expandMacros(inputs(2))
-
 inputs 2:
     "freq"
     "phase"
@@ -25,8 +8,19 @@ inputs 2:
 outputs 1:
     "audio"
 
-echo ugen_inputs
-echo ugen_input_names
+type
+    Phasor[T] = object
+        phase : T
 
-echo ugen_outputs
-echo ugen_output_names
+constructor:
+
+    #This would throw error: non initialized variable
+    var h : int
+
+    let 
+        a = 0
+        b = "hello"
+        c = 0.5
+        d = Phasor[float64](phase : c)
+    
+    new a, b, d 
