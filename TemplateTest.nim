@@ -13,18 +13,14 @@ type
     Phasor[T] = object
         phase : T
 
-expandMacros:
-    constructor:
+constructor:
+    
+    let 
+        a = 0
+        b = "hello"
+        c = sin(0.5)
+        d = Phasor[float64](phase : c)
 
-        #This would throw error: uninitialized variable
-        var h : int
-
-        let 
-            a = 0
-            b = "hello"
-            c = sin(0.5)
-            d = Phasor[float64](phase : c)
-
-        new(a, b, d)
+    new a d b c
 
 echo UGenConstructor()[]

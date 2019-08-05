@@ -469,8 +469,43 @@ macro constructor*(code_block : untyped) =
         error("Last constructor statement must be a call to \"new\".")
     elif code_block.last()[0].strVal() != "new":
         error("Last constructor statement must be a call to \"new\".")
-    else:
-        call_to_new_macro = code_block.last()
+
+    call_to_new_macro = code_block.last()
+
+    #First element of the call_to_new_macro ([0]) is the name of the calling function (Ident("new"))
+    #Second element - unpacked here - is the kind of syntax used to call the macro. It can either be just
+    #a list of idents - which is the case for the normal "new(a, b)" syntax - or either a nnkStmtList - for the
+    #"new : \n a \n b" syntax - or a nnkCommand list - for the "new a b" syntax.
+    let type_of_syntax = call_to_new_macro[1]
+
+    var temp_call_to_new_macro = nnkCall.newTree(newIdentNode("new"))
+
+    #[
+        nnkStmtList is:
+        new:
+            a
+            b
+
+        nnkCommand is:
+        new a b
+
+        Format them both to be the same way as the normal new(a, b) call.
+    ]#
+    if type_of_syntax.kind == nnkStmtList or type_of_syntax.kind == nnkCommand:
+        
+        #nnkCommand can recursively represent elements in nnkCommand trees. Unpack all the nnkIdents and append them to the temp_call_to_new_macro variable.
+        proc recursive_unpack_of_commands(input : NimNode) : void =    
+            for input_children in input:
+                if input_children.kind == nnkStmtList or input_children.kind == nnkCommand:
+                    recursive_unpack_of_commands(input_children)
+                else:
+                    temp_call_to_new_macro.add(input_children)
+
+        #Unpack the elements and add them to temp_call_to_new_macro, which is a nnkCall tree.
+        recursive_unpack_of_commands(type_of_syntax)
+        
+        #Substitute the original code block with the new one.
+        call_to_new_macro = temp_call_to_new_macro
 
     #[
         REDUCE ALL THESE FOR LOOPS IN A BETTER WAY!!
@@ -519,7 +554,13 @@ macro constructor*(code_block : untyped) =
     )
 
     #build the ugen.a = a, ugen.b = b constructs
-    for var_name in call_to_new_macro:
+    for index, var_name in call_to_new_macro:
+        
+        #In case user is trying to not insert a variable with name in, like "new(1)"
+        if var_name.kind != nnkIdent:
+            error("Trying to use a literal value at index " & $index & " of the \"new\" statement. Use a named variable instead.")
+        
+        #Standard case, an nnkIdent with the variable name
         if var_name.strVal() != "new": 
             let ugen_asgn_stmt = nnkAsgn.newTree(
                 nnkDotExpr.newTree(
@@ -580,9 +621,10 @@ macro constructor*(code_block : untyped) =
             #Return the "ugen" variable
             return ugen
             
-#[
-    new(a, b, c)
-]#
+
+#This macro should in theory just work with the "new(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
+#a correct call to "new(a, b)" instead of "new: \n a \n b" or "new a b" by extracting the nnkIdents from the other calls and 
+#building a correct "new(a, b)" syntax out of them.
 macro new*(var_names : varargs[typed]) =    
     var final_type = nnkTypeSection.newTree()
     var final_typedef = nnkTypeDef.newTree().add(nnkPragmaExpr.newTree(newIdentNode("UGen")).add(nnkPragma.newTree(newIdentNode("inject")))).add(newEmptyNode())
