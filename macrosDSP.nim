@@ -153,7 +153,7 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
 #The block form (derived from using num_of_inputs as int literal, and param_names as a code block.):
 #inputs 1:
 #   "freq"
-macro inputs*(num_of_inputs : untyped, param_names : untyped) : untyped =
+macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
     
     var 
         num_of_inputs_VAL : int
@@ -193,7 +193,7 @@ macro inputs*(num_of_inputs : untyped, param_names : untyped) : untyped =
             ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
         generate_inputs_templates(`num_of_inputs_VAL`)
 
-macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
+macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
     
     var 
         num_of_inputs_VAL : int
@@ -302,7 +302,7 @@ macro inputs*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped
 #The block form (derived from using num_of_outputs as int literal, and param_names as a code block.):
 #outputs 1:
 #   "freq"
-macro outputs*(num_of_outputs : untyped, param_names : untyped) : untyped =
+macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     
     var 
         num_of_outputs_VAL : int
@@ -342,7 +342,7 @@ macro outputs*(num_of_outputs : untyped, param_names : untyped) : untyped =
             ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
         generate_outputs_templates(`num_of_outputs_VAL`)
 
-macro outputs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
+macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
     
     var 
         num_of_outputs_VAL : int
@@ -462,6 +462,7 @@ macro constructor*(code_block : untyped) =
     var 
         empty_var_statements : seq[NimNode]
         call_to_new_macro : NimNode
+        constructor_body : NimNode
 
     #Look if "new" macro call is the last statement in the block.
     if code_block.last().kind != nnkCall and code_block.last().kind != nnkCommand:
@@ -488,48 +489,135 @@ macro constructor*(code_block : untyped) =
         for empty_var_statement in empty_var_statements:
             if empty_var_statement == new_macro_var_name: #They both are nnkIdents. They can be compared.
                 error("\"" & $(empty_var_statement.strVal()) & "\" is a non-initialized variable. It can't be an input to a \"new\" statement.")
+    
+    #First statement of the constructor is the allocation of the "ugen" variable. 
+    #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
+    #[
+        dumpAstGen:
+            var ugen: ptr UGen = cast[ptr UGen](alloc0(sizeof(UGen)))
+    ]#
+    constructor_body = nnkStmtList.newTree(nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+            newIdentNode("ugen"),
+            nnkPtrTy.newTree(
+                newIdentNode("UGen")
+            ),
+            nnkCast.newTree(
+                nnkPtrTy.newTree(
+                    newIdentNode("UGen")
+                ),
+                nnkCall.newTree(
+                    newIdentNode("alloc0"),
+                    nnkCall.newTree(
+                        newIdentNode("sizeof"),
+                        newIdentNode("UGen")
+                    )
+                )
+            )
+        )
+    )
+    )
 
-    return quote do:
-        `code_block`
+    #build the ugen.a = a, ugen.b = b constructs
+    for var_name in call_to_new_macro:
+        if var_name.strVal() != "new": 
+            let ugen_asgn_stmt = nnkAsgn.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode(var_name.strVal())  #symbol name (ugen.$name)
+                ),
+                newIdentNode(var_name.strVal())      #symbol name ($name)
+            )
 
+            constructor_body.add(ugen_asgn_stmt)
+
+        #First ident == "new"
+        else: 
+            continue
+
+    #remove the call to "new" macro from code_block. It will be the body to constructor function.
+    code_block.del((code_block.len() - 1))
+
+    result = quote do:
+        #A compile time var that will contain the NimNode body of the UGen object declaration
+        var ugen_object {.compileTime.} : NimNode
+        
+        #Run the getImpl method on the UGen object type and assigning the result to the global variable "ugen_object"
+        macro UGenImplementation(ugen : typed) =
+            ugen_object = ugen.getImpl()
+
+        #Retrieve the body of the global variable "ugen_object" and wrap it in a type section.
+        macro evalUGenImplementation() = 
+            result = nnkTypeSection.newTree()
+            result.add(ugen_object)
+        
+        #Dummy macro: only used to contain the block of typed code that is needed.
+        macro constructorParser() =
+            #The dummy code block used for type retrieval
+            `code_block`
+
+            #Declaring the UGen object type. However, it will be local to this macro.
+            `call_to_new_macro`
+            
+            #Run the getImpl method on the macro-local UGen object type (it's only declared inside of this macro) and assigning the result (the full object representation) to the global variable "ugen_object"
+            UGen.UGenImplementation()
+        
+        #Still at compile time, execute the macro to assign the UGen object type local to the macro to the "ugen_object" global variable
+        constructorParser()
+
+        #Eval the "ugen_object" compileTime variable
+        evalUGenImplementation()
+
+        #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
+        proc UGenConstructor() : ptr UGen =
+            
+            #Variables declaration
+            `code_block`
+
+            #Constructor block: allocation of "ugen" variable and assignment of fields
+            `constructor_body`
+
+            #Return the "ugen" variable
+            return ugen
+            
 #[
     new(a, b, c)
 ]#
 macro new*(var_names : varargs[typed]) =    
-    result = nnkStmtList.newTree()
+    var final_type = nnkTypeSection.newTree()
+    var final_typedef = nnkTypeDef.newTree().add(nnkPragmaExpr.newTree(newIdentNode("UGen")).add(nnkPragma.newTree(newIdentNode("inject")))).add(newEmptyNode())
+    var final_obj  = nnkObjectTy.newTree().add(newEmptyNode()).add(newEmptyNode())
     
+    final_typedef.add(final_obj)
+    final_type.add(final_typedef)
+    
+    var var_names_and_types = nnkRecList.newTree()
+
     for var_name in var_names:
         let var_type = var_name.getTypeImpl()
+
+        var var_name_and_type = nnkIdentDefs.newTree()
+        var_name_and_type.add(newIdentNode(var_name.strVal()))
 
         #object type
         if var_type.kind == nnkObjectTy:
             let fully_parametrized_object = var_name.getImpl()[2][0] #Extract the BracketExpr that represents the "MyObject[T, Y, ...]" syntax from the type.
             
-            #object is not built from generics
-            if fully_parametrized_object.kind == nnkSym:
-                echo $var_name & " : " & $(fully_parametrized_object.strVal())
-            
-            #object is built from generics form
-            else:
-                var full_type_string = $(fully_parametrized_object[0].strVal()) & "["   #First entry is the type name as symbol. All remaining children are the parametrized generic types.
-                
-                #skip first step, already extracted
-                for i in 1..fully_parametrized_object.len() - 1:
-                    let parametrized_type = fully_parametrized_object[i].strVal()
-                    full_type_string.add(parametrized_type)
-                    if i != fully_parametrized_object.len() - 1:
-                        full_type_string.add(", ")
-                
-                full_type_string.add("]")
-                
-                echo $var_name & " : " & $full_type_string
+            var_name_and_type.add(fully_parametrized_object)
 
         #ref object type. Don't support them as of now.
+        #This should work just fine... Don't support it for now.
         elif var_type.kind == nnkRefTy:
             error("\"" & $var_name & "\"" & " is a ref object. ref objects are not supported.")
-            #This should work just fine... Don't support it for now.
-            #echo treeRepr var_name.getImpl()
         
         #builtin type, expressed here as a nnkSym
         else:
-            echo $var_name & " : " & $(var_type.strVal())
+            var_name_and_type.add(var_type)
+
+        var_name_and_type.add(newEmptyNode())
+        var_names_and_types.add(var_name_and_type)
+    
+    #Add to final obj
+    final_obj.add(var_names_and_types)
+
+    return final_type

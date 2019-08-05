@@ -1,26 +1,30 @@
-from macros import expandMacros
+import macros
 import macrosDSP
+import math
     
-inputs 2:
+ins 2:
     "freq"
     "phase"
 
-outputs 1:
+outs 1:
     "audio"
 
 type
     Phasor[T] = object
         phase : T
 
-constructor:
+expandMacros:
+    constructor:
 
-    #This would throw error: non initialized variable
-    var h : int
+        #This would throw error: uninitialized variable
+        var h : int
 
-    let 
-        a = 0
-        b = "hello"
-        c = 0.5
-        d = Phasor[float64](phase : c)
-    
-    new a, b, d 
+        let 
+            a = 0
+            b = "hello"
+            c = sin(0.5)
+            d = Phasor[float64](phase : c)
+
+        new(a, b, d)
+
+echo UGenConstructor()[]
