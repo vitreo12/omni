@@ -663,3 +663,11 @@ macro new*(var_names : varargs[typed]) =
     final_obj.add(var_names_and_types)
 
     return final_type
+
+macro perform*(code_block : untyped) =
+    result = nnkStmtList.newTree()
+    echo treeRepr code_block
+
+macro sample*(code_block : untyped) =
+    result = nnkStmtList.newTree()
+    echo treeRepr code_block

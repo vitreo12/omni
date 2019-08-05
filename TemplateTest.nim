@@ -2,25 +2,38 @@ import macros
 import macrosDSP
 import math
     
-ins 2:
+ins 1:
     "freq"
-    "phase"
 
 outs 1:
-    "audio"
+    "sine_out"
 
 type
     Phasor[T] = object
-        phase : T
+        p : T
 
 constructor:
+    let phasor = Phasor[float64]()
     
-    let 
-        a = 0
-        b = "hello"
-        c = sin(0.5)
-        d = Phasor[float64](phase : c)
+    new: phasor
 
-    new a d b c
+perform:
+    var 
+        frequency : float
+        phase : float
+        sine_out : float
 
-echo UGenConstructor()[]
+    sample:
+        phase = phasor.p
+        frequency = in1()
+
+        if phase >= 1.0:
+            phase = 0.0
+        
+        sine_out = cos(phase * 2 * PI)
+        
+        out1() = sine_out
+
+        phase += abs(frequency) / (48000 - 1)
+
+        phasor.p = phase
