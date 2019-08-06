@@ -1,8 +1,7 @@
 #Here I should just import all the macros functions that I am using, to not compile the entire macros module.
 import macros
 
-const
-    max_inputs_outputs  = 32
+const max_inputs_outputs  = 32
 
 #Generate in1, in2, in3...etc templates
 macro generate_inputs_templates(num_of_inputs : typed) : untyped =
@@ -12,10 +11,10 @@ macro generate_inputs_templates(num_of_inputs : typed) : untyped =
     #[
         dumpAstGen:
             template in1*() : untyped =
-                ins[0][audio_index_loop] 
+                ins_Nim[0][audio_index_loop] 
 
             template in1_kr*() : untyped =
-                ins[0][0] 
+                ins_Nim[0][0] 
     ]#
 
     let 
@@ -39,7 +38,7 @@ macro generate_inputs_templates(num_of_inputs : typed) : untyped =
                 nnkStmtList.newTree(
                 nnkBracketExpr.newTree(
                     nnkBracketExpr.newTree(
-                    newIdentNode("ins"),             #name of the ins buffer
+                    newIdentNode("ins_Nim"),             #name of the ins buffer
                     newLit(int(i - 1))               #literal value
                     ),
                     newIdentNode("audio_index_loop") #name of the looping variable
@@ -63,7 +62,7 @@ macro generate_inputs_templates(num_of_inputs : typed) : untyped =
                 nnkStmtList.newTree(
                 nnkBracketExpr.newTree(
                     nnkBracketExpr.newTree(
-                    newIdentNode("ins"),             #name of the ins buffer
+                    newIdentNode("ins_Nim"),             #name of the ins buffer
                     newLit(int(i - 1))               #literal value
                     ),
                     newLit(0)                        # ins[...][0]
@@ -85,10 +84,10 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
     #[
         dumpAstGen:
             template out1*() : untyped =
-                outs[0][audio_index_loop] 
+                outs_Nim[0][audio_index_loop] 
 
             template out1_kr*() : untyped =
-                outs[0][0] 
+                outs_Nim[0][0] 
     ]#
 
     let 
@@ -112,7 +111,7 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
                 nnkStmtList.newTree(
                 nnkBracketExpr.newTree(
                     nnkBracketExpr.newTree(
-                    newIdentNode("outs"),             #name of the ins buffer
+                    newIdentNode("outs_Nim"),             #name of the ins buffer
                     newLit(int(i - 1))                #literal value
                     ),
                     newIdentNode("audio_index_loop")  #name of the looping variable
@@ -136,7 +135,7 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
                 nnkStmtList.newTree(
                 nnkBracketExpr.newTree(
                     nnkBracketExpr.newTree(
-                    newIdentNode("outs"),             #name of the ins buffer
+                    newIdentNode("outs_Nim"),             #name of the ins buffer
                     newLit(int(i - 1))                #literal value
                     ),
                     newLit(0)                         # outs[...][0]
@@ -664,10 +663,83 @@ macro new*(var_names : varargs[typed]) =
 
     return final_type
 
-macro perform*(code_block : untyped) =
+#Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
+macro unpackUGenVariables*(t : typed) =
     result = nnkStmtList.newTree()
-    echo treeRepr code_block
 
-macro sample*(code_block : untyped) =
-    result = nnkStmtList.newTree()
-    echo treeRepr code_block
+    var var_section = nnkLetSection.newTree()
+
+    let type_def = getImpl(t)
+    
+    #[
+        Result would be:
+        let
+            phasor     = unsafeAddr ugen.phasor   (object types are passed by pointer)
+            sampleRate = ugen.sampleRate          (inbuilt types are passed as immutables)
+    ]#
+    for ident_def in type_def[2][2]:
+        let var_name = ident_def[0]
+            
+        var 
+            var_desc = ident_def[1]
+            ident_def_stmt : NimNode
+
+        #Phasor[T]
+        if var_desc.kind == nnkBracketExpr:
+            var_desc = var_desc[0]
+
+        let var_desc_type_def = getImpl(var_desc)
+        
+        #inbuilt types would return a newNilLit. So, it's an object type.
+        if var_desc_type_def.kind != nnkNilLit:
+            ident_def_stmt = nnkIdentDefs.newTree(
+                newIdentNode(var_name.strVal()),                 #name of the variable
+                newEmptyNode(),
+                nnkCommand.newTree(
+                    newIdentNode("unsafeAddr"),
+                    nnkDotExpr.newTree(
+                        newIdentNode("ugen"),
+                        newIdentNode(var_name.strVal())          #name of the variable
+                    )
+                )
+            )
+
+        #inbuilt type  
+        else:
+            ident_def_stmt = nnkIdentDefs.newTree(
+                newIdentNode(var_name.strVal()),        #name of the variable
+                newEmptyNode(),
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode(var_name.strVal())     #name of the variable
+                )
+            )
+
+        var_section.add(ident_def_stmt)
+
+    result.add(var_section)
+
+#Simply cast the inputs from SC in a indexable form in Nim
+macro castInsOuts*() =
+    return quote do:
+        let 
+            ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+            outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_SC)
+
+#Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
+template perform*(code_block : untyped) {.dirty.} =
+    proc UGenPerform(ugen : ptr UGen, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void =    
+        
+        #Unpack the variables at compile time
+        unpackUGenVariables(UGen)
+
+        #cast ins and outs
+        castInsOuts()
+
+        #Append the whole code block
+        code_block
+
+#Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
+template sample*(code_block : untyped) {.dirty.} =
+    for audio_index_loop in 0..buf_size:
+        code_block
