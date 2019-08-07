@@ -51,4 +51,4 @@ a[0] = 2.13
 
 echo a[0]
 
-dealloc(cast[pointer](a.data)) ]#
+DisposeData(a) ]#
