@@ -32,11 +32,11 @@ proc `[]`*[I : Ordinal; T](a : SCData[T], i : I) : T {.noSideEffect.} =
     return a.data[i]
 
 #Setter for ptr (constructed from Data[T] proc)
-proc `[]=`*[I : Ordinal; T, S](a : ptr SCData[T], i : I, x : S) : void {.noSideEffect.} =
+proc `[]=`*[I : Ordinal; T, S](a : ptr SCData[T], i : I, x : S) : void =
     a.data[i] = x
 
 #Setter for normal
-proc `[]=`*[I : Ordinal; T, S](a : SCData[T], i : I, x : S) : void {.noSideEffect.} =
+proc `[]=`*[I : Ordinal; T, S](a : var SCData[T], i : I, x : S) : void =
     a.data[i] = x
 
 ########
