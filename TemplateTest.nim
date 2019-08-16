@@ -1,7 +1,12 @@
+#nim c --app:lib --gc:none -d:release -d:danger --noMain
+
 import macros
 import dsp_macros
 import sc_types
 import math
+
+#For rt_alloc/rt_alloc0/rt_realloc/rt_free
+import RTAllocTest/rt_alloc
     
 ins 1:
     "freq"
@@ -77,4 +82,6 @@ dealloc(ins_ptr_void)
 dealloc(in_ptr1_void)
 dealloc(outs_ptr_void)
 dealloc(out_ptr1_void)
+
+UGenDestructor(ugen)
  ]#

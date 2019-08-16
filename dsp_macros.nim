@@ -596,26 +596,30 @@ macro constructor*(code_block : untyped) =
         dumpAstGen:
             var ugen: ptr UGen = cast[ptr UGen](alloc0(sizeof(UGen)))
     ]#
-    constructor_body = nnkStmtList.newTree(nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-            newIdentNode("ugen"),
-            nnkPtrTy.newTree(
-                newIdentNode("UGen")
-            ),
-            nnkCast.newTree(
+    constructor_body = nnkStmtList.newTree(
+        nnkVarSection.newTree(
+            nnkIdentDefs.newTree(
+                newIdentNode("ugen"),
                 nnkPtrTy.newTree(
                     newIdentNode("UGen")
                 ),
-                nnkCall.newTree(
-                    newIdentNode("alloc0"),
-                    nnkCall.newTree(
-                        newIdentNode("sizeof"),
+                nnkCast.newTree(
+                    nnkPtrTy.newTree(
                         newIdentNode("UGen")
+                    ),
+                    nnkCall.newTree(
+                        newIdentNode("rt_alloc"),
+                        nnkCast.newTree(
+                            newIdentNode("culong"),
+                                nnkCall.newTree(
+                                newIdentNode("sizeof"),
+                                newIdentNode("UGen")
+                            )
+                        )                 
                     )
                 )
             )
         )
-    )
     )
 
     #build the ugen.a = a, ugen.b = b constructs
@@ -678,7 +682,8 @@ macro constructor*(code_block : untyped) =
         evalUGenImplementation()
 
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
-        proc UGenConstructor() : ptr UGen =
+        #export the function to C when building a shared library
+        proc UGenConstructor*() : ptr UGen {.exportc: "UGenConstructor".} =
             
             #Variables declaration
             `code_block`
@@ -688,6 +693,12 @@ macro constructor*(code_block : untyped) =
 
             #Return the "ugen" variable
             return ugen
+
+        #Destructor
+        proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} =
+            let ugen_void_cast = cast[pointer](ugen)
+            if not ugen_void_cast.isNil():
+                rt_free(ugen_void_cast)      #this should be rt_free
             
 
 #This macro should in theory just work with the "new(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
@@ -824,7 +835,8 @@ macro castInsOuts*() =
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
-    proc UGenPerform(ugen : ptr UGen, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void =    
+    #export the function to C when building a shared library
+    proc UGenPerform*(ugen : ptr UGen, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
         
         #Unpack the variables at compile time
         unpackUGenVariables(UGen)
