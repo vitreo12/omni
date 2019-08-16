@@ -459,6 +459,11 @@ macro constructor*(code_block : untyped) =
     #HOWEVER, this would slow parsing and compilation times. Is it worth it?
 
     var 
+        #They both are nnkIdentNodes
+        let_declarations : seq[NimNode]
+        var_declarations : seq[NimNode]
+        template_for_var_declarations = nnkStmtList.newTree()
+
         empty_var_statements : seq[NimNode]
         call_to_new_macro : NimNode
         constructor_body : NimNode
@@ -510,20 +515,81 @@ macro constructor*(code_block : untyped) =
         REDUCE ALL THESE FOR LOOPS IN A BETTER WAY!!
     ]#
 
-    #Look for empty var statements
-    for statement in code_block:
+    #Loop over all the statements in code_block, looking for "var" and "let" declarations
+    for outer_index, statement in code_block:
+        #var statements
         if statement.kind == nnkVarSection:
-            for var_declaration in statement:
+            for inner_index, var_declaration in statement:
+                #Add the ORIGINAL ident name to the array, modifying its name to be "variableName_var"
+                var_declarations.add(var_declaration[0])
+
+                #Then, modify the field in the code_block to be "variableName_var"
+                code_block[outer_index][inner_index][0] = newIdentNode($(var_declaration[0].strVal()) & "_var")
+                
                 #Found one! add the sym to seq. It's a nnkIdent.
                 if var_declaration[2].kind == nnkEmpty:
                     empty_var_statements.add(var_declaration[0])
+        
+        #let statements
+        elif statement.kind == nnkLetSection:
+            for inner_index, let_declaration in statement:
+                #Add the ORIGINAL ident name to the array
+                let_declarations.add(let_declaration[0])
+
+                #Then, modify the field in the code_block to be "variableName_let"
+                code_block[outer_index][inner_index][0] = newIdentNode($(let_declaration[0].strVal()) & "_let")
     
-    #Find the "new" call, and check if any empty_var_statements is passed through the call
-    for new_macro_var_name in call_to_new_macro:
+    #Check the variables that are passed to call_to_new_macro
+    for index, new_macro_var_name in call_to_new_macro:               #loop over every passed in variables to the "new" call
         for empty_var_statement in empty_var_statements:
+            #Trying to pass in an unitialized "var" variable
             if empty_var_statement == new_macro_var_name: #They both are nnkIdents. They can be compared.
                 error("\"" & $(empty_var_statement.strVal()) & "\" is a non-initialized variable. It can't be an input to a \"new\" statement.")
-    
+        
+        #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_var"
+        for var_declaration in var_declarations:
+            if var_declaration == new_macro_var_name:
+                #Replace the input to the "new" macro to be "variableName_mut"
+                let new_var_declaration = newIdentNode($(var_declaration.strVal()) & "_var")
+                
+                call_to_new_macro[index] = new_var_declaration
+
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_var[]
+                ]#
+                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly.
+                let var_template = nnkTemplateDef.newTree(
+                    var_declaration,                        #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkBracketExpr.newTree(
+                            new_var_declaration                 #new name
+                        )
+                    )
+                )
+
+                template_for_var_declarations.add(var_template)
+        
+        #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_let"
+        for let_declaration in let_declarations:
+            if let_declaration == new_macro_var_name:
+                #Replace the input to the "new" macro to be "variableName_let"
+                let new_let_declaration = newIdentNode($(let_declaration.strVal()) & "_let")
+                
+                call_to_new_macro[index] = new_let_declaration
+
+    #echo astGenRepr template_for_var_declarations
+
     #First statement of the constructor is the allocation of the "ugen" variable. 
     #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
     #[
@@ -579,6 +645,9 @@ macro constructor*(code_block : untyped) =
     code_block.del((code_block.len() - 1))
 
     result = quote do:
+        #templates for substitution on "var" declared variable names in the perform loop
+        `template_for_var_declarations`
+
         #A compile time var that will contain the NimNode body of the UGen object declaration
         var ugen_object {.compileTime.} : NimNode
         
@@ -672,15 +741,17 @@ macro unpackUGenVariables*(t : typed) =
     let type_def = getImpl(t)
     
     #[
-        Result would be:
+        Result would be: ("var" declared fields are retrieved with the template generated in constructor)
         let
-            phasor     = unsafeAddr ugen.phasor   (object types are passed by pointer)
-            sampleRate = ugen.sampleRate          (inbuilt types are passed as immutables)
+            phasor     = unsafeAddr ugen.phasor_let (or phasor_var)   (object types are passed by pointer. "_let" or "_var" here doesn't make any difference. obj is still passed by pointer, but immutable (can't change the pointer to another object of same type))
+            sampleRate = ugen.sampleRate_let                          (inbuilt types declared as "let" are passed as immutables)
     ]#
     for ident_def in type_def[2][2]:
-        let var_name = ident_def[0]
-            
+        let 
+            var_name = ident_def[0]
+        
         var 
+            var_name_string = var_name.strVal()
             var_desc = ident_def[1]
             ident_def_stmt : NimNode
 
@@ -690,30 +761,55 @@ macro unpackUGenVariables*(t : typed) =
 
         let var_desc_type_def = getImpl(var_desc)
         
-        #inbuilt types would return a newNilLit. So, it's an object type.
+        #inbuilt types would return a newNilLit. So, it's an object type. 
+        #object types will be stripped off their "_var" and "_let" appends, as they will normally be accessed in the code
+        #Result
+        #phasor = unsafeAddr ugen.phasor_let (or phasor_var)
         if var_desc_type_def.kind != nnkNilLit:
             ident_def_stmt = nnkIdentDefs.newTree(
-                newIdentNode(var_name.strVal()),                 #name of the variable
+                newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings
                 newEmptyNode(),
                 nnkCommand.newTree(
                     newIdentNode("unsafeAddr"),
                     nnkDotExpr.newTree(
                         newIdentNode("ugen"),
-                        newIdentNode(var_name.strVal())          #name of the variable
+                        newIdentNode(var_name_string)                         #name of the variable
                     )
                 )
             )
 
-        #inbuilt type  
+        #inbuilt types
         else:
-            ident_def_stmt = nnkIdentDefs.newTree(
-                newIdentNode(var_name.strVal()),        #name of the variable
-                newEmptyNode(),
-                nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
-                    newIdentNode(var_name.strVal())     #name of the variable
+
+            #Result:
+            #phase_var = unsafeAddr ugen.phase_var.
+            #phase_var is then accessed via the "phase" template (which is the code used by the user), which returns pointer dereferencing "phase_var[]"
+            if var_name_string[len(var_name_string) - 4 .. len(var_name_string) - 1] == "_var":
+                ident_def_stmt = nnkIdentDefs.newTree(
+                    newIdentNode(var_name_string),                 #name of the variable
+                    newEmptyNode(),
+                    nnkCommand.newTree(
+                        newIdentNode("unsafeAddr"),
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            newIdentNode(var_name_string)          #name of the variable
+                        )
+                    )
                 )
-            )
+            
+            #Result:
+            #sampleRate = ugen.sampleRate_let
+            #sampleRate will be then be normally accessed as an immutable inside the perform/sample statements.
+            elif var_name_string[len(var_name_string) - 4 .. len(var_name_string) - 1] == "_let":
+                ident_def_stmt = nnkIdentDefs.newTree(
+                    newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),        #name of the variable WITHOUT "_let"
+                    newEmptyNode(),
+                    nnkDotExpr.newTree(
+                        newIdentNode("ugen"),
+                        newIdentNode(var_name_string),    #name of the variable inside ugen, with "_let"
+                    )
+                )
+
 
         var_section.add(ident_def_stmt)
 
