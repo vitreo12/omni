@@ -1,6 +1,6 @@
 import macros
-import macrosDSP
-import typesSC
+import dsp_macros
+import sc_types
 import math
     
 ins 1:
