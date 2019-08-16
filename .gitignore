@@ -8,3 +8,5 @@ inputs_outputs_generation
 SCData
 
 RTAllocTest/\.vscode/
+
+libTemplateTest\.so
