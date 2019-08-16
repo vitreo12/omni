@@ -6,3 +6,5 @@ macrosDSP
 inputs_outputs_generation
 
 SCData
+
+RTAllocTest/\.vscode/
