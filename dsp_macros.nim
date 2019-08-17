@@ -448,8 +448,8 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
 
-#[ macro dspTypes*(code_block : untyped) =
-    echo astGenRepr code_block ]#
+macro dspTypes*(code_block : untyped) =
+    echo astGenRepr code_block
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =

@@ -16,17 +16,17 @@ ins 1:
 outs 1:
     "sine_out"
 
-#[ #An object like this is allocated on the stack at the UGenConstructor() function. Its content would then
-#be deep copied into the UGen object... This is not the best solution. It would be better to interact directly
-#with the object allocated inside of the UGen, instead of copying the contents of some other to it
 dspTypes:
     Phasor[T : SomeFloat]:
         phase : T
     
     AnotherType[T]:
         phasor : Phasor[T]
- ]#
 
+
+#[ #An object like this is allocated on the stack at the UGenConstructor() function. Its content would then
+#be deep copied into the UGen object... This is not the best solution. It would be better to interact directly
+#with the object allocated inside of the UGen, instead of copying the contents of some other to it
 type Phasor = object
     phase : float
     
@@ -61,7 +61,7 @@ expandMacros:
             out1 = sine_out
 
             phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
-
+ ]#
 #################
 # TESTING SUITE #
 #################
