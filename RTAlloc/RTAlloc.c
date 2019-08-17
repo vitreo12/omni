@@ -7,6 +7,7 @@ typedef unsigned long size_t;
 
 typedef struct World World;
 
+//Global variable that will live in each Nim module that compiles this "RTAlloc.c" file
 World* sc_world;
 
 //Called when loading a NimCollider module

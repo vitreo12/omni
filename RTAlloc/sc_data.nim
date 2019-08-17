@@ -11,6 +11,11 @@ type
         chans : uint
         size_X_chans : uint
 
+#Having the strings as const as --gc:none is used
+const
+    size_error  = "Size must be a positive number. Setting it to 1"
+    chans_error = "Chans must be a positive number. Setting it to 1"
+
 #Constructor interface: Data
 proc Data*[S : SomeInteger, C : SomeInteger](size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : ptr SCData[dataType] =
     var 
@@ -18,11 +23,11 @@ proc Data*[S : SomeInteger, C : SomeInteger](size : S = uint(1), chans : C = uin
         real_chans = chans
     
     if real_size < 1:
-        #echo "Size must be a positive number. Setting it to 1"
+        echo size_error
         real_size = 1
 
     if real_chans < 1:
-        #echo "Chans must be a positive number. Setting it to 1"
+        echo chans_error
         real_chans = 1
 
     let 
