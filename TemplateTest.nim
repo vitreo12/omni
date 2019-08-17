@@ -6,7 +6,9 @@ import sc_types
 import math
 
 #For rt_alloc/rt_alloc0/rt_realloc/rt_free
-import RTAllocTest/rt_alloc
+import RTAlloc/rt_alloc
+
+import RTAlloc/sc_data
     
 ins 1:
     "freq"
@@ -14,18 +16,30 @@ ins 1:
 outs 1:
     "sine_out"
 
+#[ #An object like this is allocated on the stack at the UGenConstructor() function. Its content would then
+#be deep copied into the UGen object... This is not the best solution. It would be better to interact directly
+#with the object allocated inside of the UGen, instead of copying the contents of some other to it
+dspTypes:
+    Phasor[T : SomeFloat]:
+        phase : T
+    
+    AnotherType[T]:
+        phasor : Phasor[T]
+ ]#
+
 type Phasor = object
     phase : float
-
+    
 expandMacros:
     constructor:
         let 
             sampleRate = 48000.0
-            phasor = Phasor(phase : 0.3)
+            phasor  = Phasor(phase : 0.13)   #allocated on stack
+            someData = Data(100)
 
         var phase = 0.0
         
-        new phase, sampleRate, phasor
+        new phase, sampleRate, phasor, someData
 
 expandMacros:
     perform:

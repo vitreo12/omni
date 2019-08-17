@@ -447,6 +447,17 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
+
+#[ macro dspTypes*(code_block : untyped) =
+    echo astGenRepr code_block ]#
+
+#being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
+macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =
+    let call_to_new_macro = code_block.last()
+    
+    return quote do:
+        `call_to_new_macro`
+
 macro constructor*(code_block : untyped) =
 
     #new: ... syntax could be built by parsing directly this block of code,
@@ -644,6 +655,9 @@ macro constructor*(code_block : untyped) =
         #First ident == "new"
         else: 
             continue
+    
+    #The original code block
+    let code_block_with_call_to_new_macro = code_block.copy()
 
     #remove the call to "new" macro from code_block. It will be the body to constructor function.
     code_block.del((code_block.len() - 1))
@@ -651,35 +665,9 @@ macro constructor*(code_block : untyped) =
     result = quote do:
         #templates for substitution on "var" declared variable names in the perform loop
         `template_for_var_declarations`
-
-        #A compile time var that will contain the NimNode body of the UGen object declaration
-        var ugen_object {.compileTime.} : NimNode
         
-        #Run the getImpl method on the UGen object type and assigning the result to the global variable "ugen_object"
-        macro UGenImplementation(ugen : typed) =
-            ugen_object = ugen.getImpl()
-
-        #Retrieve the body of the global variable "ugen_object" and wrap it in a type section.
-        macro evalUGenImplementation() = 
-            result = nnkTypeSection.newTree()
-            result.add(ugen_object)
-        
-        #Dummy macro: only used to contain the block of typed code that is needed.
-        macro constructorParser() =
-            #The dummy code block used for type retrieval
-            `code_block`
-
-            #Declaring the UGen object type. However, it will be local to this macro.
-            `call_to_new_macro`
-            
-            #Run the getImpl method on the macro-local UGen object type (it's only declared inside of this macro) and assigning the result (the full object representation) to the global variable "ugen_object"
-            UGen.UGenImplementation()
-        
-        #Still at compile time, execute the macro to assign the UGen object type local to the macro to the "ugen_object" global variable
-        constructorParser()
-
-        #Eval the "ugen_object" compileTime variable
-        evalUGenImplementation()
+        #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
+        executeNewStatementAndBuildUGenObjectType(`code_block_with_call_to_new_macro`)
 
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
         #export the function to C when building a shared library
@@ -760,23 +748,37 @@ macro unpackUGenVariables*(t : typed) =
     for ident_def in type_def[2][2]:
         let 
             var_name = ident_def[0]
+            var_desc = ident_def[1]
         
         var 
             var_name_string = var_name.strVal()
-            var_desc = ident_def[1]
+            temp_var_desc = ident_def[1]
             ident_def_stmt : NimNode
 
-        #Phasor[T]
-        if var_desc.kind == nnkBracketExpr:
-            var_desc = var_desc[0]
+        #This bit of code will always extract the symbol type out of any composite expression,
+        #Be it a generic type, a ptr, a ref type, a ptr ptr, etc...
+        while temp_var_desc.kind != nnkSym:
+            temp_var_desc = temp_var_desc[0]
 
-        let var_desc_type_def = getImpl(var_desc)
+        let var_desc_type_def = getImpl(temp_var_desc)
         
-        #inbuilt types would return a newNilLit. So, it's an object type. 
-        #object types will be stripped off their "_var" and "_let" appends, as they will normally be accessed in the code
+        #ptr and ref types are just passed in as they are:
+        #Result
+        #someData = ugen.someData_let (or someData_var)
+        if var_desc.kind == nnkPtrTy or var_desc.kind == nnkRefTy:
+            ident_def_stmt = nnkIdentDefs.newTree(
+                newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings
+                newEmptyNode(),
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode(var_name_string)                         #name of the variable
+                )
+            )
+        
+        #object types will be stripped off their "_var" and "_let" appends, as they will normally be accessed in the code : 
         #Result
         #phasor = unsafeAddr ugen.phasor_let (or phasor_var)
-        if var_desc_type_def.kind != nnkNilLit:
+        elif var_desc_type_def.kind != nnkNilLit:
             ident_def_stmt = nnkIdentDefs.newTree(
                 newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings
                 newEmptyNode(),
@@ -789,7 +791,7 @@ macro unpackUGenVariables*(t : typed) =
                 )
             )
 
-        #inbuilt types
+        #inbuilt types return newNilLit
         else:
 
             #Result:
