@@ -1,4 +1,9 @@
-#include "malloc.h"
+//clang has malloc builtin
+#ifndef __clang__
+    #include "malloc.h"
+#endif
+
+typedef unsigned long size_t; 
 
 typedef struct World World;
 

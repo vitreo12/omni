@@ -10,3 +10,9 @@ SCData
 RTAllocTest/\.vscode/
 
 libTemplateTest\.so
+
+RTAllocTest/rt_alloc
+
+RTAllocTest/rt_alloc_test
+
+\.vscode/

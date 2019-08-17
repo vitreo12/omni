@@ -1,5 +1,5 @@
 #Compile the C file together with Nim's
-{.compile: "./RTAllocTest.c".}
+{.compile: "./RTAlloc.c".}
 
 #The names are the same as the C functions, that's why only importc is used, and not importc : "init_world"
 
