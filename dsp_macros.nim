@@ -448,8 +448,275 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
 
-macro dspTypes*(code_block : untyped) =
-    echo astGenRepr code_block
+macro struct*(struct_name : untyped, code_block : untyped) : untyped =
+    var 
+        final_stmt_list = nnkStmtList.newTree()
+        type_section  = nnkTypeSection.newTree()
+        obj_type_def  = nnkTypeDef.newTree()      #the Phasor_obj block
+        obj_ty        = nnkObjectTy.newTree()     #the body of the Phasor_obj   
+        rec_list      = nnkRecList.newTree()      #the variable declaration section of Phasor_obj
+        
+        ptr_type_def  = nnkTypeDef.newTree()      #the Phasor = ptr Phasor_obj block
+        ptr_ty        = nnkPtrTy.newTree()        #the ptr type expressing ptr Phasor_obj
+        
+        init_fun      = nnkProcDef.newTree()      #the init* function
+        formal_params = nnkFormalParams.newTree()
+        fun_body      = nnkStmtList.newTree()
+
+    obj_ty.add(newEmptyNode())
+    obj_ty.add(newEmptyNode())
+    
+    var 
+        obj_name : NimNode
+        ptr_name : NimNode
+        generics = nnkGenericParams.newTree()  #If generics are present in struct definition
+        generics_names : seq[NimNode]
+
+        obj_bracket_expr : NimNode
+        ptr_bracket_expr : NimNode
+
+        var_names : seq[NimNode]
+        var_types : seq[NimNode]
+    
+    #Using generics
+    if struct_name.kind == nnkBracketExpr:
+        obj_name = newIdentNode($(struct_name[0].strVal()) & "_obj")  #Phasor_obj
+        ptr_name = struct_name[0]                                     #Phasor
+
+        #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
+        #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
+        obj_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                obj_name
+            )
+        )
+
+        #NOTE THE DIFFERENCE BETWEEN ptr_type_def here with generics and without, different number of newEmptyNode()
+        #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
+        ptr_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                ptr_name
+            )
+        )
+
+        #The name of the function with the asterisk, in case of supporting modules in the future
+        #Note that init_fun for generics has just one newEmptyNode()
+        init_fun.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("init")
+            ),
+            newEmptyNode()
+        )
+
+        for index, child in struct_name:
+            if index == 0:
+                continue
+            else:
+                var generic_proc = nnkIdentDefs.newTree()
+                    
+                #If singular [T]
+                if child.len == 0:
+                    generics_names.add(child)
+                    generic_proc.add(child)
+                    generic_proc.add(newEmptyNode())
+                    generic_proc.add(newEmptyNode())
+                    generics.add(generic_proc)
+
+                #If [T : SomeFloat or SomeInteger... etc...]
+                else:
+                    #All the generics (including the "or" infixes, etc...)
+                    for inner_index, inner_child in child:
+
+                        #Add the name of the generics to a table, to be used for ptr
+                        if inner_index == 0:
+                            generics_names.add(inner_child)
+                        
+                        generic_proc.add(inner_child)
+                    
+                    generic_proc.add(newEmptyNode())
+                    generics.add(generic_proc)
+            
+        #Add generics to obj type
+        obj_type_def.add(generics)
+
+        #Add generics to ptr type
+        ptr_type_def.add(generics)
+
+        #Add generics to proc definition
+        init_fun.add(generics)
+        
+        #Initialize them to be bracket expressions
+        obj_bracket_expr = nnkBracketExpr.newTree()
+        ptr_bracket_expr = nnkBracketExpr.newTree()
+
+        #Add name to brackets
+        obj_bracket_expr.add(obj_name)
+        ptr_bracket_expr.add(ptr_name)
+
+        for generic_name in generics_names:
+            obj_bracket_expr.add(generic_name)
+            ptr_bracket_expr.add(generic_name)
+        
+        #Add the Phasor_obj[T, Y] to ptr_ty, for final statement
+        ptr_ty.add(obj_bracket_expr)
+
+    #No generics, just name of struct
+    elif struct_name.kind == nnkIdent:
+        obj_name = newIdentNode($(struct_name) & "_obj")              #Phasor_obj
+        ptr_name = struct_name                                        #Phasor
+        
+        #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
+        obj_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                obj_name
+            ),
+            newEmptyNode()
+        )
+
+        #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
+        ptr_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                ptr_name
+            ),
+            newEmptyNode()
+        )
+
+        #The name of the function with the asterisk, in case of supporting modules in the future
+        init_fun.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("init")
+            ),
+            newEmptyNode(),
+            newEmptyNode()
+        )
+
+        #Add the _obj name to ptr_ty
+        ptr_ty.add(obj_name)
+
+        #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
+        obj_bracket_expr = obj_name
+        ptr_bracket_expr = ptr_name
+
+    for code_stmt in code_block:
+
+        #Have some better error checking and printing here
+        if code_stmt.len != 2 or code_stmt.kind != nnkCall or code_stmt[0].kind != nnkIdent or code_stmt[1].kind != nnkStmtList or code_stmt[1][0].kind != nnkIdent:
+            error("\"" & $ptr_name & "\": " & "Invalid struct body")
+        
+        var 
+            var_name = code_stmt[0]
+            var_type = code_stmt[1][0]
+            new_decl = nnkIdentDefs.newTree()
+
+        var_names.add(var_name)
+        var_types.add(var_type)
+
+        new_decl.add(var_name)
+        new_decl.add(var_type)
+        new_decl.add(newEmptyNode())
+
+        rec_list.add(new_decl)
+    
+    ####################################
+    # Add all things related to object #
+    ####################################
+
+    #Add var : type declarations to obj declaration
+    obj_ty.add(rec_list)
+    
+    #Add the obj declaration (the nnkObjectTy) to the type declaration
+    obj_type_def.add(obj_ty)
+    
+    #Add the type declaration of Phasor_obj to the type section
+    type_section.add(obj_type_def)
+    
+    #####################################
+    # Add all things related to pointer #
+    #####################################
+    
+    #Add the ptr_ty inners to ptr_type_def
+    ptr_type_def.add(ptr_ty)
+    
+    #Add the type declaration of Phasor to type section
+    type_section.add(ptr_type_def)
+
+    #Add the whole type section to result
+    final_stmt_list.add(type_section)
+    
+    ################
+    # INIT SECTION #
+    ################
+    
+    #Add Phasor[T, Y] return type
+    formal_params.add(ptr_bracket_expr)
+
+    #Add obj_type : typedesc[Phasor[T, Y]]
+    formal_params.add(nnkIdentDefs.newTree(
+            newIdentNode("obj_type"),
+            nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                ptr_bracket_expr
+            ),
+            newEmptyNode()
+        )   
+    )
+
+    #Add args to function
+    for index, var_name in var_names:
+        var new_arg = nnkIdentDefs.newTree(
+            var_name,
+            var_types[index],
+            newEmptyNode()
+        )
+
+        formal_params.add(new_arg)
+
+    init_fun.add(formal_params)
+
+    init_fun.add(newEmptyNode())
+    init_fun.add(newEmptyNode())
+
+    #Cast and rtalloc operators
+    fun_body.add(
+        nnkAsgn.newTree(
+            newIdentNode("result"),
+            nnkCast.newTree(
+                ptr_bracket_expr,
+                nnkCall.newTree(
+                        newIdentNode("rt_alloc"),
+                        nnkCast.newTree(
+                            newIdentNode("culong"),
+                                nnkCall.newTree(
+                                newIdentNode("sizeof"),
+                                obj_bracket_expr
+                        )
+                    )                 
+                )
+            )
+        )
+    )
+
+    #Add result.phase = phase, etc..
+    for index, var_name in var_names:
+        fun_body.add(
+            nnkAsgn.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("result"),
+                    var_name
+                ),
+                var_name
+            )
+        )
+    
+    #Add the function body to the proc declaration
+    init_fun.add(fun_body)
+    
+    #Add everything to result
+    final_stmt_list.add(init_fun)
+    
+    #If using result, it was bugging. Needs to be returned like this to be working properly. don't know why.
+    return quote do:
+        `final_stmt_list`
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =

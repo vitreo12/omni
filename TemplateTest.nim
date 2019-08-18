@@ -16,25 +16,37 @@ ins 1:
 outs 1:
     "sine_out"
 
-dspTypes:
-    Phasor[T : SomeFloat]:
+
+#[
+#Result:
+    type 
+        Phasor_obj*[T : SomeFloat, Y] = object
+            phase : T
+            somethingElse : Y
+
+        Phasor*[T : SomeFloat, Y] = ptr Phasor_obj[T, Y]
+        
+    proc init*[T : SomeFloat, Y](obj_type : typedesc[Phasor[T, Y]], phase : T, somethingElse : Y) : Phasor[T, Y] = 
+        result = cast[Phasor[T, Y]](rt_alloc(cast[culong](sizeof(Phasor_obj[T, Y]))))
+        result.phase = phase  
+        result.somethingElse = somethingElse 
+]#
+
+expandMacros:
+    struct Phasor[T]:
         phase : T
-    
-    AnotherType[T]:
-        phasor : Phasor[T]
 
+proc PhasorDefault() : Phasor[float] =
+    result = Phasor.init(0.0)
 
-#[ #An object like this is allocated on the stack at the UGenConstructor() function. Its content would then
-#be deep copied into the UGen object... This is not the best solution. It would be better to interact directly
-#with the object allocated inside of the UGen, instead of copying the contents of some other to it
-type Phasor = object
-    phase : float
-    
+proc someProcForPhasor[T](p : Phasor[T]) : void =
+    p.phase = 0.23
+ 
 expandMacros:
     constructor:
         let 
             sampleRate = 48000.0
-            phasor  = Phasor(phase : 0.13)   #allocated on stack
+            phasor   = PhasorDefault()
             someData = Data(100)
 
         var phase = 0.0
@@ -55,13 +67,16 @@ expandMacros:
             
             #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
             phasor.phase = 2.3
+            
+            #Test fuctions aswell
+            someProcForPhasor(phasor)
 
             sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
             
             out1 = sine_out
 
             phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
- ]#
+
 #################
 # TESTING SUITE #
 #################
