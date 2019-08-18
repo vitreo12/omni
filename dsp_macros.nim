@@ -483,6 +483,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_name = newIdentNode($(struct_name[0].strVal()) & "_obj")  #Phasor_obj
         ptr_name = struct_name[0]                                     #Phasor
 
+        #If struct name doesn't start with capital letter, error out
+        if not(ptr_name.strVal[0] in {'A'..'Z'}):
+            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
+
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
         obj_type_def.add(nnkPostfix.newTree(
@@ -564,6 +568,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     elif struct_name.kind == nnkIdent:
         obj_name = newIdentNode($(struct_name) & "_obj")              #Phasor_obj
         ptr_name = struct_name                                        #Phasor
+
+        #If struct name doesn't start with capital letter, error out
+        if not(ptr_name.strVal[0] in {'A'..'Z'}):
+            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
         
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
         obj_type_def.add(nnkPostfix.newTree(
@@ -598,10 +606,12 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_bracket_expr = ptr_name
 
     for code_stmt in code_block:
-
         #Have some better error checking and printing here
         if code_stmt.len != 2 or code_stmt.kind != nnkCall or code_stmt[0].kind != nnkIdent or code_stmt[1].kind != nnkStmtList or code_stmt[1][0].kind != nnkIdent:
-            error("\"" & $ptr_name & "\": " & "Invalid struct body")
+            
+            #Needed for generics in body of struct
+            if code_stmt[1][0].kind != nnkBracketExpr:
+                error("\"" & $ptr_name & "\": " & "Invalid struct body")
         
         var 
             var_name = code_stmt[0]
