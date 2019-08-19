@@ -731,9 +731,12 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =
     let call_to_new_macro = code_block.last()
-    
+
     return quote do:
         `call_to_new_macro`
+
+macro debug*() =
+    echo "To be added"
 
 macro constructor*(code_block : untyped) =
 
@@ -750,7 +753,10 @@ macro constructor*(code_block : untyped) =
         #They both are nnkIdentNodes
         let_declarations : seq[NimNode]
         var_declarations : seq[NimNode]
-        template_for_var_declarations = nnkStmtList.newTree()
+
+        templates_for_perform_var_declarations     = nnkStmtList.newTree()
+        templates_for_constructor_var_declarations = nnkStmtList.newTree()
+        templates_for_constructor_let_declarations = nnkStmtList.newTree()
 
         empty_var_statements : seq[NimNode]
         call_to_new_macro : NimNode
@@ -837,19 +843,20 @@ macro constructor*(code_block : untyped) =
         #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_var"
         for var_declaration in var_declarations:
             if var_declaration == new_macro_var_name:
-                #Replace the input to the "new" macro to be "variableName_mut"
+                #Replace the input to the "new" macro to be "variableName_var"
                 let new_var_declaration = newIdentNode($(var_declaration.strVal()) & "_var")
                 
+                #Replace the name directly in the call to the "new" macro
                 call_to_new_macro[index] = new_var_declaration
 
                 #[
                     RESULT:
                     template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
                         phase_var[]
-                ]#
-                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly.
-                let var_template = nnkTemplateDef.newTree(
-                    var_declaration,                        #original name
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly in perform.
+                let perform_var_template = nnkTemplateDef.newTree(
+                    var_declaration,                            #original name
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkFormalParams.newTree(
@@ -866,7 +873,31 @@ macro constructor*(code_block : untyped) =
                     )
                 )
 
-                template_for_var_declarations.add(var_template)
+                templates_for_perform_var_declarations.add(perform_var_template)
+                
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_var
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_var", to be used in constructor for correct namings
+                let constructor_var_template = nnkTemplateDef.newTree(
+                    var_declaration,                       #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        new_var_declaration                #new name
+                    )
+                )
+
+                templates_for_constructor_var_declarations.add(constructor_var_template)
         
         #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_let"
         for let_declaration in let_declarations:
@@ -874,9 +905,36 @@ macro constructor*(code_block : untyped) =
                 #Replace the input to the "new" macro to be "variableName_let"
                 let new_let_declaration = newIdentNode($(let_declaration.strVal()) & "_let")
                 
+                echo new_let_declaration.strVal
+
+                #Replace the name directly in the call to the "new" macro
                 call_to_new_macro[index] = new_let_declaration
 
-    #echo astGenRepr template_for_var_declarations
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_let
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_let", to be used in constructor for correct namings
+                let constructor_let_template = nnkTemplateDef.newTree(
+                    let_declaration,                       #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        new_let_declaration                #new name
+                    )
+                )
+
+                templates_for_constructor_let_declarations.add(constructor_let_template)
+
+    #echo astGenRepr templates_for_perform_var_declarations
 
     #First statement of the constructor is the allocation of the "ugen" variable. 
     #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
@@ -933,24 +991,42 @@ macro constructor*(code_block : untyped) =
         else: 
             continue
     
-    #The original code block
-    let code_block_with_call_to_new_macro = code_block.copy()
-
-    #remove the call to "new" macro from code_block. It will be the body to constructor function.
-    code_block.del((code_block.len() - 1))
+    #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "executeNewStatementAndBuildUGenObjectType" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "new" macro
+    let code_block_with_var_let_templates_and_call_to_new_macro = nnkStmtList.newTree(
+        templates_for_constructor_var_declarations,
+        templates_for_constructor_let_declarations,
+        code_block.copy()
+    )
+    
+    #remove the call to "new" macro from code_block. It will then be just the body of constructor function.
+    code_block.del(code_block.len() - 1)
 
     result = quote do:
-        #templates for substitution on "var" declared variable names in the perform loop
-        `template_for_var_declarations`
+        #Template that, when called, will generate the template for the name mangling of "_var" variables in the UGenPerform proc.
+        template generateTemplatesForPerformVarDeclarations()   : untyped {.dirty.} =
+            `templates_for_perform_var_declarations`
         
-        #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
-        executeNewStatementAndBuildUGenObjectType(`code_block_with_call_to_new_macro`)
+        #These two templates, to be honest, could be avoided. `templates_for_constructor_var_declarations` and `templates_for_constructor_let_declarations` could just be added to the code_block directly, as it's done for `code_block_with_var_let_templates_and_call_to_new_macro`
+        template generateTemplatesForConstructorVarDeclarations : untyped {.dirty.} =
+            `templates_for_constructor_var_declarations`
 
+        template generateTemplatesForConstructorLetDeclarations : untyped {.dirty.} =
+            `templates_for_constructor_let_declarations`
+                
+        #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
+        executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_new_macro`)
+        
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
         #export the function to C when building a shared library
         proc UGenConstructor*() : ptr UGen {.exportc: "UGenConstructor".} =
             
-            #Variables declaration
+            #Add the templates needed for UGenConstructor to unpack variable names declared with "var" (different from the one in UGenPerform, which uses unsafeAddr)
+            generateTemplatesForConstructorVarDeclarations()
+
+            #Add the templates needed for UGenConstructor to unpack variable names declared with "let"
+            generateTemplatesForConstructorLetDeclarations()
+
+            #Templates for name mangling, followed by the actual body of the constructor
             `code_block`
 
             #Constructor block: allocation of "ugen" variable and assignment of fields
@@ -963,7 +1039,7 @@ macro constructor*(code_block : untyped) =
         proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} =
             let ugen_void_cast = cast[pointer](ugen)
             if not ugen_void_cast.isNil():
-                rt_free(ugen_void_cast)      #this should be rt_free
+                rt_free(ugen_void_cast)     
             
 
 #This macro should in theory just work with the "new(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
@@ -1117,6 +1193,9 @@ template perform*(code_block : untyped) {.dirty.} =
     #export the function to C when building a shared library
     proc UGenPerform*(ugen : ptr UGen, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
         
+        #Add the templates needed for UGenPerform to unpack variable names declared with "var" in cosntructor
+        generateTemplatesForPerformVarDeclarations()
+
         #Unpack the variables at compile time
         unpackUGenVariables(UGen)
 

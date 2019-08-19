@@ -32,13 +32,13 @@ outs 1:
         result.somethingElse = somethingElse 
 ]#
 
-expandMacros:
-    struct Phasor[T]:
-        phase : T
+#expandMacros:
+struct Phasor[T]:
+    phase : T
 
-expandMacros:
-    struct SomeOtherStruct[T]:
-        phasor : Phasor[T]
+#expandMacros:
+struct SomeOtherStruct[T]:
+    phasor : Phasor[T]
 
 proc PhasorDefault() : Phasor[float] =
     result = Phasor.init(0.0)
@@ -54,9 +54,11 @@ expandMacros:
             someOtherStruct = SomeOtherStruct.init(phasor) #ERROR: it would need to be phasor_let, as it's changed. phasor_let should only be forwarded in the creation of names of UGen through the new macro, and kept original phasor in constructor block.
             someData = Data(100)
 
-        var phase = 0.0
+        var 
+            phase = 0.0
+            anotherVar = phase
         
-        new phase, sampleRate, phasor, someData
+        new phase, sampleRate, phasor, someData, anotherVar
 
 expandMacros:
     perform:
