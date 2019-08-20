@@ -37,8 +37,14 @@ struct Phasor[T]:
     phase : T
 
 #expandMacros:
-struct SomeOtherStruct[T]:
-    phasor : Phasor[T]
+struct Something[T]:
+    a : T
+
+expandMacros:
+    struct SomeOtherStruct[T, Y]:
+        phasor : Phasor[T]
+        something : Something[Y]
+
 
 proc PhasorDefault() : Phasor[float] =
     result = Phasor.init(0.0)
@@ -51,38 +57,38 @@ expandMacros:
         let 
             sampleRate = 48000.0
             phasor   = PhasorDefault()
-            someOtherStruct = SomeOtherStruct.init(phasor) #ERROR: it would need to be phasor_let, as it's changed. phasor_let should only be forwarded in the creation of names of UGen through the new macro, and kept original phasor in constructor block.
+            someOtherStruct = SomeOtherStruct.init(phasor, Something.init(0.0))
             someData = Data(100)
 
         var 
             phase = 0.0
             anotherVar = phase
         
-        new phase, sampleRate, phasor, someData, anotherVar
+        new phase, sampleRate, phasor, someData, anotherVar, someOtherStruct
 
-expandMacros:
-    perform:
-        var 
-            frequency : float
-            sine_out : float
+#expandMacros:
+perform:
+    var 
+        frequency : float
+        sine_out : float
 
-        sample:
-            frequency = in1
+    sample:
+        frequency = in1
 
-            if phase >= 1.0:
-                phase = 0.0
-            
-            #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
-            phasor.phase = 2.3
-            
-            #Test fuctions aswell
-            someProcForPhasor(phasor)
+        if phase >= 1.0:
+            phase = 0.0
+        
+        #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
+        phasor.phase = 2.3
+        
+        #Test fuctions aswell
+        someProcForPhasor(phasor)
 
-            sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
-            
-            out1 = sine_out
+        sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
+        
+        out1 = sine_out
 
-            phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
+        phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
 
 #################
 # TESTING SUITE #
