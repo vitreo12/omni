@@ -1003,15 +1003,9 @@ macro constructor*(code_block : untyped) =
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the UGenPerform proc.
-        template generateTemplatesForPerformVarDeclarations()   : untyped {.dirty.} =
+        #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
+        template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
-        
-        #These two templates, to be honest, could be avoided. `templates_for_constructor_var_declarations` and `templates_for_constructor_let_declarations` could just be added to the code_block directly, as it's done for `code_block_with_var_let_templates_and_call_to_new_macro`
-        template generateTemplatesForConstructorVarDeclarations : untyped {.dirty.} =
-            `templates_for_constructor_var_declarations`
-
-        template generateTemplatesForConstructorLetDeclarations : untyped {.dirty.} =
-            `templates_for_constructor_let_declarations`
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_new_macro`)
@@ -1021,10 +1015,10 @@ macro constructor*(code_block : untyped) =
         proc UGenConstructor*() : ptr UGen {.exportc: "UGenConstructor".} =
             
             #Add the templates needed for UGenConstructor to unpack variable names declared with "var" (different from the one in UGenPerform, which uses unsafeAddr)
-            generateTemplatesForConstructorVarDeclarations()
+            `templates_for_constructor_var_declarations`
 
             #Add the templates needed for UGenConstructor to unpack variable names declared with "let"
-            generateTemplatesForConstructorLetDeclarations()
+            `templates_for_constructor_let_declarations`
 
             #Templates for name mangling, followed by the actual body of the constructor
             `code_block`
