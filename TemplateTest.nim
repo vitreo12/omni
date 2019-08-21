@@ -37,14 +37,14 @@ struct Phasor[T]:
     phase : T
 
 #expandMacros:
-struct Something[T]:
+struct Something[T, Y : SomeData]:
     a : T
+    b : Y
 
 expandMacros:
     struct SomeOtherStruct[T, Y]:
         phasor : Phasor[T]
-        something : Something[Y]
-
+        something : Something[T, Y]
 
 proc PhasorDefault() : Phasor[float] =
     result = Phasor.init(0.0)
@@ -57,8 +57,9 @@ expandMacros:
         let 
             sampleRate = 48000.0
             phasor   = PhasorDefault()
-            someOtherStruct = SomeOtherStruct.init(phasor, Something.init(0.0))
-            someData = Data(100)
+            something = Something.init(0.0, Data.init(100))
+            someOtherStruct = SomeOtherStruct.init(phasor, something)
+            someData = Data.init(100)
 
         var 
             phase = 0.0
@@ -93,7 +94,7 @@ perform:
 #################
 # TESTING SUITE #
 #################
-#[ 
+
 var 
     ins_ptr_void  = alloc0(sizeof(ptr cfloat) * 2)      #float**
     in_ptr1_void = alloc0(sizeof(cfloat) * 512)         #float*
@@ -126,4 +127,3 @@ dealloc(outs_ptr_void)
 dealloc(out_ptr1_void)
 
 UGenDestructor(ugen)
- ]#

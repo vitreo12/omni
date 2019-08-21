@@ -1000,24 +1000,80 @@ macro constructor*(code_block : untyped) =
         #var statements
         if statement.kind == nnkVarSection:
             for inner_index, var_declaration in statement:
+                let 
+                    var_declaration_name = var_declaration[0]
+                    new_var_declaration = newIdentNode($(var_declaration[0].strVal()) & "_var")
+
                 #Add the ORIGINAL ident name to the array, modifying its name to be "variableName_var"
-                var_declarations.add(var_declaration[0])
+                var_declarations.add(var_declaration_name)
 
                 #Then, modify the field in the code_block to be "variableName_var"
-                code_block[outer_index][inner_index][0] = newIdentNode($(var_declaration[0].strVal()) & "_var")
+                code_block[outer_index][inner_index][0] = new_var_declaration
                 
                 #Found one! add the sym to seq. It's a nnkIdent.
                 if var_declaration[2].kind == nnkEmpty:
-                    empty_var_statements.add(var_declaration[0])
+                    empty_var_statements.add(var_declaration_name)
+
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_var
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_var", to be used in constructor for correct namings
+                let constructor_var_template = nnkTemplateDef.newTree(
+                    var_declaration_name,                       #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        new_var_declaration                #new name
+                    )
+                )
+
+                templates_for_constructor_var_declarations.add(constructor_var_template)
         
         #let statements
         elif statement.kind == nnkLetSection:
             for inner_index, let_declaration in statement:
+                let 
+                    let_declaration_name = let_declaration[0]
+                    new_let_declaration = newIdentNode($(let_declaration_name.strVal()) & "_let")
+
                 #Add the ORIGINAL ident name to the array
-                let_declarations.add(let_declaration[0])
+                let_declarations.add(let_declaration_name)
 
                 #Then, modify the field in the code_block to be "variableName_let"
-                code_block[outer_index][inner_index][0] = newIdentNode($(let_declaration[0].strVal()) & "_let")
+                code_block[outer_index][inner_index][0] = new_let_declaration
+
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_let
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_let", to be used in constructor for correct namings
+                let constructor_let_template = nnkTemplateDef.newTree(
+                    let_declaration_name,                       #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        new_let_declaration                #new name
+                    )
+                )
+
+                templates_for_constructor_let_declarations.add(constructor_let_template)
     
     #Check the variables that are passed to call_to_new_macro
     for index, new_macro_var_name in call_to_new_macro:               #loop over every passed in variables to the "new" call
@@ -1060,65 +1116,15 @@ macro constructor*(code_block : untyped) =
                 )
 
                 templates_for_perform_var_declarations.add(perform_var_template)
-                
-                #[
-                    RESULT:
-                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
-                        phase_var
-                ]#                
-                #Construct a template that replaces the "variableName" in code with "variableName_var", to be used in constructor for correct namings
-                let constructor_var_template = nnkTemplateDef.newTree(
-                    var_declaration,                       #original name
-                    newEmptyNode(),
-                    newEmptyNode(),
-                    nnkFormalParams.newTree(
-                        newIdentNode("untyped")
-                    ),
-                    nnkPragma.newTree(
-                        newIdentNode("dirty")
-                    ),
-                    newEmptyNode(),
-                    nnkStmtList.newTree(
-                        new_var_declaration                #new name
-                    )
-                )
-
-                templates_for_constructor_var_declarations.add(constructor_var_template)
         
         #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_let"
         for let_declaration in let_declarations:
             if let_declaration == new_macro_var_name:
                 #Replace the input to the "new" macro to be "variableName_let"
                 let new_let_declaration = newIdentNode($(let_declaration.strVal()) & "_let")
-                
-                #echo new_let_declaration.strVal
 
                 #Replace the name directly in the call to the "new" macro
                 call_to_new_macro[index] = new_let_declaration
-
-                #[
-                    RESULT:
-                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
-                        phase_let
-                ]#                
-                #Construct a template that replaces the "variableName" in code with "variableName_let", to be used in constructor for correct namings
-                let constructor_let_template = nnkTemplateDef.newTree(
-                    let_declaration,                       #original name
-                    newEmptyNode(),
-                    newEmptyNode(),
-                    nnkFormalParams.newTree(
-                        newIdentNode("untyped")
-                    ),
-                    nnkPragma.newTree(
-                        newIdentNode("dirty")
-                    ),
-                    newEmptyNode(),
-                    nnkStmtList.newTree(
-                        new_let_declaration                #new name
-                    )
-                )
-
-                templates_for_constructor_let_declarations.add(constructor_let_template)
 
     #echo astGenRepr templates_for_perform_var_declarations
 
@@ -1192,6 +1198,8 @@ macro constructor*(code_block : untyped) =
     #remove the call to "new" macro from code_block. It will then be just the body of constructor function.
     code_block.del(code_block.len() - 1)
 
+    echo astGenRepr code_block
+
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the UGenPerform proc.
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
@@ -1211,7 +1219,7 @@ macro constructor*(code_block : untyped) =
             #Add the templates needed for UGenConstructor to unpack variable names declared with "let"
             `templates_for_constructor_let_declarations`
 
-            #Templates for name mangling, followed by the actual body of the constructor
+            #Actual body of the constructor
             `code_block`
 
             #Constructor block: allocation of "ugen" variable and assignment of fields
