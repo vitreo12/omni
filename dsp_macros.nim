@@ -452,7 +452,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
     var 
         final_stmt    = nnkStmtList.newTree()
         proc_def      : NimNode
-        formal_params = nnkFormalParams.newTree(newIdentNode("void"))
+        init_formal_params = nnkFormalParams.newTree(newIdentNode("void"))
         proc_body     = nnkStmtList.newTree()
             
         var_obj_positions : seq[int]
@@ -557,7 +557,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         else: #no generics
             proc_def.add(newEmptyNode())
 
-        formal_params.add(
+        init_formal_params.add(
             nnkIdentDefs.newTree(
                 newIdentNode("obj"),
                 ptr_bracket_expr,
@@ -565,7 +565,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
             )
         )
 
-        proc_def.add(formal_params)
+        proc_def.add(init_formal_params)
         proc_def.add(newEmptyNode())
         proc_def.add(newEmptyNode())
 
@@ -641,9 +641,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_type_def    = nnkTypeDef.newTree()      #the Phasor = ptr Phasor_obj block
         ptr_ty          = nnkPtrTy.newTree()        #the ptr type expressing ptr Phasor_obj
         
-        init_fun        = nnkProcDef.newTree()      #the init* function
-        formal_params   = nnkFormalParams.newTree()
-        fun_body        = nnkStmtList.newTree()
+        init_proc_def        = nnkProcDef.newTree()      #the init* function
+        init_formal_params   = nnkFormalParams.newTree()
+        init_fun_body        = nnkStmtList.newTree()
 
     obj_ty.add(newEmptyNode())
     obj_ty.add(newEmptyNode())
@@ -652,7 +652,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_name : NimNode
         ptr_name : NimNode
         generics = nnkGenericParams.newTree()  #If generics are present in struct definition
-        generics_names : seq[NimNode]
+        generics_proc_def = nnkGenericParams.newTree() #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
         obj_bracket_expr : NimNode
         ptr_bracket_expr : NimNode
@@ -686,41 +686,67 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         )
 
         #The name of the function with the asterisk, in case of supporting modules in the future
-        #Note that init_fun for generics has just one newEmptyNode()
-        init_fun.add(nnkPostfix.newTree(
+        #Note that init_proc_def for generics has just one newEmptyNode()
+        init_proc_def.add(nnkPostfix.newTree(
                 newIdentNode("*"),
                 newIdentNode("init")
             ),
             newEmptyNode()
         )
 
+        #Initialize them to be bracket expressions
+        obj_bracket_expr = nnkBracketExpr.newTree()
+        ptr_bracket_expr = nnkBracketExpr.newTree()
+
+        #Add the "Phasor_obj" and "Phasor" names to brackets
+        obj_bracket_expr.add(obj_name)
+        ptr_bracket_expr.add(ptr_name)
+
         for index, child in struct_name:
             if index == 0:
                 continue
             else:
-                var generic_proc = nnkIdentDefs.newTree()
+                var 
+                    generic_proc = nnkIdentDefs.newTree()
+                    generic_proc_proc_def = nnkIdentDefs.newTree()
                     
                 #If singular [T]
-                if child.len == 0:
-                    generics_names.add(child)
+                if child.len() == 0:
+                    ##Also add the name of the generic to the Phasor_obj[T, Y...]
+                    obj_bracket_expr.add(child)
+
+                    #Also add the name of the generic to the Phasor[T, Y...]
+                    ptr_bracket_expr.add(child)
+
                     generic_proc.add(child)
+                    generic_proc_proc_def.add(child)
+
                     generic_proc.add(newEmptyNode())
+                    generic_proc_proc_def.add(newIdentNode("SomeNumber"))  #add ": SomeNumber" to the generic type
+
                     generic_proc.add(newEmptyNode())
+                    generic_proc_proc_def.add(newEmptyNode())
+
                     generics.add(generic_proc)
+                    generics_proc_def.add(generic_proc_proc_def)
 
                 #If [T : SomeFloat or SomeInteger... etc...]
                 else:
-                    #All the generics (including the "or" infixes, etc...)
+                    error($ptr_name.strVal() & $ "\'s generic type \"" & $(child[0].strVal()) & "\" contains subtypes. These are not supported. Struct's generic types are defaulted to only be SomeNumber.")
+
+                    #This works, but it's better to not to use it.
+                    #[ #All the generics (including the "or" infixes, etc...)
                     for inner_index, inner_child in child:
 
                         #Add the name of the generics to a table, to be used for ptr
                         if inner_index == 0:
-                            generics_names.add(inner_child)
+                            obj_bracket_expr.add(inner_child)
+                            ptr_bracket_expr.add(inner_child)
                         
                         generic_proc.add(inner_child)
                     
                     generic_proc.add(newEmptyNode())
-                    generics.add(generic_proc)
+                    generics.add(generic_proc) ]#
             
         #Add generics to obj type
         obj_type_def.add(generics)
@@ -728,22 +754,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #Add generics to ptr type
         ptr_type_def.add(generics)
 
-        #Add generics to proc definition
-        init_fun.add(generics)
+        #Add generics to proc definition. (proc init*[T : SomeNumber, Y : SomeNumber]...) These will have added the ": SomeNumber" on each generic.
+        init_proc_def.add(generics_proc_def)
         
-        #Initialize them to be bracket expressions
-        obj_bracket_expr = nnkBracketExpr.newTree()
-        ptr_bracket_expr = nnkBracketExpr.newTree()
-
-        #Add name to brackets
-        obj_bracket_expr.add(obj_name)
-        ptr_bracket_expr.add(ptr_name)
-
-        for generic_name in generics_names:
-            obj_bracket_expr.add(generic_name)
-            ptr_bracket_expr.add(generic_name)
-        
-        #Add the Phasor_obj[T, Y] to ptr_ty, for final statement
+        #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_bracket_expr)
 
     #No generics, just name of struct
@@ -772,7 +786,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         )
 
         #The name of the function with the asterisk, in case of supporting modules in the future
-        init_fun.add(nnkPostfix.newTree(
+        init_proc_def.add(nnkPostfix.newTree(
                 newIdentNode("*"),
                 newIdentNode("init")
             ),
@@ -780,7 +794,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        #Add the _obj name to ptr_ty
+        #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_name)
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
@@ -840,10 +854,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     ################
     
     #Add Phasor[T, Y] return type
-    formal_params.add(ptr_bracket_expr)
+    init_formal_params.add(ptr_bracket_expr)
 
     #Add obj_type : typedesc[Phasor[T, Y]]
-    formal_params.add(nnkIdentDefs.newTree(
+    init_formal_params.add(nnkIdentDefs.newTree(
             newIdentNode("obj_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
@@ -861,15 +875,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        formal_params.add(new_arg)
+        init_formal_params.add(new_arg)
 
-    init_fun.add(formal_params)
+    init_proc_def.add(init_formal_params)
 
-    init_fun.add(newEmptyNode())
-    init_fun.add(newEmptyNode())
+    init_proc_def.add(newEmptyNode())
+    init_proc_def.add(newEmptyNode())
 
     #Cast and rtalloc operators
-    fun_body.add(
+    init_fun_body.add(
         nnkAsgn.newTree(
             newIdentNode("result"),
             nnkCast.newTree(
@@ -890,7 +904,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #Add result.phase = phase, etc..
     for index, var_name in var_names:
-        fun_body.add(
+        init_fun_body.add(
             nnkAsgn.newTree(
                 nnkDotExpr.newTree(
                     newIdentNode("result"),
@@ -901,16 +915,19 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         )
     
     #Add the function body to the proc declaration
-    init_fun.add(fun_body)
+    init_proc_def.add(init_fun_body)
     
     #Add everything to result
-    final_stmt_list.add(init_fun)
+    final_stmt_list.add(init_proc_def)
     
     #If using result, it was bugging. Needs to be returned like this to be working properly. don't know why.
     return quote do:
         `final_stmt_list`
         
         #defining the destructor requires to use another macro with a typed argument for the type, in order to inspect its fields.
+
+        #generics or generics_pproc_def here? it should be the same, as long as object was constructed with generics_proc_def (which not only
+        #contains "[T, Y]", but "[T : SomeNumber, Y : SomeNumber]"). These are not necessary for a generic destructor. It would work on them too.
         defineDestructor(`obj_name`, `ptr_name`, `generics`, `ptr_bracket_expr`, `var_names`, false)
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
@@ -1197,8 +1214,6 @@ macro constructor*(code_block : untyped) =
     
     #remove the call to "new" macro from code_block. It will then be just the body of constructor function.
     code_block.del(code_block.len() - 1)
-
-    echo astGenRepr code_block
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the UGenPerform proc.

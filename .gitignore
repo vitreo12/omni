@@ -18,3 +18,5 @@ RTAllocTest/rt_alloc_test
 \.vscode/
 
 RTAlloc/sc_data
+
+newDestructors

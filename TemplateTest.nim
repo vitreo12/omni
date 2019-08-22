@@ -17,29 +17,14 @@ outs 1:
     "sine_out"
 
 
-#[
-#Result:
-    type 
-        Phasor_obj*[T : SomeFloat, Y] = object
-            phase : T
-            somethingElse : Y
+expandMacros:
+    struct Phasor[T]:
+        phase : T
 
-        Phasor*[T : SomeFloat, Y] = ptr Phasor_obj[T, Y]
-        
-    proc init*[T : SomeFloat, Y](obj_type : typedesc[Phasor[T, Y]], phase : T, somethingElse : Y) : Phasor[T, Y] = 
-        result = cast[Phasor[T, Y]](rt_alloc(cast[culong](sizeof(Phasor_obj[T, Y]))))
-        result.phase = phase  
-        result.somethingElse = somethingElse 
-]#
-
-#expandMacros:
-struct Phasor[T]:
-    phase : T
-
-#expandMacros:
-struct Something[T, Y : SomeData]:
-    a : T
-    b : Y
+expandMacros:
+    struct Something[T, Y]:
+        a : T
+        b : Data[Y]
 
 expandMacros:
     struct SomeOtherStruct[T, Y]:
