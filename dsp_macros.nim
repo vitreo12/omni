@@ -447,16 +447,498 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
+#All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
+macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr_bracket_expr : untyped, var_names : untyped, is_ugen_destructor : bool) =
+    var 
+        final_stmt    = nnkStmtList.newTree()
+        proc_def      : NimNode
+        init_formal_params = nnkFormalParams.newTree(newIdentNode("void"))
+        proc_body     = nnkStmtList.newTree()
+            
+        var_obj_positions : seq[int]
+        ptr_name_str : string
+        
+    let is_ugen_destructor_bool = is_ugen_destructor.boolVal()
 
-#[ macro dspTypes*(code_block : untyped) =
-    echo astGenRepr code_block ]#
+    if is_ugen_destructor_bool == true:
+        #Full proc definition for UGenDestructor. The result is: proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} 
+        proc_def = nnkProcDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("UGenDestructor")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("void"),
+                nnkIdentDefs.newTree(
+                    newIdentNode("obj"),
+                nnkPtrTy.newTree(
+                    newIdentNode("UGen")
+                ),
+                newEmptyNode()
+                )
+            ),
+            nnkPragma.newTree(
+                nnkExprColonExpr.newTree(
+                    newIdentNode("exportc"),
+                    newLit("UGenDestructor")
+                )
+            ),
+            newEmptyNode()
+        )
+    else:
+        #Just add proc destructor to proc def. Everything else will be added later
+        proc_def = nnkProcDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("destructor")
+            ),
+            newEmptyNode(),
+        )
+
+        #Actual name
+        ptr_name_str = ptr_name.strVal()
+
+    let rec_list = getImpl(obj)[2][2]
+    
+    #Extract if there is a ptr SomeObject_obj in the fields of the type, to add it to destructor procedure.
+    for index, ident_defs in rec_list:     
+        for entry in ident_defs:
+
+            var 
+                var_number : int
+                entry_impl : NimNode
+
+            if entry.kind == nnkSym:
+                entry_impl = getTypeImpl(entry)
+            elif entry.kind == nnkBracketExpr:
+                entry_impl = getTypeImpl(entry[0])
+            elif entry.kind == nnkPtrTy:             #the case for UGen, where variables are stored as ptr Phasor_obj, instead of Phasor       
+                entry_impl = entry
+            else:
+                continue 
+            
+            #It's a ptr to something. Check if it's a pointer to an "_obj"
+            if entry_impl.kind == nnkPtrTy:
+                
+                #Inner statement of ptr, could be a symbol (no generics, just the name) or a bracket (generics) 
+                let entry_inner = entry_impl[0]
+
+                #non-generic
+                if entry_inner.kind == nnkSym:
+                    let entry_inner_str = entry_inner.strVal()
+                    
+                    #Found it! add the position in the definition to the seq
+                    if entry_inner_str[len(entry_inner_str) - 4 .. len(entry_inner_str) - 1] == "_obj":
+                        var_number = index
+                        var_obj_positions.add(var_number)
+
+                #generic
+                elif entry_inner.kind == nnkBracketExpr:
+                    let entry_inner_str = entry_inner[0].strVal()
+
+                    #Found it! add the position in the definition to the seq
+                    if entry_inner_str[len(entry_inner_str) - 4 .. len(entry_inner_str) - 1] == "_obj":
+                        var_number = index
+                        var_obj_positions.add(var_number)
+    
+    if is_ugen_destructor_bool == true:
+        proc_body.add(
+            nnkCommand.newTree(
+                newIdentNode("echo"),
+                newLit("calling UGen\'s destructor" )
+            )   
+        )
+    else:
+        #Generics stuff to add to destructor function declaration
+        if generics.len() > 0:
+            proc_def.add(generics)
+        else: #no generics
+            proc_def.add(newEmptyNode())
+
+        init_formal_params.add(
+            nnkIdentDefs.newTree(
+                newIdentNode("obj"),
+                ptr_bracket_expr,
+                newEmptyNode()
+            )
+        )
+
+        proc_def.add(init_formal_params)
+        proc_def.add(newEmptyNode())
+        proc_def.add(newEmptyNode())
+
+        proc_body.add(
+            nnkCommand.newTree(
+                newIdentNode("echo"),
+                newLit("calling " & $ptr_name_str & "\'s destructor" )
+            )   
+        )
+    
+    if var_obj_positions.len() > 0:
+        for var_index in var_obj_positions:
+            proc_body.add(
+                nnkCall.newTree(
+                    newIdentNode("destructor"),
+                    nnkDotExpr.newTree(
+                        newIdentNode("obj"),
+                        var_names[var_index]        #retrieve the correct name from the body of the struct
+                    )
+                )
+            )
+
+    proc_body.add(
+        nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+                newIdentNode("obj_cast"),
+                newEmptyNode(),
+                nnkCast.newTree(
+                    newIdentNode("pointer"),
+                    newIdentNode("obj")
+                )
+            )
+        ),
+        nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkPrefix.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("obj_cast"),
+                            newIdentNode("isNil")
+                        )
+                    )
+                ),
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("rt_free"),
+                        newIdentNode("obj_cast")
+                    )
+                )
+            )
+        )
+    )
+
+    proc_def.add(proc_body)
+
+    final_stmt.add(proc_def)
+
+    #echo astGenRepr final_stmt
+
+    return quote do:
+        `final_stmt`
+        
+        
+macro struct*(struct_name : untyped, code_block : untyped) : untyped =
+    var 
+        final_stmt_list = nnkStmtList.newTree()
+        type_section    = nnkTypeSection.newTree()
+        obj_type_def    = nnkTypeDef.newTree()      #the Phasor_obj block
+        obj_ty          = nnkObjectTy.newTree()     #the body of the Phasor_obj   
+        rec_list        = nnkRecList.newTree()      #the variable declaration section of Phasor_obj
+        
+        ptr_type_def    = nnkTypeDef.newTree()      #the Phasor = ptr Phasor_obj block
+        ptr_ty          = nnkPtrTy.newTree()        #the ptr type expressing ptr Phasor_obj
+        
+        init_proc_def        = nnkProcDef.newTree()      #the init* function
+        init_formal_params   = nnkFormalParams.newTree()
+        init_fun_body        = nnkStmtList.newTree()
+
+    obj_ty.add(newEmptyNode())
+    obj_ty.add(newEmptyNode())
+    
+    var 
+        obj_name : NimNode
+        ptr_name : NimNode
+        generics = nnkGenericParams.newTree()  #If generics are present in struct definition
+        generics_proc_def = nnkGenericParams.newTree() #These are all the generics that will be set to be T : SomeNumber, instead of just T
+
+        obj_bracket_expr : NimNode
+        ptr_bracket_expr : NimNode
+
+        var_names : seq[NimNode]
+        var_types : seq[NimNode]
+    
+    #Using generics
+    if struct_name.kind == nnkBracketExpr:
+        obj_name = newIdentNode($(struct_name[0].strVal()) & "_obj")  #Phasor_obj
+        ptr_name = struct_name[0]                                     #Phasor
+
+        #If struct name doesn't start with capital letter, error out
+        if not(ptr_name.strVal[0] in {'A'..'Z'}):
+            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
+
+        #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
+        #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
+        obj_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                obj_name
+            )
+        )
+
+        #NOTE THE DIFFERENCE BETWEEN ptr_type_def here with generics and without, different number of newEmptyNode()
+        #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
+        ptr_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                ptr_name
+            )
+        )
+
+        #The name of the function with the asterisk, in case of supporting modules in the future
+        #Note that init_proc_def for generics has just one newEmptyNode()
+        init_proc_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("init")
+            ),
+            newEmptyNode()
+        )
+
+        #Initialize them to be bracket expressions
+        obj_bracket_expr = nnkBracketExpr.newTree()
+        ptr_bracket_expr = nnkBracketExpr.newTree()
+
+        #Add the "Phasor_obj" and "Phasor" names to brackets
+        obj_bracket_expr.add(obj_name)
+        ptr_bracket_expr.add(ptr_name)
+
+        for index, child in struct_name:
+            if index == 0:
+                continue
+            else:
+                var 
+                    generic_proc = nnkIdentDefs.newTree()
+                    generic_proc_proc_def = nnkIdentDefs.newTree()
+                    
+                #If singular [T]
+                if child.len() == 0:
+                    ##Also add the name of the generic to the Phasor_obj[T, Y...]
+                    obj_bracket_expr.add(child)
+
+                    #Also add the name of the generic to the Phasor[T, Y...]
+                    ptr_bracket_expr.add(child)
+
+                    generic_proc.add(child)
+                    generic_proc_proc_def.add(child)
+
+                    generic_proc.add(newEmptyNode())
+                    generic_proc_proc_def.add(newIdentNode("SomeNumber"))  #add ": SomeNumber" to the generic type
+
+                    generic_proc.add(newEmptyNode())
+                    generic_proc_proc_def.add(newEmptyNode())
+
+                    generics.add(generic_proc)
+                    generics_proc_def.add(generic_proc_proc_def)
+
+                #If [T : SomeFloat or SomeInteger... etc...]
+                else:
+                    error($ptr_name.strVal() & $ "\'s generic type \"" & $(child[0].strVal()) & "\" contains subtypes. These are not supported. Struct's generic types are defaulted to only be SomeNumber.")
+
+                    #This works, but it's better to not to use it.
+                    #[ #All the generics (including the "or" infixes, etc...)
+                    for inner_index, inner_child in child:
+
+                        #Add the name of the generics to a table, to be used for ptr
+                        if inner_index == 0:
+                            obj_bracket_expr.add(inner_child)
+                            ptr_bracket_expr.add(inner_child)
+                        
+                        generic_proc.add(inner_child)
+                    
+                    generic_proc.add(newEmptyNode())
+                    generics.add(generic_proc) ]#
+            
+        #Add generics to obj type
+        obj_type_def.add(generics)
+
+        #Add generics to ptr type
+        ptr_type_def.add(generics)
+
+        #Add generics to proc definition. (proc init*[T : SomeNumber, Y : SomeNumber]...) These will have added the ": SomeNumber" on each generic.
+        init_proc_def.add(generics_proc_def)
+        
+        #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
+        ptr_ty.add(obj_bracket_expr)
+
+    #No generics, just name of struct
+    elif struct_name.kind == nnkIdent:
+        obj_name = newIdentNode($(struct_name) & "_obj")              #Phasor_obj
+        ptr_name = struct_name                                        #Phasor
+
+        #If struct name doesn't start with capital letter, error out
+        if not(ptr_name.strVal[0] in {'A'..'Z'}):
+            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
+        
+        #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
+        obj_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                obj_name
+            ),
+            newEmptyNode()
+        )
+
+        #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
+        ptr_type_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                ptr_name
+            ),
+            newEmptyNode()
+        )
+
+        #The name of the function with the asterisk, in case of supporting modules in the future
+        init_proc_def.add(nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("init")
+            ),
+            newEmptyNode(),
+            newEmptyNode()
+        )
+
+        #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
+        ptr_ty.add(obj_name)
+
+        #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
+        obj_bracket_expr = obj_name
+        ptr_bracket_expr = ptr_name
+
+    for code_stmt in code_block:
+        #Have some better error checking and printing here
+        if code_stmt.len != 2 or code_stmt.kind != nnkCall or code_stmt[0].kind != nnkIdent or code_stmt[1].kind != nnkStmtList or code_stmt[1][0].kind != nnkIdent:
+            
+            #Needed for generics in body of struct
+            if code_stmt[1][0].kind != nnkBracketExpr:
+                error("\"" & $ptr_name & "\": " & "Invalid struct body")
+        
+        var 
+            var_name = code_stmt[0]
+            var_type = code_stmt[1][0]
+            new_decl = nnkIdentDefs.newTree()
+
+        var_names.add(var_name)
+        var_types.add(var_type)
+
+        new_decl.add(var_name)
+        new_decl.add(var_type)
+        new_decl.add(newEmptyNode())
+
+        rec_list.add(new_decl)
+    
+    ####################################
+    # Add all things related to object #
+    ####################################
+
+    #Add var : type declarations to obj declaration
+    obj_ty.add(rec_list)
+    
+    #Add the obj declaration (the nnkObjectTy) to the type declaration
+    obj_type_def.add(obj_ty)
+    
+    #Add the type declaration of Phasor_obj to the type section
+    type_section.add(obj_type_def)
+    
+    #####################################
+    # Add all things related to pointer #
+    #####################################
+    
+    #Add the ptr_ty inners to ptr_type_def
+    ptr_type_def.add(ptr_ty)
+    
+    #Add the type declaration of Phasor to type section
+    type_section.add(ptr_type_def)
+
+    #Add the whole type section to result
+    final_stmt_list.add(type_section)
+    
+    ################
+    # INIT SECTION #
+    ################
+    
+    #Add Phasor[T, Y] return type
+    init_formal_params.add(ptr_bracket_expr)
+
+    #Add obj_type : typedesc[Phasor[T, Y]]
+    init_formal_params.add(nnkIdentDefs.newTree(
+            newIdentNode("obj_type"),
+            nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                ptr_bracket_expr
+            ),
+            newEmptyNode()
+        )   
+    )
+
+    #Add args to function
+    for index, var_name in var_names:
+        var new_arg = nnkIdentDefs.newTree(
+            var_name,
+            var_types[index],
+            newEmptyNode()
+        )
+
+        init_formal_params.add(new_arg)
+
+    init_proc_def.add(init_formal_params)
+
+    init_proc_def.add(newEmptyNode())
+    init_proc_def.add(newEmptyNode())
+
+    #Cast and rtalloc operators
+    init_fun_body.add(
+        nnkAsgn.newTree(
+            newIdentNode("result"),
+            nnkCast.newTree(
+                ptr_bracket_expr,
+                nnkCall.newTree(
+                        newIdentNode("rt_alloc"),
+                        nnkCast.newTree(
+                            newIdentNode("culong"),
+                                nnkCall.newTree(
+                                newIdentNode("sizeof"),
+                                obj_bracket_expr
+                        )
+                    )                 
+                )
+            )
+        )
+    )
+
+    #Add result.phase = phase, etc..
+    for index, var_name in var_names:
+        init_fun_body.add(
+            nnkAsgn.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("result"),
+                    var_name
+                ),
+                var_name
+            )
+        )
+    
+    #Add the function body to the proc declaration
+    init_proc_def.add(init_fun_body)
+    
+    #Add everything to result
+    final_stmt_list.add(init_proc_def)
+    
+    #If using result, it was bugging. Needs to be returned like this to be working properly. don't know why.
+    return quote do:
+        `final_stmt_list`
+        
+        #defining the destructor requires to use another macro with a typed argument for the type, in order to inspect its fields.
+
+        #generics or generics_pproc_def here? it should be the same, as long as object was constructed with generics_proc_def (which not only
+        #contains "[T, Y]", but "[T : SomeNumber, Y : SomeNumber]"). These are not necessary for a generic destructor. It would work on them too.
+        defineDestructor(`obj_name`, `ptr_name`, `generics`, `ptr_bracket_expr`, `var_names`, false)
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =
     let call_to_new_macro = code_block.last()
-    
+
     return quote do:
         `call_to_new_macro`
+
+macro debug*() =
+    echo "To be added"
 
 macro constructor*(code_block : untyped) =
 
@@ -473,10 +955,14 @@ macro constructor*(code_block : untyped) =
         #They both are nnkIdentNodes
         let_declarations : seq[NimNode]
         var_declarations : seq[NimNode]
-        template_for_var_declarations = nnkStmtList.newTree()
+
+        templates_for_perform_var_declarations     = nnkStmtList.newTree()
+        templates_for_constructor_var_declarations = nnkStmtList.newTree()
+        templates_for_constructor_let_declarations = nnkStmtList.newTree()
 
         empty_var_statements : seq[NimNode]
         call_to_new_macro : NimNode
+        final_var_names = nnkBracket.newTree()
         constructor_body : NimNode
 
     #Look if "new" macro call is the last statement in the block.
@@ -531,24 +1017,80 @@ macro constructor*(code_block : untyped) =
         #var statements
         if statement.kind == nnkVarSection:
             for inner_index, var_declaration in statement:
+                let 
+                    var_declaration_name = var_declaration[0]
+                    new_var_declaration = newIdentNode($(var_declaration[0].strVal()) & "_var")
+
                 #Add the ORIGINAL ident name to the array, modifying its name to be "variableName_var"
-                var_declarations.add(var_declaration[0])
+                var_declarations.add(var_declaration_name)
 
                 #Then, modify the field in the code_block to be "variableName_var"
-                code_block[outer_index][inner_index][0] = newIdentNode($(var_declaration[0].strVal()) & "_var")
+                code_block[outer_index][inner_index][0] = new_var_declaration
                 
                 #Found one! add the sym to seq. It's a nnkIdent.
                 if var_declaration[2].kind == nnkEmpty:
-                    empty_var_statements.add(var_declaration[0])
+                    empty_var_statements.add(var_declaration_name)
+
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_var
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_var", to be used in constructor for correct namings
+                let constructor_var_template = nnkTemplateDef.newTree(
+                    var_declaration_name,                       #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        new_var_declaration                #new name
+                    )
+                )
+
+                templates_for_constructor_var_declarations.add(constructor_var_template)
         
         #let statements
         elif statement.kind == nnkLetSection:
             for inner_index, let_declaration in statement:
+                let 
+                    let_declaration_name = let_declaration[0]
+                    new_let_declaration = newIdentNode($(let_declaration_name.strVal()) & "_let")
+
                 #Add the ORIGINAL ident name to the array
-                let_declarations.add(let_declaration[0])
+                let_declarations.add(let_declaration_name)
 
                 #Then, modify the field in the code_block to be "variableName_let"
-                code_block[outer_index][inner_index][0] = newIdentNode($(let_declaration[0].strVal()) & "_let")
+                code_block[outer_index][inner_index][0] = new_let_declaration
+
+                #[
+                    RESULT:
+                    template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
+                        phase_let
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_let", to be used in constructor for correct namings
+                let constructor_let_template = nnkTemplateDef.newTree(
+                    let_declaration_name,                       #original name
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        new_let_declaration                #new name
+                    )
+                )
+
+                templates_for_constructor_let_declarations.add(constructor_let_template)
     
     #Check the variables that are passed to call_to_new_macro
     for index, new_macro_var_name in call_to_new_macro:               #loop over every passed in variables to the "new" call
@@ -560,19 +1102,20 @@ macro constructor*(code_block : untyped) =
         #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_var"
         for var_declaration in var_declarations:
             if var_declaration == new_macro_var_name:
-                #Replace the input to the "new" macro to be "variableName_mut"
+                #Replace the input to the "new" macro to be "variableName_var"
                 let new_var_declaration = newIdentNode($(var_declaration.strVal()) & "_var")
                 
+                #Replace the name directly in the call to the "new" macro
                 call_to_new_macro[index] = new_var_declaration
 
                 #[
                     RESULT:
                     template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
                         phase_var[]
-                ]#
-                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly.
-                let var_template = nnkTemplateDef.newTree(
-                    var_declaration,                        #original name
+                ]#                
+                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly in perform.
+                let perform_var_template = nnkTemplateDef.newTree(
+                    var_declaration,                            #original name
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkFormalParams.newTree(
@@ -589,17 +1132,18 @@ macro constructor*(code_block : untyped) =
                     )
                 )
 
-                template_for_var_declarations.add(var_template)
+                templates_for_perform_var_declarations.add(perform_var_template)
         
         #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_let"
         for let_declaration in let_declarations:
             if let_declaration == new_macro_var_name:
                 #Replace the input to the "new" macro to be "variableName_let"
                 let new_let_declaration = newIdentNode($(let_declaration.strVal()) & "_let")
-                
+
+                #Replace the name directly in the call to the "new" macro
                 call_to_new_macro[index] = new_let_declaration
 
-    #echo astGenRepr template_for_var_declarations
+    #echo astGenRepr templates_for_perform_var_declarations
 
     #First statement of the constructor is the allocation of the "ugen" variable. 
     #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
@@ -641,39 +1185,56 @@ macro constructor*(code_block : untyped) =
             error("Trying to use a literal value at index " & $index & " of the \"new\" statement. Use a named variable instead.")
         
         #Standard case, an nnkIdent with the variable name
-        if var_name.strVal() != "new": 
+        if index > 0: 
+
+            let var_name_str = var_name.strVal()
+
             let ugen_asgn_stmt = nnkAsgn.newTree(
                 nnkDotExpr.newTree(
                     newIdentNode("ugen"),
-                    newIdentNode(var_name.strVal())  #symbol name (ugen.$name)
+                    newIdentNode(var_name_str)  #symbol name (ugen.$name)
                 ),
-                newIdentNode(var_name.strVal())      #symbol name ($name)
+                newIdentNode(var_name_str)      #symbol name ($name)
             )
 
             constructor_body.add(ugen_asgn_stmt)
+
+            final_var_names.add(newIdentNode(var_name_str))
 
         #First ident == "new"
         else: 
             continue
     
-    #The original code block
-    let code_block_with_call_to_new_macro = code_block.copy()
-
-    #remove the call to "new" macro from code_block. It will be the body to constructor function.
-    code_block.del((code_block.len() - 1))
+    #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "executeNewStatementAndBuildUGenObjectType" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "new" macro
+    let code_block_with_var_let_templates_and_call_to_new_macro = nnkStmtList.newTree(
+        templates_for_constructor_var_declarations,
+        templates_for_constructor_let_declarations,
+        code_block.copy()
+    )
+    
+    #remove the call to "new" macro from code_block. It will then be just the body of constructor function.
+    code_block.del(code_block.len() - 1)
 
     result = quote do:
-        #templates for substitution on "var" declared variable names in the perform loop
-        `template_for_var_declarations`
-        
+        #Template that, when called, will generate the template for the name mangling of "_var" variables in the UGenPerform proc.
+        #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
+        template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
+            `templates_for_perform_var_declarations`
+                
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
-        executeNewStatementAndBuildUGenObjectType(`code_block_with_call_to_new_macro`)
-
+        executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_new_macro`)
+        
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
         #export the function to C when building a shared library
         proc UGenConstructor*() : ptr UGen {.exportc: "UGenConstructor".} =
             
-            #Variables declaration
+            #Add the templates needed for UGenConstructor to unpack variable names declared with "var" (different from the one in UGenPerform, which uses unsafeAddr)
+            `templates_for_constructor_var_declarations`
+
+            #Add the templates needed for UGenConstructor to unpack variable names declared with "let"
+            `templates_for_constructor_let_declarations`
+
+            #Actual body of the constructor
             `code_block`
 
             #Constructor block: allocation of "ugen" variable and assignment of fields
@@ -683,10 +1244,12 @@ macro constructor*(code_block : untyped) =
             return ugen
 
         #Destructor
-        proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} =
+        #[ proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} =
             let ugen_void_cast = cast[pointer](ugen)
             if not ugen_void_cast.isNil():
-                rt_free(ugen_void_cast)      #this should be rt_free
+                rt_free(ugen_void_cast)  ]#    
+        
+        defineDestructor(UGen, nil, nil, nil, `final_var_names`, true)
             
 
 #This macro should in theory just work with the "new(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
@@ -840,6 +1403,9 @@ template perform*(code_block : untyped) {.dirty.} =
     #export the function to C when building a shared library
     proc UGenPerform*(ugen : ptr UGen, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
         
+        #Add the templates needed for UGenPerform to unpack variable names declared with "var" in cosntructor
+        generateTemplatesForPerformVarDeclarations()
+
         #Unpack the variables at compile time
         unpackUGenVariables(UGen)
 

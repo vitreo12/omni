@@ -16,56 +16,70 @@ ins 1:
 outs 1:
     "sine_out"
 
-#[ #An object like this is allocated on the stack at the UGenConstructor() function. Its content would then
-#be deep copied into the UGen object... This is not the best solution. It would be better to interact directly
-#with the object allocated inside of the UGen, instead of copying the contents of some other to it
-dspTypes:
-    Phasor[T : SomeFloat]:
-        phase : T
-    
-    AnotherType[T]:
-        phasor : Phasor[T]
- ]#
 
-type Phasor = object
-    phase : float
-    
+expandMacros:
+    struct Phasor[T]:
+        phase : T
+
+expandMacros:
+    struct Something[T, Y]:
+        a : T
+        b : Data[Y]
+
+expandMacros:
+    struct SomeOtherStruct[T, Y]:
+        phasor : Phasor[T]
+        something : Something[T, Y]
+
+proc PhasorDefault() : Phasor[float] =
+    result = Phasor.init(0.0)
+
+proc someProcForPhasor[T](p : Phasor[T]) : void =
+    p.phase = 0.23
+ 
 expandMacros:
     constructor:
         let 
             sampleRate = 48000.0
-            phasor  = Phasor(phase : 0.13)   #allocated on stack
-            someData = Data(100)
+            phasor   = PhasorDefault()
+            something = Something.init(0.0, Data.init(100))
+            someOtherStruct = SomeOtherStruct.init(phasor, something)
+            someData = Data.init(100)
 
-        var phase = 0.0
-        
-        new phase, sampleRate, phasor, someData
-
-expandMacros:
-    perform:
         var 
-            frequency : float
-            sine_out : float
+            phase = 0.0
+            anotherVar = phase
+        
+        new phase, sampleRate, phasor, someData, anotherVar, someOtherStruct
 
-        sample:
-            frequency = in1
+#expandMacros:
+perform:
+    var 
+        frequency : float
+        sine_out : float
 
-            if phase >= 1.0:
-                phase = 0.0
-            
-            #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
-            phasor.phase = 2.3
+    sample:
+        frequency = in1
 
-            sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
-            
-            out1 = sine_out
+        if phase >= 1.0:
+            phase = 0.0
+        
+        #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
+        phasor.phase = 2.3
+        
+        #Test fuctions aswell
+        someProcForPhasor(phasor)
 
-            phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
+        sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
+        
+        out1 = sine_out
+
+        phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
 
 #################
 # TESTING SUITE #
 #################
-#[ 
+
 var 
     ins_ptr_void  = alloc0(sizeof(ptr cfloat) * 2)      #float**
     in_ptr1_void = alloc0(sizeof(cfloat) * 512)         #float*
@@ -98,4 +112,3 @@ dealloc(outs_ptr_void)
 dealloc(out_ptr1_void)
 
 UGenDestructor(ugen)
- ]#

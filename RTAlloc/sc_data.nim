@@ -5,19 +5,30 @@ type
 
     ArrayPtr[T] = ptr UncheckedArray[T]
 
-    SCData[T] = object
+    Data_obj[T] = object
         data  : ArrayPtr[T]
         size  : uint
         chans : uint
         size_X_chans : uint
 
+    #Only export Data
+    Data*[T] = ptr Data_obj[T]
+
+    #Should be more generic. Only accept numbers for now.
+    #SomeData* = Data[float] or Data[float32] or Data[float64] or Data[int] or Data[int8] or Data[int16] or Data[int32] or Data[int64] or Data[uint] or Data[uint8] or Data[uint16] or Data[uint32] or Data[uint64]
+        
 #Having the strings as const as --gc:none is used
 const
-    size_error  = "Size must be a positive number. Setting it to 1"
-    chans_error = "Chans must be a positive number. Setting it to 1"
+    size_error  = "Data\'s size must be a positive number. Setting it to 1"
+    chans_error = "Data\'s chans must be a positive number. Setting it to 1"
 
 #Constructor interface: Data
-proc Data*[S : SomeInteger, C : SomeInteger](size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : ptr SCData[dataType] =
+proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
+    
+    #error out if trying to instantiate any dataType that is not a Number
+    when dataType isnot SomeNumber: 
+        {.fatal: "Data's dataType must be SomeNumber".}
+
     var 
         real_size  = size
         real_chans = chans
@@ -31,16 +42,16 @@ proc Data*[S : SomeInteger, C : SomeInteger](size : S = uint(1), chans : C = uin
         real_chans = 1
 
     let 
-        size_uint    = cast[uint](real_size)
-        chans_uint   = cast[uint](real_chans)
-        size_sc_data = sizeof(SCData[dataType])
+        size_uint     = cast[uint](real_size)
+        chans_uint    = cast[uint](real_chans)
+        size_data_obj = sizeof(Data_obj[dataType])
 
     #Actual object, assigned to result
-    result = cast[ptr SCData[dataType]](rt_alloc(cast[C_size_t](size_sc_data)))
+    result = cast[Data[dataType]](rt_alloc(cast[C_size_t](size_data_obj)))
     
     #Data of the object (the array)
     let 
-        size_data_type_uint = cast[uint](sizeof(dataType))
+        size_data_type_uint    = cast[uint](sizeof(dataType))
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
         data = cast[ArrayPtr[dataType]](rt_alloc0(cast[C_size_t](total_size_uint)))
@@ -52,16 +63,23 @@ proc Data*[S : SomeInteger, C : SomeInteger](size : S = uint(1), chans : C = uin
     result.size_X_chans = size_X_chans_uint
 
 #Deallocation proc
-proc DisposeData*[T](a : ptr SCData[T]) : void =
-    rt_free(cast[pointer](a.data)) #dealloc the data
-    rt_free(cast[pointer](a))      #dealloc actual object
+proc destructor*[T](obj : Data[T]) : void =
+    echo "Calling Data's destructor"
+
+    let 
+        obj_void_cast  = cast[pointer](obj)
+        data_void_cast = cast[pointer](obj.data)
+
+    rt_free(data_void_cast)     #dealloc the data
+    rt_free(obj_void_cast)      #dealloc actual object
+   
 
 ##########
 # GETTER #
 ##########
 
 #1 channel
-proc `[]`*[I : SomeInteger, T](a : ptr SCData[T] or SCData[T], i : I) : T =
+proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T =
     let 
         data       = a.data
         data_size  = a.size
@@ -72,7 +90,7 @@ proc `[]`*[I : SomeInteger, T](a : ptr SCData[T] or SCData[T], i : I) : T =
         return T(0)  #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
 
 #more than 1 channel
-proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : ptr SCData[T] or SCData[T], i1 : I1, i2 : I2) : T =
+proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
     let 
         data              = a.data
         data_size         = a.size
@@ -89,7 +107,7 @@ proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : ptr SCData[T] or SCData[T]
 ##########
 
 #1 channel       
-proc `[]=`*[I : SomeInteger, T, S](a : ptr SCData[T] or var SCData[T], i : I, x : S) : void =
+proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =
     let 
         data      = a.data
         data_size = a.size
@@ -98,7 +116,7 @@ proc `[]=`*[I : SomeInteger, T, S](a : ptr SCData[T] or var SCData[T], i : I, x 
         data[i] = x   
 
 #more than 1 channel
-proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : ptr SCData[T] or var SCData[T], i1 : I1, i2 : I2, x : S) : void =
+proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
     let 
         data              = a.data
         data_size         = a.size
