@@ -15,7 +15,7 @@ type
     Data*[T] = ptr Data_obj[T]
 
     #Should be more generic. Only accept numbers for now.
-    SomeData* = Data[float] or Data[float32] or Data[float64] or Data[int] or Data[int8] or Data[int16] or Data[int32] or Data[int64] or Data[uint] or Data[uint8] or Data[uint16] or Data[uint32] or Data[uint64]
+    #SomeData* = Data[float] or Data[float32] or Data[float64] or Data[int] or Data[int8] or Data[int16] or Data[int32] or Data[int64] or Data[uint] or Data[uint8] or Data[uint16] or Data[uint32] or Data[uint64]
         
 #Having the strings as const as --gc:none is used
 const
@@ -24,6 +24,11 @@ const
 
 #Constructor interface: Data
 proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
+    
+    #error out if trying to instantiate any dataType that is not a Number
+    when dataType isnot SomeNumber: 
+        {.fatal: "Data's dataType must be SomeNumber".}
+
     var 
         real_size  = size
         real_chans = chans
