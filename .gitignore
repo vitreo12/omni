@@ -20,3 +20,7 @@ RTAllocTest/rt_alloc_test
 RTAlloc/sc_data
 
 newDestructors
+
+SCNim/build/
+
+SCNim/libSine.dylib
