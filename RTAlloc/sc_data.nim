@@ -1,4 +1,5 @@
 import rt_alloc
+import ../dsp_print
 
 type
     C_size_t = culong
@@ -19,8 +20,9 @@ type
         
 #Having the strings as const as --gc:none is used
 const
-    size_error  = "Data\'s size must be a positive number. Setting it to 1"
-    chans_error = "Data\'s chans must be a positive number. Setting it to 1"
+    size_error   = "WARNING: Data\'s size must be a positive number. Setting it to 1\n"
+    chans_error  = "WARNING: Data\'s chans must be a positive number. Setting it to 1\n"
+    bounds_error = "WARNING: Trying to access out of bounds Data.\n"
 
 #Constructor interface: Data
 proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
@@ -34,11 +36,11 @@ proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S
         real_chans = chans
     
     if real_size < 1:
-        echo size_error
+        print(size_error)
         real_size = 1
 
     if real_chans < 1:
-        echo chans_error
+        print(chans_error)
         real_chans = 1
 
     let 
@@ -54,7 +56,7 @@ proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S
         size_data_type_uint    = cast[uint](sizeof(dataType))
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
-        data = cast[ArrayPtr[dataType]](rt_alloc0(cast[C_size_t](total_size_uint)))
+        data                   = cast[ArrayPtr[dataType]](rt_alloc0(cast[C_size_t](total_size_uint)))
     
     #Fill the object layout
     result.data         = data
@@ -87,6 +89,7 @@ proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T =
     if i >= 0 and i < data_size:
         return data[i]
     else:
+        print(bounds_error)
         return T(0)  #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
 
 #more than 1 channel
@@ -100,6 +103,7 @@ proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1
     if index >= 0 and index < data_size_X_chans:
         return data[index]
     else:
+        print(bounds_error)
         return T(0) #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
 
 ##########
@@ -114,6 +118,8 @@ proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S)
 
     if i >= 0 and i < data_size:
         data[i] = x   
+    else:
+        print(bounds_error)
 
 #more than 1 channel
 proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
@@ -125,3 +131,5 @@ proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_ob
         
     if index >= 0 and index < data_size_X_chans:
         data[index] = x
+    else:
+        print(bounds_error)
