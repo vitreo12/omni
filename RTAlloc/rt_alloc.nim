@@ -13,37 +13,37 @@ proc print_world*() : void {.importc.}
 #uses the standard allocation when -d:supercollider is not defined.
 
 #RTAlloc wrapper
-proc rt_alloc_C*(in_size : culong) : pointer {.importc: "rt_alloc".}
+proc rt_alloc_C*(inSize : culong) : pointer {.importc: "rt_alloc".}
 
-proc rt_alloc*(in_size : culong) : pointer =
+proc rt_alloc*(inSize : culong) : pointer =
     when defined(supercollider):
-        return rt_alloc_C(in_size)
+        return rt_alloc_C(inSize)
     else:
-        return alloc(in_size)
+        return alloc(inSize)
 
 #RTAlloc with 0 memory initialization
-proc rt_alloc0_C*(in_size : culong) : pointer {.importc: "rt_alloc0".}
+proc rt_alloc0_C*(inSize : culong) : pointer {.importc: "rt_alloc0".}
 
-proc rt_alloc0*(in_size : culong) : pointer =
+proc rt_alloc0*(inSize : culong) : pointer =
     when defined(supercollider):
-        return rt_alloc0_C(in_size)
+        return rt_alloc0_C(inSize)
     else:
-        return alloc0(in_size)
+        return alloc0(inSize)
 
 #RTRealloc
-proc rt_realloc_C*(in_ptr : pointer, in_size : culong) : pointer {.importc: "rt_realloc".}
+proc rt_realloc_C*(inPtr : pointer, inSize : culong) : pointer {.importc: "rt_realloc".}
 
-proc rt_realloc*(in_ptr : pointer, in_size : culong) : pointer =
+proc rt_realloc*(inPtr : pointer, inSize : culong) : pointer =
     when defined(supercollider):
-        return rt_realloc_C(in_ptr, in_size)
+        return rt_realloc_C(inPtr, inSize)
     else:
-        return realloc(in_ptr, in_size)
+        return realloc(inPtr, inSize)
 
 #RTFree wrapper
-proc rt_free_C*(in_ptr : pointer) : void {.importc: "rt_free".}
+proc rt_free_C*(inPtr : pointer) : void {.importc: "rt_free".}
 
-proc rt_free*(in_ptr : pointer) : void =
+proc rt_free*(inPtr : pointer) : void =
     when defined(supercollider):
-        rt_free_C(in_ptr)
+        rt_free_C(inPtr)
     else:
-        dealloc(in_ptr)
+        dealloc(inPtr)
