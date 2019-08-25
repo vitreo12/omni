@@ -472,11 +472,9 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
             nnkFormalParams.newTree(
                 newIdentNode("void"),
                 nnkIdentDefs.newTree(
-                    newIdentNode("obj"),
-                nnkPtrTy.newTree(
-                    newIdentNode("UGen")
-                ),
-                newEmptyNode()
+                    newIdentNode("obj_void"),
+                    newIdentNode("pointer"),
+                    newEmptyNode()
                 )
             ),
             nnkPragma.newTree(
@@ -546,9 +544,21 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
     if is_ugen_destructor_bool == true:
         proc_body.add(
             nnkCommand.newTree(
-                newIdentNode("echo"),
-                newLit("calling UGen\'s destructor" )
-            )   
+                newIdentNode("print"),
+                newLit("calling UGen\'s destructor\n")
+            ),
+            nnkLetSection.newTree(
+                nnkIdentDefs.newTree(
+                    newIdentNode("obj"),
+                    newEmptyNode(),
+                    nnkCast.newTree(
+                        nnkPtrTy.newTree(
+                        newIdentNode("UGen")
+                        ),
+                        newIdentNode("obj_void")
+                    )
+                )
+            )  
         )
     else:
         #Generics stuff to add to destructor function declaration
@@ -571,8 +581,8 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
 
         proc_body.add(
             nnkCommand.newTree(
-                newIdentNode("echo"),
-                newLit("calling " & $ptr_name_str & "\'s destructor" )
+                newIdentNode("print"),
+                newLit("calling " & $ptr_name_str & "\'s destructor\n" )
             )   
         )
     
@@ -587,25 +597,30 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                     )
                 )
             )
-
-    proc_body.add(
-        nnkLetSection.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("obj_cast"),
-                newEmptyNode(),
-                nnkCast.newTree(
-                    newIdentNode("pointer"),
-                    newIdentNode("obj")
+    
+    #let obj_void = cast[pointer](obj)
+    if is_ugen_destructor_bool == false:
+        proc_body.add(
+            nnkLetSection.newTree(
+                nnkIdentDefs.newTree(
+                    newIdentNode("obj_void"),
+                    newEmptyNode(),
+                    nnkCast.newTree(
+                        newIdentNode("pointer"),
+                        newIdentNode("obj")
+                    )
                 )
             )
-        ),
+        )
+
+    proc_body.add(
         nnkIfStmt.newTree(
             nnkElifBranch.newTree(
                 nnkPrefix.newTree(
                     newIdentNode("not"),
                     nnkCall.newTree(
                         nnkDotExpr.newTree(
-                            newIdentNode("obj_cast"),
+                            newIdentNode("obj_void"),
                             newIdentNode("isNil")
                         )
                     )
@@ -613,7 +628,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                 nnkStmtList.newTree(
                     nnkCall.newTree(
                         newIdentNode("rt_free"),
-                        newIdentNode("obj_cast")
+                        newIdentNode("obj_void")
                     )
                 )
             )
@@ -1226,7 +1241,7 @@ macro constructor*(code_block : untyped) =
         
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
         #export the function to C when building a shared library
-        proc UGenConstructor*() : ptr UGen {.exportc: "UGenConstructor".} =
+        proc UGenConstructor*() : pointer {.exportc: "UGenConstructor".} =
             
             #Add the templates needed for UGenConstructor to unpack variable names declared with "var" (different from the one in UGenPerform, which uses unsafeAddr)
             `templates_for_constructor_var_declarations`
@@ -1240,8 +1255,8 @@ macro constructor*(code_block : untyped) =
             #Constructor block: allocation of "ugen" variable and assignment of fields
             `constructor_body`
 
-            #Return the "ugen" variable
-            return ugen
+            #Return the "ugen" variable as void pointer
+            return cast[pointer](ugen)
 
         #Destructor
         #[ proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} =
@@ -1401,10 +1416,13 @@ macro castInsOuts*() =
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
     #export the function to C when building a shared library
-    proc UGenPerform*(ugen : ptr UGen, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
+    proc UGenPerform*(ugen_void : pointer, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
         
         #Add the templates needed for UGenPerform to unpack variable names declared with "var" in cosntructor
         generateTemplatesForPerformVarDeclarations()
+
+        #Cast the void* to UGen*
+        let ugen = cast[ptr UGen](ugen_void)
 
         #Unpack the variables at compile time
         unpackUGenVariables(UGen)

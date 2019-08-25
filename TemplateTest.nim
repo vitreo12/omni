@@ -1,7 +1,8 @@
-#nim c --app:lib --gc:none -d:release -d:danger --noMain
+#nim c --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger
 
 import macros
 import dsp_macros
+import dsp_print
 import sc_types
 import math
 
@@ -52,34 +53,34 @@ expandMacros:
         
         new phase, sampleRate, phasor, someData, anotherVar, someOtherStruct
 
-#expandMacros:
-perform:
-    var 
-        frequency : float
-        sine_out : float
+expandMacros:
+    perform:
+        var 
+            frequency : float
+            sine_out : float
 
-    sample:
-        frequency = in1
+        sample:
+            frequency = in1
 
-        if phase >= 1.0:
-            phase = 0.0
-        
-        #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
-        phasor.phase = 2.3
-        
-        #Test fuctions aswell
-        someProcForPhasor(phasor)
+            if phase >= 1.0:
+                phase = 0.0
+            
+            #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
+            phasor.phase = 2.3
+            
+            #Test fuctions aswell
+            someProcForPhasor(phasor)
 
-        sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
-        
-        out1 = sine_out
+            sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
+            
+            out1 = sine_out
 
-        phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
+            phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
 
 #################
 # TESTING SUITE #
 #################
-
+#[ 
 var 
     ins_ptr_void  = alloc0(sizeof(ptr cfloat) * 2)      #float**
     in_ptr1_void = alloc0(sizeof(cfloat) * 512)         #float*
@@ -112,3 +113,4 @@ dealloc(outs_ptr_void)
 dealloc(out_ptr1_void)
 
 UGenDestructor(ugen)
+ ]#
