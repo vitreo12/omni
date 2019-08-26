@@ -1,4 +1,4 @@
-import rt_alloc
+import RTAlloc/rt_alloc
 import ../dsp_print
 
 type
@@ -81,7 +81,8 @@ proc destructor*[T](obj : Data[T]) : void =
 ##########
 
 #1 channel
-proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T =
+#proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T 
+proc `[]`*[I : SomeInteger, T](a : Data[T], i : I) : T =
     let 
         data       = a.data
         data_size  = a.size
@@ -93,7 +94,8 @@ proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T =
         return T(0)  #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
 
 #more than 1 channel
-proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
+#proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
+proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T], i1 : I1, i2 : I2) : T =
     let 
         data              = a.data
         data_size         = a.size
@@ -110,8 +112,9 @@ proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1
 # SETTER #
 ##########
 
-#1 channel       
-proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =
+#1 channel   
+#proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =    
+proc `[]=`*[I : SomeInteger, T, S](a : Data[T], i : I, x : S) : void =
     let 
         data      = a.data
         data_size = a.size
@@ -122,7 +125,8 @@ proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S)
         print(bounds_error)
 
 #more than 1 channel
-proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
+#proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
+proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void =
     let 
         data              = a.data
         data_size         = a.size

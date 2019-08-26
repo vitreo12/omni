@@ -37,6 +37,11 @@ void init_world(void* inWorld)
     SCWorld = (World*)inWorld;
 }
 
+void* get_sc_world()
+{
+    return (void*)SCWorld;
+}
+
 void print_world()
 {
     printf("SCWorld: %p\n", (void*)SCWorld);

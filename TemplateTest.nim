@@ -7,9 +7,10 @@ import sc_types
 import math
 
 #For rt_alloc/rt_alloc0/rt_realloc/rt_free
-import RTAlloc/rt_alloc
+import SC/RTAlloc/rt_alloc
 
-import RTAlloc/sc_data
+import SC/sc_data
+import SC/sc_buffer
     
 ins 1:
     "freq"
