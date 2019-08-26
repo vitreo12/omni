@@ -23,7 +23,7 @@ typedef void init_alloc_function_pointers_func(RTAlloc_ptr* In_RTAlloc, RTReallo
 init_alloc_function_pointers_func* init_alloc_function_pointers;
 
 //Nim module functions
-typedef void* Nim_UGenConstructor_func(void);
+typedef void* Nim_UGenConstructor_func(float** ins_SC);
 Nim_UGenConstructor_func* Nim_UGenConstructor;
 
 typedef void  Nim_UGenDestructor_func(void* obj_void);

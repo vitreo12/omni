@@ -1241,13 +1241,16 @@ macro constructor*(code_block : untyped) =
         
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
         #export the function to C when building a shared library
-        proc UGenConstructor*() : pointer {.exportc: "UGenConstructor".} =
+        proc UGenConstructor*(ins_SC : ptr ptr cfloat) : pointer {.exportc: "UGenConstructor".} =
             
             #Add the templates needed for UGenConstructor to unpack variable names declared with "var" (different from the one in UGenPerform, which uses unsafeAddr)
             `templates_for_constructor_var_declarations`
 
             #Add the templates needed for UGenConstructor to unpack variable names declared with "let"
             `templates_for_constructor_let_declarations`
+
+            #Unpack ins
+            let ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
 
             #Actual body of the constructor
             `code_block`

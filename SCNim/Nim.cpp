@@ -13,7 +13,7 @@ static void Nim_Dtor(Nim* unit);
 
 void Nim_Ctor(Nim* unit) 
 {
-    unit->sine_nim_obj = (void*)Nim_UGenConstructor();
+    unit->sine_nim_obj = (void*)Nim_UGenConstructor(unit->mInBuf);
 
     SETCALC(Nim_next);
     Nim_next(unit, 1);
