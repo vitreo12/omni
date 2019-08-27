@@ -11,27 +11,34 @@ import SC/RTAlloc/rt_alloc
 
 import SC/sc_data
 import SC/sc_buffer
-    
+
+#expandMacros:  
 ins 1:
     "freq"
 
+#expandMacros:
 outs 1:
     "sine_out"
 
 
-expandMacros:
-    struct Phasor[T]:
-        phase : T
+#expandMacros:
+struct Phasor[T]:
+    phase : T
 
-expandMacros:
-    struct Something[T, Y]:
-        a : T
-        b : Data[Y]
+#expandMacros:
+struct Something[T, Y]:
+    a : T
+    b : Data[Y]
+    c : Buffer
 
-expandMacros:
-    struct SomeOtherStruct[T, Y]:
-        phasor : Phasor[T]
-        something : Something[T, Y]
+#expandMacros:
+struct SomeOtherStruct[T, Y]:
+    phasor : Phasor[T]
+    something : Something[T, Y]
+
+struct BuffersWrapper:
+    buf1 : Buffer
+    buf2 : Buffer
 
 proc PhasorDefault() : Phasor[float] =
     result = Phasor.init(0.0)
@@ -39,26 +46,29 @@ proc PhasorDefault() : Phasor[float] =
 proc someProcForPhasor[T](p : Phasor[T]) : void =
     p.phase = 0.23
  
-expandMacros:
-    constructor:
-        let 
-            sampleRate = 48000.0
-            phasor   = PhasorDefault()
-            something = Something.init(0.0, Data.init(100))
-            someOtherStruct = SomeOtherStruct.init(phasor, something)
-            someData = Data.init(100)
+#expandMacros:
+constructor:
+    let 
+        sampleRate = 48000.0
+        phasor   = PhasorDefault()
+        something = Something.init(0.0, Data.init(100), Buffer.init(1))
+        someOtherStruct = SomeOtherStruct.init(phasor, something)
+        someData = Data.init(100)
 
-        var 
-            phase = 0.0
-            anotherVar = phase
-        
-        new phase, sampleRate, phasor, someData, anotherVar, someOtherStruct
+        someBuffer = Buffer.init(1)
+        someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
+
+    var 
+        phase = 0.0
+        anotherVar = phase
+    
+    new phase, sampleRate, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
 
 expandMacros:
     perform:
         var 
-            frequency : float
-            sine_out : float
+            frequency : Signal
+            sine_out  : Signal
 
         sample:
             frequency = in1
@@ -72,8 +82,11 @@ expandMacros:
             #Test fuctions aswell
             someProcForPhasor(phasor)
 
+            #echo ugen.someOtherStruct_let.something.c[0]
+
             sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
             
+            #This will convert double to float... signal should just be float32 by default. signal64 should be used to assure 64 bits precision.
             out1 = sine_out
 
             phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
@@ -97,6 +110,11 @@ var
     outs_ptr = cast[CFloatPtrPtr](outs_ptr_void)
     out_ptr1 = cast[CFloatPtr](out_ptr1_void)
 
+#Dummy
+let world = alloc0(sizeof(float))
+
+init_world(world)
+
 #Fill frequency input with 200hz
 for i in 0 .. 511:
     in_ptr1[i] = 200.0
@@ -104,7 +122,7 @@ for i in 0 .. 511:
 ins_ptr[0]  = in_ptr1
 outs_ptr[0] = out_ptr1
 
-var ugen = UGenConstructor()
+var ugen = UGenConstructor(ins_ptr_SC)
 
 UGenPerform(ugen, cast[cint](512), ins_ptr_SC, outs_ptr_SC)
 

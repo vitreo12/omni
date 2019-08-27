@@ -1312,11 +1312,80 @@ macro new*(var_names : varargs[typed]) =
 
     return final_type
 
-#Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
-macro unpackUGenVariables*(t : typed) =
+proc findBuffersRecursive(t : NimNode, upper_var_name_string : string, full_buffers_path : var seq[string]) : void {.compileTime.} =
+    let type_def = getTypeImpl(t)
+    
+    var actual_type_def : NimNode
+
+    #If it's a pointer, exctract
+    if type_def.kind == nnkPtrTy:
+        
+        #if generic
+        if type_def[0].kind == nnkBracketExpr:
+            actual_type_def = getTypeImpl(type_def[0][0])
+        else:
+            actual_type_def = getTypeImpl(type_def[0])
+
+    #Pass the definition through
+    else:
+        actual_type_def = type_def
+    
+    #If it's not an object type, abort the search.
+    if actual_type_def.kind != nnkObjectTy:
+        return
+
+    let rec_list = actual_type_def[2]
+
+    for ident_defs in rec_list:
+        let
+            var_name = ident_defs[0]
+            var_type = ident_defs[1]
+        
+        var type_to_inspect : NimNode
+
+        #if generic
+        if var_type.kind == nnkBracketExpr:
+            type_to_inspect = var_type[0]
+        else:
+            type_to_inspect = var_type
+        
+        let 
+            type_to_inspect_string = type_to_inspect.strVal()
+            interp_var_name = $upper_var_name_string & "." & $(var_name.strVal())
+        
+        #Found a Buffer type!
+        if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_obj":
+            #echo "Found Buffer: ", interp_var_name
+            full_buffers_path.add(interp_var_name)
+        
+        #Run the function recursively
+        findBuffersRecursive(type_to_inspect, interp_var_name, full_buffers_path)
+    
+proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
-    var var_section = nnkLetSection.newTree()
+    var 
+        let_section         = nnkLetSection.newTree()
+        get_buffers_section = nnkStmtList.newTree()
+    
+    #when supernova compilation, define a unlock_supernova_buffers() template that will contain all the unlock_buffer calls
+    when defined(supernova):
+        #template unlock_supernova_buffers() : untyped {.dirty.} =
+        var 
+            supernova_unlock_buffers_template_def = nnkTemplateDef.newTree(
+                newIdentNode("unlock_supernova_buffers"),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                nnkPragma.newTree(
+                newIdentNode("dirty")
+                ),
+                newEmptyNode()
+            )
+
+            supernova_unlock_buffers_body = nnkStmtList.newTree()
 
     let type_def = getImpl(t)
     
@@ -1343,8 +1412,7 @@ macro unpackUGenVariables*(t : typed) =
 
         let var_desc_type_def = getImpl(temp_var_desc)
         
-        #ptr and ref types are just passed in as they are:
-        #Result
+        #case for structs:
         #someData = ugen.someData_let (or someData_var)
         if var_desc.kind == nnkPtrTy or var_desc.kind == nnkRefTy:
             ident_def_stmt = nnkIdentDefs.newTree(
@@ -1355,27 +1423,63 @@ macro unpackUGenVariables*(t : typed) =
                     newIdentNode(var_name_string)                         #name of the variable
                 )
             )
-        
-        #object types will be stripped off their "_var" and "_let" appends, as they will normally be accessed in the code : 
-        #Result
-        #phasor = unsafeAddr ugen.phasor_let (or phasor_var)
-        elif var_desc_type_def.kind != nnkNilLit:
-            ident_def_stmt = nnkIdentDefs.newTree(
-                newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings
-                newEmptyNode(),
-                nnkCommand.newTree(
-                    newIdentNode("unsafeAddr"),
-                    nnkDotExpr.newTree(
-                        newIdentNode("ugen"),
-                        newIdentNode(var_name_string)                         #name of the variable
+
+            ##########################
+            # Look for Buffer types. #
+            ##########################
+
+            let 
+                ptr_type           = var_desc[0]
+                var_name_string_with_ugen = "ugen." & $var_name_string
+
+            #seq[NimNode] to append the results to
+            var full_buffers_path : seq[string]
+
+            #If generic
+            if ptr_type.kind == nnkBracketExpr:
+                findBuffersRecursive(ptr_type[0], var_name_string_with_ugen, full_buffers_path)
+
+            #Not generic
+            elif ptr_type.kind == nnkSym:
+                if ptr_type.strVal() == "Buffer_obj":
+                    full_buffers_path.add(var_name_string_with_ugen)
+                else:
+                    findBuffersRecursive(ptr_type, var_name_string_with_ugen, full_buffers_path)
+
+            for full_buffer_path in full_buffers_path:
+                #expand the string like "ugen.myVariable_let.myBuffer" to a parsed dot syntax.
+                let parsed_dot_syntax = parseExpr(full_buffer_path)
+
+                #call the "get_buffer" procedure on the buffer, using the "Buffer.input_num" as index for "ins_Nim" channel
+                var new_buffer = nnkCall.newTree(
+                    newIdentNode("get_buffer"),
+                    parsed_dot_syntax,
+                    nnkBracketExpr.newTree(
+                        nnkBracketExpr.newTree(
+                            newIdentNode("ins_Nim"),
+                            nnkDotExpr.newTree(
+                                parsed_dot_syntax,
+                                newIdentNode("input_num")
+                            )
+                        ),
+                        newLit(0)
                     )
                 )
-            )
+                
+                get_buffers_section.add(new_buffer)
 
-        #inbuilt types return newNilLit
-        else:
+                #when supernova compilation, add the unlock_buffer() calls to the unlock_supernova_buffers() template
+                when defined(supernova):
+                    var new_unlock_buffer = nnkCall.newTree(
+                        newIdentNode("unlock_buffer"),
+                        parsed_dot_syntax
+                    )
 
-            #Result:
+                    supernova_unlock_buffers_body.add(new_unlock_buffer)
+
+        #Variables with in-built types. They return nnkNilLit
+        elif var_desc_type_def.kind == nnkNilLit:
+            #var variables
             #phase_var = unsafeAddr ugen.phase_var.
             #phase_var is then accessed via the "phase" template (which is the code used by the user), which returns pointer dereferencing "phase_var[]"
             if var_name_string[len(var_name_string) - 4 .. len(var_name_string) - 1] == "_var":
@@ -1391,7 +1495,7 @@ macro unpackUGenVariables*(t : typed) =
                     )
                 )
             
-            #Result:
+            #let variables
             #sampleRate = ugen.sampleRate_let
             #sampleRate will be then be normally accessed as an immutable inside the perform/sample statements.
             elif var_name_string[len(var_name_string) - 4 .. len(var_name_string) - 1] == "_let":
@@ -1404,10 +1508,19 @@ macro unpackUGenVariables*(t : typed) =
                     )
                 )
 
+        let_section.add(ident_def_stmt)
 
-        var_section.add(ident_def_stmt)
+    result.add(let_section)
+    result.add(get_buffers_section)
+    
+    #When supernova compilation, add the unlock template 
+    when defined(supernova):
+        supernova_unlock_buffers_template_def.add(supernova_unlock_buffers_body)
+        result.add(supernova_unlock_buffers_template_def)
 
-    result.add(var_section)
+#Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
+macro unpackUGenVariables*(t : typed) =
+    return unpackUGenVariablesProc(t)
 
 #Simply cast the inputs from SC in a indexable form in Nim
 macro castInsOuts*() =
@@ -1427,14 +1540,18 @@ template perform*(code_block : untyped) {.dirty.} =
         #Cast the void* to UGen*
         let ugen = cast[ptr UGen](ugen_void)
 
-        #Unpack the variables at compile time
-        unpackUGenVariables(UGen)
-
         #cast ins and outs
         castInsOuts()
 
+        #Unpack the variables at compile time. It will also expand on any Buffer types.
+        unpackUGenVariables(UGen)
+
         #Append the whole code block
         code_block
+
+        #UNLOCK buffers when supernova is used...
+        when defined(supernova):
+            unlock_supernova_buffers()
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 template sample*(code_block : untyped) {.dirty.} =

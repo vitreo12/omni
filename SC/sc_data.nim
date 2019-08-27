@@ -66,14 +66,14 @@ proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S
 
 #Deallocation proc
 proc destructor*[T](obj : Data[T]) : void =
-    echo "Calling Data's destructor"
+    print("calling Data's destructor\n")
 
     let 
-        obj_void_cast  = cast[pointer](obj)
-        data_void_cast = cast[pointer](obj.data)
+        obj_void  = cast[pointer](obj)
+        data_void = cast[pointer](obj.data)
 
-    rt_free(data_void_cast)     #dealloc the data
-    rt_free(obj_void_cast)      #dealloc actual object
+    rt_free(data_void)     #dealloc the data
+    rt_free(obj_void)      #dealloc actual object
    
 
 ##########

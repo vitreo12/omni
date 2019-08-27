@@ -33,37 +33,52 @@ import ../dsp_print
 
 type
     Buffer_obj = object
-        sc_world  : pointer
-        snd_buf   : pointer
-        bufnum    : float32
-        input_num : int
+        sc_world   : pointer
+        snd_buf    : pointer
+        bufnum     : float32
+        input_num* : int       #need to export it in order to be retrieved with the ins_Nim[buffer.input_num][0] syntax for get_buffer.
 
-    Buffer = ptr Buffer_obj
+    Buffer* = ptr Buffer_obj
 
 const
-    upper_exceed_input_error = "ERROR: Buffer: input number out of bounds. Maximum input number is 32.\n"
-    lower_exceed_input_error = "ERROR: Buffer: input number out of bounds. Minimum input number is 1.\n"
+    exceeding_max_ugen_inputs = "ERROR: Buffer: exceeding maximum number of inputs: %d\n"
+    upper_exceed_input_error  = "ERROR: Buffer: input %d out of bounds. Maximum input number is 32.\n"
+    lower_exceed_input_error  = "ERROR: Buffer: input %d out of bounds. Minimum input number is 1.\n"
 
-proc init*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S) : Buffer =
-    result = cast[Buffer](rt_alloc(cast[clong](sizeof(Buffer_obj))))
+proc innerInit[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, ugen_inputs : int) : Buffer =
+    result = cast[Buffer](rt_alloc(cast[culong](sizeof(Buffer_obj))))
     
     result.sc_world  = get_sc_world()
     result.bufnum    = float32(-1e9)
-    result.input_num = int(input_num)
 
-    #Test if world is still same even with buffers..
-    print_world()
+    #1 should be 0, 2 1, 3 2, etc... 32 31
+    result.input_num = int(input_num - 1)
 
     #If these checks fail set to sc_world to nil, which will invalidate the Buffer (the get_buffer_SC would just return null)
-    if input_num > 32:
-        print(upper_exceed_input_error)
+    if input_num > ugen_inputs:
+        print(exceeding_max_ugen_inputs, ugen_inputs)
+        result.sc_world = nil
+
+    elif input_num > 32:
+        print(upper_exceed_input_error, input_num)
         result.sc_world = nil
 
     elif input_num < 1:
-        print(lower_exceed_input_error)
+        print(lower_exceed_input_error, input_num)
         result.sc_world = nil
 
-#Called at start of perform
+#Template which also uses the const ugen_inputs, which belongs to the nim dsp new module. It will string substitute Buffer.init(1) with initInner(Buffer, 1, ugen_inputs)
+template init*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S) : untyped =
+    innerInit(Buffer, input_num, ugen_inputs) #ugen_inputs belongs to the scope of the dsp module
+
+proc destructor*(obj : Buffer) : void =
+    print("calling Buffer's destructor\n")
+
+    let obj_void = cast[pointer](obj)
+
+    rt_free(obj_void)
+
+#Called at start of perform. If supernova is active, this will also lock the buffer.
 proc get_buffer*(buffer : Buffer, fbufnum : float32) : void =
     var bufnum = fbufnum
     if bufnum < 0.0:
@@ -77,7 +92,7 @@ proc get_buffer*(buffer : Buffer, fbufnum : float32) : void =
 #Supernova unlocking
 when defined(supernova):
     proc unlock_buffer*(buffer : Buffer) : void =
-        unlock_buffer_SC(cast[pointer](buffer))
+        unlock_buffer_SC(cast[pointer](buffer.snd_buf))
 
 ##########
 # GETTER #

@@ -12,7 +12,7 @@ const negative_alloc = "WARNING: Trying to allocate a negative value. Allocating
 proc init_world*(in_world : pointer) : void {.importc.}
 
 #To retrieve world
-proc get_sc_world*() : void {.importc.}
+proc get_sc_world*() : pointer {.importc.}
 
 #For debugging
 proc print_world*() : void {.importc.}
@@ -23,7 +23,13 @@ proc print_world*() : void {.importc.}
 #RTAlloc wrapper
 proc rt_alloc_SC*(inSize : culong) : pointer {.importc: "rt_alloc".}
 
-proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
+proc rt_alloc*(inSize : culong) : pointer =
+    when defined(supercollider):
+        return rt_alloc_SC((inSize))
+    else:
+        return alloc(inSize)
+
+#[ proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
     var size = inSize
     
     if size < 0:
@@ -34,11 +40,18 @@ proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
         return rt_alloc_SC(cast[culong](size))
     else:
         return alloc(size)
+]#
 
 #RTAlloc with 0 memory initialization
 proc rt_alloc0_SC*(inSize : culong) : pointer {.importc: "rt_alloc0".}
 
 proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
+    when defined(supercollider):
+        return rt_alloc0_SC(inSize)
+    else:
+        return alloc0(inSize)
+
+#[ proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
     var size = inSize
     
     if size < 0:
@@ -49,11 +62,18 @@ proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
         return rt_alloc0_SC(cast[culong](size))
     else:
         return alloc0(size)
+ ]#
 
 #RTRealloc
 proc rt_realloc_SC*(inPtr : pointer, inSize : culong) : pointer {.importc: "rt_realloc".}
 
 proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
+    when defined(supercollider):
+        return rt_realloc_SC(inPtr, inSize)
+    else:
+        return realloc(inPtr, inSize)
+
+#[ proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
     var size = inSize
     
     if size < 0:
@@ -64,6 +84,7 @@ proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
         return rt_realloc_SC(inPtr, cast[culong](size))
     else:
         return realloc(inPtr, size)
+ ]#
 
 #RTFree wrapper
 proc rt_free_SC*(inPtr : pointer) : void {.importc: "rt_free".}
