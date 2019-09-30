@@ -109,7 +109,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         proc_body.add(
             nnkCommand.newTree(
                 newIdentNode("echo"),
-                newLit("calling UGen\'s destructor" )
+                newLit("Calling UGen\'s destructor" )
             )   
         )
     else:
@@ -134,7 +134,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         proc_body.add(
             nnkCommand.newTree(
                 newIdentNode("echo"),
-                newLit("calling " & $ptr_name_str & "\'s destructor" )
+                newLit("Calling " & $ptr_name_str & "\'s destructor" )
             )   
         )
     
