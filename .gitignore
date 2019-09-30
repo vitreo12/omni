@@ -26,3 +26,5 @@ SCNim/build/
 SCNim/libSine.dylib
 
 SC/sc_buffer
+
+SCNim/libSine\.so
