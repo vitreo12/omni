@@ -190,7 +190,15 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
         const 
             ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+        
         generate_inputs_templates(`num_of_inputs_VAL`)
+        
+        #Export to C
+        proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
+            return int32(ugen_inputs)
+
+        proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
+            return cast[ptr ptr cstring](ugen_input_names)
 
 macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
     
@@ -243,7 +251,15 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL`  
                     ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]
+
                 generate_inputs_templates(`num_of_inputs_VAL`)
+
+                #Export to C
+                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
+                    return int32(ugen_inputs)
+
+                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
+                    return cast[ptr ptr cstring](ugen_input_names)
 
     #The standard form (derived by using num_of_inputs as int literal, and successive param_names as varargs[untyped]):
     #inputs 1, "freq"  OR inputs(1, "freq")
@@ -290,13 +306,29 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+
                 generate_inputs_templates(`num_of_inputs_VAL`)
+
+                #Export to C
+                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
+                    return int32(ugen_inputs)
+
+                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
+                    return cast[ptr ptr cstring](ugen_input_names)
         else:
             return quote do:
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` 
                     ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]  
+
                 generate_inputs_templates(`num_of_inputs_VAL`)
+
+                #Export to C
+                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
+                    return int32(ugen_inputs)
+
+                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
+                    return cast[ptr ptr cstring](ugen_input_names)
         
 #The block form (derived from using num_of_outputs as int literal, and param_names as a code block.):
 #outputs 1:
@@ -339,7 +371,15 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
         const 
             ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+
         generate_outputs_templates(`num_of_outputs_VAL`)
+
+        #Export to C
+        proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
+            return int32(ugen_outputs)
+
+        proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
+            return cast[ptr ptr cstring](ugen_output_names)
 
 macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
     
@@ -386,13 +426,29 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+
                 generate_outputs_templates(`num_of_outputs_VAL`)
+
+                #Export to C
+                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
+                    return int32(ugen_outputs)
+
+                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr ptr cstring](ugen_output_names)
         else:
             return quote do:
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL`  
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]
+
                 generate_outputs_templates(`num_of_outputs_VAL`)
+
+                #Export to C
+                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
+                    return int32(ugen_outputs)
+
+                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr ptr cstring](ugen_output_names)
 
     #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
     #outputs 1, "freq"  OR outputs(1, "freq")
@@ -439,13 +495,29 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 const
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+
                 generate_outputs_templates(`num_of_outputs_VAL`)
+
+                #Export to C
+                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
+                    return int32(ugen_outputs)
+
+                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr ptr cstring](ugen_output_names)
         else:
             return quote do:
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` 
                     ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
+
                 generate_outputs_templates(`num_of_outputs_VAL`)
+
+                #Export to C
+                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
+                    return int32(ugen_outputs)
+
+                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr ptr cstring](ugen_output_names)
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
 macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr_bracket_expr : untyped, var_names : untyped, is_ugen_destructor : bool) =
@@ -545,7 +617,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         proc_body.add(
             nnkCommand.newTree(
                 newIdentNode("print"),
-                newLit("calling UGen\'s destructor\n")
+                newLit("Calling UGen\'s destructor\n")
             ),
             nnkLetSection.newTree(
                 nnkIdentDefs.newTree(
@@ -582,7 +654,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         proc_body.add(
             nnkCommand.newTree(
                 newIdentNode("print"),
-                newLit("calling " & $ptr_name_str & "\'s destructor\n" )
+                newLit("Calling " & $ptr_name_str & "\'s destructor\n" )
             )   
         )
     
