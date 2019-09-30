@@ -16,8 +16,12 @@ set -e
 #Path to folder where this bash script is
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-#SC folder path
-SC_PATH=/Users/francescocameli/SuperCollider
+#SC folder path (hardcoded in)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  SC_PATH=/Users/francescocameli/SuperCollider
+elif [[ "$OSTYPE" == "linux-gnu" ]]; then 
+  SC_PATH=~/Sources/SuperCollider-3.10.3
+fi
                                         
 #-e argument
 SC_EXTENSIONS_PATH="${SC_EXTENSIONS_PATH/#\~/$HOME}"   #expand tilde, if there is one
@@ -36,13 +40,19 @@ mkdir -p NimCollider
 echo "Copying files over..."
 
 if [[ "$OSTYPE" == "darwin"* ]]; then                     
-    cp Nim.scx ./NimCollider                                                      
+  cp Nim.scx ./NimCollider                                                      
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then 
-    cp Nim.so ./NimCollider                                                       
+  cp Nim.so ./NimCollider                                                       
 fi          
 
-rsync --update ../Nim.sc ./NimCollider                                       
-rsync --update ../libSine.dylib ./NimCollider
+rsync --update ../Nim.sc ./NimCollider 
+rsync --update ../Sine.nim ./NimCollider
+
+if [[ "$OSTYPE" == "darwin"* ]]; then                                      
+  rsync --update ../libSine.dylib ./NimCollider
+elif [[ "$OSTYPE" == "linux-gnu" ]]; then 
+  rsync --update ../libSine.so ./NimCollider
+fi
 
 #Copy the whole build/JuliaCollider folder over to SC's User Extension directory
 rsync -r --links --update ./NimCollider "$SC_EXTENSIONS_PATH"

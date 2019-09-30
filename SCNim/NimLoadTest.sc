@@ -1,6 +1,10 @@
+(
+Server.scsynth;
 s.boot;
+)
 
-s.sendMsg(\cmd, "/load_libSine");
+s.sendMsg(\cmd, "/compile_sine");
+s.sendMsg(\cmd, "/load_sine");
 
 {Nim.ar(SinOsc.ar(1).linlin(-1, 1, 50, 500))}.play;
 

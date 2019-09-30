@@ -1,6 +1,8 @@
 #pragma once
 
 #include <dlfcn.h>
+#include <string>
+#include <unistd.h>
 #include "SC_PlugIn.h"
 
 static InterfaceTable *ft;
@@ -32,17 +34,73 @@ Nim_UGenDestructor_func* Nim_UGenDestructor;
 typedef void  Nim_UGenPerform_func(void* ugen_void, int buf_size, float** ins_SC, float** outs_SC);
 Nim_UGenPerform_func* Nim_UGenPerform;
 
+#ifdef __APPLE__
+    const char* find_NimCollider_directory_cmd = "i=10; complete_string=$(vmmap -w $serverPID | grep -m 1 'Nim.scx'); file_string=$(awk -v var=\"$i\" '{print $var}' <<< \"$complete_string\"); extra_string=${complete_string%$file_string*}; final_string=${complete_string#\"$extra_string\"}; printf \"%s\" \"${final_string//\"Nim.scx\"/}\"";
+#elif __linux__
+    const char* find_NimCollider_directory_cmd = "i=4; complete_string=$(pmap -p $serverPID | grep -m 1 'Nim.so'); file_string=$(awk -v var=\"$i\" '{print $var}' <<< \"$complete_string\"); extra_string=${complete_string%$file_string*}; final_string=${complete_string#\"$extra_string\"}; printf \"%s\" \"${final_string//\"Nim.so\"/}\"";
+#endif
+
+std::string NimCollider_folder_path;
+
+std::string compile_cmd;
+
+void retrieve_NimCollider_dir() 
+{
+    //Get process id and convert it to string
+    pid_t server_pid = getpid();
+    const char* server_pid_string = (std::to_string(server_pid)).c_str();
+
+    printf("PID: %i\n", server_pid);
+
+    //Set the serverPID enviromental variable, used in the "find_NimCollider_directory_cmd" bash script
+    setenv("serverPID", server_pid_string, 1);
+
+    //run script and get a FILE pointer back to the result of the script (which is what's returned by printf in bash script)
+    FILE* pipe = popen(find_NimCollider_directory_cmd, "r");
+    
+    if (!pipe) 
+    {
+        printf("ERROR: Could not run bash script to find Nim \n");
+        return;
+    }
+    
+    //Maximum of 2048 characters.. It should be enough
+    char buffer[2048];
+    while(!feof(pipe)) 
+    {
+        while(fgets(buffer, 2048, pipe) != NULL)
+            NimCollider_folder_path += buffer;
+    }
+
+    pclose(pipe);
+
+    printf("*** NimCollider Path: %s \n", NimCollider_folder_path.c_str());
+
+    compile_cmd = "nim c --import:math --import:/home/francesco/Sources/NimCollider/dsp_macros.nim --import:/home/francesco/Sources/NimCollider/sc_types.nim --import:/home/francesco/Sources/NimCollider/SC/sc_data.nim  --import:/home/francesco/Sources/NimCollider/SC/sc_buffer.nim --import:/home/francesco/Sources/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/home/francesco/Sources/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --deadCodeElim:on --warning[UnusedImport]:off " + NimCollider_folder_path + "Sine.nim";
+}
+
 bool loadLibSine(World* inWorld, void* cmd)
 {
-    dl_handle = dlopen("/Users/francescocameli/Library/Application Support/SuperCollider/Extensions/NimCollider/libSine.dylib", RTLD_GLOBAL);
+    std::string final_path;
+
+    #ifdef __APPLE__
+        final_path = NimCollider_folder_path + "libSine.dylib";
+    #elif __linux__
+        final_path = NimCollider_folder_path + "libSine.so";
+    #endif
+
+    if(dl_handle)
+        dlclose(dl_handle);
+    
+    dl_handle = dlopen(final_path.c_str(), RTLD_NOW | RTLD_DEEPBIND | RTLD_GLOBAL);
 
     if(!dl_handle)
     {
-        printf("ERROR: Could not load libSine.dylib.\n");
+        printf("ERROR: Could not load libSine.so/dylib.\n");
         return true;
     }
 
-    printf("libSine.dylib correctly loaded.\n");
+    printf("*** libSine.so/dylib correctly loaded.\n");
 
     init_world  = (init_world_func*)dlsym(dl_handle, "init_world");
     print_world = (print_world_func*)dlsym(dl_handle, "print_world");
@@ -67,12 +125,50 @@ bool loadLibSine(World* inWorld, void* cmd)
 //needed
 void loadLibSine_cleanup(World* inWorld, void* cmd) {}
 
-void NimLoadLibSine(World *inWorld, void* inUserData, struct sc_msg_iter *args, void *replyAddr)
+void NimLoadSine(World *inWorld, void* inUserData, struct sc_msg_iter *args, void *replyAddr)
 {
     DoAsynchronousCommand(inWorld, replyAddr, nullptr, nullptr, (AsyncStageFn)loadLibSine, 0, 0, loadLibSine_cleanup, 0, nullptr);
 }
 
+bool compileSine(World* inWorld, void* cmd)
+{
+    printf("Compile cmd: %s \n", compile_cmd.c_str());
+
+    std::string compile_result;
+
+    //run script and get a FILE pointer back to the result of the script (which is what's returned by printf in bash script)
+    FILE* pipe = popen(compile_cmd.c_str(), "r");
+    
+    if (!pipe) 
+    {
+        printf("ERROR: Could not run compilation of Sine.nim\n");
+        return true;
+    }
+    
+    //Maximum of 16384 characters.. It should be enough
+    char buffer[16384];
+    while(!feof(pipe)) 
+    {
+        while(fgets(buffer, 16383, pipe) != NULL)
+            compile_result += buffer;
+    }
+
+    pclose(pipe);
+
+    printf("%s\n", compile_result.c_str());
+
+    return true;
+}
+
+void compile_sine_cleanup(World* inWorld, void* cmd) {}
+
+void NimCompileSine(World *inWorld, void* inUserData, struct sc_msg_iter *args, void *replyAddr)
+{
+    DoAsynchronousCommand(inWorld, replyAddr, nullptr, nullptr, (AsyncStageFn)compileSine, 0, 0, compile_sine_cleanup, 0, nullptr);
+}
+
 void DefineNimCmds()
 {
-    DefinePlugInCmd("/load_libSine", (PlugInCmdFunc)NimLoadLibSine, nullptr);
+    DefinePlugInCmd("/load_sine", (PlugInCmdFunc)NimLoadSine, nullptr);
+    DefinePlugInCmd("/compile_sine", (PlugInCmdFunc)NimCompileSine, nullptr);
 }

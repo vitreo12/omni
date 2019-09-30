@@ -32,6 +32,9 @@ void Nim_next(Nim* unit, int inNumSamples)
 PluginLoad(NimUGens) 
 {
     ft = inTable; 
+
+    retrieve_NimCollider_dir();
+    
     DefineNimCmds();
     DefineDtorUnit(Nim);
 }
