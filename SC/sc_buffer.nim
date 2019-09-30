@@ -72,7 +72,7 @@ template init*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S) : un
     innerInit(Buffer, input_num, ugen_inputs) #ugen_inputs belongs to the scope of the dsp module
 
 proc destructor*(obj : Buffer) : void =
-    print("calling Buffer's destructor\n")
+    print("Calling Buffer's destructor\n")
 
     let obj_void = cast[pointer](obj)
 

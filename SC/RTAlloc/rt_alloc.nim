@@ -4,9 +4,8 @@
 #Pass flags to C compiler 
 {.passC: "-O3".}
 
-import ../../dsp_print
-
-const negative_alloc = "WARNING: Trying to allocate a negative value. Allocating 0 bytes.\n"
+#import ../../dsp_print
+#const negative_alloc = "WARNING: Trying to allocate a negative value. Allocating 0 bytes.\n"
 
 #Called to init the sc_world* variable in the Nim module
 proc init_world*(in_world : pointer) : void {.importc.}
@@ -23,21 +22,25 @@ proc print_world*() : void {.importc.}
 #RTAlloc wrapper
 proc rt_alloc_SC*(inSize : culong) : pointer {.importc: "rt_alloc".}
 
+#Should only be called from Data, which already checks for < 0 stuff. So this is faster.
 proc rt_alloc*(inSize : culong) : pointer =
     when defined(supercollider):
         return rt_alloc_SC((inSize))
     else:
         return alloc(inSize)
 
-#[ proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
-    var size = inSize
+#[
+proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
+    var size : culong
     
-    if size < 0:
+    if inSize < 0:
         print(negative_alloc)
         size = 0
+    else:
+        size = cast[culong](inSize)
 
     when defined(supercollider):
-        return rt_alloc_SC(cast[culong](size))
+        return rt_alloc_SC(size)
     else:
         return alloc(size)
 ]#
@@ -45,46 +48,54 @@ proc rt_alloc*(inSize : culong) : pointer =
 #RTAlloc with 0 memory initialization
 proc rt_alloc0_SC*(inSize : culong) : pointer {.importc: "rt_alloc0".}
 
+#Should only be called from Data, which already checks for < 0 stuff. So this is faster.
 proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
     when defined(supercollider):
         return rt_alloc0_SC(inSize)
     else:
         return alloc0(inSize)
 
-#[ proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
-    var size = inSize
+#[
+proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
+    var size : culong
     
-    if size < 0:
+    if inSize < 0:
         print(negative_alloc)
         size = 0
+    else:
+        size = cast[culong](inSize)
 
     when defined(supercollider):
-        return rt_alloc0_SC(cast[culong](size))
+        return rt_alloc0_SC(size)
     else:
         return alloc0(size)
- ]#
+]#
 
 #RTRealloc
 proc rt_realloc_SC*(inPtr : pointer, inSize : culong) : pointer {.importc: "rt_realloc".}
 
+#Should only be called from Data, which already checks for < 0 stuff. So this is faster.
 proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
     when defined(supercollider):
         return rt_realloc_SC(inPtr, inSize)
     else:
         return realloc(inPtr, inSize)
 
-#[ proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
-    var size = inSize
+#[
+proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
+    var size : culong
     
-    if size < 0:
+    if inSize < 0:
         print(negative_alloc)
         size = 0
+    else:
+        size = cast[culong](inSize)
 
     when defined(supercollider):
-        return rt_realloc_SC(inPtr, cast[culong](size))
+        return rt_realloc_SC(inPtr, size)
     else:
         return realloc(inPtr, size)
- ]#
+]#
 
 #RTFree wrapper
 proc rt_free_SC*(inPtr : pointer) : void {.importc: "rt_free".}

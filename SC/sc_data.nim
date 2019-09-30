@@ -66,7 +66,7 @@ proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S
 
 #Deallocation proc
 proc destructor*[T](obj : Data[T]) : void =
-    print("calling Data's destructor\n")
+    print("Calling Data's destructor\n")
 
     let 
         obj_void  = cast[pointer](obj)
