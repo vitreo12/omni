@@ -76,7 +76,7 @@ void retrieve_NimCollider_dir()
 
     printf("*** NimCollider Path: %s \n", NimCollider_folder_path.c_str());
 
-    compile_cmd = "nim c --import:math --import:/home/francesco/Sources/NimCollider/dsp_macros.nim --import:/home/francesco/Sources/NimCollider/sc_types.nim --import:/home/francesco/Sources/NimCollider/SC/sc_data.nim  --import:/home/francesco/Sources/NimCollider/SC/sc_buffer.nim --import:/home/francesco/Sources/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/home/francesco/Sources/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --deadCodeElim:on --warning[UnusedImport]:off " + NimCollider_folder_path + "Sine.nim";
+    compile_cmd = "nim c --import:math --import:/home/francesco/Sources/NimCollider/dsp_macros.nim --import:/home/francesco/Sources/NimCollider/sc_types.nim --import:/home/francesco/Sources/NimCollider/SC/sc_data.nim  --import:/home/francesco/Sources/NimCollider/SC/sc_buffer.nim --import:/home/francesco/Sources/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/home/francesco/Sources/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --stdout:on --deadCodeElim:on --hints:off --warning[UnusedImport]:off " + NimCollider_folder_path + "Sine.nim";
 }
 
 bool loadLibSine(World* inWorld, void* cmd)
