@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <string>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "SC_PlugIn.h"
 
 static InterfaceTable *ft;
@@ -76,23 +77,49 @@ void retrieve_NimCollider_dir()
 
     printf("*** NimCollider Path: %s \n", NimCollider_folder_path.c_str());
 
-    compile_cmd = "nim c --import:math --import:/home/francesco/Sources/NimCollider/dsp_macros.nim --import:/home/francesco/Sources/NimCollider/sc_types.nim --import:/home/francesco/Sources/NimCollider/SC/sc_data.nim  --import:/home/francesco/Sources/NimCollider/SC/sc_buffer.nim --import:/home/francesco/Sources/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/home/francesco/Sources/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --stdout:on --deadCodeElim:on --hints:off --warning[UnusedImport]:off " + NimCollider_folder_path + "Sine.nim";
+    //Bug: paths with spaces won't work. Need to add trailing backslashes to all spaces.
+    #ifdef __APPLE__
+        compile_cmd = "/Users/francescocameli/.nimble/bin/nim c --import:math --import:/Users/francescocameli/Desktop/NimCollider/dsp_macros.nim --import:/Users/francescocameli/Desktop/NimCollider/sc_types.nim --import:/Users/francescocameli/Desktop/NimCollider/SC/sc_data.nim  --import:/Users/francescocameli/Desktop/NimCollider/SC/sc_buffer.nim --import:/Users/francescocameli/Desktop/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/Users/francescocameli/Desktop/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --stdout:on --deadCodeElim:on /Users/francescocameli/Library/Application\\ Support/SuperCollider/Extensions/NimCollider/Sine.nim";
+    #elif __linux__
+        compile_cmd = "nim c --import:math --import:/home/francesco/Sources/NimCollider/dsp_macros.nim --import:/home/francesco/Sources/NimCollider/sc_types.nim --import:/home/francesco/Sources/NimCollider/SC/sc_data.nim  --import:/home/francesco/Sources/NimCollider/SC/sc_buffer.nim --import:/home/francesco/Sources/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/home/francesco/Sources/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --stdout:on --deadCodeElim:on " + NimCollider_folder_path + "Sine.nim";
+        //compile_cmd = "nim c --import:math --import:/home/francesco/Sources/NimCollider/dsp_macros.nim --import:/home/francesco/Sources/NimCollider/sc_types.nim --import:/home/francesco/Sources/NimCollider/SC/sc_data.nim  --import:/home/francesco/Sources/NimCollider/SC/sc_buffer.nim --import:/home/francesco/Sources/NimCollider/SC/RTAlloc/rt_alloc.nim --import:/home/francesco/Sources/NimCollider/dsp_print.nim --app:lib --gc:none --noMain -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --stdout:on --deadCodeElim:on --hints:off --warning[UnusedImport]:off " + NimCollider_folder_path + "Sine.nim";
+    #endif
+}
+
+inline bool file_exists (const std::string& name) 
+{
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
 }
 
 bool loadLibSine(World* inWorld, void* cmd)
 {
     std::string final_path;
 
-    #ifdef __APPLE__
-        final_path = NimCollider_folder_path + "libSine.dylib";
-    #elif __linux__
-        final_path = NimCollider_folder_path + "libSine.so";
-    #endif
-
     if(dl_handle)
         dlclose(dl_handle);
-    
-    dl_handle = dlopen(final_path.c_str(), RTLD_NOW | RTLD_DEEPBIND | RTLD_GLOBAL);
+
+    #ifdef __APPLE__
+        final_path = NimCollider_folder_path + "libSine.dylib";
+        
+        if(!file_exists(final_path))
+        {
+            printf("ERROR: %s doesn't exist \n", final_path.c_str());
+            return true;
+        }
+
+        dl_handle = dlopen(final_path.c_str(), RTLD_GLOBAL);
+    #elif __linux__
+        final_path = NimCollider_folder_path + "libSine.so";
+
+        if(!file_exists(final_path))
+        {
+            printf("ERROR: %s doesn't exist \n", final_path.c_str());
+            return true;
+        }
+
+        dl_handle = dlopen(final_path.c_str(), RTLD_NOW | RTLD_DEEPBIND | RTLD_GLOBAL);
+    #endif
 
     if(!dl_handle)
     {
@@ -136,8 +163,11 @@ bool compileSine(World* inWorld, void* cmd)
 
     std::string compile_result;
 
-    //run script and get a FILE pointer back to the result of the script (which is what's returned by printf in bash script)
-    FILE* pipe = popen(compile_cmd.c_str(), "r");
+    const char* compile_cmd_char = compile_cmd.c_str();
+
+    printf("%s \n", compile_cmd_char);
+
+    FILE* pipe = popen(compile_cmd_char, "r");
     
     if (!pipe) 
     {

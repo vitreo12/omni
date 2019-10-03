@@ -10,4 +10,6 @@ s.sendMsg(\cmd, "/load_sine");
 
 {SinOsc.ar(SinOsc.ar(1).linlin(-1, 1, 50, 500))}.play;
 
+s.scope;
+
 s.quit;

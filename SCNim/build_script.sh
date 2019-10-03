@@ -48,12 +48,6 @@ fi
 rsync --update ../Nim.sc ./NimCollider 
 rsync --update ../Sine.nim ./NimCollider
 
-if [[ "$OSTYPE" == "darwin"* ]]; then                                      
-  rsync --update ../libSine.dylib ./NimCollider
-elif [[ "$OSTYPE" == "linux-gnu" ]]; then 
-  rsync --update ../libSine.so ./NimCollider
-fi
-
 #Copy the whole build/JuliaCollider folder over to SC's User Extension directory
 rsync -r --links --update ./NimCollider "$SC_EXTENSIONS_PATH"
 
