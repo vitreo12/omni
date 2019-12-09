@@ -1018,11 +1018,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         defineDestructor(`obj_name`, `ptr_name`, `generics`, `ptr_bracket_expr`, `var_names`, false)
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "new" statement
-macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =
-    let call_to_new_macro = code_block.last()
+macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
+    discard
+    
+    #let call_to_new_macro = code_block.last()
 
-    return quote do:
-        `call_to_new_macro`
+    #code_block.astGenRepr.echo
+
+    #return quote do:
+    #    `call_to_new_macro`
 
 macro debug*() =
     echo "To be added"
@@ -1308,21 +1312,30 @@ macro constructor*(code_block : untyped) =
         template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
                 
+        #Trick the compiler of the existence of bufsize(), samplerate() and ins_Nim() before sending the block to semantic checking.
+        #Using templates (instead of let statement) because of the Buffer.samplerate function, which the compiler won't pick correctt.y
+        template bufsize()    : untyped {.dirty.} = 0
+        template samplerate() : untyped {.dirty.} = 0
+        template ins_Nim()    : untyped {.dirty.} = cast[CFloatPtrPtr](0.0)
+
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_new_macro`)
         
         #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
         #export the function to C when building a shared library
-        proc UGenConstructor*(ins_SC : ptr ptr cfloat) : pointer {.exportc: "UGenConstructor".} =
+        proc UGenConstructor*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "UGenConstructor"} =
             
+            #Unpack args. These will overwrite the previous empty templates
+            let 
+                ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+                bufsize     {.inject.}  : int          = bufsize_in
+                samplerate  {.inject.}  : float        = samplerate_in
+
             #Add the templates needed for UGenConstructor to unpack variable names declared with "var" (different from the one in UGenPerform, which uses unsafeAddr)
             `templates_for_constructor_var_declarations`
 
             #Add the templates needed for UGenConstructor to unpack variable names declared with "let"
             `templates_for_constructor_let_declarations`
-
-            #Unpack ins
-            let ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
 
             #Actual body of the constructor
             `code_block`
@@ -1379,6 +1392,15 @@ macro new*(var_names : varargs[typed]) =
         var_name_and_type.add(newEmptyNode())
         var_names_and_types.add(var_name_and_type)
     
+    #Add samplerate_let variable
+    var_names_and_types.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("samplerate_let"),
+            getType(float),
+            newEmptyNode()
+        )
+    )
+
     #Add to final obj
     final_obj.add(var_names_and_types)
 
@@ -1604,7 +1626,7 @@ macro castInsOuts*() =
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
     #export the function to C when building a shared library
-    proc UGenPerform*(ugen_void : pointer, buf_size : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
+    proc UGenPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
         
         #Add the templates needed for UGenPerform to unpack variable names declared with "var" in cosntructor
         generateTemplatesForPerformVarDeclarations()
@@ -1627,5 +1649,5 @@ template perform*(code_block : untyped) {.dirty.} =
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 template sample*(code_block : untyped) {.dirty.} =
-    for audio_index_loop in 0..buf_size:
+    for audio_index_loop in 0..bufsize:
         code_block

@@ -36,23 +36,26 @@ proc PhasorDefault() : Phasor[float] =
 proc someProcForPhasor[T](p : Phasor[T]) : void =
     p.phase = 0.23
  
-#expandMacros:
-constructor:
-    let 
-        sampleRate = 48000.0
-        phasor   = PhasorDefault()
-        something = Something.init(0.0, Data.init(100), Buffer.init(1))
-        someOtherStruct = SomeOtherStruct.init(phasor, something)
-        someData = Data.init(100)
+expandMacros:
+    constructor:
+        let 
+            phasor   = PhasorDefault()
+            something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
+            someOtherStruct = SomeOtherStruct.init(phasor, something)
+            someData = Data.init(100)
 
-        someBuffer = Buffer.init(1)
-        someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
+            someBuffer = Buffer.init(1)
+            someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
 
-    var 
-        phase = 0.0
-        anotherVar = phase
-    
-    new phase, sampleRate, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
+        var 
+            phase = 0.0
+            anotherVar = phase
+
+        echo bufsize
+        echo samplerate
+        #echo phase
+        
+        new phase, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
 
 expandMacros:
     perform:
@@ -79,12 +82,12 @@ expandMacros:
             #This will convert double to float... signal should just be float32 by default. signal64 should be used to assure 64 bits precision.
             out1 = sine_out
 
-            phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
+            phase += abs(frequency) / (samplerate - 1) #phase equals to phase_var[]
 
 #################
 # TESTING SUITE #
 #################
-#[ 
+#[
 var 
     ins_ptr_void  = alloc0(sizeof(ptr cfloat) * 2)      #float**
     in_ptr1_void = alloc0(sizeof(cfloat) * 512)         #float*
@@ -112,7 +115,7 @@ for i in 0 .. 511:
 ins_ptr[0]  = in_ptr1
 outs_ptr[0] = out_ptr1
 
-var ugen = UGenConstructor(ins_ptr_SC)
+var ugen = UGenConstructor(ins_ptr_SC, 512, 48000.0)
 
 UGenPerform(ugen, cast[cint](512), ins_ptr_SC, outs_ptr_SC)
 
@@ -122,4 +125,4 @@ dealloc(outs_ptr_void)
 dealloc(out_ptr1_void)
 
 UGenDestructor(ugen)
- ]#
+]#
