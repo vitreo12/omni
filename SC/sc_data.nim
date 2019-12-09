@@ -1,5 +1,5 @@
-import RTAlloc/rt_alloc
-import ../dsp_print
+import sc_alloc/sc_alloc
+import ../print
 
 type
     C_size_t = culong

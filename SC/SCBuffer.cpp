@@ -1,6 +1,6 @@
 #include <cstdio>
-#include "SCUtilities/SC_World.h"
-#include "SCUtilities/SC_Unit.h"
+#include "SC_Utilities/SC_World.h"
+#include "SC_Utilities/SC_Unit.h"
 
 extern "C"
 {

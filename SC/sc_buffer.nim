@@ -28,8 +28,8 @@ proc get_samplerate_buffer_SC(buf : pointer) : cdouble {.importc.}
 
 proc get_sampledur_buffer_SC(buf : pointer) : cdouble {.importc.}
 
-import RTAlloc/rt_alloc
-import ../dsp_print
+import sc_alloc/sc_alloc
+import ../print
 
 type
     Buffer_obj = object

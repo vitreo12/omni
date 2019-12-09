@@ -1,16 +1,7 @@
 #nim c --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed
 
 import macros
-import dsp_macros
-import dsp_print
-import sc_types
-import math
-
-#For rt_alloc/rt_alloc0/rt_realloc/rt_free
-import SC/RTAlloc/rt_alloc
-
-import SC/sc_data
-import SC/sc_buffer
+import nimcollider
 
 #expandMacros:  
 ins 1:
@@ -19,7 +10,6 @@ ins 1:
 #expandMacros:
 outs 1:
     "sine_out"
-
 
 #expandMacros:
 struct Phasor[T]:

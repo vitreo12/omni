@@ -1,10 +1,10 @@
 #C file to compile together. Should I compile it ahead and use the link pragma on the .o instead?
-{.compile: "./RTAlloc.c".}
+{.compile: "./RT_Alloc.c".}
 
 #Pass flags to C compiler 
 {.passC: "-O3".}
 
-#import ../../dsp_print
+#import ../../print
 #const negative_alloc = "WARNING: Trying to allocate a negative value. Allocating 0 bytes.\n"
 
 #Called to init the sc_world* variable in the Nim module
