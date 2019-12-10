@@ -3,13 +3,13 @@ import src/sc_macros
 export sc_macros
 
 #SC RTALLOC, DATA AND BUFFER
-import src/SC/sc_alloc/sc_alloc
+import src/sc/sc_alloc/sc_alloc
 export sc_alloc
 
-import src/SC/sc_data
+import src/sc/sc_data
 export sc_data
 
-import src/SC/sc_buffer
+import src/sc/sc_buffer
 export sc_buffer
 
 #DEBUG PRINT
