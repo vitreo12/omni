@@ -1296,6 +1296,17 @@ macro constructor*(code_block : untyped) =
         else: 
             continue
     
+    #Also add ugen.samplerate_let = samplerate
+    constructor_body.add(
+        nnkAsgn.newTree(
+            nnkDotExpr.newTree(
+                newIdentNode("ugen"),
+                newIdentNode("samplerate_let")
+            ),
+            newIdentNode("samplerate")      
+        )
+    )
+    
     #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "executeNewStatementAndBuildUGenObjectType" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "new" macro
     let code_block_with_var_let_templates_and_call_to_new_macro = nnkStmtList.newTree(
         templates_for_constructor_var_declarations,

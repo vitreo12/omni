@@ -51,9 +51,8 @@ expandMacros:
             phase = 0.0
             anotherVar = phase
 
-        echo bufsize
-        echo samplerate
-        #echo phase
+        #print(bufsize, "\n")
+        #print(samplerate, "\n")
         
         new phase, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
 
