@@ -13,8 +13,8 @@ import SC/sc_buffer
 export sc_buffer
 
 #DEBUG PRINT
-import print
-export print
+import sc_print
+export sc_print
 
 #TYPES
 import sc_types

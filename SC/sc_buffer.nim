@@ -9,27 +9,27 @@ when defined(supernova):
     {.passC: "-D SUPERNOVA".}
 
 #Wrapping of cpp functions
-proc get_buffer_SC(buffer_SCWorld : pointer, fbufnum : cfloat) : pointer {.importc.}
+proc get_buffer_SC(buffer_SCWorld : pointer, fbufnum : cfloat) : pointer {.importc, cdecl.}
 
 when defined(supernova):
-    proc unlock_buffer_SC(buf : pointer) : void {.importc.}
+    proc unlock_buffer_SC(buf : pointer) : void {.importc, cdecl.}
 
-proc get_float_value_buffer_SC(buf : pointer, index : clong, channel : clong) : cfloat {.importc.}
+proc get_float_value_buffer_SC(buf : pointer, index : clong, channel : clong) : cfloat {.importc, cdecl.}
 
-proc set_float_value_buffer_SC(buf : pointer, value : cfloat, index : clong, channel : clong) : void {.importc.}
+proc set_float_value_buffer_SC(buf : pointer, value : cfloat, index : clong, channel : clong) : void {.importc, cdecl.}
 
-proc get_frames_buffer_SC(buf : pointer) : cint {.importc.}
+proc get_frames_buffer_SC(buf : pointer) : cint {.importc, cdecl.}
 
-proc get_samples_buffer_SC(buf : pointer) : cint {.importc.}
+proc get_samples_buffer_SC(buf : pointer) : cint {.importc, cdecl.}
 
-proc get_channels_buffer_SC(buf : pointer) : cint {.importc.}
+proc get_channels_buffer_SC(buf : pointer) : cint {.importc, cdecl.}
 
-proc get_samplerate_buffer_SC(buf : pointer) : cdouble {.importc.}
+proc get_samplerate_buffer_SC(buf : pointer) : cdouble {.importc, cdecl.}
 
-proc get_sampledur_buffer_SC(buf : pointer) : cdouble {.importc.}
+proc get_sampledur_buffer_SC(buf : pointer) : cdouble {.importc, cdecl.}
 
 import sc_alloc/sc_alloc
-import ../print
+import ../sc_print
 
 type
     Buffer_obj = object

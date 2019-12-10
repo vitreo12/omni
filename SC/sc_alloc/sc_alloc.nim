@@ -4,23 +4,23 @@
 #Pass flags to C compiler 
 {.passC: "-O3".}
 
-#import ../../print
+#import ../../sc_print
 #const negative_alloc = "WARNING: Trying to allocate a negative value. Allocating 0 bytes.\n"
 
 #Called to init the sc_world* variable in the Nim module
-proc init_world*(in_world : pointer) : void {.importc.}
+proc init_world*(in_world : pointer) : void {.importc, cdecl.}
 
 #To retrieve world
-proc get_sc_world*() : pointer {.importc.}
+proc get_sc_world*() : pointer {.importc, cdecl.}
 
 #For debugging
-proc print_world*() : void {.importc.}
+proc print_world*() : void {.importc, cdecl.}
 
 #For testing purposes outside of SuperCollider's RT allocator, every C function is wrapped in another Nim function that
 #uses the standard allocation when -d:supercollider is not defined.
 
 #RTAlloc wrapper
-proc rt_alloc_SC*(inSize : culong) : pointer {.importc: "rt_alloc".}
+proc rt_alloc_SC*(inSize : culong) : pointer {.importc: "rt_alloc", cdecl.}
 
 #Should only be called from Data, which already checks for < 0 stuff. So this is faster.
 proc rt_alloc*(inSize : culong) : pointer =
@@ -46,7 +46,7 @@ proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
 ]#
 
 #RTAlloc with 0 memory initialization
-proc rt_alloc0_SC*(inSize : culong) : pointer {.importc: "rt_alloc0".}
+proc rt_alloc0_SC*(inSize : culong) : pointer {.importc: "rt_alloc0", cdecl.}
 
 #Should only be called from Data, which already checks for < 0 stuff. So this is faster.
 proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
@@ -72,7 +72,7 @@ proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
 ]#
 
 #RTRealloc
-proc rt_realloc_SC*(inPtr : pointer, inSize : culong) : pointer {.importc: "rt_realloc".}
+proc rt_realloc_SC*(inPtr : pointer, inSize : culong) : pointer {.importc: "rt_realloc", cdecl.}
 
 #Should only be called from Data, which already checks for < 0 stuff. So this is faster.
 proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
@@ -98,7 +98,7 @@ proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
 ]#
 
 #RTFree wrapper
-proc rt_free_SC*(inPtr : pointer) : void {.importc: "rt_free".}
+proc rt_free_SC*(inPtr : pointer) : void {.importc: "rt_free", cdecl.}
 
 proc rt_free*(inPtr : pointer) : void =
     when defined(supercollider):
