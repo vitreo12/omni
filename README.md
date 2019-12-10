@@ -1,3 +1,3 @@
 ### NimCollider
 
-nimcollider is a DSL to generate audio algorithms at the lowest level.
+nimcollider is a DSL for SuperCollider. It allows to code audio algorithms at the lowest level.
