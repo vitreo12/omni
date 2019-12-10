@@ -3,3 +3,5 @@ UGen/build/
 .vscode/
 
 test
+
+*.so

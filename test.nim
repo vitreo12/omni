@@ -3,32 +3,33 @@
 import macros
 import nimcollider
 
-#expandMacros:  
-ins 1:
-    "freq"
+expandMacros:  
+    ins 1:
+        "freq"
 
-#expandMacros:
-outs 1:
-    "sine_out"
+expandMacros:
+    outs 1:
+        "sine_out"
 
-#expandMacros:
-struct Phasor[T]:
-    phase : T
+expandMacros:
+    struct Phasor[T]:
+        phase : T
 
-#expandMacros:
-struct Something[T, Y]:
-    a : T
-    b : Data[Y]
-    c : Buffer
+expandMacros:
+    struct Something[T, Y]:
+        a : T
+        b : Data[Y]
+        c : Buffer
 
-#expandMacros:
-struct SomeOtherStruct[T, Y]:
-    phasor : Phasor[T]
-    something : Something[T, Y]
+expandMacros:
+    struct SomeOtherStruct[T, Y]:
+        phasor : Phasor[T]
+        something : Something[T, Y]
 
-struct BuffersWrapper:
-    buf1 : Buffer
-    buf2 : Buffer
+expandMacros:
+    struct BuffersWrapper:
+        buf1 : Buffer
+        buf2 : Buffer
 
 proc PhasorDefault() : Phasor[float] =
     result = Phasor.init(0.0)
