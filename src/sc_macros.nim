@@ -3,6 +3,8 @@ import macros
 
 const max_inputs_outputs  = 32
 
+const acceptedCharsForParamName = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
+
 #Generate in1, in2, in3...etc templates
 macro generate_inputs_templates(num_of_inputs : typed) : untyped =
     var final_statement = nnkStmtList.newTree()
@@ -149,6 +151,10 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
 
     return final_statement
 
+
+#macro ins_2(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
+#    return ins(num_of_inputs, param_names)
+
 #The block form (derived from using num_of_inputs as int literal, and param_names as a code block.):
 #inputs 1:
 #   "freq"
@@ -156,13 +162,16 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
     
     var 
         num_of_inputs_VAL : int
-        param_names_array_node : NimNode = nnkBracket.newTree()
+        param_names_string : string = ""
+        param_names_node : NimNode
+
+    let param_names_kind = param_names.kind
 
     #Must be an int literal
     if num_of_inputs.kind != nnkIntLit: #Just as the expectKind proc
         error("Expected the number of inputs to be expressed by an integer literal value")
 
-    if param_names.kind != nnkStmtList:
+    if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit:
         error("Expected a block statement after the number of inputs")
     
     num_of_inputs_VAL = int(num_of_inputs.intVal)     #Actual value of the int literal
@@ -173,15 +182,40 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
     if num_of_inputs_VAL > max_inputs_outputs:
         error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
 
-    var 
-        statement_counter = 0
+    var statement_counter = 0
 
-    for statement in param_names.children():
-        if statement.kind != nnkStrLit:
-            error("Expected parameter name number " & $(statement_counter + 1) & " to be a string literal value")
+    #This is for the inputs 1, "freq" case... input 2, "freq", "stmt" is covered in the other macro
+    if param_names_kind == nnkStrLit:
+        let param_name = param_names.strVal()
         
-        param_names_array_node.add newLit(statement.strVal())
-        statement_counter += 1
+        for individualChar in param_name:
+            if not (individualChar in acceptedCharsForParamName):
+                error("Invalid character " & $individualChar & $ " in input name " & $param_name)
+        
+        param_names_string.add($param_name & ",")
+        statement_counter = 1
+
+    #Normal block case
+    else:
+        for statement in param_names.children():
+            if statement.kind != nnkStrLit:
+                error("Expected parameter name number " & $(statement_counter + 1) & " to be a string literal value")
+            
+            let param_name = statement.strVal()
+
+            for individualChar in param_name:
+                if not (individualChar in acceptedCharsForParamName):
+                    error("Invalid character " & $individualChar & $ " in input name " & $param_name)
+            
+            param_names_string.add($param_name & ",")
+            statement_counter += 1
+
+    #Remove trailing coma
+    if param_names_string.len > 1:
+        param_names_string = param_names_string[0..param_names_string.high-1]
+    
+    #Assign to node
+    param_names_node = newLit(param_names_string)
     
     if statement_counter != num_of_inputs_VAL:
         error("Expected " & $num_of_inputs_VAL & " param names, got " & $statement_counter)
@@ -189,7 +223,7 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
     return quote do: 
         const 
             ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-            ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
+            ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
         
         generate_inputs_templates(`num_of_inputs_VAL`)
         
@@ -197,14 +231,15 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
         proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
             return int32(ugen_inputs)
 
-        proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
-            return cast[ptr ptr cstring](ugen_input_names)
+        proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
+            return cast[ptr cchar](ugen_input_names)
 
 macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
     
     var 
         num_of_inputs_VAL : int
-        param_names_array_node : NimNode = nnkBracket.newTree()
+        param_names_string : string = ""
+        param_names_node : NimNode
 
     #The other block form (derived from num_of_inputs being a block of code)
     #inputs: 
@@ -232,10 +267,24 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 if statement.kind != nnkStrLit:
                     error("Expected parameter name number " & $statement_counter & " to be a string literal value")
                 
-                param_names_array_node.add newLit(statement.strVal())
+                let param_name = statement.strVal()
+
+                for individualChar in param_name:
+                    if not (individualChar in acceptedCharsForParamName):
+                        error("Invalid character " & $individualChar & $ " in input name " & $param_name)
+                
+                param_names_string.add($param_name & ",")
+
                 param_names_counter += 1
 
             statement_counter += 1
+
+        #Remove trailing coma
+        if param_names_string.len > 1:
+            param_names_string = param_names_string[0..param_names_string.high-1]
+        
+        #Assign to node
+        param_names_node = newLit(param_names_string)
 
         if param_names_counter > 0:
             if param_names_counter != num_of_inputs_VAL:
@@ -244,14 +293,8 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
             return quote do: 
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                    ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
-                generate_inputs_templates(`num_of_inputs_VAL`)
-        else:
-            return quote do:
-                const 
-                    ugen_inputs {.inject.} = `num_of_inputs_VAL`  
-                    ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]
-
+                    ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
+                
                 generate_inputs_templates(`num_of_inputs_VAL`)
 
                 #Export to C
@@ -260,10 +303,25 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
 
                 proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
                     return cast[ptr ptr cstring](ugen_input_names)
+        else:
+            return quote do:
+                const 
+                    ugen_inputs {.inject.} = `num_of_inputs_VAL`  
+                    ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
+
+                generate_inputs_templates(`num_of_inputs_VAL`)
+
+                #Export to C
+                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
+                    return int32(ugen_inputs)
+
+                proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
+                    return cast[ptr cchar](ugen_input_names)
 
     #The standard form (derived by using num_of_inputs as int literal, and successive param_names as varargs[untyped]):
     #inputs 1, "freq"  OR inputs(1, "freq")
     else:
+
         #Must be an int literal
         if num_of_inputs.kind != nnkIntLit: #Just as the expectKind proc
             error("Expected the number of inputs to be expressed by an integer literal value")
@@ -276,36 +334,37 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
         if num_of_inputs_VAL > max_inputs_outputs:
             error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
         
-        #Empty bracket statement: []
-        param_names_array_node = nnkBracket.newTree()
-        
         #Check for correct length of param names
         if len(param_names) > 0:
             if len(param_names) != num_of_inputs_VAL:
                 error("Expected " & $num_of_inputs_VAL & " param names, got " & $(len(param_names)))
             
             #Check if all param names are string literal values
-            for index, param_name in param_names:
-                if param_name.kind != nnkStrLit:
+            for index, param_name_var in param_names:
+                if param_name_var.kind != nnkStrLit:
                     error("Expected parameter name number " & $(index + 1) & " to be a string literal value")
                 
                 #Add literal string value to the nnkBracket NimNode
-                param_names_array_node.add newLit(param_name.strVal())
+                let param_name = param_name_var.strVal()
+
+                for individualChar in param_name:
+                    if not (individualChar in acceptedCharsForParamName):
+                        error("Invalid character " & $individualChar & $ " in input name " & $param_name)
+                
+                param_names_string.add($param_name & ",")
             
-            #[ 
-                param_names_array_node will now be in the form:
-                nnkBracket.newTree(
-                    newLit("freq"),
-                    newLit("phase")
-                ) 
-                Which is a bracket statement, like: ["freq", "phase"]
-            ]#
+            #Remove trailing coma
+            if param_names_string.len > 1:
+                param_names_string = param_names_string[0..param_names_string.high-1]
+            
+            #Assign to node
+            param_names_node = newLit(param_names_string)
             
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
             return quote do: 
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                    ugen_input_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                    ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
 
                 generate_inputs_templates(`num_of_inputs_VAL`)
 
@@ -313,13 +372,13 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
                     return int32(ugen_inputs)
 
-                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
-                    return cast[ptr ptr cstring](ugen_input_names)
+                proc get_ugen_input_names() : ptr char {.exportc: "get_ugen_input_names".} =
+                    return cast[ptr char](ugen_input_names)
         else:
             return quote do:
                 const 
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` 
-                    ugen_input_names {.inject.} = ["NO_PARAM_NAMES"]  
+                    ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_inputs_templates(`num_of_inputs_VAL`)
 
@@ -327,9 +386,10 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
                     return int32(ugen_inputs)
 
-                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
-                    return cast[ptr ptr cstring](ugen_input_names)
-        
+                proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
+                    return cast[ptr cchar](ugen_input_names)
+
+
 #The block form (derived from using num_of_outputs as int literal, and param_names as a code block.):
 #outputs 1:
 #   "freq"
@@ -337,55 +397,84 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     
     var 
         num_of_outputs_VAL : int
-        param_names_array_node : NimNode = nnkBracket.newTree()
+        param_names_string : string = ""
+        param_names_node : NimNode
+
+    let param_names_kind = param_names.kind
 
     #Must be an int literal
     if num_of_outputs.kind != nnkIntLit: #Just as the expectKind proc
         error("Expected the number of outputs to be expressed by an integer literal value")
 
-    if param_names.kind != nnkStmtList:
+    if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit:
         error("Expected a block statement after the number of outputs")
     
     num_of_outputs_VAL = int(num_of_outputs.intVal)     #Actual value of the int literal
 
     if num_of_outputs_VAL < 0:
         error("Expected a positive number for outputs number")
-
+    
     if num_of_outputs_VAL > max_inputs_outputs:
         error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
 
-    var 
-        statement_counter = 0
+    var statement_counter = 0
 
-    for statement in param_names.children():
-        if statement.kind != nnkStrLit:
-            error("Expected parameter name number " & $(statement_counter + 1) & " to be a string literal value")
+    #This is for the outputs 1, "freq" case... output 2, "freq", "stmt" is covered in the other macro
+    if param_names_kind == nnkStrLit:
+        let param_name = param_names.strVal()
         
-        param_names_array_node.add newLit(statement.strVal())
-        statement_counter += 1
+        for individualChar in param_name:
+            if not (individualChar in acceptedCharsForParamName):
+                error("Invalid character " & $individualChar & $ " in output name " & $param_name)
+        
+        param_names_string.add($param_name & ",")
+        statement_counter = 1
+
+    #Normal block case
+    else:
+        for statement in param_names.children():
+            if statement.kind != nnkStrLit:
+                error("Expected parameter name number " & $(statement_counter + 1) & " to be a string literal value")
+            
+            let param_name = statement.strVal()
+
+            for individualChar in param_name:
+                if not (individualChar in acceptedCharsForParamName):
+                    error("Invalid character " & $individualChar & $ " in output name " & $param_name)
+            
+            param_names_string.add($param_name & ",")
+            statement_counter += 1
+
+    #Remove trailing coma
+    if param_names_string.len > 1:
+        param_names_string = param_names_string[0..param_names_string.high-1]
+    
+    #Assign to node
+    param_names_node = newLit(param_names_string)
     
     if statement_counter != num_of_outputs_VAL:
         error("Expected " & $num_of_outputs_VAL & " param names, got " & $statement_counter)
 
     return quote do: 
         const 
-            ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-            ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block 
-
+            ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+            ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
+        
         generate_outputs_templates(`num_of_outputs_VAL`)
-
+        
         #Export to C
         proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
             return int32(ugen_outputs)
 
-        proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
-            return cast[ptr ptr cstring](ugen_output_names)
+        proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
+            return cast[ptr cchar](ugen_output_names)
 
 macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
     
     var 
         num_of_outputs_VAL : int
-        param_names_array_node : NimNode = nnkBracket.newTree()
+        param_names_string : string = ""
+        param_names_node : NimNode
 
     #The other block form (derived from num_of_outputs being a block of code)
     #outputs: 
@@ -413,10 +502,24 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 if statement.kind != nnkStrLit:
                     error("Expected parameter name number " & $statement_counter & " to be a string literal value")
                 
-                param_names_array_node.add newLit(statement.strVal())
+                let param_name = statement.strVal()
+
+                for individualChar in param_name:
+                    if not (individualChar in acceptedCharsForParamName):
+                        error("Invalid character " & $individualChar & $ " in output name " & $param_name)
+                
+                param_names_string.add($param_name & ",")
+
                 param_names_counter += 1
 
             statement_counter += 1
+
+        #Remove trailing coma
+        if param_names_string.len > 1:
+            param_names_string = param_names_string[0..param_names_string.high-1]
+        
+        #Assign to node
+        param_names_node = newLit(param_names_string)
 
         if param_names_counter > 0:
             if param_names_counter != num_of_outputs_VAL:
@@ -424,9 +527,9 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
 
             return quote do: 
                 const 
-                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                    ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
-
+                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+                    ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
+                
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
                 #Export to C
@@ -439,7 +542,7 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
             return quote do:
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL`  
-                    ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]
+                    ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
@@ -447,12 +550,13 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
                     return int32(ugen_outputs)
 
-                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
-                    return cast[ptr ptr cstring](ugen_output_names)
+                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr cchar](ugen_output_names)
 
     #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
     #outputs 1, "freq"  OR outputs(1, "freq")
     else:
+
         #Must be an int literal
         if num_of_outputs.kind != nnkIntLit: #Just as the expectKind proc
             error("Expected the number of outputs to be expressed by an integer literal value")
@@ -465,36 +569,37 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
         if num_of_outputs_VAL > max_inputs_outputs:
             error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
         
-        #Empty bracket statement: []
-        param_names_array_node = nnkBracket.newTree()
-        
         #Check for correct length of param names
         if len(param_names) > 0:
             if len(param_names) != num_of_outputs_VAL:
                 error("Expected " & $num_of_outputs_VAL & " param names, got " & $(len(param_names)))
             
             #Check if all param names are string literal values
-            for index, param_name in param_names:
-                if param_name.kind != nnkStrLit:
+            for index, param_name_var in param_names:
+                if param_name_var.kind != nnkStrLit:
                     error("Expected parameter name number " & $(index + 1) & " to be a string literal value")
                 
                 #Add literal string value to the nnkBracket NimNode
-                param_names_array_node.add newLit(param_name.strVal())
+                let param_name = param_name_var.strVal()
+
+                for individualChar in param_name:
+                    if not (individualChar in acceptedCharsForParamName):
+                        error("Invalid character " & $individualChar & $ " in output name " & $param_name)
+                
+                param_names_string.add($param_name & ",")
             
-            #[ 
-                param_names_array_node will now be in the form:
-                nnkBracket.newTree(
-                    newLit("freq"),
-                    newLit("phase")
-                ) 
-                Which is a bracket statement, like: ["freq", "phase"]
-            ]#
+            #Remove trailing coma
+            if param_names_string.len > 1:
+                param_names_string = param_names_string[0..param_names_string.high-1]
+            
+            #Assign to node
+            param_names_node = newLit(param_names_string)
             
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
             return quote do: 
-                const
-                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                    ugen_output_names {.inject.} = `param_names_array_node`  #It's possible to insert NimNodes directly in the code block
+                const 
+                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+                    ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
 
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
@@ -502,13 +607,13 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
                     return int32(ugen_outputs)
 
-                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
-                    return cast[ptr ptr cstring](ugen_output_names)
+                proc get_ugen_output_names() : ptr char {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr char](ugen_output_names)
         else:
             return quote do:
                 const 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` 
-                    ugen_output_names {.inject.} = ["NO_PARAM_NAMES"]  
+                    ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_outputs_templates(`num_of_outputs_VAL`)
 
@@ -516,8 +621,9 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
                     return int32(ugen_outputs)
 
-                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
-                    return cast[ptr ptr cstring](ugen_output_names)
+                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
+                    return cast[ptr cchar](ugen_output_names)
+
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
 macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr_bracket_expr : untyped, var_names : untyped, is_ugen_destructor : bool) =
