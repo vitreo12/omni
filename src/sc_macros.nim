@@ -1,35 +1,40 @@
 #Here I should just import all the macros functions that I am using, to not compile the entire macros module.
 import macros
 
-const max_inputs_outputs  = 32
+const max_inputs_outputs = 32
 
 const acceptedCharsForParamName = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 #Generate in1, in2, in3...etc templates
-macro generate_inputs_templates(num_of_inputs : typed) : untyped =
+macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed) : untyped =
     var final_statement = nnkStmtList.newTree()
 
-    #Tree retrieved thanks to:
-    #[
-        dumpAstGen:
+    #This generates:
+    #[  
+        THIS IS CALLED AT TOP OF SCRIPT.
+        if generate_ar == 0:
+            template in1*() : untyped =
+                ins_Nim[0][0] 
+
+        THIS IS CALLED RIGHT BEFORE PERFORM LOOP. IT OVERWRITES PREVIOUS ONE.
+        if generate_ar == 1: 
             template in1*() : untyped =
                 ins_Nim[0][audio_index_loop] 
-
-            template in1_kr*() : untyped =
-                ins_Nim[0][0] 
     ]#
 
-    let 
+    var 
         num_of_inputs_VAL = num_of_inputs.intVal()
+        generate_ar = generate_ar.intVal() #boolVal() doesn't work here.
 
-    for i in 1..num_of_inputs_VAL:
-        var temp_in_stmt_list = nnkStmtList.newTree(
+    if generate_ar == 1:
+        for i in 1..num_of_inputs_VAL:
             #template for AR input, named in1, in2, etc...
-            nnkTemplateDef.newTree(
-                nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("in" & $i),             #name of template
-                ),
+            let temp_in_stmt_list = nnkTemplateDef.newTree(
+                newIdentNode("in" & $i),
+                #nnkPostfix.newTree(
+                #newIdentNode("*"),
+                #newIdentNode("in" & $i),             #name of template
+                #),
                 newEmptyNode(),
                 newEmptyNode(),
                 nnkFormalParams.newTree(
@@ -46,63 +51,75 @@ macro generate_inputs_templates(num_of_inputs : typed) : untyped =
                     newIdentNode("audio_index_loop") #name of the looping variable
                 )
                 )
-            ),
+            )
 
-            #template for KR input, named in1_kr, in2_kr, etc...
-            nnkTemplateDef.newTree(
-                nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("in" & $i & "_kr"),      #name of template 
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
-                newIdentNode("untyped")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                    newIdentNode("ins_Nim"),             #name of the ins buffer
-                    newLit(int(i - 1))               #literal value
+            #Accumulate result
+            final_statement.add(temp_in_stmt_list)
+
+    else:
+        for i in 1..num_of_inputs_VAL:
+            let temp_in_stmt_list = nnkStmtList.newTree(
+                #template for KR input, named in1, in2, etc..
+                nnkTemplateDef.newTree(
+                    newIdentNode("in" & $i),
+                    #nnkPostfix.newTree(
+                    #newIdentNode("*"),
+                    #newIdentNode("in" & $i),      #name of template 
+                    #),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                    newIdentNode("untyped")
                     ),
-                    newLit(0)                        # ins[...][0]
-                )
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                    nnkBracketExpr.newTree(
+                        nnkBracketExpr.newTree(
+                        newIdentNode("ins_Nim"),             #name of the ins buffer
+                        newLit(int(i - 1))               #literal value
+                        ),
+                        newLit(0)                        # ins[...][0]
+                    )
+                    )
                 )
             )
-        )
 
-        #Accumulate result
-        final_statement.add(temp_in_stmt_list)
+            #Accumulate result
+            final_statement.add(temp_in_stmt_list)
 
     return final_statement
 
-#Generate out1, out2, out3...etc templates
-macro generate_outputs_templates(num_of_outputs : typed) : untyped =
+#Generate in1, in2, in3...etc templates
+macro generate_outputs_templates*(num_of_outputs : typed, generate_ar : typed) : untyped =
     var final_statement = nnkStmtList.newTree()
 
-    #Tree retrieved thanks to:
-    #[
-        dumpAstGen:
+    #This generates:
+    #[  
+        THIS IS CALLED AT TOP OF SCRIPT.
+        if generate_ar == 0:
+            template out1*() : untyped =
+                outs_Nim[0][0] 
+
+        THIS IS CALLED RIGHT BEFORE PERFORM LOOP. IT OVERWRITES PREVIOUS ONE.
+        if generate_ar == 1: 
             template out1*() : untyped =
                 outs_Nim[0][audio_index_loop] 
-
-            template out1_kr*() : untyped =
-                outs_Nim[0][0] 
     ]#
 
-    let 
+    var 
         num_of_outputs_VAL = num_of_outputs.intVal()
+        generate_ar = generate_ar.intVal() #boolVal() doesn't work here.
 
-    for i in 1..num_of_outputs_VAL:
-        var temp_out_stmt_list = nnkStmtList.newTree(
-            #template for AR input, named out1, out2, etc...
-            nnkTemplateDef.newTree(
-                nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("out" & $i), #name of template
-                ),
+    if generate_ar == 1:
+        for i in 1..num_of_outputs_VAL:
+            #template for AR output, named out1, out2, etc...
+            let temp_in_stmt_list = nnkTemplateDef.newTree(
+                newIdentNode("out" & $i),
+                #nnkPostfix.newTree(
+                #newIdentNode("*"),
+                #newIdentNode("out" & $i),             #name of template
+                #),
                 newEmptyNode(),
                 newEmptyNode(),
                 nnkFormalParams.newTree(
@@ -113,41 +130,48 @@ macro generate_outputs_templates(num_of_outputs : typed) : untyped =
                 nnkStmtList.newTree(
                 nnkBracketExpr.newTree(
                     nnkBracketExpr.newTree(
-                    newIdentNode("outs_Nim"),             #name of the ins buffer
-                    newLit(int(i - 1))                #literal value
+                    newIdentNode("outs_Nim"),             #name of the outs buffer
+                    newLit(int(i - 1))               #literal value
                     ),
-                    newIdentNode("audio_index_loop")  #name of the looping variable
-                )
-                )
-            ),
-
-            #template for KR input, named out1_kr, out2_kr, etc...
-            nnkTemplateDef.newTree(
-                nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("out" & $i & "_kr"),      #name of template
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
-                newIdentNode("untyped")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                    newIdentNode("outs_Nim"),             #name of the ins buffer
-                    newLit(int(i - 1))                #literal value
-                    ),
-                    newLit(0)                         # outs[...][0]
+                    newIdentNode("audio_index_loop") #name of the looping variable
                 )
                 )
             )
-        )
 
-        #Accumulate result
-        final_statement.add(temp_out_stmt_list)
+            #Accumulate result
+            final_statement.add(temp_in_stmt_list)
+
+    else:
+        for i in 1..num_of_outputs_VAL:
+            let temp_in_stmt_list = nnkStmtList.newTree(
+                #template for KR output, named out1, out2, etc..
+                nnkTemplateDef.newTree(
+                    newIdentNode("out" & $i),
+                    #nnkPostfix.newTree(
+                    #newIdentNode("*"),
+                    #newIdentNode("out" & $i),      #name of template 
+                    #),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                    newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                    nnkBracketExpr.newTree(
+                        nnkBracketExpr.newTree(
+                        newIdentNode("outs_Nim"),             #name of the outs buffer
+                        newLit(int(i - 1))               #literal value
+                        ),
+                        newLit(0)                        # outs[...][0]
+                    )
+                    )
+                )
+            )
+
+            #Accumulate result
+            final_statement.add(temp_in_stmt_list)
 
     return final_statement
 
@@ -225,7 +249,7 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
             ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
         
-        generate_inputs_templates(`num_of_inputs_VAL`)
+        generate_inputs_templates(`num_of_inputs_VAL`, 0)
         
         #Export to C
         proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
@@ -295,7 +319,7 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
                 
-                generate_inputs_templates(`num_of_inputs_VAL`)
+                generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
@@ -309,7 +333,7 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                     ugen_inputs {.inject.} = `num_of_inputs_VAL`  
                     ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
-                generate_inputs_templates(`num_of_inputs_VAL`)
+                generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
@@ -366,7 +390,7 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
 
-                generate_inputs_templates(`num_of_inputs_VAL`)
+                generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
@@ -380,7 +404,7 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                     ugen_inputs {.inject.} = `num_of_inputs_VAL` 
                     ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
-                generate_inputs_templates(`num_of_inputs_VAL`)
+                generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
@@ -460,7 +484,8 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
             ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
             ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
         
-        generate_outputs_templates(`num_of_outputs_VAL`)
+        #For now, only keep the template for ar out, generated before sample block
+        #generate_outputs_templates(`num_of_outputs_VAL`, 0)
         
         #Export to C
         proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
@@ -530,7 +555,8 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
                 
-                generate_outputs_templates(`num_of_outputs_VAL`)
+                #For now, only keep the template for ar out, generated before sample block
+                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
@@ -544,7 +570,8 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL`  
                     ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
 
-                generate_outputs_templates(`num_of_outputs_VAL`)
+                #For now, only keep the template for ar out, generated before sample block
+                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
@@ -601,7 +628,8 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
 
-                generate_outputs_templates(`num_of_outputs_VAL`)
+                #For now, only keep the template for ar out, generated before sample block
+                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
@@ -615,7 +643,8 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                     ugen_outputs {.inject.} = `num_of_outputs_VAL` 
                     ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
 
-                generate_outputs_templates(`num_of_outputs_VAL`)
+                #For now, only keep the template for ar out, generated before sample block
+                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
                 proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
@@ -1783,5 +1812,16 @@ template perform*(code_block : untyped) {.dirty.} =
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 template sample*(code_block : untyped) {.dirty.} =
+    
+    #Right before sample, define the new in1, in2, etc... macro for single sample retireval
+    generate_inputs_templates(ugen_inputs, 1)
+
+    #Right before sample, define the new out1, out2, etc... macro for single sample retireval
+    generate_outputs_templates(ugen_outputs, 1)
+
     for audio_index_loop in 0..(bufsize - 1):
         code_block
+    
+    #This is in case the user accesses in1, in2, etc again after sample block. 
+    #Since the template has been changed, now it would still read kr in the perform block.
+    let audio_index_loop = 0

@@ -4,7 +4,7 @@ outs 1
 
 constructor:
     let 
-        delay_length = int(in2_kr * samplerate)
+        delay_length = int(in2 * samplerate)
         delay_length_pow = nextPowerOfTwo(delay_length)
         delay_mask = delay_length_pow - 1
 
@@ -20,17 +20,17 @@ proc linear_interp(a : float, x1 : float, x2 : float) : float =
     return x1 + (a * (x2 - x1))
 
 perform:
-    var float_delay_time = in3_kr * samplerate
+    var float_delay_time = in3 * samplerate
     float_delay_time = if float_delay_time < float(delay_length): float_delay_time else: float(delay_length)
     
     let 
         delay_time = int(float_delay_time)
         frac = float_delay_time - float(delay_time)
 
-    var feedback = in4_kr
+    var feedback = in4
     feedback = if feedback < 0.98: feedback else: 0.98
 
-    var damping = in5_kr
+    var damping = in5
     damping = if damping > 0: damping else: 0
     damping = if damping < 0.98: damping else: 0.98
 
