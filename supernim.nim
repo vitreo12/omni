@@ -97,8 +97,8 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # COMPILE NIM FILE #
     # ================ #
 
-    #Compile nim file
-    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolder & "/lib " & $fullPathToNimFile)
+    #Compile nim file. Only pass the -d:supernim and -d:tempDir flag here, so it generates the IO.txt file.
+    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on -d:supernim -d:tempDir=" & $fullPathToNewFolder & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolder & "/lib " & $fullPathToNimFile)
     
     if failedNimCompilation == 1:
         printErrorMsg("Unsuccessful compilation of .nim file " & $nimFileName)
@@ -115,45 +115,27 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # ================ #
     #  RETRIEVE I / O  #
     # ================ #
-
-    #Load the newly created lib just to look for num inputs / outputs and respective names. It would just be better to parse the thing instead.
-    let libHandle = loadLib($fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
-
-    echo $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so"
     
-    if libHandle.isNil:
-        printErrorMsg("Could not load " & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
-        libHandle.unloadLib()
-        return
-
     let 
-        get_ugen_inputs      = cast[get_ugen_inputs_fun](libHandle.symAddr("get_ugen_inputs")) 
-        get_ugen_outputs     = cast[get_ugen_outputs_fun](libHandle.symAddr("get_ugen_outputs")) 
-        get_ugen_input_names = cast[get_ugen_input_names_fun](libHandle.symAddr("get_ugen_input_names")) 
+        io_file = readFile($fullPathToNewFolder & "/IO.txt")
+        io_file_seq = io_file.split('\n')
 
-    if get_ugen_inputs.isNil:
-        printErrorMsg("Could not load get_ugen_inputs function from" & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
-        libHandle.unloadLib()
-        return
-    if get_ugen_outputs.isNil:
-        printErrorMsg("Could not load get_ugen_outputs function from" & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
-        libHandle.unloadLib()
-        return
-    if get_ugen_input_names.isNil:
-        printErrorMsg("Could not load get_ugen_input_names function from" & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
-        libHandle.unloadLib()
-        return
-
+    if io_file_seq.len != 3:
+        printErrorMsg("Invalid IO.txt file")
+        return   
+    
     let 
-        num_inputs  = get_ugen_inputs()
-        num_outputs = get_ugen_outputs()
-        input_names_cstring = cast[cstring](get_ugen_input_names())
-        input_names = split($input_names_cstring, ',') #this is a seq now
+        num_inputs  = parseInt(io_file_seq[0])
+        input_names_string = io_file_seq[1]
+        input_names = input_names_string.split(',') #this is a seq now
+        num_outputs = parseInt(io_file_seq[2])
 
+    #[
+    echo num_inputs
     echo input_names
+    echo num_outputs 
+    ]#
 
-    libHandle.unloadLib()
-    
     # ================ #
     # CREATE NEW FILES #
     # ================ #

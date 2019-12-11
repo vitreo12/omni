@@ -1771,6 +1771,16 @@ template perform*(code_block : untyped) {.dirty.} =
         when defined(supernova):
             unlock_supernova_buffers()
 
+    #Write IO infos to txt file... This should be fine here in perform, as any nimcollider file must provide a perform block to be compiled.
+    when defined(supernim):
+        import os
+        
+        #static == compile time block
+        static:
+            let text = $ugen_inputs & "\n" & $ugen_input_names & "\n" & $ugen_outputs
+            let fullPathToNewFolder = getTempDir() #this has been passed in as command argument with -d:tempDir=fullPathToNewFolder
+            writeFile($fullPathToNewFolder & "IO.txt", text)
+
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 template sample*(code_block : untyped) {.dirty.} =
     for audio_index_loop in 0..(bufsize - 1):
