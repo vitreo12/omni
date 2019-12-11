@@ -60,7 +60,7 @@ void Nim_PROTO_Ctor(Nim_PROTO* unit)
         //First thread that reaches this will set it for all
         if(!world_init)
         {
-            if(!init_world || !init_alloc_function_pointers)
+            if(!(&init_world) || !(&init_alloc_function_pointers))
                 Print("ERROR: No %s.%s loaded\n", NAME, EXTENSION);
             else 
             {
@@ -76,7 +76,7 @@ void Nim_PROTO_Ctor(Nim_PROTO* unit)
         has_init_world.clear(std::memory_order_release); 
     }
 
-    if(UGenConstructor && init_world && init_alloc_function_pointers)
+    if(&UGenConstructor && &init_world && &init_alloc_function_pointers)
         unit->Nim_obj = (void*)UGenConstructor(unit->mInBuf, unit->mWorld->mBufLength, unit->mWorld->mSampleRate);
     else
     {
