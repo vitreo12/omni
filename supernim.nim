@@ -36,7 +36,13 @@ proc printErrorMsg(msg : string) : void =
     setForegroundColor(fgWhite, true)
     writeStyled(msg)
 
-proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions_path : string = default_extensions_path, architecture : string = "native", supernova : bool = false, remove_temp_dir : bool = true) : void = 
+proc printDone(msg : string) : void =
+    setForegroundColor(fgGreen)
+    writeStyled("DONE! ", {styleBright}) 
+    setForegroundColor(fgWhite, true)
+    writeStyled(msg)
+
+proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions_path : string = default_extensions_path, architecture : string = "native", supernova : bool = false, remove_build_dir : bool = true) : void = 
 
     #Check it's just a single path as positional argument
     if file.len != 1:
@@ -180,7 +186,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
             
             for i in 1..num_inputs:
 
-                arg_rates.add("if(in" & $i & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument number " & $i & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+                arg_rates.add("if(in" & $i & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument in" & $i & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
 
                 if i == num_inputs:
                     arg_string.add("in" & $i & ";")
@@ -199,7 +205,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
             multiNew_string.add(",")
             for index, input_name in input_names:
 
-                arg_rates.add("if(" & $input_name & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument number " & $(index + 1) & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+                arg_rates.add("if(" & $input_name & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument " & $input_name & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
 
                 if index == num_inputs - 1:
                     arg_string.add($input_name & ";")
@@ -314,11 +320,10 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     copyDir($fullPathToNewFolder, fullPathToNewFolderInExtenstions)
 
     #Remove temp folder
-    if remove_temp_dir:
+    if remove_build_dir:
         removeDir(fullPathToNewFolder)
 
-    setForegroundColor(fgGreen, true)
-    writeStyled("DONE!")
+    printDone("The " & $nimFileName & " UGen has been correctly built and installed in " & $expanded_extensions_path & ".")
 
     
 
@@ -329,7 +334,8 @@ dispatch(supernim,
     help={ "sc_path" : "Path to the SuperCollider source code folder.", 
            "extensions_path" : "Path to SuperCollider's \"Platform.userExtensionDir\" or \"Platform.systemExtensionDir\".\n",
            "architecture" : "Build architecture.",
-           "supernova" : "Build with supernova support."
+           "supernova" : "Build with supernova support.",
+           "remove_build_dir" : "Remove the directory created in the build process at the current path."
     }
 
 )
