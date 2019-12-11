@@ -1,12 +1,11 @@
 #nim c --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed
 
 import macros
-import nimcollider
+import ../nimcollider
 
 expandMacros:  
-    ins 1:
-        "freq"
-
+    ins 1, "freq"
+        
 expandMacros:
     outs 1:
         "sine_out"

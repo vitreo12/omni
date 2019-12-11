@@ -1,3 +1,5 @@
+var NIM_PROTO_CPP = """
+
 #include <atomic>
 
 #include "SC_PlugIn.h"
@@ -114,3 +116,5 @@ PluginLoad(Nim_PROTOUGens)
 
     DefineDtorUnit(Nim_PROTO);
 }
+
+"""

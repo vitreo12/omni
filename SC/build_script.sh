@@ -3,13 +3,6 @@
 
 PRINT_HELP=0
 
-#-p default value
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  SC_PATH=~/SuperCollider
-elif [[ "$OSTYPE" == "linux-gnu" ]]; then 
-  SC_PATH=~/Sources/SuperCollider
-fi
-
 #-e default value
 if [[ "$OSTYPE" == "darwin"* ]]; then  
   SC_EXTENSIONS_PATH=~/Library/Application\ Support/SuperCollider/Extensions
@@ -24,10 +17,8 @@ SUPERNOVA="0"
 BUILD_MARCH=native
 
 #Unpack -c (CORES) -e (EXTENSIONS DIR) -a (BUILD_MARCH) arguments
-while getopts "p:e:a:s:h" opt; do #Note that "h" is not followed by ":", which would make it expect an argument.
+while getopts "e:a:s:h" opt; do #Note that "h" is not followed by ":", which would make it expect an argument.
   case $opt in
-    p) SC_PATH="$OPTARG"
-    ;;
     e) SC_EXTENSIONS_PATH="$OPTARG"
     ;;
     a) BUILD_MARCH="$OPTARG"
@@ -55,11 +46,6 @@ if [ $PRINT_HELP == 1 ]; then
   echo
   echo "   FLAGS: "
   echo
-  echo "    [-p] [default MacOS = ~/SuperCollider] " 
-  echo "         [default Linux = ~/Sources/SuperCollider] :"
-  echo 
-  echo "         - SuperCollider's source path"
-  echo
   echo "    [-e] [default MacOS = ~/Library/Application\ Support/SuperCollider/Extensions]"
   echo "         [default Linux = ~/.local/share/SuperCollider/Extensions] : "
   echo
@@ -84,15 +70,8 @@ set -e
 #Path to folder where this bash script is
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-#-p argument
-SC_PATH="${SC_PATH/#\~/$HOME}"   #expand tilde, if there is one
-SC_PATH=${SC_PATH%/}             #remove trailing slash, if there is one
-
-if [ ! -d "$SC_PATH" ]; then
-  echo "*** ERROR *** [-p] argument, '$SC_PATH', is not a valid folder. Insert your SuperCollider's source path."
-  exit 1
-fi
-                                        
+SC_PATH=$DIR/deps/supercollider
+                     
 #-e argument
 SC_EXTENSIONS_PATH="${SC_EXTENSIONS_PATH/#\~/$HOME}"   #expand tilde, if there is one
 SC_EXTENSIONS_PATH=${SC_EXTENSIONS_PATH%/}             #remove trailing slash, if there is one
