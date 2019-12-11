@@ -6,7 +6,7 @@ license       = "MIT"
 requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
-installDirs = @["SC", "src", "tests", "deps"]
+installDirs = @["SC", "src", "tests", "deps", "examples"]
 
 #This is a CLI to build UGens out of nimcollider code.
 bin = @["supernim"]

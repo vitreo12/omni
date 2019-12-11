@@ -1626,6 +1626,13 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         #case for structs:
         #someData = ugen.someData_let (or someData_var)
         if var_desc.kind == nnkPtrTy or var_desc.kind == nnkRefTy:
+            
+            let var_name_ext = var_name_string[len(var_name_string) - 3..var_name_string.high]
+            
+            #If a struct is declared as var, it's an error! This should be fixed to still allow to do it.
+            if var_name_ext == "var":
+                error($(var_name_string[0 .. len(var_name_string) - 5]) & " is declared as \"var\". This is not allowed for structs. Use \"let\" instead.")
+                
             ident_def_stmt = nnkIdentDefs.newTree(
                 newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings
                 newEmptyNode(),
@@ -1766,5 +1773,5 @@ template perform*(code_block : untyped) {.dirty.} =
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 template sample*(code_block : untyped) {.dirty.} =
-    for audio_index_loop in 0..bufsize:
+    for audio_index_loop in 0..(bufsize - 1):
         code_block

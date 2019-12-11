@@ -118,9 +118,11 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
 
     #Load the newly created lib just to look for num inputs / outputs and respective names. It would just be better to parse the thing instead.
     let libHandle = loadLib($fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
+
+    echo $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so"
     
     if libHandle.isNil:
-        printErrorMsg("Could not load " & $fullPathToNewFolder & "/lib" & $nimFileName & ".so")
+        printErrorMsg("Could not load " & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
         libHandle.unloadLib()
         return
 
@@ -130,15 +132,15 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
         get_ugen_input_names = cast[get_ugen_input_names_fun](libHandle.symAddr("get_ugen_input_names")) 
 
     if get_ugen_inputs.isNil:
-        printErrorMsg("Could not load get_ugen_inputs function from" & $fullPathToNewFolder & "/lib" & $nimFileName & ".so")
+        printErrorMsg("Could not load get_ugen_inputs function from" & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
         libHandle.unloadLib()
         return
     if get_ugen_outputs.isNil:
-        printErrorMsg("Could not load get_ugen_outputs function from" & $fullPathToNewFolder & "/lib" & $nimFileName & ".so")
+        printErrorMsg("Could not load get_ugen_outputs function from" & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
         libHandle.unloadLib()
         return
     if get_ugen_input_names.isNil:
-        printErrorMsg("Could not load get_ugen_input_names function from" & $fullPathToNewFolder & "/lib" & $nimFileName & ".so")
+        printErrorMsg("Could not load get_ugen_input_names function from" & $fullPathToNewFolder & "/lib/lib" & $nimFileName & ".so")
         libHandle.unloadLib()
         return
 
@@ -167,18 +169,23 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # ======== #
     
     var 
-        arg_string = "arg "
+        arg_string = ""
+        arg_rates = ""
         multiNew_string = "^this.multiNew('audio'"
-        multiOut_string : string
+        multiOut_string = ""
 
     #No input names
     if input_names[0] == "__NO_PARAM_NAMES__":
         if num_inputs == 0:
-            arg_string.add(";")
             multiNew_string.add(");")
         else:
+            arg_string.add("arg ")
             multiNew_string.add(",")
+            
             for i in 1..num_inputs:
+
+                arg_rates.add("if(in" & $i & ".rate != 'audio', { (\"argument number " & $i & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+
                 if i == num_inputs:
                     arg_string.add("in" & $i & ";")
                     multiNew_string.add("in" & $i & ");")
@@ -190,11 +197,14 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     #input names
     else:
         if num_inputs == 0:
-            arg_string.add(";")
             multiNew_string.add(");")
         else:
+            arg_string.add("arg ")
             multiNew_string.add(",")
             for index, input_name in input_names:
+
+                arg_rates.add("if(" & $input_name & ".rate != 'audio', { (\"argument number " & $(index + 1) & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+
                 if index == num_inputs - 1:
                     arg_string.add($input_name & ";")
                     multiNew_string.add($input_name & ");")
@@ -205,6 +215,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
 
     
     NIM_PROTO_SC = NIM_PROTO_SC.replace("//args", arg_string)
+    NIM_PROTO_SC = NIM_PROTO_SC.replace("//rates", arg_rates)
     NIM_PROTO_SC = NIM_PROTO_SC.replace("//multiNew", multiNew_string)
 
     #Multiple outputs UGen
