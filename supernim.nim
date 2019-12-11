@@ -36,7 +36,7 @@ proc printErrorMsg(msg : string) : void =
     setForegroundColor(fgWhite, true)
     writeStyled(msg)
 
-proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions_path : string = default_extensions_path, architecture : string = "native", supernova : bool = false) : void = 
+proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions_path : string = default_extensions_path, architecture : string = "native", supernova : bool = false, remove_temp_dir : bool = true) : void = 
 
     #Check it's just a single path as positional argument
     if file.len != 1:
@@ -284,6 +284,10 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     #Remove previous folder there if there was, then copy the new one
     removeDir(fullPathToNewFolderInExtenstions)
     copyDir($fullPathToNewFolder, fullPathToNewFolderInExtenstions)
+
+    #Remove temp folder
+    if remove_temp_dir:
+        removeDir(fullPathToNewFolder)
 
     setForegroundColor(fgGreen, true)
     writeStyled("DONE!")
