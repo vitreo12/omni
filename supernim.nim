@@ -82,13 +82,22 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     #Full paths to the new file in nimFileName directory
     let 
         fullPathToNewFolder = $nimFileDir & "/" & $nimFileName
+
+        #This is to use in shell cmds instead of fullPathToNewFolder, expands spaces to "\ "
+        fullPathToNewFolderShell = fullPathToNewFolder.replace(" ", "\\ ")
+
         fullPathToNimFile   = $fullPathToNewFolder & "/" & $nimFileName & ".nim"
+        
+        #This is to use in shell cmds instead of fullPathToNimFile, expands spaces to "\ "
+        fullPathToNimFileShell = fullPathToNimFile.replace(" ", "\\ ")
+
         fullPathToCppFile   = $fullPathToNewFolder & "/" & $nimFileName & ".cpp"
         fullPathToSCFile    = $fullPathToNewFolder & "/" & $nimFileName & ".sc" 
         fullPathToCMakeFile = $fullPathToNewFolder & "/" & "CMakeLists.txt"
     
     #Create directory in same folder as .nim file
-    discard execShellCmd("rm -rf " & $ fullPathToNewFolder & " && mkdir " & $fullPathToNewFolder)
+    removeDir(fullPathToNewFolder)
+    createDir(fullPathToNewFolder)
 
     #Copy nimFile to folder
     copyFile(fullPath, fullPathToNimFile)
@@ -98,18 +107,18 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # ================ #
 
     #Compile nim file. Only pass the -d:supernim and -d:tempDir flag here, so it generates the IO.txt file.
-    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on -d:supernim -d:tempDir=" & $fullPathToNewFolder & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolder & "/lib " & $fullPathToNimFile)
+    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on -d:supernim -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToNimFileShell)
     
     if failedNimCompilation == 1:
-        printErrorMsg("Unsuccessful compilation of .nim file " & $nimFileName)
+        printErrorMsg("Unsuccessful compilation of " & $nimFileName & ".nim")
         return
     
     #Also for supernova
     if supernova:
-        let failedNimCompilation_supernova = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out: lib" & $nimFileName & "_supernova." & $shared_lib_extension & " --outdir:" & $fullPathToNewFolder & "/lib " & $fullPathToNimFile)
+        let failedNimCompilation_supernova = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out: lib" & $nimFileName & "_supernova." & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToNimFileShell)
         
         if failedNimCompilation_supernova == 1:
-            printErrorMsg("Unsuccessful supernova compilation of .nim file " & $nimFileName)
+            printErrorMsg("Unsuccessful supernova compilation of " & $nimFileName & ".nim")
             return
     
     # ================ #
@@ -234,9 +243,9 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     var sc_cmake_cmd : string
     
     if supernova:
-        sc_cmake_cmd = "cd " & $fullPathToNewFolder & "/build && cmake -DWORKING_FOLDER=" & $fullPathToNewFolder & " -DSC_PATH=" & $expanded_sc_path & " -DSUPERNOVA=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_MARCH=" & $architecture & " .."
+        sc_cmake_cmd = "cd " & $fullPathToNewFolderShell & "/build && cmake -DWORKING_FOLDER=" & $fullPathToNewFolderShell & " -DSC_PATH=" & $expanded_sc_path & " -DSUPERNOVA=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_MARCH=" & $architecture & " .."
     else:
-        sc_cmake_cmd = "cd " & $fullPathToNewFolder & "/build && cmake -DWORKING_FOLDER=" & $fullPathToNewFolder & " -DSC_PATH=" & $expanded_sc_path & " -DCMAKE_BUILD_TYPE=Release -DBUILD_MARCH=" & $architecture & " .."
+        sc_cmake_cmd = "cd " & $fullPathToNewFolderShell & "/build && cmake -DWORKING_FOLDER=" & $fullPathToNewFolderShell & " -DSC_PATH=" & $expanded_sc_path & " -DCMAKE_BUILD_TYPE=Release -DBUILD_MARCH=" & $architecture & " .."
 
     let failedSCCmake = execShellCmd(sc_cmake_cmd)
 
@@ -244,7 +253,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
         printErrorMsg("Unsuccessful cmake generation of the UGen file " & $nimFileName & ".cpp")
         return
 
-    let sc_compilation_cmd = "cd " & $fullPathToNewFolder & "/build && make"
+    let sc_compilation_cmd = "cd " & $fullPathToNewFolderShell & "/build && make"
 
     let failedSCCompilation = execShellCmd(sc_compilation_cmd)
 
