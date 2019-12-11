@@ -5,3 +5,7 @@ UGen/build/
 test
 
 *.so
+
+SC/Static/build/
+
+supernim
