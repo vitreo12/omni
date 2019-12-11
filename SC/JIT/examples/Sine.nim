@@ -5,11 +5,9 @@ outs 1:
     "sine_out"
  
 constructor:
-    let sampleRate = 48000.0
-
     var phase = 0.0
     
-    new phase, sampleRate
+    new phase
 
 perform:
     var 
@@ -26,4 +24,4 @@ perform:
         
         out1 = sine_out
 
-        phase += abs(frequency) / (sampleRate - 1) #phase equals to phase_var[]
+        phase += abs(frequency) / (samplerate - 1) #phase equals to phase_var[]
