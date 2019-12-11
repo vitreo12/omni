@@ -43,7 +43,12 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
         printErrorMsg("Expected a single path to a .nim file as the only positional argument.")
         return
 
-    let fullPath = absolutePath(file[0])
+    let 
+        fullPath = absolutePath(file[0])
+        
+        #This is the path to the original nim file to be used in shell.
+        #Using this one in nim command so that errors are shown on this one when CTRL+Click on terminal
+        fullPathToOriginalNimFileShell = fullPath.replace(" ", "\\ ")
 
     #Check if file exists
     if not fullPath.existsFile():
@@ -81,16 +86,16 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
 
     #Full paths to the new file in nimFileName directory
     let 
+        #New folder named with the name of the Nim file
         fullPathToNewFolder = $nimFileDir & "/" & $nimFileName
 
         #This is to use in shell cmds instead of fullPathToNewFolder, expands spaces to "\ "
         fullPathToNewFolderShell = fullPathToNewFolder.replace(" ", "\\ ")
 
+        #This is the Nim file copied to the new folder
         fullPathToNimFile   = $fullPathToNewFolder & "/" & $nimFileName & ".nim"
-        
-        #This is to use in shell cmds instead of fullPathToNimFile, expands spaces to "\ "
-        fullPathToNimFileShell = fullPathToNimFile.replace(" ", "\\ ")
 
+        #These are the .cpp, .sc and cmake files in new folder
         fullPathToCppFile   = $fullPathToNewFolder & "/" & $nimFileName & ".cpp"
         fullPathToSCFile    = $fullPathToNewFolder & "/" & $nimFileName & ".sc" 
         fullPathToCMakeFile = $fullPathToNewFolder & "/" & "CMakeLists.txt"
@@ -107,7 +112,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # ================ #
 
     #Compile nim file. Only pass the -d:supernim and -d:tempDir flag here, so it generates the IO.txt file.
-    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernim -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToNimFileShell)
+    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernim -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
     
     if failedNimCompilation == 1:
         printErrorMsg("Unsuccessful compilation of " & $nimFileName & ".nim")
@@ -115,7 +120,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     
     #Also for supernova
     if supernova:
-        let failedNimCompilation_supernova = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out: lib" & $nimFileName & "_supernova." & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToNimFileShell)
+        let failedNimCompilation_supernova = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out: lib" & $nimFileName & "_supernova." & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
         
         if failedNimCompilation_supernova == 1:
             printErrorMsg("Unsuccessful supernova compilation of " & $nimFileName & ".nim")
