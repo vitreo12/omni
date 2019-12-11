@@ -180,7 +180,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
             
             for i in 1..num_inputs:
 
-                arg_rates.add("if(in" & $i & ".rate != 'audio', { (\"argument number " & $i & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+                arg_rates.add("if(in" & $i & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument number " & $i & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
 
                 if i == num_inputs:
                     arg_string.add("in" & $i & ";")
@@ -199,7 +199,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
             multiNew_string.add(",")
             for index, input_name in input_names:
 
-                arg_rates.add("if(" & $input_name & ".rate != 'audio', { (\"argument number " & $(index + 1) & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+                arg_rates.add("if(" & $input_name & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument number " & $(index + 1) & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
 
                 if index == num_inputs - 1:
                     arg_string.add($input_name & ";")
