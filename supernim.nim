@@ -21,8 +21,8 @@ when defined(Linux):
     const default_extensions_path = "~/.local/share/SuperCollider/Extensions"
     const shared_lib_extension = "so"
 
-when defined(MacOS):
-    const default_extensions_path = "~/Library/Application\\ Support/SuperCollider/Extensions"
+when defined(MacOSX) or defined(MacOS):
+    const default_extensions_path = "~/Library/Application Support/SuperCollider/Extensions"
     const shared_lib_extension = "dylib"
 
 type
@@ -266,6 +266,27 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
         printErrorMsg("Unsuccessful compilation of the UGen file " & $nimFileName & ".cpp")
         return
 
+    #Need to change loader path in the .scx files. 
+    #This is weird, wasn't needed in JuliaCollider. Check the LD_LOAD_DYLIB with otool -l
+    when defined(MacOSX) or defined(MacOS):
+        let changeLDPathCmd = "install_name_tool -change " & $fullPathToNewFolderShell & "/lib/lib" & $nimFileName & ".dylib @rpath/lib" & $nimFileName & ".dylib " & $fullPathToNewFolderShell & "/build/" & $nimFileName & ".scx"
+        #echo changeLDPathCmd
+
+        let failedChangedLDPath = execShellCmd(changeLDPathCmd)
+        if failedChangedLDPath == 1:
+            printErrorMsg("Could not change LC_LOAD_DYLIB for " & $nimFileName & ".scx")
+            return
+
+        if supernova:
+            let changeLDPathCmdNova = "install_name_tool -change " & $fullPathToNewFolderShell & "/lib/lib" & $nimFileName & "_supernova.dylib @rpath/lib" & $nimFileName & "_supernova.dylib " & $fullPathToNewFolderShell & "/build/" & $nimFileName & "_supernova.scx"
+            #echo changeLDPathCmdNova
+
+            let failedChangedLDPathNova = execShellCmd(changeLDPathCmdNova)
+            if failedChangedLDPathNova == 1:
+                printErrorMsg("Could not change LC_LOAD_DYLIB for " & $nimFileName & "_supernova.scx")
+                return
+
+
     # ========================= #
     # COPY TO EXTENSIONS FOLDER #
     # ========================= #
@@ -274,7 +295,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
         if supernova:
             copyFile($fullPathToNewFolder & "/build/" & $nimFileName & "_supernova.so", $fullPathToNewFolder & "/" & $nimFileName & "_supernova.so")
 
-    when defined(MacOS):
+    when defined(MacOSX) or defined(MacOS):
         copyFile($fullPathToNewFolder & "/build/" & $nimFileName & ".scx", $fullPathToNewFolder & "/" & $nimFileName & ".scx")
         if supernova:
             copyFile($fullPathToNewFolder & "/build/" & $nimFileName & "_supernova.scx", $fullPathToNewFolder & "/" & $nimFileName & "_supernova.scx")

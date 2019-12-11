@@ -87,8 +87,9 @@ proc `[]`*[I : SomeInteger, T](a : Data[T], i : I) : T =
         data       = a.data
         data_size  = a.size
 
-    if i >= 0 and i < data_size:
-        return data[i]
+    if i >= 0:
+        if uint(i) < data_size:
+            return data[i]
     else:
         print(bounds_error)
         return T(0)  #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
@@ -102,8 +103,9 @@ proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T], i1 : I1, i2 : I2)
         data_size_X_chans = a.size_X_chans
         index             = (i1 * data_size) + i2
     
-    if index >= 0 and index < data_size_X_chans:
-        return data[index]
+    if index >= 0:
+        if uint(index) < data_size_X_chans:
+            return data[index]
     else:
         print(bounds_error)
         return T(0) #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
@@ -119,8 +121,9 @@ proc `[]=`*[I : SomeInteger, T, S](a : Data[T], i : I, x : S) : void =
         data      = a.data
         data_size = a.size
 
-    if i >= 0 and i < data_size:
-        data[i] = x   
+    if i >= 0:
+        if uint(i) < data_size:
+            data[i] = x   
     else:
         print(bounds_error)
 
@@ -133,7 +136,8 @@ proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T], i1 : I1, i2 :
         data_size_X_chans = a.size_X_chans
         index             = (i1 * data_size) + i2
         
-    if index >= 0 and index < data_size_X_chans:
-        data[index] = x
+    if index >= 0:
+        if uint(index) < data_size_X_chans:
+            data[index] = x
     else:
         print(bounds_error)
