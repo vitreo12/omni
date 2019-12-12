@@ -1,11 +1,3 @@
-#Path to nim file to compile
-
-#Option to keep source files
-
-#Build flags (native, x86-64, etc...)
-
-#Supernova (default = true)
-
 import cligen, terminal, os, strutils
 
 include "SC/Static/Nim_PROTO.cpp.nim"
@@ -19,11 +11,13 @@ const default_sc_path = "~/.nimble/pkgs/nimcollider-" & nimcollider_ver & "/deps
 
 when defined(Linux):
     const default_extensions_path = "~/.local/share/SuperCollider/Extensions"
-    const shared_lib_extension = "so"
+    const shared_lib_extension = ".so"
+    const ugen_extension = ".so"
 
 when defined(MacOSX) or defined(MacOS):
     const default_extensions_path = "~/Library/Application Support/SuperCollider/Extensions"
-    const shared_lib_extension = "dylib"
+    const shared_lib_extension = ".dylib"
+    const ugen_extension = ".scx"
 
 proc printErrorMsg(msg : string) : void =
     setForegroundColor(fgRed)
@@ -113,7 +107,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # ================ #
 
     #Compile nim file. Only pass the -d:supernim and -d:tempDir flag here, so it generates the IO.txt file.
-    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernim -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+    let failedNimCompilation = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernim -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
     
     if failedNimCompilation == 1:
         printErrorMsg("Unsuccessful compilation of " & $nimFileName & ".nim")
@@ -121,7 +115,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     
     #Also for supernova
     if supernova:
-        let failedNimCompilation_supernova = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out: lib" & $nimFileName & "_supernova." & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+        let failedNimCompilation_supernova = execShellCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
         
         if failedNimCompilation_supernova == 1:
             printErrorMsg("Unsuccessful supernova compilation of " & $nimFileName & ".nim")
@@ -291,15 +285,9 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # ========================= #
     # COPY TO EXTENSIONS FOLDER #
     # ========================= #
-    when defined(Linux):
-        copyFile($fullPathToNewFolder & "/build/" & $nimFileName & ".so", $fullPathToNewFolder & "/" & $nimFileName & ".so")
-        if supernova:
-            copyFile($fullPathToNewFolder & "/build/" & $nimFileName & "_supernova.so", $fullPathToNewFolder & "/" & $nimFileName & "_supernova.so")
-
-    when defined(MacOSX) or defined(MacOS):
-        copyFile($fullPathToNewFolder & "/build/" & $nimFileName & ".scx", $fullPathToNewFolder & "/" & $nimFileName & ".scx")
-        if supernova:
-            copyFile($fullPathToNewFolder & "/build/" & $nimFileName & "_supernova.scx", $fullPathToNewFolder & "/" & $nimFileName & "_supernova.scx")
+    copyFile($fullPathToNewFolder & "/build/" & $nimFileName & $ugen_extension, $fullPathToNewFolder & "/" & $nimFileName & $ugen_extension)
+    if supernova:
+        copyFile($fullPathToNewFolder & "/build/" & $nimFileName & "_supernova" & $ugen_extension, $fullPathToNewFolder & "/" & $nimFileName & "_supernova" & $ugen_extension)
 
     #Remove build, .cpp, cmake, .nim
     removeDir($fullPathToNewFolder & "/build")
@@ -310,7 +298,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     #Copy to extensions folder
     let fullPathToNewFolderInExtenstions = $expanded_extensions_path  & "/" & nimFileName
     
-    #Remove previous folder there if there was, then copy the new one
+    #Remove previous folder there if there was, then copy the new one over to the extensions folder
     removeDir(fullPathToNewFolderInExtenstions)
     copyDir($fullPathToNewFolder, fullPathToNewFolderInExtenstions)
 
