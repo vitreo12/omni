@@ -115,7 +115,8 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     
     #Also for supernova
     if supernova:
-        let failedNimCompilation_supernova = execCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+        #supernova gets passed both supercollider (which turns on the rt_alloc) and supernova (for buffer handling) flags
+        let failedNimCompilation_supernova = execCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
         
         if failedNimCompilation_supernova == 1:
             printErrorMsg("Unsuccessful supernova compilation of " & $nimFileName & ".nim")
