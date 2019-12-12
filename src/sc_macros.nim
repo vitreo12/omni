@@ -1812,7 +1812,6 @@ template perform*(code_block : untyped) {.dirty.} =
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 template sample*(code_block : untyped) {.dirty.} =
-    
     #Right before sample, define the new in1, in2, etc... macro for single sample retireval
     generate_inputs_templates(ugen_inputs, 1)
 
