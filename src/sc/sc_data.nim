@@ -1,5 +1,5 @@
 import sc_alloc/sc_alloc
-import ../sc_print
+import ../omni_print
 
 type
     C_size_t = culong

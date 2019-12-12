@@ -4,7 +4,7 @@
 #Pass flags to C compiler 
 {.passC: "-O3".}
 
-#import ../../sc_print
+#import ../../omni_print
 #const negative_alloc = "WARNING: Trying to allocate a negative value. Allocating 0 bytes.\n"
 
 #Called to init the sc_world* variable in the Nim module
