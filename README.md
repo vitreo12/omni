@@ -1,6 +1,6 @@
 # **omni(m)**
 
-omni is a DSL to code audio algorithms at the lowest level.
+omni is a DSL for low-level audio programming.
 
 ## **Installation**
 
