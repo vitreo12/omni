@@ -106,19 +106,25 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
     # COMPILE NIM FILE #
     # ================ #
 
+    ########################################
+    # I'm not 100% sure on deadCodeElim:on #
+    ########################################
+
     #Compile nim file. Only pass the -d:omnicli and -d:tempDir flag here, so it generates the IO.txt file.
-    let failedNimCompilation = execCmd("nim c --import:omni --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:omnicli -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
-    
-    if failedNimCompilation == 1:
+    let failedNimCompilation = execCmd("nim c --import:omni --app:lib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-march=" & $architecture & " -d:omnicli -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+
+    #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+    if failedNimCompilation > 0:
         printErrorMsg("Unsuccessful compilation of " & $nimFileName & ".nim")
         return
     
     #Also for supernova
     if supernova:
         #supernova gets passed both supercollider (which turns on the rt_alloc) and supernova (for buffer handling) flags
-        let failedNimCompilation_supernova = execCmd("nim c --import:omni --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+        let failedNimCompilation_supernova = execCmd("nim c --import:omni --app:lib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
         
-        if failedNimCompilation_supernova == 1:
+        #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+        if failedNimCompilation_supernova > 0:
             printErrorMsg("Unsuccessful supernova compilation of " & $nimFileName & ".nim")
             return
     
@@ -250,15 +256,17 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
 
     let failedSCCmake = execCmd(sc_cmake_cmd)
 
-    if failedSCCmake == 1:
+    #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+    if failedSCCmake > 0:
         printErrorMsg("Unsuccessful cmake generation of the UGen file " & $nimFileName & ".cpp")
         return
 
     let sc_compilation_cmd = "cd " & $fullPathToNewFolderShell & "/build && make"
 
     let failedSCCompilation = execCmd(sc_compilation_cmd)
-
-    if failedSCCompilation == 1:
+    
+    #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+    if failedSCCompilation > 0:
         printErrorMsg("Unsuccessful compilation of the UGen file " & $nimFileName & ".cpp")
         return
 
@@ -269,7 +277,9 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
         #echo changeLDPathCmd
 
         let failedChangedLDPath = execCmd(changeLDPathCmd)
-        if failedChangedLDPath == 1:
+
+        #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+        if failedChangedLDPath > 0:
             printErrorMsg("Could not change LC_LOAD_DYLIB for " & $nimFileName & ".scx")
             return
 
@@ -278,7 +288,9 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
             #echo changeLDPathCmdNova
 
             let failedChangedLDPathNova = execCmd(changeLDPathCmdNova)
-            if failedChangedLDPathNova == 1:
+
+            #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+            if failedChangedLDPathNova > 0:
                 printErrorMsg("Could not change LC_LOAD_DYLIB for " & $nimFileName & "_supernova.scx")
                 return
 
