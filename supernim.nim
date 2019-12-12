@@ -6,7 +6,7 @@
 
 #Supernova (default = true)
 
-import cligen, terminal, os, strutils, dynlib
+import cligen, terminal, os, strutils
 
 include "SC/Static/Nim_PROTO.cpp.nim"
 include "SC/Static/CMakeLists.txt.nim"
@@ -24,11 +24,6 @@ when defined(Linux):
 when defined(MacOSX) or defined(MacOS):
     const default_extensions_path = "~/Library/Application Support/SuperCollider/Extensions"
     const shared_lib_extension = "dylib"
-
-type
-    get_ugen_inputs_fun     = proc() : int32 {.gcsafe, stdcall.}
-    get_ugen_outputs_fun    = proc() : int32 {.gcsafe, stdcall.}
-    get_ugen_input_namesfun = proc() : ptr cchar {.gcsafe, stdcall.}
 
 proc printErrorMsg(msg : string) : void =
     setForegroundColor(fgRed)
