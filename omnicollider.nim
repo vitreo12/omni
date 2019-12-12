@@ -1,13 +1,13 @@
 import cligen, terminal, os, strutils, osproc
 
-include "SC/Static/Nim_PROTO.cpp.nim"
+include "SC/Static/Omni_PROTO.cpp.nim"
 include "SC/Static/CMakeLists.txt.nim"
-include "SC/Static/Nim_PROTO.sc.nim"
+include "SC/Static/Omni_PROTO.sc.nim"
 
-const nimcollider_ver = "0.1.0"
+const omni_ver = "0.1.0"
 
-#Default to the nimcollider nimble folder, which should have it installed if nimcollider has been installed correctly
-const default_sc_path = "~/.nimble/pkgs/nimcollider-" & nimcollider_ver & "/deps/supercollider"
+#Default to the omni nimble folder, which should have it installed if omni has been installed correctly
+const default_sc_path = "~/.nimble/pkgs/omni-" & omni_ver & "/deps/supercollider"
 
 when defined(Linux):
     const default_extensions_path = "~/.local/share/SuperCollider/Extensions"
@@ -31,7 +31,7 @@ proc printDone(msg : string) : void =
     setForegroundColor(fgWhite, true)
     writeStyled(msg)
 
-proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions_path : string = default_extensions_path, architecture : string = "native", supernova : bool = false, remove_build_dir : bool = true) : void = 
+proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extensions_path : string = default_extensions_path, architecture : string = "native", supernova : bool = false, remove_build_dir : bool = true) : void = 
 
     #Check it's just a single path as positional argument
     if file.len != 1:
@@ -106,8 +106,8 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     # COMPILE NIM FILE #
     # ================ #
 
-    #Compile nim file. Only pass the -d:supernim and -d:tempDir flag here, so it generates the IO.txt file.
-    let failedNimCompilation = execCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supernim -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+    #Compile nim file. Only pass the -d:omnicli and -d:tempDir flag here, so it generates the IO.txt file.
+    let failedNimCompilation = execCmd("nim c --import:omni --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:omnicli -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
     
     if failedNimCompilation == 1:
         printErrorMsg("Unsuccessful compilation of " & $nimFileName & ".nim")
@@ -116,7 +116,7 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
     #Also for supernova
     if supernova:
         #supernova gets passed both supercollider (which turns on the rt_alloc) and supernova (for buffer handling) flags
-        let failedNimCompilation_supernova = execCmd("nim c --import:nimcollider --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
+        let failedNimCompilation_supernova = execCmd("nim c --import:omni --app:lib --gc:none --noMain:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
         
         if failedNimCompilation_supernova == 1:
             printErrorMsg("Unsuccessful supernova compilation of " & $nimFileName & ".nim")
@@ -206,28 +206,28 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
                 multiNew_string.add($input_name & ", ")
 
     
-    NIM_PROTO_SC = NIM_PROTO_SC.replace("//args", arg_string)
-    NIM_PROTO_SC = NIM_PROTO_SC.replace("//rates", arg_rates)
-    NIM_PROTO_SC = NIM_PROTO_SC.replace("//multiNew", multiNew_string)
+    OMNI_PROTO_SC = OMNI_PROTO_SC.replace("//args", arg_string)
+    OMNI_PROTO_SC = OMNI_PROTO_SC.replace("//rates", arg_rates)
+    OMNI_PROTO_SC = OMNI_PROTO_SC.replace("//multiNew", multiNew_string)
 
     #Multiple outputs UGen
     if num_outputs > 1:
         multiOut_string = "init { arg ... theInputs;\n\t\tinputs = theInputs;\n\t\t^this.initOutputs(" & $num_outputs & ", rate);\n\t}"
-        NIM_PROTO_SC = NIM_PROTO_SC.replace("//multiOut", multiOut_string)
-        NIM_PROTO_SC = NIM_PROTO_SC.replace(" : UGen", " : MultiOutUGen")
+        OMNI_PROTO_SC = OMNI_PROTO_SC.replace("//multiOut", multiOut_string)
+        OMNI_PROTO_SC = OMNI_PROTO_SC.replace(" : UGen", " : MultiOutUGen")
 
     # =========== #
     # WRITE FILES #
     # =========== #
 
-    #Replace Nim_PROTO with the name of the Nim file
-    NIM_PROTO_CPP   = NIM_PROTO_CPP.replace("Nim_PROTO", nimFileName)
-    NIM_PROTO_SC    = NIM_PROTO_SC.replace("Nim_PROTO", nimFileName)
-    NIM_PROTO_CMAKE = NIM_PROTO_CMAKE.replace("Nim_PROTO", nimFileName)
+    #Replace Omni_PROTO with the name of the Nim file
+    OMNI_PROTO_CPP   = OMNI_PROTO_CPP.replace("Omni_PROTO", nimFileName)
+    OMNI_PROTO_SC    = OMNI_PROTO_SC.replace("Omni_PROTO", nimFileName)
+    OMNI_PROTO_CMAKE = OMNI_PROTO_CMAKE.replace("Omni_PROTO", nimFileName)
 
-    cppFile.write(NIM_PROTO_CPP)
-    scFile.write(NIM_PROTO_SC)
-    cmakeFIle.write(NIM_PROTO_CMAKE)
+    cppFile.write(OMNI_PROTO_CPP)
+    scFile.write(OMNI_PROTO_SC)
+    cmakeFIle.write(OMNI_PROTO_CMAKE)
 
     cppFile.close
     scFile.close
@@ -311,8 +311,8 @@ proc supernim(file : seq[string], sc_path : string = default_sc_path, extensions
 
     
 
-#Dispatch the supernim function as the CLI one
-dispatch(supernim, 
+#Dispatch the omnicollider function as the CLI one
+dispatch(omnicollider, 
     short={"sc_path" : 'p', "supernova" : 's'}, 
     
     help={ "sc_path" : "Path to the SuperCollider source code folder.", 

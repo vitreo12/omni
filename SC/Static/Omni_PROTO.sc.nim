@@ -1,6 +1,6 @@
-var NIM_PROTO_SC = """
+var OMNI_PROTO_SC = """
 
-Nim_PROTO : UGen {
+Omni_PROTO : UGen {
     *ar { 
         //args
         //rates

@@ -30,7 +30,7 @@ void init_alloc_function_pointers(void* (*In_RTAlloc)(World *inWorld, size_t inS
 //Global variable that will live in each Nim module that compiles this "RT_Alloc.c" file
 World* SCWorld;
 
-//Called when loading a NimCollider module
+//Called when loading an omni module
 void init_world(void* inWorld)
 {
     printf("Calling init_world\n");

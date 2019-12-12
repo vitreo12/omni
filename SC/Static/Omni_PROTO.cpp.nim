@@ -1,10 +1,10 @@
-var NIM_PROTO_CPP = """
+var OMNI_PROTO_CPP = """
 
 #include <atomic>
 
 #include "SC_PlugIn.h"
 
-#define NAME "Nim_PROTO"
+#define NAME "Omni_PROTO"
 
 #ifdef __APPLE__
     #define EXTENSION "dylib"
@@ -38,17 +38,17 @@ extern "C"
 }
 
 //struct
-struct Nim_PROTO : public Unit 
+struct Omni_PROTO : public Unit 
 {
     void* Nim_obj;
 };
 
 //DSP functions
-static void Nim_PROTO_next(Nim_PROTO* unit, int inNumSamples);
-static void Nim_PROTO_Ctor(Nim_PROTO* unit);
-static void Nim_PROTO_Dtor(Nim_PROTO* unit);
+static void Omni_PROTO_next(Omni_PROTO* unit, int inNumSamples);
+static void Omni_PROTO_Ctor(Omni_PROTO* unit);
+static void Omni_PROTO_Dtor(Omni_PROTO* unit);
 
-void Nim_PROTO_Ctor(Nim_PROTO* unit) 
+void Omni_PROTO_Ctor(Omni_PROTO* unit) 
 {
     //Initialization routines for the Nim UGen. 
     if(!world_init)
@@ -84,18 +84,18 @@ void Nim_PROTO_Ctor(Nim_PROTO* unit)
         unit->Nim_obj = nullptr;
     }
         
-    SETCALC(Nim_PROTO_next);
+    SETCALC(Omni_PROTO_next);
     
-    Nim_PROTO_next(unit, 1);
+    Omni_PROTO_next(unit, 1);
 }
 
-void Nim_PROTO_Dtor(Nim_PROTO* unit) 
+void Omni_PROTO_Dtor(Omni_PROTO* unit) 
 {
     if(unit->Nim_obj)
         UGenDestructor(unit->Nim_obj);
 }
 
-void Nim_PROTO_next(Nim_PROTO* unit, int inNumSamples) 
+void Omni_PROTO_next(Omni_PROTO* unit, int inNumSamples) 
 {
     if(unit->Nim_obj)
         UGenPerform(unit->Nim_obj, inNumSamples, unit->mInBuf, unit->mOutBuf);
@@ -109,12 +109,12 @@ void Nim_PROTO_next(Nim_PROTO* unit, int inNumSamples)
     }
 }
 
-//Rename Nim_PROTO to the name of the nim file to compile
-PluginLoad(Nim_PROTOUGens) 
+//Rename Omni_PROTO to the name of the nim file to compile
+PluginLoad(Omni_PROTOUGens) 
 {
     ft = inTable; 
 
-    DefineDtorUnit(Nim_PROTO);
+    DefineDtorUnit(Omni_PROTO);
 }
 
 """

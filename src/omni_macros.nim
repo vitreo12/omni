@@ -1800,8 +1800,8 @@ template perform*(code_block : untyped) {.dirty.} =
         when defined(supernova):
             unlock_supernova_buffers()
 
-    #Write IO infos to txt file... This should be fine here in perform, as any nimcollider file must provide a perform block to be compiled.
-    when defined(supernim):
+    #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
+    when defined(omnicli):
         import os
         
         #static == compile time block

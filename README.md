@@ -1,21 +1,23 @@
-# NimCollider
+# **omni(m)**
 
-nimcollider is a DSL for SuperCollider. It allows to code audio algorithms at the lowest level.
+omni(m) is a DSL to code audio algorithms at the lowest level.
 
-## Installation
+## **Installation**
 
-    git clone --recursive https://github.com/vitreo12/NimCollider
+    git clone --recursive https://github.com/vitreo12/omni
     
-    cd NimCollider
+    cd omni
 
     nimble install
 
-## CLI: supernim
+## **CLIs**
+
+### **omnicollider**
 
 If you have the .nimble folder in your path, run this:
 
-    supernim ~/.nimble/pkgs/nimcollider-0.1.0/examples/NimSaw.nim -s=true
+    omnicollider ~/.nimble/pkgs/omni-0.1.0/examples/NimSaw.nim -s=true
 
 Otherwise
 
-     ~/.nimble/bin/supernim ~/.nimble/pkgs/nimcollider-0.1.0/examples/NimSaw.nim -s=true
+     ~/.nimble/bin/omnicollider ~/.nimble/pkgs/omni-0.1.0/examples/NimSaw.nim -s=true

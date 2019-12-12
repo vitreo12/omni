@@ -42,7 +42,7 @@ if [ $PRINT_HELP == 1 ]; then
   echo
   echo "-------------------------------------------------------------------------------------------------"
   echo
-  echo "  NimCollider: build script help file. "
+  echo "  OmniCollider: build script help file. "
   echo
   echo "   FLAGS: "
   echo
@@ -82,7 +82,7 @@ if [ ! -d "$SC_EXTENSIONS_PATH" ]; then
 fi
 
 
-#cd into JIT (where the Nim UGen code is)
+#cd into JIT (where the Omni UGen code is)
 cd JIT
 
 
@@ -101,37 +101,37 @@ fi
 make 
 
 #Create folder
-mkdir p NimCollider
+mkdir p OmniCollider
 
 echo "Copying files over..."
 
 #Copy binaries to folder
 if [[ "$OSTYPE" == "darwin"* ]]; then                     
-  cp Nim.scx ./NimCollider  
+  cp Omni.scx ./OmniCollider  
   
   if [[ "$SUPERNOVA" == "1" ]]; then
-    cp Nim_supernova.scx ./NimCollider
+    cp Omni_supernova.scx ./OmniCollider
   fi
 
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then 
-  cp Nim.so ./NimCollider  
+  cp Omni.so ./OmniCollider  
 
   if [[ "$SUPERNOVA" == "1" ]]; then
-    cp Nim_supernova.so ./NimCollider
+    cp Omni_supernova.so ./OmniCollider
   fi
 
 fi           
 
 #Copy SC file
-rsync --update ../Nim.sc ./NimCollider 
+rsync --update ../Omni.sc ./OmniCollider 
 
 #Copy examples folder
-rsync -r --links --update ../examples ./NimCollider
+rsync -r --links --update ../examples ./OmniCollider
 
 #Copy the Static folder from outside
-rsync -r --links --update ../../Static ./NimCollider
+rsync -r --links --update ../../Static ./OmniCollider
 
 #Copy the whole build/JuliaCollider folder over to SC's User Extension directory
-rsync -r --links --update ./NimCollider "$SC_EXTENSIONS_PATH"
+rsync -r --links --update ./OmniCollider "$SC_EXTENSIONS_PATH"
 
 echo "Done!"

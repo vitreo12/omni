@@ -1,4 +1,4 @@
-Nim : UGen {
+Omni : UGen {
     *ar { |freq|
         ^this.multiNew('audio', freq);
     }
