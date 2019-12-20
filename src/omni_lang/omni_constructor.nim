@@ -1,4 +1,5 @@
 import macros
+import omni_vars_parser
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
 macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr_bracket_expr : untyped, var_names : untyped, is_ugen_destructor : bool) =
@@ -211,16 +212,11 @@ macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =
 macro debug*() =
     echo "To be added"
 
-macro constructor*(code_block : untyped) =
 
-    #new: ... syntax could be built by parsing directly this block of code,
-    #and construct the types by looking at IntLits, StrLits, and ObjConstr (for custom objects)
-    #echo treeRepr code_block
-
-    #ALSO, I could have my own parser that looks for assignment NimNodes, and add the var names to a seq[NimNode] (with nnkIdents).
-    #On first occurance of a name, add a "var" prefix. (Or a "let", without allowing the changing of the values.)
-    #In the case of using the same method in the "perform" macro, always prepend the "var".
-    #HOWEVER, this would slow parsing and compilation times. Is it worth it?
+#This has been correctly parsed!
+macro constructor_inner*(code_block_stmt_list : untyped) =
+    #Extract the actual parsed code_block from the nnkStmtList
+    let code_block = code_block_stmt_list[0]
 
     var 
         #They both are nnkIdentNodes
@@ -503,17 +499,10 @@ macro constructor*(code_block : untyped) =
         template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
                 
-        #Trick the compiler of the existence of bufsize(), samplerate() and ins_Nim() before sending the block to semantic checking.
-        #Using templates (instead of let statement) because of the Buffer.samplerate function, which the compiler won't pick correctt.y
-        template bufsize()    : untyped {.dirty.} = 0
-        template samplerate() : untyped {.dirty.} = 0
-        template ins_Nim()    : untyped {.dirty.} = cast[CFloatPtrPtr](0.0)
-
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "new" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_new_macro`)
         
-        #Actual constructor that returns a UGen... In theory, this allocation should be done with SC's RTAlloc. The ptr to the function should be here passed as arg.
-        #export the function to C when building a shared library
+        #Actual constructor that returns a UGen
         proc UGenConstructor*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "UGenConstructor"} =
             
             #Unpack args. These will overwrite the previous empty templates
@@ -545,6 +534,20 @@ macro constructor*(code_block : untyped) =
         
         defineDestructor(UGen, nil, nil, nil, `final_var_names`, true)
             
+
+#This generates:
+    #constructor_inner:
+        #PARSED code_block
+macro constructor*(code_block : untyped) : untyped =
+    return quote do:
+        #Trick the compiler of the existence of bufsize(), samplerate() and ins_Nim() before sending the block to semantic checking.
+        #This is needed as the parse_block_for_variables will call the parse_block_for_structs macro for semantic check.
+        #These values will be overwritten in UGenConstructor anyway, since the code returned is the untyped one, not the typed one.
+        template bufsize()    : untyped {.dirty.} = 0
+        template samplerate() : untyped {.dirty.} = 0
+        template ins_Nim()    : untyped {.dirty.} = cast[CFloatPtrPtr](0.0)
+
+        parse_block_for_variables(`code_block`, true)
 
 #This macro should in theory just work with the "new(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
 #a correct call to "new(a, b)" instead of "new: \n a \n b" or "new a b" by extracting the nnkIdents from the other calls and 

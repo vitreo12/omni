@@ -228,7 +228,7 @@ macro castInsOuts*() =
 template perform*(code_block : untyped) {.dirty.} =
     #export the function to C when building a shared library
     proc UGenPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
-        
+        #[
         #Add the templates needed for UGenPerform to unpack variable names declared with "var" in cosntructor
         generateTemplatesForPerformVarDeclarations()
 
@@ -240,9 +240,10 @@ template perform*(code_block : untyped) {.dirty.} =
 
         #Unpack the variables at compile time. It will also expand on any Buffer types.
         unpackUGenVariables(UGen)
+        ]#
 
-        #Append the whole code block
-        code_block
+        #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
+        parse_block_for_variables(code_block, false, true)
 
         #UNLOCK buffers when supernova is used...
         when defined(supernova):
@@ -259,7 +260,7 @@ template perform*(code_block : untyped) {.dirty.} =
             writeFile($fullPathToNewFolder & "IO.txt", text)
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
-template sample*(code_block : untyped) {.dirty.} =
+#[ template sample*(code_block : untyped) {.dirty.} =
     #Right before sample, define the new in1, in2, etc... macro for single sample retireval
     generate_inputs_templates(ugen_inputs, 1)
 
@@ -267,8 +268,8 @@ template sample*(code_block : untyped) {.dirty.} =
     generate_outputs_templates(ugen_outputs, 1)
 
     for audio_index_loop in 0..(bufsize - 1):
-        code_block
+        parse_block_for_variables(code_block, false, true)
     
     #This is in case the user accesses in1, in2, etc again after sample block. 
     #Since the template has been changed, now it would still read kr in the perform block.
-    let audio_index_loop = 0
+    let audio_index_loop = 0 ]#

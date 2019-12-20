@@ -3,67 +3,68 @@
 import macros
 import ../omni
 
-expandMacros:  
-    ins 1, "freq"
+#expandMacros:  
+ins 1, "freq"
         
-expandMacros:
-    outs 1:
-        "sine_out"
+#expandMacros:
+outs 1:
+    "sine_out"
+
+#expandMacros:
+struct Phasor[T]:
+    phase : T
+
+#expandMacros:
+struct Something[T, Y]:
+    a : T
+    b : Data[Y]
+    c : Buffer
+
+#expandMacros:
+struct SomeOtherStruct[T, Y]:
+    phasor : Phasor[T]
+    something : Something[T, Y]
+
+#expandMacros:
+struct BuffersWrapper:
+    buf1 : Buffer
+    buf2 : Buffer
 
 expandMacros:
-    struct Phasor[T]:
-        phase : T
+    def PhasorDefault() => Phasor[float]:
+        return Phasor.init(0.0)
 
 expandMacros:
-    struct Something[T, Y]:
-        a : T
-        b : Data[Y]
-        c : Buffer
-
-expandMacros:
-    struct SomeOtherStruct[T, Y]:
-        phasor : Phasor[T]
-        something : Something[T, Y]
-
-expandMacros:
-    struct BuffersWrapper:
-        buf1 : Buffer
-        buf2 : Buffer
-
-proc PhasorDefault() : Phasor[float] =
-    result = Phasor.init(0.0)
-
-proc someProcForPhasor[T](p : Phasor[T]) : void =
-    p.phase = 0.23
+    def someProcForPhasor[T](p : Phasor[T]) => void:
+        p.phase = 0.23
  
-expandMacros:
-    constructor:
-        let 
-            phasor   = PhasorDefault()
-            something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
-            someOtherStruct = SomeOtherStruct.init(phasor, something)
-            someData = Data.init(100)
+#expandMacros:
+constructor:
+    phasor   = PhasorDefault()
+    something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
+    someOtherStruct = SomeOtherStruct.init(phasor, something)
+    someData = Data.init(100)
 
-            someBuffer = Buffer.init(1)
-            someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
+    someBuffer = Buffer.init(1)
+    someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
 
-        var 
-            phase = 0.0
-            anotherVar = phase
+    phase = 0.0
+    anotherVar = phase
 
-        #print(bufsize, "\n")
-        #print(samplerate, "\n")
-        
-        new phase, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
+    #print(bufsize, "\n")
+    #print(samplerate, "\n")
+    
+    new phase, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
 
 expandMacros:
     perform:
-        var 
-            frequency : Signal
-            sine_out  : Signal
+        frequency : Signal
+        sine_out  : Signal
 
         sample:
             frequency = in1
+
+            freq = 0.6
 
             if phase >= 1.0:
                 phase = 0.0
