@@ -1,3 +1,5 @@
+import omni
+
 ins 1:
     "freq"
 
@@ -10,10 +12,13 @@ constructor:
 
     new phase, prev_value
 
+def twoPi():
+    return 2.0 * PI
+
 perform:
     let 
         samplerate_minus_one = samplerate - 1.0
-        twopi = 2.0 * PI
+        twopi = twoPi()
 
     sample:
         var freq = abs(in1)
