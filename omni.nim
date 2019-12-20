@@ -24,17 +24,9 @@ export sc_data
 import src/sc/sc_buffer
 export sc_buffer
 
-#DSL macros
-import src/omni_macros
-export omni_macros
-
-#print helper
-import src/omni_print
-export omni_print
-
-#types
-import src/omni_types
-export omni_types
+#Language macros/parsing and utilities
+import src/omni_lang/omni_lang
+export omni_lang
 
 #math
 import math
