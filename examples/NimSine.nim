@@ -4,23 +4,21 @@ ins 1:
 outs 1
  
 constructor:
-    var phase = 0.0
+    phase = 0.0
     
     new phase
 
 perform:
-    var 
-        frequency : Signal
-        sine_out  : Signal
+    frequency : Signal
+    sine_out  : Signal
 
-    let 
-        samplerate_minus_one = samplerate - 1.0
-        twopi = 2 * PI
+    samplerate_minus_one = samplerate - 1.0
+    twopi = 2 * PI
 
     sample:
         frequency = abs(in1)
 
-        let increment = frequency / samplerate_minus_one
+        increment = frequency / samplerate_minus_one
 
         sine_out = cos(phase * twopi)
         

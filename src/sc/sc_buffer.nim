@@ -45,7 +45,7 @@ const
     upper_exceed_input_error  = "ERROR: Buffer: input %d out of bounds. Maximum input number is 32.\n"
     lower_exceed_input_error  = "ERROR: Buffer: input %d out of bounds. Minimum input number is 1.\n"
 
-proc innerInit[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, ugen_inputs : int) : Buffer =
+proc innerInit*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, ugen_inputs : int) : Buffer =
     result = cast[Buffer](rt_alloc(cast[culong](sizeof(Buffer_obj))))
     
     result.sc_world  = get_sc_world()

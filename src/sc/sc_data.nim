@@ -88,7 +88,7 @@ proc `[]`*[I : SomeInteger, T](a : Data[T], i : I) : T =
         data_size  = a.size
 
     if i >= 0:
-        if uint(i) < data_size:
+        if int(i) < int(data_size):
             return data[i]
     else:
         print(bounds_error)
@@ -101,10 +101,10 @@ proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T], i1 : I1, i2 : I2)
         data              = a.data
         data_size         = a.size
         data_size_X_chans = a.size_X_chans
-        index             = (i1 * data_size) + i2
+        index             = (i1 * int(data_size)) + i2
     
     if index >= 0:
-        if uint(index) < data_size_X_chans:
+        if int(index) < int(data_size_X_chans):
             return data[index]
     else:
         print(bounds_error)
@@ -122,7 +122,7 @@ proc `[]=`*[I : SomeInteger, T, S](a : Data[T], i : I, x : S) : void =
         data_size = a.size
 
     if i >= 0:
-        if uint(i) < data_size:
+        if int(i) < int(data_size):
             data[i] = x   
     else:
         print(bounds_error)
@@ -134,10 +134,10 @@ proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T], i1 : I1, i2 :
         data              = a.data
         data_size         = a.size
         data_size_X_chans = a.size_X_chans
-        index             = (i1 * data_size) + i2
+        index             = (i1 * int(data_size)) + i2
         
     if index >= 0:
-        if uint(index) < data_size_X_chans:
+        if int(index) < int(data_size_X_chans):
             data[index] = x
     else:
         print(bounds_error)

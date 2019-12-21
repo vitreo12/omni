@@ -38,23 +38,24 @@ expandMacros:
     def someProcForPhasor[T](p : Phasor[T]) => void:
         p.phase = 0.23
  
-#expandMacros:
-constructor:
-    phasor   = PhasorDefault()
-    something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
-    someOtherStruct = SomeOtherStruct.init(phasor, something)
-    someData = Data.init(100)
+expandMacros:
+    constructor:
+        phasor   = PhasorDefault()
+        something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
+        someOtherStruct = SomeOtherStruct.init(phasor, something)
+        someData = Data.init(100, 2)
 
-    someBuffer = Buffer.init(1)
-    someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
+        someBuffer = Buffer.init(1)
+        someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
 
-    phase = 0.0
-    anotherVar = phase
+        phase = 0.0
+        anotherVar = phase
 
-    #print(bufsize, "\n")
-    #print(samplerate, "\n")
-    
-    new phase, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
+        #print(bufsize, "\n")
+        #print(samplerate, "\n")
+        
+        new phase, phasor, something, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
+
 
 expandMacros:
     perform:
@@ -71,6 +72,18 @@ expandMacros:
             
             #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
             phasor.phase = 2.3
+
+            i1 = 1
+            i2 = 2
+        
+            somethingArray = something.b
+
+            blabla = someData
+
+            #c = PhasorDefault()
+
+            somethingArray[i1] = phase
+            blabla[i1, i2] = phase
             
             #Test fuctions aswell
             someProcForPhasor(phasor)

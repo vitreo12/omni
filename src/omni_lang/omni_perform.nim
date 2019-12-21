@@ -58,6 +58,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     
     #when supernova compilation, define a unlock_supernova_buffers() template that will contain all the unlock_buffer calls
     when defined(supernova):
+        
         #template unlock_supernova_buffers() : untyped {.dirty.} =
         var 
             supernova_unlock_buffers_template_def = nnkTemplateDef.newTree(
@@ -210,6 +211,11 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     
     #When supernova compilation, add the unlock template 
     when defined(supernova):
+        
+        #If no buffers were found, simply have a discard statement on the template.
+        if supernova_unlock_buffers_body.len < 1:
+            supernova_unlock_buffers_body.add(nnkDiscardStmt.newTree(newEmptyNode()))
+
         supernova_unlock_buffers_template_def.add(supernova_unlock_buffers_body)
         result.add(supernova_unlock_buffers_template_def)
 

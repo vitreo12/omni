@@ -1,5 +1,4 @@
 import macros
-import omni_vars_parser
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
 macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr_bracket_expr : untyped, var_names : untyped, is_ugen_destructor : bool) =
@@ -540,12 +539,12 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         #PARSED code_block
 macro constructor*(code_block : untyped) : untyped =
     return quote do:
-        #Trick the compiler of the existence of bufsize(), samplerate() and ins_Nim() before sending the block to semantic checking.
-        #This is needed as the parse_block_for_variables will call the parse_block_for_structs macro for semantic check.
-        #These values will be overwritten in UGenConstructor anyway, since the code returned is the untyped one, not the typed one.
-        template bufsize()    : untyped {.dirty.} = 0
-        template samplerate() : untyped {.dirty.} = 0
-        template ins_Nim()    : untyped {.dirty.} = cast[CFloatPtrPtr](0.0)
+        #Trick the compiler of the existence of these variables in order to parse the block.
+        #These will be overwrittne in the UGenCosntructor anyway.
+        let 
+            ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](0)
+            bufsize     {.inject.}  : int          = 0
+            samplerate  {.inject.}  : float        = 0
 
         parse_block_for_variables(`code_block`, true)
 
