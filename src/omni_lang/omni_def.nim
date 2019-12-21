@@ -22,10 +22,15 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         
         var name_with_args : NimNode
 
-        #Missing the return type entirely OR not providing any infos at all
+        #Missing the return type entirely OR not providing any infos at all.
+        #Defaults to returning (float | void). This allows void for no return specified.
         if function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall:
             name_with_args = function_signature
-            proc_return_type = newIdentNode("float")
+            proc_return_type = nnkInfix.newTree(
+                newIdentNode("|"),
+                newIdentNode("float"),
+                newIdentNode("void")
+            )
         
         elif function_signature_kind == nnkCommand:
             name_with_args   = function_signature[0]

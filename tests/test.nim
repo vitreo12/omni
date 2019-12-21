@@ -35,9 +35,9 @@ expandMacros:
         return Phasor.init(0.0)
 
 expandMacros:
-    def someProcForPhasor[T](p : Phasor[T]) => void:
+    def someProcForPhasor[T](p : Phasor[T]):
         p.phase = 0.23
- 
+
 expandMacros:
     constructor:
         phasor   = PhasorDefault()
