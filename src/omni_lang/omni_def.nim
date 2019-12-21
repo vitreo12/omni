@@ -28,7 +28,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             name_with_args = function_signature
             proc_return_type = nnkInfix.newTree(
                 newIdentNode("|"),
-                newIdentNode("float"),
+                newIdentNode("SomeNumber"),
                 newIdentNode("void")
             )
         
@@ -79,21 +79,22 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             var new_arg : NimNode
 
-            #Not specified kind, defaults to float: def sine(a) OR def sine(a 0.0)
+            #Not specified kind, defaults to SomeNumber: def sine(a) OR def sine(a 0.0)
             if statement.kind != nnkExprColonExpr:
 
                 #def sine(a)
                 if statement.len == 0:
                     new_arg = nnkIdentDefs.newTree(
                         statement,
-                        newIdentNode("float"),
+                        newIdentNode("SomeNumber"),
                         newEmptyNode()
                     )
+
                 #def sine(a 0.0):
                 elif statement.len == 2:
                     new_arg = nnkIdentDefs.newTree(
                         statement[0],
-                        newIdentNode("float"),
+                        newIdentNode("SomeNumber"),
                         statement[1]
                     )
             
