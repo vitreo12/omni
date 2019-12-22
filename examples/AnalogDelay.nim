@@ -12,6 +12,8 @@ constructor:
     phase = 0
     prev_value = 0.0
 
+    print(phase)
+
     new delay_length, delay_length_pow, delay_mask, delay_data, phase, prev_value
 
 def linear_interp(a, x1, x2):
