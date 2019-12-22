@@ -1,12 +1,12 @@
-#Cpp file to compile together. Should I compile it ahead and use the link pragma on the .o instead?
-{.compile: "SCBuffer.cpp".}
-
 #Flags to cpp compiler
 {.passC: "-O3".}
 
 #If supernova defined, also pass the supernova flag to cpp
 when defined(supernova):
     {.passC: "-D SUPERNOVA".}
+
+#cpp file to compile together. Should I compile it ahead and use the link pragma on the .o instead?
+{.compile: "SCBuffer.cpp".}
 
 #Wrapping of cpp functions
 proc get_buffer_SC(buffer_SCWorld : pointer, fbufnum : cfloat) : pointer {.importc, cdecl.}
@@ -52,19 +52,19 @@ proc innerInit*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, uge
     result.bufnum    = float32(-1e9)
 
     #1 should be 0, 2 1, 3 2, etc... 32 31
-    result.input_num = int(input_num - 1)
+    result.input_num = int(input_num) - int(1)
 
     #If these checks fail set to sc_world to nil, which will invalidate the Buffer (the get_buffer_SC would just return null)
     if input_num > ugen_inputs:
-        print(exceeding_max_ugen_inputs, ugen_inputs)
+        discard printf(exceeding_max_ugen_inputs, ugen_inputs)
         result.sc_world = nil
 
     elif input_num > 32:
-        print(upper_exceed_input_error, input_num)
+        discard printf(upper_exceed_input_error, input_num)
         result.sc_world = nil
 
     elif input_num < 1:
-        print(lower_exceed_input_error, input_num)
+        discard printf(lower_exceed_input_error, input_num)
         result.sc_world = nil
 
 #Template which also uses the const ugen_inputs, which belongs to the nim dsp new module. It will string substitute Buffer.init(1) with initInner(Buffer, 1, ugen_inputs)
@@ -99,24 +99,24 @@ when defined(supernova):
 ##########
 
 #1 channel
-proc `[]`*[I : SomeInteger](a : Buffer, i : I) : float32 =
-    return get_float_value_buffer_SC(a.snd_buf, cast[clong](i), cast[clong](0))
+proc `[]`*[I : SomeNumber](a : Buffer, i : I) : float32 =
+    return get_float_value_buffer_SC(a.snd_buf, clong(i), clong(0))
 
 #more than 1 channel
-proc `[]`*[I1 : SomeInteger, I2 : SomeInteger](a : Buffer, i1 : I1, i2 : I2) : float32 =
-    return get_float_value_buffer_SC(a.snd_buf, cast[clong](i1), cast[clong](i2))
+proc `[]`*[I1 : SomeNumber, I2 : SomeNumber](a : Buffer, i1 : I1, i2 : I2) : float32 =
+    return get_float_value_buffer_SC(a.snd_buf, clong(i1), clong(i2))
 
 ##########
 # SETTER #
 ##########
 
 #1 channel
-proc `[]=`*[I : SomeInteger, S : SomeFloat](a : Buffer, i : I, x : S) : void =
-    set_float_value_buffer_SC(a.snd_buf, cast[cfloat](x), cast[clong](i), cast[clong](0))
+proc `[]=`*[I : SomeNumber, S : SomeNumber](a : Buffer, i : I, x : S) : void =
+    set_float_value_buffer_SC(a.snd_buf, cfloat(x), clong(i), clong(0))
 
 #more than 1 channel
-proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger, S : SomeFloat](a : Buffer, i1 : I1, i2 : I2, x : S) : void =
-    set_float_value_buffer_SC(a.snd_buf, cast[cfloat](x), cast[clong](i1), cast[clong](i2))
+proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber, S : SomeNumber](a : Buffer, i1 : I1, i2 : I2, x : S) : void =
+    set_float_value_buffer_SC(a.snd_buf, cfloat(x), clong(i1), clong(i2))
 
 #########
 # INFOS #

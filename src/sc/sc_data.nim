@@ -44,8 +44,8 @@ proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S
         real_chans = 1
 
     let 
-        size_uint     = cast[uint](real_size)
-        chans_uint    = cast[uint](real_chans)
+        size_uint     = uint(real_size)
+        chans_uint    = uint(real_chans)
         size_data_obj = sizeof(Data_obj[dataType])
 
     #Actual object, assigned to result
@@ -53,7 +53,7 @@ proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S
     
     #Data of the object (the array)
     let 
-        size_data_type_uint    = cast[uint](sizeof(dataType))
+        size_data_type_uint    = uint(sizeof(dataType))
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
         data                   = cast[ArrayPtr[dataType]](rt_alloc0(cast[C_size_t](total_size_uint)))
@@ -82,7 +82,7 @@ proc destructor*[T](obj : Data[T]) : void =
 
 #1 channel
 #proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T 
-proc `[]`*[I : SomeInteger, T](a : Data[T], i : I) : T =
+proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T =
     let 
         data       = a.data
         data_size  = a.size
@@ -96,12 +96,12 @@ proc `[]`*[I : SomeInteger, T](a : Data[T], i : I) : T =
 
 #more than 1 channel
 #proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
-proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T], i1 : I1, i2 : I2) : T =
+proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T =
     let 
         data              = a.data
         data_size         = a.size
         data_size_X_chans = a.size_X_chans
-        index             = (i1 * int(data_size)) + i2
+        index             = (int(i1) * int(data_size)) + int(i2)
     
     if index >= 0:
         if int(index) < int(data_size_X_chans):
@@ -116,7 +116,7 @@ proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T], i1 : I1, i2 : I2)
 
 #1 channel   
 #proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =    
-proc `[]=`*[I : SomeInteger, T, S](a : Data[T], i : I, x : S) : void =
+proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void =
     let 
         data      = a.data
         data_size = a.size
@@ -129,12 +129,12 @@ proc `[]=`*[I : SomeInteger, T, S](a : Data[T], i : I, x : S) : void =
 
 #more than 1 channel
 #proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
-proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void =
+proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void =
     let 
         data              = a.data
         data_size         = a.size
         data_size_X_chans = a.size_X_chans
-        index             = (i1 * int(data_size)) + i2
+        index             = (int(i1) * int(data_size)) + int(i2)
         
     if index >= 0:
         if int(index) < int(data_size_X_chans):
