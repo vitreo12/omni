@@ -41,7 +41,7 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 # EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
 #========================================================================================================================================================#
 
-proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_perform_block : bool = false) : void {.compileTime.} =
+proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_constructor_block : bool = false, is_perform_block : bool = false) : void {.compileTime.} =
     if code_block.len > 0:
         
         for index, statement in code_block.pairs():
@@ -53,6 +53,13 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     let var_name = var_decl[0].strVal()
                     
                     variable_names_table[var_name] = var_name
+
+            #Look for "new:" statement. If there are any, it's an error. Only at last position there should be.
+            if is_constructor_block:
+                if statement_kind == nnkCall or statement_kind == nnkCommand:
+                    if statement[0].strVal() == "new":
+                        error "constructor: the \"new\" call, if used, must only be at the last position of the constructor block."
+
 
             #a : float or a = 0.5
             if statement_kind == nnkCall or statement_kind == nnkAsgn:
@@ -250,13 +257,24 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
             
         #couldn't find sample block
         if found_sample_block.not:
-            error "perform: no \"sample\" block provided"
-
-    #if is_constructor_block:
-        #code_block.insert(0, add_samplerate_bufsize_insNim())
-
+            error "perform: no \"sample\" block provided, or not at top level."
+    
+    #Remove new statement from the block before all syntactic analysis.
+    #This is needed for this to work:
+    #new:
+    #   phase
+    #   somethingElse
+    #This new_statement will then be passed to the next analysis part in order to be re-added at the end
+    #of all the parsing.
+    var new_statement : NimNode
+    if is_constructor_block:
+        if code_block.last().kind == nnkCall or code_block.last().kind == nnkCommand:
+            if code_block.last()[0].strVal() == "new":
+                new_statement = code_block.last()
+                code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
+    
     #Look for var  declarations recursively in all blocks
-    parse_block_recursively_for_variables(code_block, variable_names_table, is_perform_block)
+    parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block)
     
     #Add all stuff relative to initialization for perform function:
     #[
@@ -312,7 +330,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_for_structs(`final_block`, `code_block`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_for_structs(`final_block`, `new_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
 
 
 #========================================================================================================================================================#
@@ -431,7 +449,7 @@ proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_t
         parse_block_recursively_for_structs(typed_statement, templates_to_ignore, is_perform_block)
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_for_structs*(typed_code_block : typed, untyped_code_block : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_for_structs*(typed_code_block : typed, new_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
     #Extract the body of the block:. [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -443,12 +461,7 @@ macro parse_block_for_structs*(typed_code_block : typed, untyped_code_block : un
         is_perform_block = is_perform_block_typed.strVal() == "true"
 
     #echo astGenRepr inner_block
-
-    #PREVIOUS ALTERNATIVE:
-    #This wasn't working very well because, being it the old untyped block, it could contain non-expanded
-    #templates that would screw up ordering of Nodes. By using turning the typed block into untyped, however,
-    #things like templates and macros are expanded, and it's now possible to seamlessly integrate between them
-    #result = untyped_code_block
+    #echo repr inner_block
 
     parse_block_recursively_for_structs(inner_block, templates_to_ignore, is_perform_block)
     
@@ -460,13 +473,20 @@ macro parse_block_for_structs*(typed_code_block : typed, untyped_code_block : un
 
     #echo repr result
 
-    #IF constructor, last call must be the old untyped "new" call for all parsing to work properly.
-    #Otherwise all the _let / _var declaration in UGen body are screwed
-    if is_constructor_block:
-        result[result.len-1] = untyped_code_block.last()
-
     #if constructor block, run the constructor_inner macro on the resulting block.
     if is_constructor_block:
+
+        #If old untyped code in constructor constructor had a "new" call as last call, 
+        #it must be the old untyped "new" call for all parsing to work properly.
+        #Otherwise all the _let / _var declaration in UGen body are screwed
+        #If new_statement is nil, it means that it wasn't initialized at it means that there
+        #was no "new" call as last statement of the constructor block. Don't add it.
+        if new_statement != nil and new_statement.kind != nnkNilLit:
+            result.add(new_statement)
+
+        
+        #Run the whole block through the constructor_inner macro. This will build the actual
+        #constructor function, and it will run the untyped version of the "new" macro.
         result = nnkCall.newTree(
             newIdentNode("constructor_inner"),
             nnkStmtList.newTree(
@@ -475,4 +495,4 @@ macro parse_block_for_structs*(typed_code_block : typed, untyped_code_block : un
         )
     
     #echo astGenRepr inner_block
-    #echo astGenRepr result 
+    #echo repr result 

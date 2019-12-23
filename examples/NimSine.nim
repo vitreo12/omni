@@ -5,8 +5,8 @@ outs 1
  
 constructor:
     phase = 0.0
-    
-    new phase
+
+    #new phase
 
 perform:
     frequency : Signal

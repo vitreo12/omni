@@ -30,13 +30,13 @@ struct BuffersWrapper:
     buf1 : Buffer
     buf2 : Buffer
 
-expandMacros:
-    def PhasorDefault() => Phasor[float]:
-        return Phasor.init(0.0)
+#expandMacros:
+def PhasorDefault() => Phasor[float]:
+    return Phasor.init(0.0)
 
-expandMacros:
-    def someProcForPhasor[T](p : Phasor[T]):
-        p.phase = 0.23
+#expandMacros:
+def someProcForPhasor[T](p : Phasor[T]):
+    p.phase = 0.23
 
 expandMacros:
     constructor:
@@ -49,53 +49,62 @@ expandMacros:
         someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
 
         phase = 0.0
+
         anotherVar = phase
+
+        #new phase, anotherVar
+
+        #oneMore : float
+        oneMore = 0.23
 
         #print(bufsize, "\n")
         #print(samplerate, "\n")
         
-        new phase, phasor, something, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
+        #new someBuffer
+        #new phase, phasor, something, someData, someOtherStruct, someBuffer, someBufferWrapper
+        #new:
+        #    phase
 
 
-expandMacros:
-    perform:
-        frequency : Signal
-        sine_out  : Signal
+#expandMacros:
+perform:
+    frequency : Signal
+    sine_out  : Signal
 
-        sample:
-            frequency = in1
+    sample:
+        frequency = in1
 
-            freq = 0.6
+        freq = 0.6
 
-            if phase >= 1.0:
-                phase = 0.0
-            
-            #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
-            phasor.phase = 2.3
-
-            i1 = 1
-            i2 = 2
+        if phase >= 1.0:
+            phase = 0.0
         
-            somethingArray = something.b
+        #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
+        phasor.phase = 2.3
 
-            blabla = someData
+        i1 = 1
+        i2 = 2
+    
+        somethingArray = something.b
 
-            #c = PhasorDefault()
+        blabla = someData
 
-            somethingArray[i1] = phase
-            blabla[i1, i2] = phase
-            
-            #Test fuctions aswell
-            someProcForPhasor(phasor)
+        #c = PhasorDefault()
 
-            #echo ugen.someOtherStruct_let.something.c[0]
+        somethingArray[i1] = phase
+        blabla[i1, i2] = phase
+        
+        #Test fuctions aswell
+        someProcForPhasor(phasor)
 
-            sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
-            
-            #This will convert double to float... signal should just be float32 by default. signal64 should be used to assure 64 bits precision.
-            out1 = sine_out
+        #echo ugen.someOtherStruct_let.something.c[0]
 
-            phase += abs(frequency) / (samplerate - 1) #phase equals to phase_var[]
+        sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
+        
+        #This will convert double to float... signal should just be float32 by default. signal64 should be used to assure 64 bits precision.
+        out1 = sine_out
+
+        phase += abs(frequency) / (samplerate - 1) #phase equals to phase_var[]
 
 #################
 # TESTING SUITE #

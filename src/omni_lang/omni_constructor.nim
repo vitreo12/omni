@@ -231,48 +231,13 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         final_var_names = nnkBracket.newTree()
         constructor_body : NimNode
 
+        new_call_provided = false
+    
     #Look if "new" macro call is the last statement in the block.
-    if code_block.last().kind != nnkCall and code_block.last().kind != nnkCommand:
-        error("Last constructor statement must be a call to \"new\".")
-    elif code_block.last()[0].strVal() != "new":
-        error("Last constructor statement must be a call to \"new\".")
-
-    call_to_new_macro = code_block.last()
-
-    #First element of the call_to_new_macro ([0]) is the name of the calling function (Ident("new"))
-    #Second element - unpacked here - is the kind of syntax used to call the macro. It can either be just
-    #a list of idents - which is the case for the normal "new(a, b)" syntax - or either a nnkStmtList - for the
-    #"new : \n a \n b" syntax - or a nnkCommand list - for the "new a b" syntax.
-    let type_of_syntax = call_to_new_macro[1]
-
-    var temp_call_to_new_macro = nnkCall.newTree(newIdentNode("new"))
-
-    #[
-        nnkStmtList is:
-        new:
-            a
-            b
-
-        nnkCommand is:
-        new a b
-
-        Format them both to be the same way as the normal new(a, b) call.
-    ]#
-    if type_of_syntax.kind == nnkStmtList or type_of_syntax.kind == nnkCommand:
-        
-        #nnkCommand can recursively represent elements in nnkCommand trees. Unpack all the nnkIdents and append them to the temp_call_to_new_macro variable.
-        proc recursive_unpack_of_commands(input : NimNode) : void =    
-            for input_children in input:
-                if input_children.kind == nnkStmtList or input_children.kind == nnkCommand:
-                    recursive_unpack_of_commands(input_children)
-                else:
-                    temp_call_to_new_macro.add(input_children)
-
-        #Unpack the elements and add them to temp_call_to_new_macro, which is a nnkCall tree.
-        recursive_unpack_of_commands(type_of_syntax)
-        
-        #Substitute the original code block with the new one.
-        call_to_new_macro = temp_call_to_new_macro
+    let code_block_last = code_block.last()
+    if code_block_last.kind == nnkCall or code_block_last.kind == nnkCommand:
+        if code_block_last[0].strVal() == "new":
+            new_call_provided = true
 
     #[
         REDUCE ALL THESE FOR LOOPS IN A BETTER WAY!!
@@ -358,6 +323,58 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 templates_for_constructor_let_declarations.add(constructor_let_template)
     
+    #If provided a call to the "new" macro at last position:
+    if new_call_provided:
+        call_to_new_macro = code_block.last()
+
+        #First element of the call_to_new_macro ([0]) is the name of the calling function (Ident("new"))
+        #Second element - unpacked here - is the kind of syntax used to call the macro. It can either be just
+        #a list of idents - which is the case for the normal "new(a, b)" syntax - or either a nnkStmtList - for the
+        #"new : \n a \n b" syntax - or a nnkCommand list - for the "new a b" syntax.
+        let type_of_syntax = call_to_new_macro[1]
+
+        var temp_call_to_new_macro = nnkCall.newTree(newIdentNode("new"))
+
+        #[
+            nnkStmtList is:
+            new:
+                a
+                b
+
+            nnkCommand is:
+            new a b
+
+            Format them both to be the same way as the normal new(a, b) nnkCall.
+        ]#
+        if type_of_syntax.kind == nnkStmtList or type_of_syntax.kind == nnkCommand:
+            
+            #nnkCommand can recursively represent elements in nnkCommand trees. Unpack all the nnkIdents and append them to the temp_call_to_new_macro variable.
+            proc recursive_unpack_of_commands(input : NimNode) : void =    
+                for input_children in input:
+                    if input_children.kind == nnkStmtList or input_children.kind == nnkCommand:
+                        recursive_unpack_of_commands(input_children)
+                    else:
+                        temp_call_to_new_macro.add(input_children)
+
+            #Unpack the elements and add them to temp_call_to_new_macro, which is a nnkCall tree.
+            recursive_unpack_of_commands(type_of_syntax)
+            
+            #Substitute the original code block with the new one.
+            call_to_new_macro = temp_call_to_new_macro
+    
+    #No call to "new" provided. Build one from all the var and let declarations!
+    else:
+        call_to_new_macro = nnkCall.newTree(newIdentNode("new"))
+        
+        for let_decl_ident in let_declarations:
+            call_to_new_macro.add(let_decl_ident)
+        
+        for var_decl_ident in var_declarations:
+            call_to_new_macro.add(var_decl_ident)
+
+        #Need to add it to code_block, as in the other case (when new is provided), call_to_new macro is modified in place.
+        code_block.add(call_to_new_macro)
+
     #Check the variables that are passed to call_to_new_macro
     for index, new_macro_var_name in call_to_new_macro:               #loop over every passed in variables to the "new" call
         for empty_var_statement in empty_var_statements:
@@ -379,7 +396,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                     template phase() : untyped {.dirty.} =    #The untyped here is fundamental to make this act like a normal text replacement.
                         phase_var[]
                 ]#                
-                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly in perform.
+                #Construct a template that replaces the "variableName" in code with "variableName_var[]", to access the field directly in the perform section.
                 let perform_var_template = nnkTemplateDef.newTree(
                     var_declaration,                            #original name
                     newEmptyNode(),
@@ -400,7 +417,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 templates_for_perform_var_declarations.add(perform_var_template)
         
-        #Check if any of the var_declarations are inputs to the "new" macro. If so, append their variable name with "_let"
+        #Check if any of the let_declarations are inputs to the "new" macro. If so, just append their variable name with "_let"
         for let_declaration in let_declarations:
             if let_declaration == new_macro_var_name:
                 #Replace the input to the "new" macro to be "variableName_let"
@@ -408,6 +425,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 #Replace the name directly in the call to the "new" macro
                 call_to_new_macro[index] = new_let_declaration
+
+    #echo repr code_block
+    #echo repr call_to_new_macro
 
     #echo astGenRepr templates_for_perform_var_declarations
 

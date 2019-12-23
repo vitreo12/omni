@@ -8,9 +8,7 @@ constructor:
     buffer = Buffer.init(input_num = 1)
     phase = 0.0
 
-    print(phase)
-
-    new buffer, phase
+    #new buffer, phase
 
 perform:
     sample:

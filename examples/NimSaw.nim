@@ -7,7 +7,7 @@ constructor:
     phase = 0.0
     prev_value = 0.0
 
-    new phase, prev_value
+    #new phase, prev_value
 
 def twoPi():
     return 2.0 * PI
