@@ -11,7 +11,9 @@ constructor:
     #new buffer, phase
 
 perform:
+    scaled_rate = buffer.samplerate / samplerate
+    
     sample:
         out1 = buffer[phase]
-        phase += in2
+        phase += (in2 * scaled_rate)
         phase = phase mod float(buffer.len)
