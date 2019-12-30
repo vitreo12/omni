@@ -1,14 +1,14 @@
 #nim c --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed
 
 import macros
-import ../omni
+import ../../omni
 
-expandMacros:  
-    ins 1, "freq"
+#expandMacros:  
+ins 1, "freq"
         
-expandMacros:
-    outs 1:
-        "sine_out"
+#expandMacros:
+outs 1:
+    "sine_out"
 
 expandMacros:
     struct Phasor[T]:
@@ -30,46 +30,69 @@ expandMacros:
         buf1 : Buffer
         buf2 : Buffer
 
-proc PhasorDefault() : Phasor[float] =
-    result = Phasor.init(0.0)
-
-proc someProcForPhasor[T](p : Phasor[T]) : void =
-    p.phase = 0.23
- 
 expandMacros:
-    constructor:
-        let 
-            phasor   = PhasorDefault()
-            something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
-            someOtherStruct = SomeOtherStruct.init(phasor, something)
-            someData = Data.init(100)
+    def PhasorDefault() => Phasor[float]:
+        return Phasor.new(0.0)
 
-            someBuffer = Buffer.init(1)
-            someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
+expandMacros:
+    def someProcForPhasor[T](p : Phasor[T]):
+        p.phase = 0.23
 
-        var 
-            phase = 0.0
-            anotherVar = phase
+expandMacros:
+    init:
+        phasor   = PhasorDefault()
+        something = Something.new(0.0, Data.new(int(samplerate)), Buffer.new(1))
+        someOtherStruct = SomeOtherStruct.new(phasor, something)
+        someData = Data.new(100, 2)
+
+        someBuffer = Buffer.new(1)
+        someBufferWrapper = BuffersWrapper.new(Buffer.new(1), Buffer.new(1))
+
+        phase = 0.0
+
+        anotherVar = phase
+
+        #new phase, anotherVar
+
+        #oneMore : float
+        oneMore = 0.23
 
         #print(bufsize, "\n")
         #print(samplerate, "\n")
         
-        new phase, phasor, someData, anotherVar, someOtherStruct, someBuffer, someBufferWrapper
+        #build someBuffer
+        build phase, phasor, something, someData, someOtherStruct, someBuffer, someBufferWrapper
+        #build:
+        #    phase
+
 
 expandMacros:
     perform:
-        var 
-            frequency : Signal
-            sine_out  : Signal
+        frequency : Signal
+        sine_out  : Signal
 
         sample:
             frequency = in1
+
+            freq = 0.6
 
             if phase >= 1.0:
                 phase = 0.0
             
             #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
             phasor.phase = 2.3
+
+            i1 = 1
+            i2 = 2
+        
+            somethingArray = something.b
+
+            blabla = someData
+
+            #c = PhasorDefault()
+
+            somethingArray[i1] = phase
+            blabla[i1, i2] = phase
             
             #Test fuctions aswell
             someProcForPhasor(phasor)

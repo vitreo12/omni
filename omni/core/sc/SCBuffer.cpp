@@ -27,7 +27,12 @@ extern "C"
 
             #ifdef SUPERNOVA
                 //It should be another custom function, work it out when doing supernova support.
-                LOCK_SNDBUF_SHARED(buf);
+
+                /* This locking should not be here, as this happens only when retrieving a new buffer, not at every sample loop.
+                Another function should be called from omni side to do the locking accordingly. */
+
+                //printf("Lock supernova\n");
+                //LOCK_SNDBUF_SHARED(buf);
             #endif
 
             return (void*)buf;
@@ -55,14 +60,14 @@ extern "C"
     }
 
     #ifdef SUPERNOVA
-        void unlock_buffer_SC(void* buf)
-        {
-            /* UNLOCK THE BUFFER HERE... To be called at the end of perform macro (supernova) */
+    void unlock_buffer_SC(void* buf)
+    {
+        /* UNLOCK THE BUFFER HERE... To be called at the end of perform macro (supernova) */
 
-            printf("SUPERNOVA BUFFER!!!\n");
+        //printf("SUPERNOVA BUFFER!!!\n");
 
-            return;
-        }
+        return;
+    }
     #endif
 
     float get_float_value_buffer_SC(void* buf, long index, long channel)
