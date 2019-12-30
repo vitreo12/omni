@@ -29,7 +29,7 @@ proc get_samplerate_buffer_SC(buf : pointer) : cdouble {.importc, cdecl.}
 proc get_sampledur_buffer_SC(buf : pointer) : cdouble {.importc, cdecl.}
 
 import sc_alloc/sc_alloc
-import ../omni_lang/omni_print
+import ../lang/omni_print
 
 type
     Buffer_obj = object
