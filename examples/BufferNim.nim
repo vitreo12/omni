@@ -4,11 +4,11 @@ ins 2, "bufnum", "speed"
 
 outs 1
 
-constructor:
-    buffer = Buffer.init(input_num = 1)
+init:
+    buffer = Buffer.new(input_num = 1)
     phase = 0.0
 
-    #new buffer, phase
+    #build buffer, phase
 
 perform:
     scaled_rate = buffer.samplerate / samplerate

@@ -54,11 +54,11 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     
                     variable_names_table[var_name] = var_name
 
-            #Look for "new:" statement. If there are any, it's an error. Only at last position there should be.
+            #Look for "build:" statement. If there are any, it's an error. Only at last position there should be.
             if is_constructor_block:
                 if statement_kind == nnkCall or statement_kind == nnkCommand:
-                    if statement[0].strVal() == "new":
-                        error "constructor: the \"new\" call, if used, must only be at the last position of the constructor block."
+                    if statement[0].strVal() == "build":
+                        error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
 
 
             #a : float or a = 0.5
@@ -264,13 +264,13 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #new:
     #   phase
     #   somethingElse
-    #This new_statement will then be passed to the next analysis part in order to be re-added at the end
+    #This build_statement will then be passed to the next analysis part in order to be re-added at the end
     #of all the parsing.
-    var new_statement : NimNode
+    var build_statement : NimNode
     if is_constructor_block:
         if code_block.last().kind == nnkCall or code_block.last().kind == nnkCommand:
-            if code_block.last()[0].strVal() == "new":
-                new_statement = code_block.last()
+            if code_block.last()[0].strVal() == "build":
+                build_statement = code_block.last()
                 code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
     #Look for var  declarations recursively in all blocks
@@ -330,7 +330,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_for_structs(`final_block`, `new_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_for_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
 
 
 #========================================================================================================================================================#
@@ -449,7 +449,7 @@ proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_t
         parse_block_recursively_for_structs(typed_statement, templates_to_ignore, is_perform_block)
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_for_structs*(typed_code_block : typed, new_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_for_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
     #Extract the body of the block:. [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -476,17 +476,17 @@ macro parse_block_for_structs*(typed_code_block : typed, new_statement : untyped
     #if constructor block, run the constructor_inner macro on the resulting block.
     if is_constructor_block:
 
-        #If old untyped code in constructor constructor had a "new" call as last call, 
-        #it must be the old untyped "new" call for all parsing to work properly.
+        #If old untyped code in constructor constructor had a "build" call as last call, 
+        #it must be the old untyped "build" call for all parsing to work properly.
         #Otherwise all the _let / _var declaration in UGen body are screwed
-        #If new_statement is nil, it means that it wasn't initialized at it means that there
-        #was no "new" call as last statement of the constructor block. Don't add it.
-        if new_statement != nil and new_statement.kind != nnkNilLit:
-            result.add(new_statement)
+        #If build_statement is nil, it means that it wasn't initialized at it means that there
+        #was no "build" call as last statement of the constructor block. Don't add it.
+        if build_statement != nil and build_statement.kind != nnkNilLit:
+            result.add(build_statement)
 
         
         #Run the whole block through the constructor_inner macro. This will build the actual
-        #constructor function, and it will run the untyped version of the "new" macro.
+        #constructor function, and it will run the untyped version of the "build" macro.
         result = nnkCall.newTree(
             newIdentNode("constructor_inner"),
             nnkStmtList.newTree(

@@ -25,7 +25,7 @@ const
     bounds_error = "WARNING: Trying to access out of bounds Data.\n"
 
 #Constructor interface: Data
-proc init*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
+proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 

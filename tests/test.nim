@@ -10,43 +10,43 @@ ins 1, "freq"
 outs 1:
     "sine_out"
 
-#expandMacros:
-struct Phasor[T]:
-    phase : T
-
-#expandMacros:
-struct Something[T, Y]:
-    a : T
-    b : Data[Y]
-    c : Buffer
-
-#expandMacros:
-struct SomeOtherStruct[T, Y]:
-    phasor : Phasor[T]
-    something : Something[T, Y]
-
-#expandMacros:
-struct BuffersWrapper:
-    buf1 : Buffer
-    buf2 : Buffer
-
-#expandMacros:
-def PhasorDefault() => Phasor[float]:
-    return Phasor.init(0.0)
-
-#expandMacros:
-def someProcForPhasor[T](p : Phasor[T]):
-    p.phase = 0.23
+expandMacros:
+    struct Phasor[T]:
+        phase : T
 
 expandMacros:
-    constructor:
-        phasor   = PhasorDefault()
-        something = Something.init(0.0, Data.init(int(samplerate)), Buffer.init(1))
-        someOtherStruct = SomeOtherStruct.init(phasor, something)
-        someData = Data.init(100, 2)
+    struct Something[T, Y]:
+        a : T
+        b : Data[Y]
+        c : Buffer
 
-        someBuffer = Buffer.init(1)
-        someBufferWrapper = BuffersWrapper.init(Buffer.init(1), Buffer.init(1))
+expandMacros:
+    struct SomeOtherStruct[T, Y]:
+        phasor : Phasor[T]
+        something : Something[T, Y]
+
+expandMacros:
+    struct BuffersWrapper:
+        buf1 : Buffer
+        buf2 : Buffer
+
+expandMacros:
+    def PhasorDefault() => Phasor[float]:
+        return Phasor.new(0.0)
+
+expandMacros:
+    def someProcForPhasor[T](p : Phasor[T]):
+        p.phase = 0.23
+
+expandMacros:
+    init:
+        phasor   = PhasorDefault()
+        something = Something.new(0.0, Data.new(int(samplerate)), Buffer.new(1))
+        someOtherStruct = SomeOtherStruct.new(phasor, something)
+        someData = Data.new(100, 2)
+
+        someBuffer = Buffer.new(1)
+        someBufferWrapper = BuffersWrapper.new(Buffer.new(1), Buffer.new(1))
 
         phase = 0.0
 
@@ -60,51 +60,51 @@ expandMacros:
         #print(bufsize, "\n")
         #print(samplerate, "\n")
         
-        #new someBuffer
-        #new phase, phasor, something, someData, someOtherStruct, someBuffer, someBufferWrapper
-        #new:
+        #build someBuffer
+        build phase, phasor, something, someData, someOtherStruct, someBuffer, someBufferWrapper
+        #build:
         #    phase
 
 
-#expandMacros:
-perform:
-    frequency : Signal
-    sine_out  : Signal
+expandMacros:
+    perform:
+        frequency : Signal
+        sine_out  : Signal
 
-    sample:
-        frequency = in1
+        sample:
+            frequency = in1
 
-        freq = 0.6
+            freq = 0.6
 
-        if phase >= 1.0:
-            phase = 0.0
+            if phase >= 1.0:
+                phase = 0.0
+            
+            #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
+            phasor.phase = 2.3
+
+            i1 = 1
+            i2 = 2
         
-        #Can still access the var inside the object, even if named the same as another "var" declared variable (which produces a template with same name)
-        phasor.phase = 2.3
+            somethingArray = something.b
 
-        i1 = 1
-        i2 = 2
-    
-        somethingArray = something.b
+            blabla = someData
 
-        blabla = someData
+            #c = PhasorDefault()
 
-        #c = PhasorDefault()
+            somethingArray[i1] = phase
+            blabla[i1, i2] = phase
+            
+            #Test fuctions aswell
+            someProcForPhasor(phasor)
 
-        somethingArray[i1] = phase
-        blabla[i1, i2] = phase
-        
-        #Test fuctions aswell
-        someProcForPhasor(phasor)
+            #echo ugen.someOtherStruct_let.something.c[0]
 
-        #echo ugen.someOtherStruct_let.something.c[0]
+            sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
+            
+            #This will convert double to float... signal should just be float32 by default. signal64 should be used to assure 64 bits precision.
+            out1 = sine_out
 
-        sine_out = cos(phase * 2 * PI) #phase equals to phase_var[]
-        
-        #This will convert double to float... signal should just be float32 by default. signal64 should be used to assure 64 bits precision.
-        out1 = sine_out
-
-        phase += abs(frequency) / (samplerate - 1) #phase equals to phase_var[]
+            phase += abs(frequency) / (samplerate - 1) #phase equals to phase_var[]
 
 #################
 # TESTING SUITE #

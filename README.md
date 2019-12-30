@@ -1,4 +1,4 @@
-# **omni(m)**
+# **omni**
 
 omni is a DSL for low-level audio programming.
 

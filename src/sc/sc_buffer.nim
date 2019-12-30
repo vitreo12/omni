@@ -68,7 +68,7 @@ proc innerInit*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, uge
         result.sc_world = nil
 
 #Template which also uses the const ugen_inputs, which belongs to the nim dsp new module. It will string substitute Buffer.init(1) with initInner(Buffer, 1, ugen_inputs)
-template init*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S) : untyped =
+template new*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S) : untyped =
     innerInit(Buffer, input_num, ugen_inputs) #ugen_inputs belongs to the scope of the dsp module
 
 proc destructor*(obj : Buffer) : void =

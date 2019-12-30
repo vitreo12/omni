@@ -11,9 +11,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_type_def    = nnkTypeDef.newTree()      #the Phasor = ptr Phasor_obj block
         ptr_ty          = nnkPtrTy.newTree()        #the ptr type expressing ptr Phasor_obj
         
-        init_proc_def        = nnkProcDef.newTree()      #the init* function
-        init_formal_params   = nnkFormalParams.newTree()
-        init_fun_body        = nnkStmtList.newTree()
+        new_proc_def        = nnkProcDef.newTree()      #the init* function
+        new_formal_params   = nnkFormalParams.newTree()
+        new_fun_body        = nnkStmtList.newTree()
 
     obj_ty.add(newEmptyNode())
     obj_ty.add(newEmptyNode())
@@ -56,10 +56,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         )
 
         #The name of the function with the asterisk, in case of supporting modules in the future
-        #Note that init_proc_def for generics has just one newEmptyNode()
-        init_proc_def.add(nnkPostfix.newTree(
+        #Note that new_proc_def for generics has just one newEmptyNode()
+        new_proc_def.add(nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("init")
+                newIdentNode("new")
             ),
             newEmptyNode()
         )
@@ -125,7 +125,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_type_def.add(generics)
 
         #Add generics to proc definition. (proc init*[T : SomeNumber, Y : SomeNumber]...) These will have added the ": SomeNumber" on each generic.
-        init_proc_def.add(generics_proc_def)
+        new_proc_def.add(generics_proc_def)
         
         #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_bracket_expr)
@@ -156,9 +156,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         )
 
         #The name of the function with the asterisk, in case of supporting modules in the future
-        init_proc_def.add(nnkPostfix.newTree(
+        new_proc_def.add(nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("init")
+                newIdentNode("new")
             ),
             newEmptyNode(),
             newEmptyNode()
@@ -224,10 +224,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     ################
     
     #Add Phasor[T, Y] return type
-    init_formal_params.add(ptr_bracket_expr)
+    new_formal_params.add(ptr_bracket_expr)
 
     #Add obj_type : typedesc[Phasor[T, Y]]
-    init_formal_params.add(nnkIdentDefs.newTree(
+    new_formal_params.add(nnkIdentDefs.newTree(
             newIdentNode("obj_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
@@ -245,15 +245,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        init_formal_params.add(new_arg)
+        new_formal_params.add(new_arg)
 
-    init_proc_def.add(init_formal_params)
+    new_proc_def.add(new_formal_params)
 
-    init_proc_def.add(newEmptyNode())
-    init_proc_def.add(newEmptyNode())
+    new_proc_def.add(newEmptyNode())
+    new_proc_def.add(newEmptyNode())
 
     #Cast and rtalloc operators
-    init_fun_body.add(
+    new_fun_body.add(
         nnkAsgn.newTree(
             newIdentNode("result"),
             nnkCast.newTree(
@@ -274,7 +274,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #Add result.phase = phase, etc..
     for index, var_name in var_names:
-        init_fun_body.add(
+        new_fun_body.add(
             nnkAsgn.newTree(
                 nnkDotExpr.newTree(
                     newIdentNode("result"),
@@ -285,10 +285,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         )
     
     #Add the function body to the proc declaration
-    init_proc_def.add(init_fun_body)
+    new_proc_def.add(new_fun_body)
     
     #Add everything to result
-    final_stmt_list.add(init_proc_def)
+    final_stmt_list.add(new_proc_def)
     
     #If using result, it was bugging. Needs to be returned like this to be working properly. don't know why.
     return quote do:

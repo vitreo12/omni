@@ -1,6 +1,6 @@
 version       = "0.1.0"
 author        = "Francesco Cameli"
-description   = "omni(m) is a DSL to code audio algorithms at the lowest level."
+description   = "omni is a DSL for low-level audio programming."
 license       = "MIT"
 
 requires "nim >= 1.0.0"

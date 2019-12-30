@@ -3,11 +3,11 @@ ins 1:
 
 outs 1
 
-constructor:
+init:
     phase = 0.0
     prev_value = 0.0
 
-    #new phase, prev_value
+    #build phase, prev_value
 
 def twoPi():
     return 2.0 * PI

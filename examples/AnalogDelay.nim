@@ -2,17 +2,17 @@ ins 5, "input", "delay_length", "delay_time", "feedback", "damping"
 
 outs 1
 
-constructor:
+init:
     delay_length = int(in2 * samplerate)
     delay_length_pow = nextPowerOfTwo(delay_length)
     delay_mask = delay_length_pow - 1
 
-    delay_data = Data.init(delay_length_pow)
+    delay_data = Data.new(delay_length_pow)
 
     phase = 0
     prev_value = 0.0
 
-    #new delay_length, delay_length_pow, delay_mask, delay_data, phase, prev_value
+    #build delay_length, delay_length_pow, delay_mask, delay_data, phase, prev_value
 
 def linear_interp(a, x1, x2):
     return x1 + (a * (x2 - x1))
