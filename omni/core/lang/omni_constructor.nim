@@ -568,6 +568,16 @@ macro init*(code_block : untyped) : untyped =
 
         parse_block_for_variables(`code_block`, true)
 
+#Equal to init:
+macro initialize*(code_block : untyped) : untyped =
+    return quote do:
+        init(`code_block`)
+
+#Equal to init:
+macro initialise*(code_block : untyped) : untyped =
+    return quote do:
+        init(`code_block`)
+
 #This macro should in theory just work with the "build(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
 #a correct call to "build(a, b)" instead of "build: \n a \n b" or "build a b" by extracting the nnkIdents from the other calls and 
 #building a correct "build(a, b)" syntax out of them.
