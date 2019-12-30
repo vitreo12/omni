@@ -5,6 +5,7 @@ cmake_minimum_required (VERSION 2.8)
 get_filename_component(PROJECT ${FILENAME} NAME_WE)
 message(STATUS "Project name is ${PROJECT}")
 
+#Needed for generic builds. MacOS 10.10 is the minimum.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.10" CACHE STRING "Minimum OS X deployment version")
 
 project (${PROJECT})
@@ -30,10 +31,13 @@ endif()
 option(CPP11 "Build with c++11." ON)
 set (CMAKE_CXX_STANDARD 11)
 
+#Set release build type as default
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+#Set optimizer flags
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -88,6 +92,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANG)
         endif()
     endif()
 endif()
+
+#Windows build. Needs testing.
 if(MINGW)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mstackrealign")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mstackrealign")
@@ -95,8 +101,11 @@ endif()
 
 add_library(${PROJECT} MODULE ${FILENAME})
 
-#Set all proper linker flags
+#Add PIC for better shared lib handling
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
+#Linker flags
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}/lib' -Wl,-rpath,'@loader_path/lib' -l${PROJECT}")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -110,8 +119,11 @@ if(SUPERNOVA)
     set_property(TARGET ${PROJECT}_supernova
                  PROPERTY COMPILE_DEFINITIONS SUPERNOVA)
 
-    #Set all proper linker flags for supernova build
+    #Add PIC for better shared lib handling
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    
+    #Set all proper linker flags for supernova build
     if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}/lib' -Wl,-rpath,'@loader_path/lib' -l${PROJECT}_supernova")
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
