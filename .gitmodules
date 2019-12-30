@@ -1,0 +1,3 @@
+[submodule "omni/deps/supercollider"]
+	path = omni/deps/supercollider
+	url = https://github.com/supercollider/supercollider
