@@ -44,7 +44,7 @@ perform:
 
         #Apply FB and damping
         feedback_value = delay_value * feedback
-        write_value    = input + feedback_value
+        write_value = input + feedback_value
         write_value = ((1.0 - damping) * write_value) + (damping * prev_value)
 
         #Write
