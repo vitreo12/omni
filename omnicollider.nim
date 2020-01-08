@@ -61,8 +61,8 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
         nimFileName[0] = nimFileName[0].toUpperAscii()
 
     #Check file extension
-    if not (nimFileExt == ".nim"):
-        printErrorMsg($nimFileName & " is not a nim file.")
+    if not(nimFileExt == ".omni") and not(nimFileExt == ".oi"):
+        printErrorMsg($fullPath & " is not an omni file.")
         return
 
     let expanded_sc_path = sc_path.expandTilde()

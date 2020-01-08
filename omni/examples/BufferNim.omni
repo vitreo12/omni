@@ -1,5 +1,3 @@
-import omni
-
 ins 2, "bufnum", "speed"
 
 outs 1
