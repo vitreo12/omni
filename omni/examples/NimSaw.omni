@@ -6,15 +6,12 @@ outs 1
 init:
     phase = 0.0
     prev_value = 0.0
-
-    #build phase, prev_value
+    samplerate_minus_one = samplerate - 1.0
 
 def twoPi():
     return 2.0 * PI
 
 perform:
-    samplerate_minus_one = samplerate - 1.0
-
     sample:
         freq = abs(in1)
         if freq == 0.0:
