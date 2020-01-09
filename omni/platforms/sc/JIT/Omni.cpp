@@ -4,7 +4,7 @@
 
 struct Omni : public Unit 
 {
-    void* sine_Omni_obj;
+
 };
 
 static void Omni_next(Omni* unit, int inNumSamples);
