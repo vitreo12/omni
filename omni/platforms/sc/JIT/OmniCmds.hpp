@@ -45,7 +45,7 @@ std::string OmniCollider_folder_path;
 
 std::string compile_cmd;
 
-void retrieve_OmniCollider_dir() 
+void retrieve_Omni_dir() 
 {
     //Get process id and convert it to string
     pid_t server_pid = getpid();
