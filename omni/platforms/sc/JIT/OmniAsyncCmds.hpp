@@ -6,12 +6,7 @@
 #include <sys/stat.h>  //stat
 
 #include "SC_PlugIn.h"
-#include "OmniTypeDefs.hpp"
-
-static InterfaceTable *ft;
-
-//Handle to shared library
-void* dl_handle; 
+#include "GlobalVariables.h"
 
 #ifdef __APPLE__
     const char* find_Omni_directory_cmd = "i=10; complete_string=$(vmmap -w $serverPID | grep -m 1 'Omni.scx'); file_string=$(awk -v var=\"$i\" '{print $var}' <<< \"$complete_string\"); extra_string=${complete_string%$file_string*}; final_string=${complete_string#\"$extra_string\"}; printf \"%s\" \"${final_string//\"Omni.scx\"/}\"";
@@ -19,10 +14,7 @@ void* dl_handle;
     const char* find_Omni_directory_cmd = "i=4; complete_string=$(pmap -p $serverPID | grep -m 1 'Omni.so'); file_string=$(awk -v var=\"$i\" '{print $var}' <<< \"$complete_string\"); extra_string=${complete_string%$file_string*}; final_string=${complete_string#\"$extra_string\"}; printf \"%s\" \"${final_string//\"Omni.so\"/}\"";
 #endif
 
-std::string OmniCollider_folder_path;
-std::string compile_cmd;
-
-void retrieve_Omni_dir() 
+void retrieve_omni_dir() 
 {
     //Get process id and convert it to string
     pid_t server_pid = getpid();
@@ -36,9 +28,9 @@ void retrieve_Omni_dir()
     //run script and get a FILE pointer back to the result of the script (which is what's returned by printf in bash script)
     FILE* pipe = popen(find_Omni_directory_cmd, "r");
     
-    if (!pipe) 
+    if(!pipe) 
     {
-        printf("ERROR: Could not run bash script to find Omni \n");
+        printf("ERROR: Could not run bash script to find omni's folder in SC path \n");
         return;
     }
     
@@ -47,20 +39,26 @@ void retrieve_Omni_dir()
     while(!feof(pipe)) 
     {
         while(fgets(buffer, 2048, pipe) != NULL)
-            OmniCollider_folder_path += buffer;
+            omni_SC_folder_path += buffer;
     }
 
     pclose(pipe);
 
-    printf("*** Omni path: %s \n", OmniCollider_folder_path.c_str());
+    printf("*** omni SC path: %s \n", omni_SC_folder_path.c_str());
 }
 
 inline bool file_exists (const std::string& name) 
 {
-  struct stat buffer;   
-  return (stat (name.c_str(), &buffer) == 0); 
+    struct stat buffer;   
+    return (stat (name.c_str(), &buffer) == 0); 
 }
 
+void DefineOmniCmds()
+{
+    
+}
+
+/*
 bool loadFile(World* inWorld, void* cmd)
 {
     std::string final_path;
@@ -95,7 +93,7 @@ bool loadFile(World* inWorld, void* cmd)
 
     Omni_UGenConstructor = (Omni_UGenConstructor_func*)dlsym(dl_handle, "UGenConstructor");
     Omni_UGenDestructor  = (Omni_UGenDestructor_func*)dlsym(dl_handle, "UGenDestructor");
-    Omni_UGenPerform     = (Omni_UGenPerform_func*)dlsym(dl_handle, "UGenPerform");
+    Omni_UGenPerform     = (Omni_UGenPerform_func*)dlsym(dl_handle, "UGenPerform"); 
 
     //Initialization routines
     init_world((void*)inWorld);
@@ -157,3 +155,4 @@ void DefineOmniCmds()
     DefinePlugInCmd("/load_file", (PlugInCmdFunc)OmniLoadFile, nullptr);
     DefinePlugInCmd("/compile_file", (PlugInCmdFunc)OmniCompileFile, nullptr);
 }
+*/
