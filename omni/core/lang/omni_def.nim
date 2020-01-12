@@ -38,8 +38,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         
         elif function_signature_kind == nnkInfix:
             
-            if function_signature[0].strVal() != "=>":
-                error "def: invalid return operator: \"" & $function_signature[0] & "\". Use \"=>\"."
+            if function_signature[0].strVal() != "->":
+                error "def: invalid return operator: \"" & $function_signature[0] & "\". Use \"->\"."
             
             name_with_args   = function_signature[1]
             proc_return_type = function_signature[2]
