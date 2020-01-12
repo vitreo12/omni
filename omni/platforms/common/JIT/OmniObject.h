@@ -2,15 +2,20 @@
 
 #include <string>
 #include "OmniTypeDefs.h"
+#include "OmniAtomicBarrier.h"
 
 typedef struct OmniObject
 {
+    //Atomic barrier for NRT / RT recompilation of same OmniDef... 
+    //This needs a different thinking with supernova, as this should just be locked once per buffer cycle on the RT thread
+    AtomicBarrier_t barrier;
+
     //Path to .omni file
     std::string path;
 
     //States
-    bool compiled; //Should be atomic for supernova
-    bool being_replaced; //Should be atomic for supernova
+    bool compiled;
+    bool being_replaced;
 
     //Infos about object
     std::string name;

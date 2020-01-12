@@ -10,8 +10,10 @@ bool OmniObjectCompiler::unload_omni_object(OmniObject* omni_object)
     return true;
 }
 
-void OmniObjectCompiler::null_omni_object(OmniObject* omni_object)
+void OmniObjectCompiler::init_omni_object(OmniObject* omni_object)
 {
+    omni_object->barrier.state.store(false);
+
     if(!omni_object->path.empty()) //If not empty, clear content.
         omni_object->path.clear();
     

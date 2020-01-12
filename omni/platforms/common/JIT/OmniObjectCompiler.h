@@ -19,5 +19,5 @@ class OmniObjectCompiler
     private:
         const char* compile_cmd;
 
-        void null_omni_object(OmniObject* omni_object);
+        void init_omni_object(OmniObject* omni_object);
 };

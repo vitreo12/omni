@@ -1,5 +1,3 @@
-#include "SC_PlugIn.h"
-
 #include "OmniAsyncCmds.hpp"
 
 struct Omni : public Unit 
@@ -39,9 +37,17 @@ PluginLoad(OmniUGens)
 {
     ft = inTable; 
 
-    retrieve_omni_dir();
+    omni_boot();
+
+    omni_utilities->retrieve_omni_dir();
     
     DefineOmniCmds();
 
     DefineDtorUnit(Omni);
+}
+
+/* Register an unload function on server quit */
+C_LINKAGE SC_API_EXPORT void unload(InterfaceTable *inTable)
+{
+    omni_quit();
 }

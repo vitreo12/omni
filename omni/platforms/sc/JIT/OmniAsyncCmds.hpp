@@ -1,61 +1,49 @@
 #pragma once
 
-#include <dlfcn.h>     //dlopen, dlclose, etc...
-#include <string>      //std::string
-#include <unistd.h>    //getpid
-#include <sys/stat.h>  //stat
-
 #include "SC_PlugIn.h"
 #include "GlobalVariables.h"
 
-#ifdef __APPLE__
-    const char* find_Omni_directory_cmd = "i=10; complete_string=$(vmmap -w $serverPID | grep -m 1 'Omni.scx'); file_string=$(awk -v var=\"$i\" '{print $var}' <<< \"$complete_string\"); extra_string=${complete_string%$file_string*}; final_string=${complete_string#\"$extra_string\"}; printf \"%s\" \"${final_string//\"Omni.scx\"/}\"";
-#elif __linux__
-    const char* find_Omni_directory_cmd = "i=4; complete_string=$(pmap -p $serverPID | grep -m 1 'Omni.so'); file_string=$(awk -v var=\"$i\" '{print $var}' <<< \"$complete_string\"); extra_string=${complete_string%$file_string*}; final_string=${complete_string#\"$extra_string\"}; printf \"%s\" \"${final_string//\"Omni.so\"/}\"";
-#endif
-
-void retrieve_omni_dir() 
+bool CompileFile(World* inWorld, void* cmd)
 {
-    //Get process id and convert it to string
-    pid_t server_pid = getpid();
-    const char* server_pid_string = (std::to_string(server_pid)).c_str();
-
-    printf("PID: %i\n", server_pid);
-
-    //Set the serverPID enviromental variable, used in the "find_Omni_directory_cmd" bash script
-    setenv("serverPID", server_pid_string, 1);
-
-    //run script and get a FILE pointer back to the result of the script (which is what's returned by printf in bash script)
-    FILE* pipe = popen(find_Omni_directory_cmd, "r");
-    
-    if(!pipe) 
-    {
-        printf("ERROR: Could not run bash script to find omni's folder in SC path \n");
-        return;
-    }
-    
-    //Maximum of 2048 characters.. It should be enough
-    char buffer[2048];
-    while(!feof(pipe)) 
-    {
-        while(fgets(buffer, 2048, pipe) != NULL)
-            omni_SC_folder_path += buffer;
-    }
-
-    pclose(pipe);
-
-    printf("*** omni SC path: %s \n", omni_SC_folder_path.c_str());
+    return true;
 }
 
-inline bool file_exists (const std::string& name) 
+void CompileFileCleanup(World* inWorld, void* cmd) {}
+
+void OmniCompileFile(World *inWorld, void* inUserData, struct sc_msg_iter *args, void *replyAddr)
 {
-    struct stat buffer;   
-    return (stat (name.c_str(), &buffer) == 0); 
+    DoAsynchronousCommand(inWorld, replyAddr, nullptr, nullptr, (AsyncStageFn)CompileFile, 0, 0, CompileFileCleanup, 0, nullptr);
 }
 
 void DefineOmniCmds()
 {
+    DefinePlugInCmd("/omni_compile_file", (PlugInCmdFunc)OmniCompileFile, nullptr);
     
+    //To be added:
+    DefinePlugInCmd("/omni_free_def", nullptr, nullptr);
+    DefinePlugInCmd("/omni_get_objects_list", nullptr, nullptr);
+    DefinePlugInCmd("/omni_get_object_by_name", nullptr, nullptr);
+}
+
+
+/*************************/
+/* Init / Quit functions */
+/*************************/
+
+//Allocate global variables needed for runtime
+void omni_boot()
+{
+    omni_objects_array = new OmniObjectsArray_SC;
+    omni_utilities = new OmniUtilities_SC;
+}
+
+//Deallocate global variables
+void omni_quit()
+{
+    printf("***Quitting omni...\n");
+    
+    delete omni_objects_array;
+    delete omni_utilities;
 }
 
 /*
