@@ -31,7 +31,7 @@ expandMacros:
         buf2 : Buffer
 
 expandMacros:
-    def PhasorDefault() => Phasor[float]:
+    def PhasorDefault() -> Phasor[float]:
         return Phasor.new(0.0)
 
 expandMacros:
@@ -40,7 +40,7 @@ expandMacros:
 
 expandMacros:
     init:
-        phasor   = PhasorDefault()
+        phasor   = Phasor.new(0.0)
         something = Something.new(0.0, Data.new(int(samplerate)), Buffer.new(1))
         someOtherStruct = SomeOtherStruct.new(phasor, something)
         someData = Data.new(100, 2)
@@ -61,7 +61,7 @@ expandMacros:
         #print(samplerate, "\n")
         
         #build someBuffer
-        build phase, phasor, something, someData, someOtherStruct, someBuffer, someBufferWrapper
+        #build phase, phasor, something, someData, someOtherStruct, someBuffer, someBufferWrapper
         #build:
         #    phase
 

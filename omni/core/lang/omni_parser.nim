@@ -450,8 +450,12 @@ proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_t
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
 macro parse_block_for_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
-    #Extract the body of the block:. [0] is an emptynode
+    #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
+
+    #And also wrap it in a StmtList (if it wasn't a StmtList already)
+    if inner_block.kind != nnkStmtList:
+        inner_block = nnkStmtList.newTree(inner_block)
 
     #These are the values extracted from ugen. and general templates. They must be ignored, and their "var" / "let" statement status should be removed
     var templates_to_ignore = newTable[string, string]()
