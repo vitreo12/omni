@@ -172,17 +172,38 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_bracket_expr = ptr_name
 
     for code_stmt in code_block:
-        #Have some better error checking and printing here
-        if code_stmt.len != 2 or code_stmt.kind != nnkCall or code_stmt[0].kind != nnkIdent or code_stmt[1].kind != nnkStmtList or code_stmt[1][0].kind != nnkIdent:
-            
-            #Needed for generics in body of struct
-            if code_stmt[1][0].kind != nnkBracketExpr:
-                error("\"" & $ptr_name & "\": " & "Invalid struct body")
-        
+        let code_stmt_kind = code_stmt.kind
+
         var 
+            var_name : NimNode
+            var_type : NimNode
+            new_decl = nnkIdentDefs.newTree()
+
+        #phase float
+        if code_stmt_kind == nnkCommand:
+            assert code_stmt.len == 2
+            assert code_stmt[0].kind == nnkIdent
+            
+            #This is needed for generics!
+            if code_stmt[1].kind != nnkIdent:
+                if code_stmt[1].kind != nnkBracketExpr:
+                    error("\"" & $ptr_name & "\": " & "Invalid struct body")
+
+            var_name = code_stmt[0]
+            var_type = code_stmt[1]
+
+        #phase : float
+        elif code_stmt_kind == nnkCall:
+            
+            #Have some better error checking and printing here
+            if code_stmt.len != 2 or code_stmt[0].kind != nnkIdent or code_stmt[1].kind != nnkStmtList or code_stmt[1][0].kind != nnkIdent:
+
+                #Needed for generics in body of struct
+                if code_stmt[1][0].kind != nnkBracketExpr:
+                    error("\"" & $ptr_name & "\": " & "Invalid struct body")
+        
             var_name = code_stmt[0]
             var_type = code_stmt[1][0]
-            new_decl = nnkIdentDefs.newTree()
 
         var_names.add(var_name)
         var_types.add(var_type)

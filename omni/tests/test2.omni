@@ -1,22 +1,25 @@
 import macros
 import ../../omni
 
-#expandMacros:
-struct Phasor:
-    phase : float
+expandMacros:
+    struct Dummy[T]:
+        a T
+
+    struct Phasor[T]:
+        phase : float
+        phase2 Dummy[T]
 
 expandMacros:
-    def newPhasor():
-        a : float = 0.5
-        b float = 0.5
-        return Phasor.new(0.0)
+    def newPhasor(a float = 2.3, b = 0, c = 0, d float, e):
+        y float
+        return Phasor.new(y, Dummy.new(a))
 
 ins 1
 outs 1
 
 expandMacros:
     init:
-        phasor = Phasor.new(0.0)
+        phasor = newPhasor(d = 0.2, e = false)
 
 expandMacros:
     perform:

@@ -14,7 +14,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 newIdentNode("parse_block_for_variables"),
                 code_block
             )
-        )    
+        )   
     
     let function_signature_kind = function_signature.kind
 
@@ -23,14 +23,10 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         var name_with_args : NimNode
 
         #Missing the return type entirely OR not providing any infos at all.
-        #Defaults to returning (auto | void). This allows void for no return specified.
+        #Defaults to returning auto. This also allows void for no return specified.
         if function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall:
             name_with_args = function_signature
-            proc_return_type = nnkInfix.newTree(
-                newIdentNode("|"),
-                newIdentNode("auto"),
-                newIdentNode("void")
-            )
+            proc_return_type = newIdentNode("auto")
         
         elif function_signature_kind == nnkCommand:
             name_with_args   = function_signature[0]
@@ -79,8 +75,62 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             var new_arg : NimNode
 
+            let statement_kind = statement.kind
+
+            #a float = 0.5 -> a : float = 0.5 / a = 0.5 -> a : auto = 0.5
+            if statement_kind == nnkExprEqExpr:                
+                assert statement.len == 2
+
+                var 
+                    arg_name : NimNode
+                    arg_type : NimNode
+                    arg_value : NimNode
+
+                #a float = 0.5
+                if statement[0].kind == nnkCommand:
+                    assert statement[0].len == 2
+                    
+                    arg_name = statement[0][0]
+                    arg_type = statement[0][1]
+                
+                #a = 0.5
+                else:
+                    arg_name = statement[0]
+                    arg_type = newIdentNode("auto")
+                
+                arg_value = statement[1]
+
+                new_arg = nnkIdentDefs.newTree(
+                    arg_name,
+                    arg_type,
+                    arg_value
+                )
+            
+            #a float -> a : float
+            elif statement_kind == nnkCommand:
+                
+                assert statement.len == 2
+
+                new_arg = nnkIdentDefs.newTree(
+                    statement[0],
+                    statement[1],
+                    newEmptyNode()
+                )
+            
+            #a -> a : auto
+            elif statement_kind == nnkIdent:
+                new_arg = nnkIdentDefs.newTree(
+                    statement,
+                    newIdentNode("auto"),
+                    newEmptyNode()
+                )
+
+            else:
+                error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
+
+            #[
             #Not specified kind, defaults to auto: def sine(a) -> proc sine(a : auto)
-            if statement.kind != nnkExprColonExpr:
+            elif statement_kind != nnkExprColonExpr:
 
                 #def sine(a)
                 if statement.len == 0:
@@ -89,7 +139,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                         newIdentNode("auto"),
                         newEmptyNode()
                     )
-
+                
+                #[
                 #def sine(a 0.0):
                 elif statement.len == 2:
                     new_arg = nnkIdentDefs.newTree(
@@ -97,6 +148,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                         newIdentNode("auto"),
                         statement[1]
                     )
+                ]#
             
             #def sin(a : float)
             else:
@@ -119,6 +171,9 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                         arg_type,
                         newEmptyNode()
                     )
+            ]#
+                    
+            #echo astGenRepr new_arg
 
             proc_formal_params.add(new_arg)
                 
