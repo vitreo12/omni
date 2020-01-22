@@ -1,0 +1,31 @@
+import macros
+import ../../omni
+
+expandMacros:
+    struct Dummy[T]:
+        a T
+
+    struct Phasor[T]:
+        phase : float
+        phase2 Dummy[T]
+
+expandMacros:
+    def newPhasor(a float = 2.3, b = 0, c = 0, d float, e):
+        y float
+        return Phasor.new(y, Dummy.new(a))
+
+ins 1
+outs 1
+
+expandMacros:
+    init:
+        phasor = newPhasor(d = 0.2, e = false)
+
+expandMacros:
+    perform:
+        increment = in1 / samplerate
+        
+        sample:
+            out1 = phasor.phase
+            phasor.phase += increment
+            phasor.phase = phasor.phase mod 1.0
