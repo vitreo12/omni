@@ -16,8 +16,8 @@ omni is a DSL for low-level audio programming.
 
 If you have the .nimble folder in your path, run this:
 
-    omnicollider ~/.nimble/pkgs/omni-0.1.0/omni/examples/NimSaw.omni -s=true
+    omnicollider ~/.nimble/pkgs/omni-0.1.0/omni/examples/OmniSaw.omni -s=true
 
 Otherwise
 
-     ~/.nimble/bin/omnicollider ~/.nimble/pkgs/omni-0.1.0/omni/examples/NimSaw.omni -s=true
+     ~/.nimble/bin/omnicollider ~/.nimble/pkgs/omni-0.1.0/omni/examples/OmniSaw.omni -s=true

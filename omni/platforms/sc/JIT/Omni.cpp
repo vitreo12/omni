@@ -1,10 +1,8 @@
-#include "SC_PlugIn.h"
-
-#include "OmniCmds.hpp"
+#include "OmniAsyncCmds.hpp"
 
 struct Omni : public Unit 
 {
-    void* sine_Omni_obj;
+
 };
 
 static void Omni_next(Omni* unit, int inNumSamples);
@@ -13,36 +11,25 @@ static void Omni_Dtor(Omni* unit);
 
 void Omni_Ctor(Omni* unit) 
 {
-    if(Omni_UGenConstructor)
-        unit->sine_Omni_obj = (void*)Omni_UGenConstructor(unit->mInBuf);
-    else
-    {
-        Print("ERROR: No libsine.so/dylib loaded\n");
-        unit->sine_Omni_obj = nullptr;
-    }
 
-    SETCALC(Omni_next);
-    
-    Omni_next(unit, 1);
 }
 
 void Omni_Dtor(Omni* unit) 
 {
-    if(unit->sine_Omni_obj)
-        Omni_UGenDestructor(unit->sine_Omni_obj);
+   
 }
 
 void Omni_next(Omni* unit, int inNumSamples) 
 {
-    if(unit->sine_Omni_obj)
-        Omni_UGenPerform(unit->sine_Omni_obj, inNumSamples, unit->mInBuf, unit->mOutBuf);
-    else
+
+}
+
+inline void output_silence(Omni* unit, int inNumSamples)
+{
+    for(int i = 0; i < unit->mNumOutputs; i++)
     {
-        for(int i = 0; i < unit->mNumOutputs; i++)
-        {
-            for(int y = 0; y < inNumSamples; y++)
-                unit->mOutBuf[i][y] = 0.0f;
-        }
+        for (int y = 0; y < inNumSamples; y++) 
+            OUT(i)[y] = 0.0f;
     }
 }
 
@@ -50,8 +37,17 @@ PluginLoad(OmniUGens)
 {
     ft = inTable; 
 
-    retrieve_OmniCollider_dir();
+    omni_boot();
+
+    omni_utilities->retrieve_omni_dir();
     
     DefineOmniCmds();
+
     DefineDtorUnit(Omni);
+}
+
+/* Register an unload function on server quit */
+C_LINKAGE SC_API_EXPORT void unload(InterfaceTable *inTable)
+{
+    omni_quit();
 }
