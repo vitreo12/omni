@@ -60,15 +60,14 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     if statement[0].strVal() == "build":
                         error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
 
-
-            #a : float or a = 0.5
+            #a : float or a = 0.5 or a float = 0.5
             if statement_kind == nnkCall or statement_kind == nnkAsgn:
 
                 if statement.len < 2:
                     continue
 
-                let var_ident = statement[0]
-                let var_misc  = statement[1]
+                var var_ident = statement[0]
+                var var_misc  = statement[1]
 
                 let var_ident_kind = var_ident.kind
 
@@ -80,6 +79,18 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 if var_ident_kind == nnkBracketExpr:
                     continue
 
+                #a float = 0.5
+                #[
+                if var_ident_kind == nnkCommand:
+                    var_ident = var_ident[0]
+                    var_misc = nnkStmtList.newTree(
+                        nnkAsgn.newTree(
+                            statement[0][1],
+                            statement[1]
+                        )
+                    )
+                ]#
+
                 let var_name = var_ident.strVal
 
                 #If already there is an entry, skip. Keep the first found one.
@@ -88,6 +99,12 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 
                 #And modify source code with the ident node
                 var new_var_statement : NimNode
+
+
+                #[ echo astGenRepr statement
+                echo astGenRepr var_ident
+                echo astGenRepr var_misc
+                echo "" ]#
 
                 #a : float or a : float = 0.0
                 if statement_kind == nnkCall:
@@ -155,7 +172,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                         )
             
                 #a = 0.0
-                else:
+                elif statement_kind == nnkAsgn:
                     let default_value = var_misc
 
                     #WHEN statement for perform block:
@@ -201,6 +218,11 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                             )
                         )
                     )
+
+                #a float = 0.5
+                else:
+                    echo astGenRepr statement
+                
                 
                 #Add var decl to code_block only if something actually has been assigned to it
                 #If using a template (like out1 in sample), new_var_statement would be nil here

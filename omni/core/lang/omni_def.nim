@@ -23,12 +23,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         var name_with_args : NimNode
 
         #Missing the return type entirely OR not providing any infos at all.
-        #Defaults to returning (float | void). This allows void for no return specified.
+        #Defaults to returning (auto | void). This allows void for no return specified.
         if function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall:
             name_with_args = function_signature
             proc_return_type = nnkInfix.newTree(
                 newIdentNode("|"),
-                newIdentNode("SomeNumber"),
+                newIdentNode("auto"),
                 newIdentNode("void")
             )
         
@@ -79,14 +79,14 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             var new_arg : NimNode
 
-            #Not specified kind, defaults to SomeNumber: def sine(a) OR def sine(a 0.0)
+            #Not specified kind, defaults to auto: def sine(a) -> proc sine(a : auto)
             if statement.kind != nnkExprColonExpr:
 
                 #def sine(a)
                 if statement.len == 0:
                     new_arg = nnkIdentDefs.newTree(
                         statement,
-                        newIdentNode("SomeNumber"),
+                        newIdentNode("auto"),
                         newEmptyNode()
                     )
 
@@ -94,7 +94,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 elif statement.len == 2:
                     new_arg = nnkIdentDefs.newTree(
                         statement[0],
-                        newIdentNode("SomeNumber"),
+                        newIdentNode("auto"),
                         statement[1]
                     )
             
