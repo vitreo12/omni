@@ -77,7 +77,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
             let statement_kind = statement.kind
 
-            #a float = 0.5 -> a : float = 0.5 / a = 0.5 -> a : auto = 0.5
+            #float a = 0.5 -> a : float = 0.5 / a = 0.5 -> a : auto = 0.5
             if statement_kind == nnkExprEqExpr:                
                 assert statement.len == 2
 
@@ -86,12 +86,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                     arg_type : NimNode
                     arg_value : NimNode
 
-                #a float = 0.5
+                #float a = 0.5
                 if statement[0].kind == nnkCommand:
                     assert statement[0].len == 2
                     
-                    arg_name = statement[0][0]
-                    arg_type = statement[0][1]
+                    arg_name = statement[0][1]
+                    arg_type = statement[0][0]
                 
                 #a = 0.5
                 else:
@@ -106,14 +106,14 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                     arg_value
                 )
             
-            #a float -> a : float
+            #float a -> a : float
             elif statement_kind == nnkCommand:
                 
                 assert statement.len == 2
 
                 new_arg = nnkIdentDefs.newTree(
-                    statement[0],
                     statement[1],
+                    statement[0],
                     newEmptyNode()
                 )
             
