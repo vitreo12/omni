@@ -201,7 +201,9 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
             multiNew_string.add(",")
             for index, input_name in input_names:
 
-                arg_rates.add("if(" & $input_name & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument " & $input_name & " must be audio rate\").warn; ^Silent.ar; });\n\t\t")
+                #This duplication is not good at all. Find a neater way.
+                arg_rates.add("if(" & $input_name & ".class == Buffer, { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument " & $input_name & " must be audio rate. Wrap it in a DC.ar UGen\").warn; ^Silent.ar; });\n\t\t")
+                arg_rates.add("if(" & $input_name & ".rate != 'audio', { ((this.class).asString.replace(\"Meta_\", \"\") ++ \": argument " & $input_name & " must be audio rate. Wrap it in a DC.ar UGen.\").warn; ^Silent.ar; });\n\t\t")
 
                 if index == num_inputs - 1:
                     arg_string.add($input_name & ";")
