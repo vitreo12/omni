@@ -21,7 +21,7 @@ extern "C"
 
             if(!buf->data)
             {
-                printf("WARNING: Nim: Invalid buffer: %d\n", bufnum);
+                printf("WARNING: Omni: Invalid buffer: %d\n", bufnum);
                 return nullptr;
             }
 
@@ -39,7 +39,7 @@ extern "C"
         }
         else
         {
-            printf("WARNING: Nim: local buffers are not yet supported \n");
+            printf("WARNING: Omni: local buffers are not yet supported \n");
             return nullptr;
         
             /* int localBufNum = bufnum - SCWorld->mNumSndBufs; 
@@ -80,7 +80,7 @@ extern "C"
                     
             long actual_index = (index * snd_buf->channels) + channel; //Interleaved data
             
-            if(index && (actual_index < snd_buf->samples))
+            if(index >= 0 && (actual_index < snd_buf->samples))
                 return snd_buf->data[actual_index];
         }
         
@@ -97,7 +97,7 @@ extern "C"
             
             long actual_index = (index * snd_buf->channels) + channel; //Interleaved data
             
-            if(index && (actual_index < snd_buf->samples))
+            if(index >= 0 && (actual_index < snd_buf->samples))
             {
                 snd_buf->data[actual_index] = value;
                 return;
