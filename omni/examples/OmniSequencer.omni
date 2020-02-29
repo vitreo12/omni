@@ -1,0 +1,26 @@
+ins 2:
+    "trigger"
+    "seqBuffer"
+
+outs 1
+
+init:
+    seqBuffer = Buffer.new(input_num = 2)
+    bufPosition = -1
+    outVal = 0.0
+
+    prevInVal = 0.0
+
+perform:
+    sample:
+        trig = in1
+        
+        #Transition
+        if prevInVal - trig >= 0.9: 
+            bufPosition += 1
+            bufPosition = bufPosition mod seqBuffer.len()
+            outVal = seqBuffer[bufPosition]
+
+        out1 = outVal
+
+        prevInVal = trig
