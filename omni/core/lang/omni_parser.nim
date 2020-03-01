@@ -1,4 +1,4 @@
-import macros, tables
+import macros, tables, strutils
 
 #Node replacement for sample block
 proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
@@ -362,14 +362,14 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_for_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_for_consts_and_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
 
 
 #========================================================================================================================================================#
 # EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
 #========================================================================================================================================================#
 
-proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_to_ignore : TableRef[string, string], is_perform_block : bool = false) : void {.compileTime.} =  
+proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, templates_to_ignore : TableRef[string, string], is_perform_block : bool = false) : void {.compileTime.} =  
     #Look inside the typed block, which contains info about types, etc...
     for index, typed_statement in typed_code_block.pairs():
         let typed_statement_kind = typed_statement.kind
@@ -424,8 +424,7 @@ proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_t
         if typed_statement_kind == nnkVarSection:
             let var_symbol = typed_statement[0][0]
             let var_type   = var_symbol.getTypeInst().getTypeImpl()
-
-            #let var_name = var_symbol.strVal()
+            let var_name   = var_symbol.strVal()
 
             #Look for templates to ignore
             #[ 
@@ -441,6 +440,19 @@ proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_t
                     typed_statement[0][2]
                 ) 
             ]#
+
+            #Look for consts: capital letters.
+            #isUpperAscii is deprecated from nim >= 0.2. build your own.
+            if var_name.isUpperAscii(true):
+                let old_statement_body = typed_code_block[index][0]
+
+                #Create new let statement
+                let new_let_statement = nnkLetSection.newTree(
+                    old_statement_body
+                )
+
+                #Replace the entry in the untyped block, which has yet to be semantically evaluated.
+                typed_code_block[index] = new_let_statement
 
             #Look for ptr types
             if var_type.kind == nnkPtrTy:
@@ -478,10 +490,10 @@ proc parse_block_recursively_for_structs(typed_code_block : NimNode, templates_t
                     typed_code_block[index] = new_let_statement
         
         #Run function recursively
-        parse_block_recursively_for_structs(typed_statement, templates_to_ignore, is_perform_block)
+        parse_block_recursively_for_consts_and_structs(typed_statement, templates_to_ignore, is_perform_block)
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_for_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -499,7 +511,7 @@ macro parse_block_for_structs*(typed_code_block : typed, build_statement : untyp
     #echo astGenRepr inner_block
     #echo repr inner_block
 
-    parse_block_recursively_for_structs(inner_block, templates_to_ignore, is_perform_block)
+    parse_block_recursively_for_consts_and_structs(inner_block, templates_to_ignore, is_perform_block)
     
     #Dirty way of turning a typed block of code into an untyped:
     #Basically, what's needed is to turn all newSymNode into newIdentNode.
