@@ -280,7 +280,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             nnkCast.newTree(
                 ptr_bracket_expr,
                 nnkCall.newTree(
-                        newIdentNode("rt_alloc"),
+                        newIdentNode("omni_alloc"),
                         nnkCast.newTree(
                             newIdentNode("culong"),
                                 nnkCall.newTree(

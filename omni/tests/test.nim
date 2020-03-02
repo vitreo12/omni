@@ -137,14 +137,14 @@ for i in 0 .. 511:
 ins_ptr[0]  = in_ptr1
 outs_ptr[0] = out_ptr1
 
-var ugen = UGenConstructor(ins_ptr_SC, 512, 48000.0)
+var ugen = OmniConstructor(ins_ptr_SC, 512, 48000.0)
 
-UGenPerform(ugen, cast[cint](512), ins_ptr_SC, outs_ptr_SC)
+OmniPerform(ugen, cast[cint](512), ins_ptr_SC, outs_ptr_SC)
 
 dealloc(ins_ptr_void)
 dealloc(in_ptr1_void)
 dealloc(outs_ptr_void)
 dealloc(out_ptr1_void)
 
-UGenDestructor(ugen)
+OmniDestructor(ugen)
 ]#

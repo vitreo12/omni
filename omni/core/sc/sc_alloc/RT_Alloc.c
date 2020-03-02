@@ -55,15 +55,16 @@ void init_alloc_function_pointers(RTAlloc_ptr* In_RTAlloc, RTRealloc_ptr* In_RTR
     RTFree    = In_RTFree;
 }
 
-void* rt_alloc(size_t inSize)
+void* rt_alloc_SC(size_t inSize)
 {
-    printf("Calling rt_alloc with size: %d\n", inSize);
+    printf("Calling rt_alloc_SC with size: %d\n", inSize);
     return RTAlloc(SCWorld, inSize);
 }
 
-void* rt_alloc0(size_t inSize)
+void* rt_alloc0_SC(size_t inSize)
 {
-    printf("Calling rt_alloc0 with size: %d\n", inSize);
+    printf("Calling rt_alloc0_SC with size: %d\n", inSize);
+    
     void* memory = RTAlloc(SCWorld, inSize);
     if(memory)
         memset(memory, 0, inSize);
@@ -71,14 +72,14 @@ void* rt_alloc0(size_t inSize)
     return memory;
 }
 
-void* rt_realloc(void* inPtr, size_t inSize) 
+void* rt_realloc_SC(void* inPtr, size_t inSize) 
 {
-    printf("Calling rt_realloc\n");
+    printf("Calling rt_realloc_SC with size %d\n", inSize);
     return RTRealloc(SCWorld, inPtr, inSize);
 }
 
-void rt_free(void* inPtr)
+void rt_free_SC(void* inPtr)
 {
-    printf("Calling rt_free\n");
+    printf("Calling rt_free_SC\n");
     RTFree(SCWorld, inPtr);
 }

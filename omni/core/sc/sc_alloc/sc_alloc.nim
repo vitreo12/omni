@@ -20,87 +20,39 @@ proc print_world*() : void {.importc, cdecl.}
 #uses the standard allocation when -d:supercollider is not defined.
 
 #RTAlloc wrapper
-proc rt_alloc_SC*(inSize : culong) : pointer {.importc: "rt_alloc", cdecl.}
+proc rt_alloc_SC*(inSize : culong) : pointer {.importc, cdecl.}
 
-#Should only be called from Data, which already checks for < 0 stuff. So this is faster.
-proc rt_alloc*(inSize : culong) : pointer =
+#Should only be called from Data and alloc of objects, which already checks for < 0 stuff. So this is faster.
+proc omni_alloc*(inSize : culong) : pointer =
     when defined(supercollider):
-        return rt_alloc_SC((inSize))
+        return rt_alloc_SC(inSize)
     else:
         return alloc(inSize)
 
-#[
-proc rt_alloc*[N : SomeInteger](inSize : N) : pointer =
-    var size : culong
-    
-    if inSize < 0:
-        print(negative_alloc)
-        size = 0
-    else:
-        size = cast[culong](inSize)
-
-    when defined(supercollider):
-        return rt_alloc_SC(size)
-    else:
-        return alloc(size)
-]#
-
 #RTAlloc with 0 memory initialization
-proc rt_alloc0_SC*(inSize : culong) : pointer {.importc: "rt_alloc0", cdecl.}
+proc rt_alloc0_SC*(inSize : culong) : pointer {.importc, cdecl.}
 
 #Should only be called from Data, which already checks for < 0 stuff. So this is faster.
-proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
+proc omni_alloc0*[N : SomeInteger](inSize : N) : pointer =
     when defined(supercollider):
         return rt_alloc0_SC(inSize)
     else:
         return alloc0(inSize)
 
-#[
-proc rt_alloc0*[N : SomeInteger](inSize : N) : pointer =
-    var size : culong
-    
-    if inSize < 0:
-        print(negative_alloc)
-        size = 0
-    else:
-        size = cast[culong](inSize)
-
-    when defined(supercollider):
-        return rt_alloc0_SC(size)
-    else:
-        return alloc0(size)
-]#
-
 #RTRealloc
-proc rt_realloc_SC*(inPtr : pointer, inSize : culong) : pointer {.importc: "rt_realloc", cdecl.}
+proc rt_realloc_SC*(inPtr : pointer, inSize : culong) : pointer {.importc, cdecl.}
 
 #Should only be called from Data, which already checks for < 0 stuff. So this is faster.
-proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
+proc omni_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
     when defined(supercollider):
         return rt_realloc_SC(inPtr, inSize)
     else:
         return realloc(inPtr, inSize)
 
-#[
-proc rt_realloc*[N : SomeInteger](inPtr : pointer, inSize : N) : pointer =
-    var size : culong
-    
-    if inSize < 0:
-        print(negative_alloc)
-        size = 0
-    else:
-        size = cast[culong](inSize)
-
-    when defined(supercollider):
-        return rt_realloc_SC(inPtr, size)
-    else:
-        return realloc(inPtr, size)
-]#
-
 #RTFree wrapper
-proc rt_free_SC*(inPtr : pointer) : void {.importc: "rt_free", cdecl.}
+proc rt_free_SC*(inPtr : pointer) : void {.importc, cdecl.}
 
-proc rt_free*(inPtr : pointer) : void =
+proc omni_free*(inPtr : pointer) : void =
     when defined(supercollider):
         rt_free_SC(inPtr)
     else:

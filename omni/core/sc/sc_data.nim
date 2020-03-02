@@ -49,14 +49,14 @@ proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S 
         size_data_obj = sizeof(Data_obj[dataType])
 
     #Actual object, assigned to result
-    result = cast[Data[dataType]](rt_alloc(cast[C_size_t](size_data_obj)))
+    result = cast[Data[dataType]](omni_alloc(cast[C_size_t](size_data_obj)))
     
     #Data of the object (the array)
     let 
         size_data_type_uint    = uint(sizeof(dataType))
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
-        data                   = cast[ArrayPtr[dataType]](rt_alloc0(cast[C_size_t](total_size_uint)))
+        data                   = cast[ArrayPtr[dataType]](omni_alloc0(cast[C_size_t](total_size_uint)))
     
     #Fill the object layout
     result.data         = data
@@ -72,8 +72,8 @@ proc destructor*[T](obj : Data[T]) : void =
         obj_void  = cast[pointer](obj)
         data_void = cast[pointer](obj.data)
 
-    rt_free(data_void)     #dealloc the data
-    rt_free(obj_void)      #dealloc actual object
+    omni_free(data_void)     #dealloc the data
+    omni_free(obj_void)      #dealloc actual object
    
 
 ##########

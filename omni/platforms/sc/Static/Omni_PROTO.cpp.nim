@@ -32,9 +32,9 @@ extern "C"
     extern void   init_alloc_function_pointers(RTAlloc_ptr* In_RTAlloc, RTRealloc_ptr* In_RTRealloc, RTFree_ptr* In_RTFree);
 
     //Nim module functions
-    extern void* UGenConstructor(float** ins_SC, int bufsize, double samplerate);
-    extern void  UGenDestructor(void* obj_void);
-    extern void  UGenPerform(void* ugen_void, int buf_size, float** ins_SC, float** outs_SC);
+    extern void* OmniConstructor(float** ins_SC, int bufsize, double samplerate);
+    extern void  OmniDestructor(void* obj_void);
+    extern void  OmniPerform(void* ugen_void, int buf_size, float** ins_SC, float** outs_SC);
 }
 
 //struct
@@ -76,8 +76,8 @@ void Omni_PROTO_Ctor(Omni_PROTO* unit)
         has_init_world.clear(std::memory_order_release); 
     }
 
-    if(&UGenConstructor && &init_world && &init_alloc_function_pointers)
-        unit->Nim_obj = (void*)UGenConstructor(unit->mInBuf, unit->mWorld->mBufLength, unit->mWorld->mSampleRate);
+    if(&OmniConstructor && &init_world && &init_alloc_function_pointers)
+        unit->Nim_obj = (void*)OmniConstructor(unit->mInBuf, unit->mWorld->mBufLength, unit->mWorld->mSampleRate);
     else
     {
         Print("ERROR: No %s.%s loaded\n", NAME, EXTENSION);
@@ -92,13 +92,13 @@ void Omni_PROTO_Ctor(Omni_PROTO* unit)
 void Omni_PROTO_Dtor(Omni_PROTO* unit) 
 {
     if(unit->Nim_obj)
-        UGenDestructor(unit->Nim_obj);
+        OmniDestructor(unit->Nim_obj);
 }
 
 void Omni_PROTO_next(Omni_PROTO* unit, int inNumSamples) 
 {
     if(unit->Nim_obj)
-        UGenPerform(unit->Nim_obj, inNumSamples, unit->mInBuf, unit->mOutBuf);
+        OmniPerform(unit->Nim_obj, inNumSamples, unit->mInBuf, unit->mOutBuf);
     else
     {
         for(int i = 0; i < unit->mNumOutputs; i++)

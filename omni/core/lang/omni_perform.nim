@@ -233,9 +233,9 @@ macro castInsOuts*() =
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
     #export the function to C when building a shared library
-    proc UGenPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "UGenPerform".} =    
+    proc OmniPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "OmniPerform".} =    
         #[
-        #Add the templates needed for UGenPerform to unpack variable names declared with "var" in cosntructor
+        #Add the templates needed for OmniPerform to unpack variable names declared with "var" in cosntructor
         generateTemplatesForPerformVarDeclarations()
 
         #Cast the void* to UGen*

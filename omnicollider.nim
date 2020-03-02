@@ -120,7 +120,7 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
     
     #Also for supernova
     if supernova:
-        #supernova gets passed both supercollider (which turns on the rt_alloc) and supernova (for buffer handling) flags
+        #supernova gets passed both supercollider (which turns on the omni_alloc) and supernova (for buffer handling) flags
         let failedNimCompilation_supernova = execCmd("nim c --import:omni --app:lib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $nimFileName & "_supernova" & $shared_lib_extension & " --outdir:" & $fullPathToNewFolderShell & "/lib " & $fullPathToOriginalNimFileShell)
         
         #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.

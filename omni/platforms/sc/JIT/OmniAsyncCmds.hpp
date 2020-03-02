@@ -79,9 +79,9 @@ bool loadFile(World* inWorld, void* cmd)
     
     init_alloc_function_pointers = (init_alloc_function_pointers_func*)dlsym(dl_handle, "init_alloc_function_pointers");
 
-    Omni_UGenConstructor = (Omni_UGenConstructor_func*)dlsym(dl_handle, "UGenConstructor");
-    Omni_UGenDestructor  = (Omni_UGenDestructor_func*)dlsym(dl_handle, "UGenDestructor");
-    Omni_UGenPerform     = (Omni_UGenPerform_func*)dlsym(dl_handle, "UGenPerform"); 
+    Omni_UGenConstructor = (Omni_UGenConstructor_func*)dlsym(dl_handle, "OmniConstructor");
+    Omni_UGenDestructor  = (Omni_UGenDestructor_func*)dlsym(dl_handle, "OmniDestructor");
+    Omni_UGenPerform     = (Omni_UGenPerform_func*)dlsym(dl_handle, "OmniPerform"); 
 
     //Initialization routines
     init_world((void*)inWorld);

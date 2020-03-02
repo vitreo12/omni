@@ -20,11 +20,11 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         is_inst_destructor_bool = is_inst_destructor.boolVal()
 
     if is_ugen_destructor_bool == true:
-        #Full proc definition for UGenDestructor. The result is: proc UGenDestructor*(ugen : ptr UGen) : void {.exportc: "UGenDestructor".} 
+        #Full proc definition for OmniDestructor. The result is: proc OmniDestructor*(ugen : ptr UGen) : void {.exportc: "OmniDestructor".} 
         proc_def = nnkProcDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("UGenDestructor")
+                newIdentNode("OmniDestructor")
             ),
             newEmptyNode(),
             newEmptyNode(),
@@ -41,7 +41,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
             nnkPragma.newTree(
                 nnkExprColonExpr.newTree(
                     newIdentNode("exportc"),
-                    newLit("UGenDestructor")
+                    newLit("OmniDestructor")
                 )
             ),
             newEmptyNode()
@@ -174,7 +174,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                 ),
                 nnkStmtList.newTree(
                     nnkCall.newTree(
-                        newIdentNode("rt_free"),
+                        newIdentNode("omni_free"),
                         newIdentNode("obj_cast")
                     )
                 )

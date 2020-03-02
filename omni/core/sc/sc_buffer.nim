@@ -46,7 +46,7 @@ const
     lower_exceed_input_error  = "ERROR: Buffer: input %d out of bounds. Minimum input number is 1.\n"
 
 proc innerInit*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, ugen_inputs : int) : Buffer =
-    result = cast[Buffer](rt_alloc(cast[culong](sizeof(Buffer_obj))))
+    result = cast[Buffer](omni_alloc(cast[culong](sizeof(Buffer_obj))))
     
     result.sc_world  = get_sc_world()
     result.bufnum    = float32(-1e9)
@@ -76,7 +76,7 @@ proc destructor*(obj : Buffer) : void =
 
     let obj_void = cast[pointer](obj)
 
-    rt_free(obj_void)
+    omni_free(obj_void)
 
 #Called at start of perform. If supernova is active, this will also lock the buffer.
 proc get_buffer*(buffer : Buffer, fbufnum : float32) : void =

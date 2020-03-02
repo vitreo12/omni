@@ -1,4 +1,4 @@
-import rt_alloc
+import sc_alloc
 
 #To use toHex()
 import strutils
@@ -11,7 +11,7 @@ import strutils
 print_world()
 
 #Emulate some sort of pointer from C, representing SCWorld*
-let c = rt_alloc(cast[culong](sizeof(float)))
+let c = omni_alloc(cast[culong](sizeof(float)))
 
 init_world(c)
 
@@ -19,12 +19,12 @@ init_world(c)
 echo cast[int](c).toHex()
 print_world()
 
-rt_free(c)
+omni_free(c)
 
 ################
 # TEST RTALLOC #
 ################
 
-let a = rt_alloc(cast[culong](sizeof(float)))
+let a = omni_alloc(cast[culong](sizeof(float)))
 
-rt_free(a)
+omni_free(a)

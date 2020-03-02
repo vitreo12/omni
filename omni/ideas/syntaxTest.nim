@@ -17,7 +17,7 @@ type
         sampleRate_let: float
         phasor_let: Phasor
 
-proc UGenConstructor(): ptr UGen {.exportc: "UGenConstructor".} =
+proc OmniConstructor(): ptr UGen {.exportc: "OmniConstructor".} =
     let
         sampleRate_let = 48000.0
         phasor_let = Phasor(phase : 0.3, somethingElse : 0.32)
@@ -35,13 +35,13 @@ proc UGenConstructor(): ptr UGen {.exportc: "UGenConstructor".} =
 
     return ugen
 
-proc UGenDestructor(ugen126157: ptr UGen): void {.exportc: "UGenDestructor".} =
+proc OmniDestructor(ugen126157: ptr UGen): void {.exportc: "OmniDestructor".} =
     let ugen_void_cast126158 = cast[pointer](ugen126157)
     if not isNil(ugen_void_cast126158):
         dealloc(ugen_void_cast126158)
   
 
-proc UGenPerform(ugen: ptr UGen; buf_size: cint; ins_SC: ptr ptr cfloat; outs_SC: ptr ptr cfloat): void {.exportc: "UGenPerform".} =
+proc OmniPerform(ugen: ptr UGen; buf_size: cint; ins_SC: ptr ptr cfloat; outs_SC: ptr ptr cfloat): void {.exportc: "OmniPerform".} =
     let
         phase_var = unsafeAddr ugen.phase_var
         sampleRate = ugen.sampleRate_let
