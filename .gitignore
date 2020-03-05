@@ -6,3 +6,5 @@ omni
 
 omni/tests/test2
 omni/tests/test
+
+*.exe

@@ -1,7 +1,7 @@
 #nim c --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed
 
 import macros
-import ../../omni
+import ../../omni_lang
 
 #expandMacros:  
 ins 1, "freq"

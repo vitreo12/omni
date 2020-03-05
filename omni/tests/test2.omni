@@ -1,5 +1,5 @@
 import macros
-import ../../omni
+import ../../omni_lang
 
 ins 1
 outs 1
