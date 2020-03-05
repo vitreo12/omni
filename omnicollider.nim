@@ -104,8 +104,8 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
         fullPathToCMakeFile = $fullPathToNewFolder & "/" & "CMakeLists.txt"
 
         #These are the paths to the generated static libraries
-        fullPathToStaticLib = $fullPathToNewFolder & "/lib" & $omniFileName & "." & $static_lib_extension
-        fullPathToStaticLib_supernova = $fullPathToNewFolder & "/lib" & $omniFileName & "_supernova." & $static_lib_extension
+        fullPathToStaticLib = $fullPathToNewFolder & "/lib" & $omniFileName & $static_lib_extension
+        fullPathToStaticLib_supernova = $fullPathToNewFolder & "/lib" & $omniFileName & "_supernova" & $static_lib_extension
     
     #Create directory in same folder as .nim file
     removeDir(fullPathToNewFolder)
@@ -124,7 +124,7 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
     setCurrentDir(fullPathToNewFolderShell)
 
     #Compile nim file. Only pass the -d:omnicli and -d:tempDir flag here, so it generates the IO.txt file.
-    let failedOmniCompilation = execCmd("nim c --import:omni --app:staticLib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-march=" & $architecture & " -d:omnicli -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $omniFileName & $static_lib_extension & " " & $fullPathToOriginalOmniFileShell)
+    let failedOmniCompilation = execCmd("nim c --import:omni --app:staticLib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-fPIC --passC:-march=" & $architecture & " -d:omnicli -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $omniFileName & $static_lib_extension & " " & $fullPathToOriginalOmniFileShell)
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
@@ -134,7 +134,7 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
     #Also for supernova
     if supernova:
         #supernova gets passed both supercollider (which turns on the rt_alloc) and supernova (for buffer handling) flags
-        let failedOmniCompilation_supernova = execCmd("nim c --import:omni --app:staticLib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $omniFileName & "_supernova" & $static_lib_extension & " " & $fullPathToOriginalOmniFileShell)
+        let failedOmniCompilation_supernova = execCmd("nim c --import:omni --app:staticLib --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --passC:-fPIC --passC:-march=" & $architecture & " -d:supercollider -d:supernova -d:release -d:danger --checks:off --assertions:off --opt:speed --out:lib" & $omniFileName & "_supernova" & $static_lib_extension & " " & $fullPathToOriginalOmniFileShell)
         
         #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
         if failedOmniCompilation_supernova > 0:
@@ -300,31 +300,6 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
     #cd back to the original folder where nim file is
     setCurrentDir(omniFileDir)
 
-    #Need to change loader path in the .scx files. 
-    #This is weird, wasn't needed in JuliaCollider. Check the LD_LOAD_DYLIB with otool -l
-    when defined(MacOSX) or defined(MacOS):
-        let changeLDPathCmd = "install_name_tool -change " & $fullPathToNewFolderShell & "/lib/lib" & $omniFileName & ".dylib @rpath/lib" & $omniFileName & ".dylib " & $fullPathToNewFolderShell & "/build/" & $omniFileName & ".scx"
-        #echo changeLDPathCmd
-
-        let failedChangedLDPath = execCmd(changeLDPathCmd)
-
-        #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
-        if failedChangedLDPath > 0:
-            printErrorMsg("Could not change LC_LOAD_DYLIB for " & $omniFileName & ".scx")
-            return
-
-        if supernova:
-            let changeLDPathCmdNova = "install_name_tool -change " & $fullPathToNewFolderShell & "/lib/lib" & $omniFileName & "_supernova.dylib @rpath/lib" & $omniFileName & "_supernova.dylib " & $fullPathToNewFolderShell & "/build/" & $omniFileName & "_supernova.scx"
-            #echo changeLDPathCmdNova
-
-            let failedChangedLDPathNova = execCmd(changeLDPathCmdNova)
-
-            #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
-            if failedChangedLDPathNova > 0:
-                printErrorMsg("Could not change LC_LOAD_DYLIB for " & $omniFileName & "_supernova.scx")
-                return
-
-
     # ========================= #
     # COPY TO EXTENSIONS FOLDER #
     # ========================= #
@@ -333,7 +308,7 @@ proc omnicollider(file : seq[string], sc_path : string = default_sc_path, extens
         copyFile($fullPathToNewFolder & "/build/" & $omniFileName & "_supernova" & $ugen_extension, $fullPathToNewFolder & "/" & $omniFileName & "_supernova" & $ugen_extension)
 
     #Remove build, .cpp, cmake, .nim, and static libs
-    removeDir($fullPathToNewFolder & "/build")
+    removeDir(fullPathToNewFolder & "/build")
     removeFile(fullPathToCppFile)
     removeFile(fullPathToOmniFile)
     removeFile(fullPathToCMakeFile)

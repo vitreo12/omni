@@ -16,7 +16,7 @@ include_directories(${SC_PATH}/common)
 
 set(CMAKE_SHARED_MODULE_PREFIX "")
 if(APPLE OR WIN32)
-set(CMAKE_SHARED_MODULE_SUFFIX ".scx")
+    set(CMAKE_SHARED_MODULE_SUFFIX ".scx")
 endif()
 
 option(SUPERNOVA "Build plugins for supernova" OFF)
@@ -93,46 +93,27 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANG)
     endif()
 endif()
 
-#Windows build. Needs testing.
+#Windows build.
 if(MINGW)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mstackrealign")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mstackrealign")
 endif()
 
+#Declaration the new UGen shared lib to build
 add_library(${PROJECT} MODULE ${FILENAME})
 
-#Add PIC for better shared lib handling
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-
-#Linker flags
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}/lib' -Wl,-rpath,'@loader_path/lib' -l${PROJECT}")
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}/lib' -Wl,--export-dynamic -Wl,-rpath,'$ORIGIN/lib' -l${PROJECT} -ldl")
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}' -Wl,-Bstatic -l${PROJECT}")
-endif()
-
+#Linker flags for scsynth UGen
+target_link_libraries(${PROJECT} "-fPIC -L'${WORKING_FOLDER}' -l${PROJECT}")
 
 if(SUPERNOVA)
+    #Declaration the new supernova UGen shared lib to build
     add_library(${PROJECT}_supernova MODULE ${FILENAME})
     
+    #Add all the supernova definitions
     set_property(TARGET ${PROJECT}_supernova
                  PROPERTY COMPILE_DEFINITIONS SUPERNOVA)
-
-    #Add PIC for better shared lib handling
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
     
-    #Set all proper linker flags for supernova build
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}/lib' -Wl,-rpath,'@loader_path/lib' -l${PROJECT}_supernova")
-    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}/lib' -Wl,--export-dynamic -Wl,-rpath,'$ORIGIN/lib' -l${PROJECT}_supernova -ldl")
-    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}' -Wl,-Bstatic -l${PROJECT}_supernova")
-    endif()
-
+    #Linker flags for supernova UGen
+    target_link_libraries(${PROJECT}_supernova "-fPIC -L'${WORKING_FOLDER}' -l${PROJECT}_supernova")
 endif()
 """
