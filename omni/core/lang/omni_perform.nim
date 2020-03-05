@@ -57,11 +57,11 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         get_buffers_section = nnkStmtList.newTree()
     
     #when supernova compilation, define a unlock_supernova_buffers() template that will contain all the unlock_buffer calls
-    when defined(supernova):
+    when defined(multithread_buffers):
         
         #template unlock_supernova_buffers() : untyped {.dirty.} =
         var 
-            supernova_unlock_buffers_template_def = nnkTemplateDef.newTree(
+            multithread_unlock_buffers_template_def = nnkTemplateDef.newTree(
                 newIdentNode("unlock_supernova_buffers"),
                 newEmptyNode(),
                 newEmptyNode(),
@@ -74,7 +74,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 newEmptyNode()
             )
 
-            supernova_unlock_buffers_body = nnkStmtList.newTree()
+            multithread_unlock_buffers_body = nnkStmtList.newTree()
 
     let type_def = getImpl(t)
     
@@ -165,13 +165,13 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 get_buffers_section.add(new_buffer)
 
                 #when supernova compilation, add the unlock_buffer() calls to the unlock_supernova_buffers() template
-                when defined(supernova):
+                when defined(multithread_buffers):
                     var new_unlock_buffer = nnkCall.newTree(
                         newIdentNode("unlock_buffer"),
                         parsed_dot_syntax
                     )
 
-                    supernova_unlock_buffers_body.add(new_unlock_buffer)
+                    multithread_unlock_buffers_body.add(new_unlock_buffer)
 
         #Variables with in-built types. They return nnkNilLit
         elif var_desc_type_def.kind == nnkNilLit:
@@ -210,14 +210,14 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     result.add(get_buffers_section)
     
     #When supernova compilation, add the unlock template 
-    when defined(supernova):
+    when defined(multithread_buffers):
         
         #If no buffers were found, simply have a discard statement on the template.
-        if supernova_unlock_buffers_body.len < 1:
-            supernova_unlock_buffers_body.add(nnkDiscardStmt.newTree(newEmptyNode()))
+        if multithread_unlock_buffers_body.len < 1:
+            multithread_unlock_buffers_body.add(nnkDiscardStmt.newTree(newEmptyNode()))
 
-        supernova_unlock_buffers_template_def.add(supernova_unlock_buffers_body)
-        result.add(supernova_unlock_buffers_template_def)
+        multithread_unlock_buffers_template_def.add(multithread_unlock_buffers_body)
+        result.add(multithread_unlock_buffers_template_def)
 
 #Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
 macro unpackUGenVariables*(t : typed) =
@@ -252,7 +252,7 @@ template perform*(code_block : untyped) {.dirty.} =
         parse_block_for_variables(code_block, false, true)
 
         #UNLOCK buffers when supernova is used...
-        when defined(supernova):
+        when defined(multithread_buffers):
             unlock_supernova_buffers()
 
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
