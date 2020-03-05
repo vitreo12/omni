@@ -10,6 +10,8 @@ var OMNI_PROTO_CPP = """
     #define EXTENSION "dylib"
 #elif __linux__
     #define EXTENSION "so"
+#elif _WIN32
+    #define EXTENSION "dll"
 #endif
 
 //Interface table

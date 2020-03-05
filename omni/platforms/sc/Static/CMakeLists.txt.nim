@@ -110,6 +110,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}/lib' -Wl,-rpath,'@loader_path/lib' -l${PROJECT}")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}/lib' -Wl,--export-dynamic -Wl,-rpath,'$ORIGIN/lib' -l${PROJECT} -ldl")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    target_link_libraries(${PROJECT} "-L'${WORKING_FOLDER}' -Wl,-Bstatic -l${PROJECT}")
 endif()
 
 
@@ -128,6 +130,8 @@ if(SUPERNOVA)
         target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}/lib' -Wl,-rpath,'@loader_path/lib' -l${PROJECT}_supernova")
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}/lib' -Wl,--export-dynamic -Wl,-rpath,'$ORIGIN/lib' -l${PROJECT}_supernova -ldl")
+    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        target_link_libraries(${PROJECT}_supernova "-L'${WORKING_FOLDER}' -Wl,-Bstatic -l${PROJECT}_supernova")
     endif()
 
 endif()
