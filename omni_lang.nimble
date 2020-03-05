@@ -6,6 +6,7 @@ license       = "MIT"
 requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
-installDirs = @["omni"]
+installDirs = @["omni_lang"]
 
+#Exec compiler
 bin = @["omni"]
