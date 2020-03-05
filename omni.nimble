@@ -8,11 +8,4 @@ requires "cligen >= 0.9.41"
 
 installDirs = @["omni"]
 
-#This are all the CLI interfaces
-bin = @["omnicollider"]
-
-#Task to build the Omni UGen for SuperCollider, allowing for JIT compilation of omni code
-
-#Task to build the omni~ object for Max, allowing for JIT compilation of omni code
-
-#Task to build the omni~ object for pd, allowing for JIT compilation of omni code
+bin = @["omni"]

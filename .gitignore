@@ -1,12 +1,8 @@
-UGen/build/
-
 .vscode/
-
-test
 
 *.so
 
-SC/Static/build/
+omni
 
-omnicollider
 omni/tests/test2
+omni/tests/test
