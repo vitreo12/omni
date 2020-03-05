@@ -1,16 +1,15 @@
-### Buffer implementation is wrapper specific ###
+### Buffer implementation spec ###
 
-#Buffer.new()
+# Buffer.innerInit*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, ugen_inputs : int) : Buffer
 
-#when defined(perform_buffer):
-#   Buffer.get_buffer()
-#   when defined(multithread_buffer):
-#       Buffer.unlock_buffer()
+# Buffer.get_buffer(buffer : Buffer, fbufnum : float32)
+# when defined(multithread_buffer):
+#   Buffer.unlock_buffer(buffer : Buffer)
 
-#Buffer.get_value()
-#Buffer.set_value()
+# []
+# []=
 
-#Buffer.len()
-#Buffer.size()
-#Buffer.nchans()
-#Buffer.samplerate()
+# Buffer.len()
+# Buffer.size()
+# Buffer.nchans()
+# Buffer.samplerate()
