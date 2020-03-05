@@ -95,13 +95,13 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     setCurrentDir(outDirFullPath)
     
     #Actual compile command
-    var compile_command = "nim c --import:omni_lang --app:" & $lib_nim & " --out:lib" & $omniFileName & $lib_extension & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
+    var compile_command = "nim c --import:omni-" & omni_ver & "/omnipkg/omni_lang --app:" & $lib_nim & " --out:lib" & $omniFileName & $lib_extension & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
     
     #Append additional definitions
     for new_define in define:
         compile_command.add(" -d:" & $new_define)
     
-    # -d:writeIO -d:tempDir=" & $fullPathToNewFolderShell & " -d:supercollider  & " " & $fullPathToOriginalOmniFileShell
+    # -d:supercollider -d:supernova -d:multithread_buffers -d:writeIO -d:tempDir=" & $fullPathToNewFolderShell & " 
 
     #Append additional imports
     for new_importModule in importModule:

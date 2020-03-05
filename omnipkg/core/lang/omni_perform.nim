@@ -56,13 +56,13 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         let_section         = nnkLetSection.newTree()
         get_buffers_section = nnkStmtList.newTree()
     
-    #when supernova compilation, define a unlock_supernova_buffers() template that will contain all the unlock_buffer calls
+    #when multithread_buffers compilation, define a unlock_buffers() template that will contain all the unlock_buffer calls
     when defined(multithread_buffers):
         
-        #template unlock_supernova_buffers() : untyped {.dirty.} =
+        #template unlock_buffers() : untyped {.dirty.} =
         var 
             multithread_unlock_buffers_template_def = nnkTemplateDef.newTree(
-                newIdentNode("unlock_supernova_buffers"),
+                newIdentNode("unlock_buffers"),
                 newEmptyNode(),
                 newEmptyNode(),
                 nnkFormalParams.newTree(
@@ -164,7 +164,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 
                 get_buffers_section.add(new_buffer)
 
-                #when supernova compilation, add the unlock_buffer() calls to the unlock_supernova_buffers() template
+                #when multithread buffers compilation, add the unlock_buffer() calls to the unlock_buffers() template
                 when defined(multithread_buffers):
                     var new_unlock_buffer = nnkCall.newTree(
                         newIdentNode("unlock_buffer"),
@@ -209,7 +209,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     result.add(let_section)
     result.add(get_buffers_section)
     
-    #When supernova compilation, add the unlock template 
+    #When multithread buffers compilation, add the unlock template 
     when defined(multithread_buffers):
         
         #If no buffers were found, simply have a discard statement on the template.
@@ -251,9 +251,9 @@ template perform*(code_block : untyped) {.dirty.} =
         #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
         parse_block_for_variables(code_block, false, true)
 
-        #UNLOCK buffers when supernova is used...
+        #UNLOCK buffers when multithread buffers are used...
         when defined(multithread_buffers):
-            unlock_supernova_buffers()
+            unlock_buffers()
 
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
     when defined(writeIO):
