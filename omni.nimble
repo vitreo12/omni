@@ -7,7 +7,8 @@ requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
 #Install the whole dir
-installDirs = @["omnipkg/core", "omnipkg/common", "omnipkg/examples"]
+#installDirs = @["omnipkg/core", "omnipkg/common", "omnipkg/examples"]
+installDirs = @["omnipkg"]
 
 #If using omni_lang as name, have a single "src" folder with both omni_lang.nim and omni.nim in src/
 #srcDir = "src"
