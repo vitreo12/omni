@@ -34,7 +34,7 @@ proc printDone(msg : string) : void =
 proc omni(file : string, architecture : string = "native", lib : string = "shared", outDir : string = "", define : seq[string] = @[],  importModule  : seq[string] = @[]) : void =
 
     let 
-        fileFullPath      = absolutePath(file)
+        fileFullPath      = file.normalizedPath().expandTilde().absolutePath()
         fileFullPathShell = fileFullPath.replace(" ", "\\ ")
 
     #Check if file exists
@@ -63,7 +63,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     if outDir == "":
         outDirFullPath = omniFileDir
     else:
-        outDirFullPath = outDir.absolutePath()
+        outDirFullPath = outDir.normalizedPath().expandTilde().absolutePath()
     
     #Check if dir exists
     if not outDirFullPath.existsDir():
@@ -98,7 +98,6 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     #If using omni_lang as name for nimble package, --import:omni_lang is enough.
     var compile_command = "nim c --import:omni-" & omni_ver & "/omnipkg/omni_lang --app:" & $lib_nim & " --out:lib" & $omniFileName & $lib_extension & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
     
-
     #Append additional definitions
     for new_define in define:
         compile_command.add(" -d:" & $new_define)
@@ -112,7 +111,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" " & $fileFullPathShell)
 
-    echo compile_command
+    #echo compile_command
     
     #Actually execute compilation
     let failedOmniCompilation = execCmd(compile_command)
