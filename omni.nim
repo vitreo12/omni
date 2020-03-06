@@ -1,7 +1,9 @@
 import cligen, terminal, os, strutils, osproc
 
-#omni version
-const omni_ver = "0.1.0"
+#Package version is passed as argument when building. It will be constant and set correctly
+const 
+    NimblePkgVersion {.strdefine.} = ""
+    omni_ver = NimblePkgVersion
 
 #Extension for static lib
 const static_lib_extension = ".a"
