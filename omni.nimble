@@ -10,13 +10,13 @@ requires "cligen >= 0.9.41"
 bin = @["omni"]
 
 #If using "nimble install" instead of "nimble installOmni", make sure omni-lang is still getting installed
-before install:
-    withDir(getPkgDir() & "/omni_lang"):
-        exec "nimble install"
+#before install:
+#    withDir(getPkgDir() & "/omni_lang"):
+#        exec "nimble install"
 
 #before/after are BOTH needed for any of the two to work
-after install:
-    discard
+#after install:
+#    discard
     
 #As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
 task installOmni, "Install the omni-lang package and the omni compiler":

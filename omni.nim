@@ -97,8 +97,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     setCurrentDir(outDirFullPath)
     
     #Actual compile command
-    #If using omni_lang as name for nimble package, --import:omni_lang is enough.
-    var compile_command = "nim c --import:omni-" & omni_ver & "/omnipkg/omni_lang --app:" & $lib_nim & " --out:lib" & $omniFileName & $lib_extension & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
+    var compile_command = "nim c --app:" & $lib_nim & " --out:lib" & $omniFileName & $lib_extension & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
     
     #Append additional definitions
     for new_define in define:
@@ -106,9 +105,15 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     
     # -d:supercollider -d:supernova -d:multithreadBuffers -d:writeIO -d:tempDir=" & $fullPathToNewFolderShell & " 
 
-    #Append additional imports
+    #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
+    var import_omni_lang = true
     for new_importModule in importModule:
+        if new_importModule.endsWith("_lang"):
+            import_omni_lang = false
         compile_command.add(" --import:" & $new_importModule)
+
+    if import_omni_lang:
+        compile_command.add(" --import:omni_lang")
 
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" " & $fileFullPathShell)
@@ -134,10 +139,10 @@ proc omni_cli(files : seq[string], architecture : string = "native", lib : strin
 dispatch(omni_cli, 
 
     help={ "architecture" : "Build architecture.",
-           "lib" : "Build a shared or static library",
-           "outDir" : "Output folder",
-           "define" : "Define symbols for compiler",
-           "importModule" : "Import nim modules into the project"
+           "lib" : "Build a shared or static library.",
+           "outDir" : "Output folder.",
+           "define" : "Define symbols for the compiler.",
+           "importModule" : "Import nim modules to be compiled with the omni project."
     }
 
 )
