@@ -56,8 +56,8 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         let_section         = nnkLetSection.newTree()
         get_buffers_section = nnkStmtList.newTree()
     
-    #when multithread_buffers compilation, define a unlock_buffers() template that will contain all the unlock_buffer calls
-    when defined(multithread_buffers):
+    #when multithreadBuffers compilation, define a unlock_buffers() template that will contain all the unlock_buffer calls
+    when defined(multithreadBuffers):
         
         #template unlock_buffers() : untyped {.dirty.} =
         var 
@@ -165,7 +165,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 get_buffers_section.add(new_buffer)
 
                 #when multithread buffers compilation, add the unlock_buffer() calls to the unlock_buffers() template
-                when defined(multithread_buffers):
+                when defined(multithreadBuffers):
                     var new_unlock_buffer = nnkCall.newTree(
                         newIdentNode("unlock_buffer"),
                         parsed_dot_syntax
@@ -210,7 +210,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     result.add(get_buffers_section)
     
     #When multithread buffers compilation, add the unlock template 
-    when defined(multithread_buffers):
+    when defined(multithreadBuffers):
         
         #If no buffers were found, simply have a discard statement on the template.
         if multithread_unlock_buffers_body.len < 1:
@@ -252,7 +252,7 @@ template perform*(code_block : untyped) {.dirty.} =
         parse_block_for_variables(code_block, false, true)
 
         #UNLOCK buffers when multithread buffers are used...
-        when defined(multithread_buffers):
+        when defined(multithreadBuffers):
             unlock_buffers()
 
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.

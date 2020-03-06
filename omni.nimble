@@ -6,12 +6,23 @@ license       = "MIT"
 requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
-#Install the whole dir (perhaps ideas and tests should be ignored)
-installDirs = @["omnipkg"]
-
 #Compiler executable
 bin = @["omni"]
 
-#As nimble install, but with -d:release, -d:danger and --opt:speed
-task installRelease, "Install Omni with -d:release, d:danger and --opt:speed":
+#If using "nimble install" instead of "nimble installOmni", make sure omni-lang is still getting installed
+before install:
+    withDir(getPkgDir() & "/omni_lang"):
+        exec "nimble install"
+
+#before/after are BOTH needed for any of the two to work
+after install:
+    discard
+    
+#As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
+task installOmni, "Install the omni-lang package and the omni compiler":
+    #Build and install the omni compiler executable
     exec "nimble install --passNim:-d:release --passNim:-d:danger --passNim:--opt:speed"
+    #cd to omni_lang
+    withDir(getPkgDir() & "/omni_lang"):
+        #Install omni_lang as its own package
+        exec "nimble install"

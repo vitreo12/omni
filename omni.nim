@@ -104,7 +104,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     for new_define in define:
         compile_command.add(" -d:" & $new_define)
     
-    # -d:supercollider -d:supernova -d:multithread_buffers -d:writeIO -d:tempDir=" & $fullPathToNewFolderShell & " 
+    # -d:supercollider -d:supernova -d:multithreadBuffers -d:writeIO -d:tempDir=" & $fullPathToNewFolderShell & " 
 
     #Append additional imports
     for new_importModule in importModule:
