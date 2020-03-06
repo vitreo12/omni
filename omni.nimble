@@ -6,12 +6,12 @@ license       = "MIT"
 requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
-#Install the whole dir
-#installDirs = @["omnipkg/core", "omnipkg/common", "omnipkg/examples"]
+#Install the whole dir (perhaps ideas and tests should be ignored)
 installDirs = @["omnipkg"]
 
-#If using omni_lang as name, have a single "src" folder with both omni_lang.nim and omni.nim in src/
-#srcDir = "src"
-
-#Exec compiler
+#Compiler executable
 bin = @["omni"]
+
+#As nimble install, but with -d:release, -d:danger and --opt:speed
+task installRelease, "Install Omni with -d:release, d:danger and --opt:speed":
+    exec "nimble install --passNim:-d:release --passNim:-d:danger --passNim:--opt:speed"
