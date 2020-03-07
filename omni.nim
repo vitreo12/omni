@@ -23,24 +23,24 @@ proc printError(msg : string) : void =
     setForegroundColor(fgRed)
     writeStyled("ERROR: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
-    writeStyled(msg)
+    writeStyled(msg & "\n")
 
 #Generic success proc
 proc printDone(msg : string) : void =
     setForegroundColor(fgGreen)
     writeStyled("DONE: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
-    writeStyled(msg)
+    writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni(file : string, architecture : string = "native", lib : string = "shared", outDir : string = "", define : seq[string] = @[],  importModule  : seq[string] = @[]) : void =
+proc omni(file : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
 
     let fileFullPath = file.normalizedPath().expandTilde().absolutePath()
 
     #Check if file exists
     if not fileFullPath.existsFile():
         printError($fileFullPath & " doesn't exist.")
-        return
+        return 1
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -55,7 +55,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     #Check file extension
     if not(omniFileExt == ".omni") and not(omniFileExt == ".oi"):
         printError($fileFullPath & " is not an omni file.")
-        return
+        return 1
     
     var outDirFullPath : string
 
@@ -68,7 +68,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     #Check if dir exists
     if not outDirFullPath.existsDir():
         printError($outDirFullPath & " doesn't exist.")
-        return
+        return 1
 
     #This is the path to the original omni file to be used in shell.
     #Using this one in omni command so that errors are shown on this one when CTRL+Click on terminal
@@ -87,13 +87,20 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
         lib_extension = static_lib_extension
     else:
         printError("Invalid -lib argument: \"" & $lib & "\". Use \"shared\" to build a shared library, or \"static\" to build a static one.")
-        return
+        return 1
+
+    #Set output name:
+    var output_name : string
+    if outName == "":
+        output_name = "lib" & $omniFileName & $lib_extension
+    else:
+        output_name = $outName & $lib_extension
     
     #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Omni/issues/12745
     setCurrentDir(outDirFullPath)
     
     #Actual compile command
-    var compile_command = "nim c --app:" & $lib_nim & " --out:lib" & $omniFileName & $lib_extension & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
     
     #Append additional definitions
     for new_define in define:
@@ -148,28 +155,39 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
-        printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt)
-        return
+        printError("Unsuccessful omni compilation of " & $omniFileName & $omniFileExt & ".")
+        return 1
 
-    printDone("Successful compilation of " & fileFullPath & " to folder " & $outDirFullPath)
+    printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
+
+    return 0
 
 #Unpack files arg and pass it to compiler
-proc omni_cli(files : seq[string], architecture : string = "native", lib : string = "shared", outDir : string = "", define : seq[string] = @[], importModule  : seq[string] = @[]) : void =
+proc omni_cli(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
     
-    echo "files"
-    echo files
+    #echo "files"
+    #echo files
 
-    for file in files:
-        omni(file, architecture, lib, outDir, define, importModule)
+    #Single file, pass the outName
+    if files.len == 1:
+        return omni(files[0], outName, outDir, lib, architecture, define, importModule)
+    else:
+        for file in files:
+            if omni(file, "", outDir, lib, architecture, define, importModule) > 0:
+                return 1
+        return 0
 
 #Dispatch the omni function as the CLI one
 dispatch(omni_cli, 
-
-    help={ "architecture" : "Build architecture.",
-           "lib" : "Build a shared or static library.",
-           "outDir" : "Output folder.",
-           "define" : "Define symbols for the compiler.",
-           "importModule" : "Import nim modules to be compiled with the omni project."
+    short={"outName" : 'n'},
+    
+    help={ 
+            "outName" : "Name for the output, defaults to \"lib{omnifile}\".",
+            "outDir" : "Output folder.",
+            "lib" : "Build a shared or static library.",
+            "architecture" : "Build architecture.",
+            "define" : "Define symbols for the compiler.",
+            "importModule" : "Import nim modules to be compiled with the omni project."
     }
 
 )
