@@ -245,14 +245,14 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
 
     return quote do: 
         const 
-            ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
         
         generate_inputs_templates(`num_of_inputs_VAL`, 0)
         
         #Export to C
-        proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
-            return int32(ugen_inputs)
+        proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+            return int32(omni_inputs)
 
         proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
             return cast[ptr cchar](ugen_input_names)
@@ -315,28 +315,28 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
 
             return quote do: 
                 const 
-                    ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                    omni_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
                 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
-                    return int32(ugen_inputs)
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                    return int32(omni_inputs)
 
                 proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
                     return cast[ptr ptr cstring](ugen_input_names)
         else:
             return quote do:
                 const 
-                    ugen_inputs {.inject.} = `num_of_inputs_VAL`  
+                    omni_inputs {.inject.} = `num_of_inputs_VAL`  
                     ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
-                    return int32(ugen_inputs)
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                    return int32(omni_inputs)
 
                 proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
                     return cast[ptr cchar](ugen_input_names)
@@ -386,28 +386,28 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
             return quote do: 
                 const 
-                    ugen_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                    omni_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
                     ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
-                    return int32(ugen_inputs)
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                    return int32(omni_inputs)
 
                 proc get_ugen_input_names() : ptr char {.exportc: "get_ugen_input_names".} =
                     return cast[ptr char](ugen_input_names)
         else:
             return quote do:
                 const 
-                    ugen_inputs {.inject.} = `num_of_inputs_VAL` 
+                    omni_inputs {.inject.} = `num_of_inputs_VAL` 
                     ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_inputs() : int32 {.exportc: "get_ugen_inputs".} =
-                    return int32(ugen_inputs)
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                    return int32(omni_inputs)
 
                 proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
                     return cast[ptr cchar](ugen_input_names)
@@ -480,15 +480,15 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
 
     return quote do: 
         const 
-            ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+            omni_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
             ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
         
         #For now, only keep the template for ar out, generated before sample block
         #generate_outputs_templates(`num_of_outputs_VAL`, 0)
         
         #Export to C
-        proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
-            return int32(ugen_outputs)
+        proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+            return int32(omni_outputs)
 
         proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
             return cast[ptr cchar](ugen_output_names)
@@ -551,30 +551,30 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
 
             return quote do: 
                 const 
-                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+                    omni_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
                 
                 #For now, only keep the template for ar out, generated before sample block
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
-                    return int32(ugen_outputs)
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                    return int32(omni_outputs)
 
                 proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
                     return cast[ptr ptr cstring](ugen_output_names)
         else:
             return quote do:
                 const 
-                    ugen_outputs {.inject.} = `num_of_outputs_VAL`  
+                    omni_outputs {.inject.} = `num_of_outputs_VAL`  
                     ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 #For now, only keep the template for ar out, generated before sample block
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
-                    return int32(ugen_outputs)
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                    return int32(omni_outputs)
 
                 proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
                     return cast[ptr cchar](ugen_output_names)
@@ -624,30 +624,30 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
             #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
             return quote do: 
                 const 
-                    ugen_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+                    omni_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
                     ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
 
                 #For now, only keep the template for ar out, generated before sample block
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
-                    return int32(ugen_outputs)
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                    return int32(omni_outputs)
 
                 proc get_ugen_output_names() : ptr char {.exportc: "get_ugen_output_names".} =
                     return cast[ptr char](ugen_output_names)
         else:
             return quote do:
                 const 
-                    ugen_outputs {.inject.} = `num_of_outputs_VAL` 
+                    omni_outputs {.inject.} = `num_of_outputs_VAL` 
                     ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 #For now, only keep the template for ar out, generated before sample block
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_ugen_outputs() : int32 {.exportc: "get_ugen_outputs".} =
-                    return int32(ugen_outputs)
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                    return int32(omni_outputs)
 
                 proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
                     return cast[ptr cchar](ugen_output_names)

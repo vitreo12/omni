@@ -261,17 +261,17 @@ template perform*(code_block : untyped) {.dirty.} =
         
         #static == compile time block
         static:
-            let text = $ugen_inputs & "\n" & $ugen_input_names & "\n" & $ugen_outputs
+            let text = $omni_inputs & "\n" & $ugen_input_names & "\n" & $omni_outputs
             let fullPathToNewFolder = getTempDir() #this has been passed in as command argument with -d:tempDir=fullPathToNewFolder
             writeFile($fullPathToNewFolder & "IO.txt", text)
 
 #Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
 #[ template sample*(code_block : untyped) {.dirty.} =
     #Right before sample, define the new in1, in2, etc... macro for single sample retireval
-    generate_inputs_templates(ugen_inputs, 1)
+    generate_inputs_templates(omni_inputs, 1)
 
     #Right before sample, define the new out1, out2, etc... macro for single sample retireval
-    generate_outputs_templates(ugen_outputs, 1)
+    generate_outputs_templates(omni_outputs, 1)
 
     for audio_index_loop in 0..(bufsize - 1):
         parse_block_for_variables(code_block, false, true)

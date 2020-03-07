@@ -5,12 +5,12 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
     return nnkStmtList.newTree(
         nnkCall.newTree(
           newIdentNode("generate_inputs_templates"),
-          newIdentNode("ugen_inputs"),
+          newIdentNode("omni_inputs"),
           newLit(1)
         ),
         nnkCall.newTree(
           newIdentNode("generate_outputs_templates"),
-          newIdentNode("ugen_outputs"),
+          newIdentNode("omni_outputs"),
           newLit(1)
         ),
         nnkForStmt.newTree(
