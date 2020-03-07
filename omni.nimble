@@ -6,6 +6,9 @@ license       = "MIT"
 requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
+#Ignore omni_lang
+skipDirs = @["omni_lang"]
+
 #Compiler executable
 bin = @["omni"]
 
