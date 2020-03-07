@@ -41,3 +41,7 @@ To install `omni` run these commands:
     cd omni
 
     nimble installOmni
+
+## **Usage**
+
+    omni ~/.nimble/pkgs/omni_lang-0.1.0/omni_lang/examples/OmniSaw.omni    

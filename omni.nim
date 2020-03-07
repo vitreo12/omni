@@ -33,9 +33,9 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni(file : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
+proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
 
-    let fileFullPath = file.normalizedPath().expandTilde().absolutePath()
+    let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
     #Check if file exists
     if not fileFullPath.existsFile():
@@ -67,7 +67,7 @@ proc omni(file : string, outName : string = "", outDir : string = "", lib : stri
     
     #Check if dir exists
     if not outDirFullPath.existsDir():
-        printError($outDirFullPath & " doesn't exist.")
+        printError("outDir: " & $outDirFullPath & " doesn't exist.")
         return 1
 
     #This is the path to the original omni file to be used in shell.
@@ -163,17 +163,17 @@ proc omni(file : string, outName : string = "", outDir : string = "", lib : stri
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni_cli(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
+proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
     
-    #echo "files"
-    #echo files
+    #echo "omniFiles"
+    #echo omniFiles
 
     #Single file, pass the outName
-    if files.len == 1:
-        return omni(files[0], outName, outDir, lib, architecture, define, importModule)
+    if omniFiles.len == 1:
+        return omni(omniFiles[0], outName, outDir, lib, architecture, define, importModule)
     else:
-        for file in files:
-            if omni(file, "", outDir, lib, architecture, define, importModule) > 0:
+        for omniFile in omniFiles:
+            if omni(omniFile, "", outDir, lib, architecture, define, importModule) > 0:
                 return 1
         return 0
 
@@ -182,12 +182,12 @@ dispatch(omni_cli,
     short={"outName" : 'n'},
     
     help={ 
-            "outName" : "Name for the output library. Defaults to \"lib{filename}\".",
-            "outDir" : "Output folder.",
+            "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended to it.",
+            "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
             "lib" : "Build a shared or static library.",
             "architecture" : "Build architecture.",
-            "define" : "Define symbols for the compiler.",
-            "importModule" : "Import nim modules to be compiled with the omni project."
+            "define" : "Define additional symbols for the compiler.",
+            "importModule" : "Import additional nim modules to be compiled with the omni file(s)."
     }
 
 )
