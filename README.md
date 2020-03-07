@@ -9,7 +9,7 @@
 
 ## **Installation**
 
-To install `omni`, run these commands:
+To install `omni` run these commands:
 
     git clone https://github.com/vitreo12/omni
     
