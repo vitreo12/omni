@@ -35,9 +35,7 @@ proc printDone(msg : string) : void =
 #Actual compiler
 proc omni(file : string, architecture : string = "native", lib : string = "shared", outDir : string = "", define : seq[string] = @[],  importModule  : seq[string] = @[]) : void =
 
-    let 
-        fileFullPath      = file.normalizedPath().expandTilde().absolutePath()
-        fileFullPathShell = fileFullPath.replace(" ", "\\ ")
+    let fileFullPath = file.normalizedPath().expandTilde().absolutePath()
 
     #Check if file exists
     if not fileFullPath.existsFile():
@@ -91,9 +89,7 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
         printError("Invalid -lib argument: \"" & $lib & "\". Use \"shared\" to build a shared library, or \"static\" to build a static one.")
         return
     
-    #Create a directory for result and cd into it: cd into it is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Omni/issues/12745
-    #removeDir(fullPathToNewFolder)
-    #createDir(fullPathToNewFolder)
+    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Omni/issues/12745
     setCurrentDir(outDirFullPath)
     
     #Actual compile command
@@ -101,9 +97,33 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
     
     #Append additional definitions
     for new_define in define:
-        compile_command.add(" -d:" & $new_define)
-    
-    # -d:supercollider -d:supernova -d:multithreadBuffers -d:writeIO -d:tempDir=" & $fullPathToNewFolderShell & " 
+
+        #Look if -d has paths in it. Paths are expressed like so: -d:tempDir:"./"
+        let split_define = new_define.split(':')
+        
+        #Standard case -d:danger
+        if split_define.len() <= 1:
+            compile_command.add(" -d:" & $new_define)
+        
+        #Normal and unix paths
+        elif split_define.len() == 2:
+            let 
+                define_type  = split_define[0]
+                define_path  = split_define[1]
+
+            if define_path.contains('/') or define_path.contains('\\'):
+                compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
+
+        #Windows has C:\\
+        elif split_define.len() == 3:
+            let define_type  = split_define[0]
+            var define_path  = split_define[1]
+            
+            #Add the full path back
+            define_path.add(":" & $(split_define[2]))
+
+            if define_path.contains('/') or define_path.contains('\\'):
+                compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
 
     #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
     var import_omni_lang = true
@@ -116,12 +136,15 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
         compile_command.add(" --import:omni_lang")
 
     #Finally, append the path to the actual omni file to compile:
-    compile_command.add(" " & $fileFullPathShell)
+    compile_command.add(" \"" & $fileFullPath & "\"")
 
-    #echo compile_command
+    echo compile_command
     
     #Actually execute compilation
-    let failedOmniCompilation = execCmd(compile_command)
+    when not defined(Windows):
+        let failedOmniCompilation = execCmd(compile_command)
+    else:
+        let failedOmniCompilation = execShellCmd(compile_command)
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
@@ -132,6 +155,10 @@ proc omni(file : string, architecture : string = "native", lib : string = "share
 
 #Unpack files arg and pass it to compiler
 proc omni_cli(files : seq[string], architecture : string = "native", lib : string = "shared", outDir : string = "", define : seq[string] = @[], importModule  : seq[string] = @[]) : void =
+    
+    echo "files"
+    echo files
+
     for file in files:
         omni(file, architecture, lib, outDir, define, importModule)
 
