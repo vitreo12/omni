@@ -182,7 +182,7 @@ dispatch(omni_cli,
     short={"outName" : 'n'},
     
     help={ 
-            "outName" : "Name for the output, defaults to \"lib{omnifile}\".",
+            "outName" : "Name for the output library. Defaults to \"lib{filename}\".",
             "outDir" : "Output folder.",
             "lib" : "Build a shared or static library.",
             "architecture" : "Build architecture.",
