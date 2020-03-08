@@ -9,7 +9,6 @@ import omni_perform
 export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
 
 #Utilities
-import omni_print
 import omni_types
 
-export omni_print, omni_types
+export omni_types

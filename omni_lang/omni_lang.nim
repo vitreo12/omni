@@ -9,7 +9,8 @@ export omni_macros
 ## LIB ##
 #########
 
-#Allocation
+#Allocation AND Print... 
+#Print should be moved to a different module (once no more alloc debug in omni_alloc.nim is needed anymore)
 import omni_lang/core/lib/alloc/omni_alloc
 export omni_alloc
 
