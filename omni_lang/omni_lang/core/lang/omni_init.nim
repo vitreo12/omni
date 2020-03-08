@@ -197,6 +197,25 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
     return quote do:
         `final_stmt`
 
+#[
+#This is needed for Max and PD, when creation of the Omni object can happen before init of audio driver
+template defineSetSamplerate() : untyped {.dirty.} =
+    proc setOmniObjSampleRate(obj : pointer, samplerate : cdouble) : void {.exportc: "setOmniObjSampleRate".} =
+        if not isNil(obj):
+            var omni_obj : ptr UGen = cast[ptr UGen](obj)
+            discard omni_print("setOmniObjSampleRate previous samplerate: %f\n", omni_obj.samplerate_let)
+            omni_obj.samplerate_let = float(samplerate)
+            discard omni_print("setOmniObjSampleRate: received %f\n", samplerate)
+            discard omni_print("setOmniObjSampleRate: %f\n", omni_obj.samplerate_let)
+
+    #[
+    proc setVectorSize(obj : pointer, vector_size : cint) : void =
+        if not isNil(obj):
+            let omni_obj = cast[ptr UGen](obj)
+            omni_obj.bufsize_let = vector_size
+    ]#
+]#
+
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
     discard
@@ -229,7 +248,8 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         empty_var_statements : seq[NimNode]
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
-        constructor_body : NimNode
+        alloc_ugen : NimNode
+        assign_ugen_fields = nnkStmtList.newTree()
 
         new_call_provided = false
     
@@ -437,27 +457,25 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         dumpAstGen:
             var ugen: ptr UGen = cast[ptr UGen](alloc0(sizeof(UGen)))
     ]#
-    constructor_body = nnkStmtList.newTree(
-        nnkVarSection.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("ugen"),
+    alloc_ugen = nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+            newIdentNode("ugen"),
+            nnkPtrTy.newTree(
+                newIdentNode("UGen")
+            ),
+            nnkCast.newTree(
                 nnkPtrTy.newTree(
                     newIdentNode("UGen")
                 ),
-                nnkCast.newTree(
-                    nnkPtrTy.newTree(
-                        newIdentNode("UGen")
-                    ),
-                    nnkCall.newTree(
-                        newIdentNode("omni_alloc"),
-                        nnkCast.newTree(
-                            newIdentNode("culong"),
-                                nnkCall.newTree(
-                                newIdentNode("sizeof"),
-                                newIdentNode("UGen")
-                            )
-                        )                 
-                    )
+                nnkCall.newTree(
+                    newIdentNode("omni_alloc"),
+                    nnkCast.newTree(
+                        newIdentNode("culong"),
+                            nnkCall.newTree(
+                            newIdentNode("sizeof"),
+                            newIdentNode("UGen")
+                        )
+                    )                 
                 )
             )
         )
@@ -483,7 +501,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 newIdentNode(var_name_str)      #symbol name ($name)
             )
 
-            constructor_body.add(ugen_asgn_stmt)
+            assign_ugen_fields.add(ugen_asgn_stmt)
 
             final_var_names.add(newIdentNode(var_name_str))
 
@@ -492,7 +510,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
             continue
     
     #Also add ugen.samplerate_let = samplerate
-    constructor_body.add(
+    assign_ugen_fields.add(
         nnkAsgn.newTree(
             nnkDotExpr.newTree(
                 newIdentNode("ugen"),
@@ -520,30 +538,84 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
+
+
+        #This is for SC (Init + Build) are bundled together
+        when defined(unifyInitBuild):
+            #Initialize and build an Omni object
+            proc OmniInitBuildObj*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "OmniInitBuildObj"} =
+                
+                #allocation of "ugen" variable
+                `alloc_ugen`
+
+                let ugen_void_ptr = cast[pointer](ugen)
+
+                if isNil(ugen_void_ptr):
+                    print("ERROR: Omni: could not allocate memory")
+                    return ugen_void_ptr
+
+                #Unpack args. These will overwrite the previous empty templates
+                let 
+                    ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+                    bufsize     {.inject.}  : int          = int(bufsize_in)
+                    samplerate  {.inject.}  : float        = float(samplerate_in)
+
+                #Add the templates needed for OmniConstructor to unpack variable names declared with "var" (different from the one in OmniPerform, which uses unsafeAddr)
+                `templates_for_constructor_var_declarations`
+
+                #Add the templates needed for OmniConstructor to unpack variable names declared with "let"
+                `templates_for_constructor_let_declarations`
+
+                #Actual body of the constructor
+                `code_block`
+
+                #assignment of fields
+                `assign_ugen_fields`      
+                
+                #Return the "ugen" variable as void pointer
+                return ugen_void_ptr
         
-        #Actual constructor that returns a UGen
-        proc OmniConstructor*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "OmniConstructor"} =
-            
-            #Unpack args. These will overwrite the previous empty templates
-            let 
-                ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
-                bufsize     {.inject.}  : int          = bufsize_in
-                samplerate  {.inject.}  : float        = samplerate_in
+        #This is for Max / PD
+        when defined(separateInitBuild):
+            #This is just allocating memory, not running constructor
+            proc OmniInitObj() : pointer {.exportc: "OmniInitObj".} =
+                #allocation of "ugen" variable
+                `alloc_ugen`
 
-            #Add the templates needed for OmniConstructor to unpack variable names declared with "var" (different from the one in OmniPerform, which uses unsafeAddr)
-            `templates_for_constructor_var_declarations`
+                #Return ugen as void ptr
+                let ugen_void_ptr = cast[pointer](ugen)
 
-            #Add the templates needed for OmniConstructor to unpack variable names declared with "let"
-            `templates_for_constructor_let_declarations`
+                if isNil(ugen_void_ptr):
+                    print("ERROR: Omni: could not allocate memory")
 
-            #Actual body of the constructor
-            `code_block`
+                return ugen_void_ptr
 
-            #Constructor block: allocation of "ugen" variable and assignment of fields
-            `constructor_body`
+            proc OmniBuildObj(obj : pointer, ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "OmniBuildObj".} =
+                if isNil(obj):
+                    print("ERROR: Omni: build: invalid omni object")
+                    return
+                
+                let 
+                    ugen        {.inject.}  : ptr UGen     = cast[ptr UGen](obj)     
+                    ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+                    bufsize     {.inject.}  : int          = int(bufsize_in)
+                    samplerate  {.inject.}  : float        = float(samplerate_in)
+                
+                print("samplerate_in:")
+                print(samplerate_in)
+                
+                #Add the templates needed for OmniConstructor to unpack variable names declared with "var" (different from the one in OmniPerform, which uses unsafeAddr)
+                `templates_for_constructor_var_declarations`
 
-            #Return the "ugen" variable as void pointer
-            return cast[pointer](ugen)
+                #Add the templates needed for OmniConstructor to unpack variable names declared with "let"
+                `templates_for_constructor_let_declarations`
+                
+                #Actual body of the constructor
+                `code_block`
+
+                #Assign ugen fields
+                `assign_ugen_fields`
+                    
 
         #Destructor
         #[ proc OmniDestructor*(ugen : ptr UGen) : void {.exportc: "OmniDestructor".} =
@@ -552,6 +624,8 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 omni_free(ugen_void_cast)  ]#    
         
         defineDestructor(UGen, nil, nil, nil, `final_var_names`, true)
+
+        #defineSetSamplerate()
             
 
 #This generates:
@@ -564,7 +638,7 @@ macro init*(code_block : untyped) : untyped =
         let 
             ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](0)
             bufsize     {.inject.}  : int          = 0
-            samplerate  {.inject.}  : float        = 0
+            samplerate  {.inject.}  : float        = 0.0
 
         parse_block_for_variables(`code_block`, true)
 

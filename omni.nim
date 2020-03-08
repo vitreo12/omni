@@ -33,7 +33,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
+proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[], unifyInitBuild : bool = true) : int =
 
     let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
@@ -132,6 +132,12 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
             if define_path.contains('/') or define_path.contains('\\'):
                 compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
 
+    #Set the unifyInitBuild / separateInitBuild flags.
+    if unifyInitBuild:
+        compile_command.add(" -d:unifyInitBuild")
+    else:
+        compile_command.add(" -d:separateInitBuild")
+
     #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
     var import_omni_lang = true
     for new_importModule in importModule:
@@ -163,17 +169,17 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[]) : int =
+proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[], unifyInitBuild : bool = true) : int =
     
     #echo "omniFiles"
     #echo omniFiles
 
     #Single file, pass the outName
     if omniFiles.len == 1:
-        return omni(omniFiles[0], outName, outDir, lib, architecture, define, importModule)
+        return omni(omniFiles[0], outName, outDir, lib, architecture, define, importModule, unifyInitBuild)
     else:
         for omniFile in omniFiles:
-            if omni(omniFile, "", outDir, lib, architecture, define, importModule) > 0:
+            if omni(omniFile, "", outDir, lib, architecture, define, importModule, unifyInitBuild) > 0:
                 return 1
         return 0
 
@@ -187,7 +193,8 @@ dispatch(omni_cli,
             "lib" : "Build a shared or static library.",
             "architecture" : "Build architecture.",
             "define" : "Define additional symbols for the compiler.",
-            "importModule" : "Import additional nim modules to be compiled with the omni file(s)."
+            "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
+            "unifyInitBuild" : "Unify\"OmniInitObj\" with \"OmniBuildObj\"."
     }
 
 )

@@ -12,41 +12,32 @@ outs 1:
 
 expandMacros:
     struct Phasor[T]:
-        phase T
+        T phase
 
 expandMacros:
     struct Something[T, Y]:
-        a T
-        b Data[Y]
-        c Buffer
+        T       a
+        Data[Y] b
 
 expandMacros:
     struct SomeOtherStruct[T, Y]:
-        phasor Phasor[T]
-        something Something[T, Y]
-
-expandMacros:
-    struct BuffersWrapper:
-        buf1 Buffer
-        buf2 Buffer
+        Phasor[T]       phasor 
+        Something[T, Y] something 
 
 expandMacros:
     def phasorDefault():
         return Phasor.new(0.0)
 
 expandMacros:
-    def someProcForPhasor[T](p Phasor[T]):
+    def someProcForPhasor[T](Phasor[T] p):
         p.phase = 0.23
 
 expandMacros:
     init:
         phasor   = phasorDefault()
-        something = Something.new(0.0, Data.new(int(samplerate)), Buffer.new(1))
+        something = Something.new(0.0, Data.new(int(samplerate)))
         someOtherStruct = SomeOtherStruct.new(phasor, something)
-        someData = Data.new(100, 2)
-
-        someBuffer = Buffer.new(1)
-        someBufferWrapper = BuffersWrapper.new(Buffer.new(1), Buffer.new(1))
+        someData = Data.new(100, 2) 
 
         phase = 0.0
 
@@ -68,8 +59,8 @@ expandMacros:
 
 expandMacros:
     perform:
-        frequency Signal
-        sine_out  Signal
+        Signal frequency 
+        Signal sine_out  
 
         sample:
             frequency = in1
