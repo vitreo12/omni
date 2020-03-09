@@ -541,9 +541,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
 
         #This is for SC (Init + Build) are bundled together
-        when defined(unifyInitBuild):
+        when defined(unifyAllocInit):
             #Initialize and build an Omni object
-            proc OmniInitBuildObj*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "OmniInitBuildObj"} =
+            proc OmniAllocAndInitObj*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "OmniAllocAndInitObj"} =
                 
                 #allocation of "ugen" variable
                 `alloc_ugen`
@@ -576,9 +576,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 return ugen_void_ptr
         
         #This is for Max / PD
-        when defined(separateInitBuild):
+        when defined(separateAllocInit):
             #This is just allocating memory, not running constructor
-            proc OmniInitObj() : pointer {.exportc: "OmniInitObj".} =
+            proc OmniAllocObj() : pointer {.exportc: "OmniAllocObj".} =
                 #allocation of "ugen" variable
                 `alloc_ugen`
 
@@ -590,7 +590,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 return ugen_void_ptr
 
-            proc OmniBuildObj(obj : pointer, ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "OmniBuildObj".} =
+            proc OmniInitObj(obj : pointer, ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "OmniInitObj".} =
                 if isNil(obj):
                     print("ERROR: Omni: build: invalid omni object")
                     return
