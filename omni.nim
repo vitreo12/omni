@@ -33,7 +33,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[], unifyAllocInit : bool = true) : int =
+proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : int = 32, unifyAllocInit : bool = true) : int =
 
     let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
@@ -68,6 +68,11 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     #Check if dir exists
     if not outDirFullPath.existsDir():
         printError("outDir: " & $outDirFullPath & " doesn't exist.")
+        return 1
+
+    #Check performBits argument
+    if performBits != 32 and performBits != 64:
+        printError("performBits: " & $performBits & " is an invalid number. Only valid numbers are 32 and 64.")
         return 1
 
     #This is the path to the original omni file to be used in shell.
@@ -138,6 +143,12 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     else:
         compile_command.add(" -d:separateAllocInit")
 
+    #Set performBits flag
+    if performBits == 32:
+        compile_command.add(" -d:performBits32")
+    else:
+        compile_command.add(" -d:performBits64")
+
     #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
     var import_omni_lang = true
     for new_importModule in importModule:
@@ -169,32 +180,36 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[], unifyAllocInit : bool = true) : int =
+proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : int = 32, unifyAllocInit : bool = true) : int =
     
     #echo "omniFiles"
     #echo omniFiles
 
     #Single file, pass the outName
     if omniFiles.len == 1:
-        return omni(omniFiles[0], outName, outDir, lib, architecture, define, importModule, unifyAllocInit)
+        return omni(omniFiles[0], outName, outDir, lib, architecture, define, importModule, performBits, unifyAllocInit)
     else:
         for omniFile in omniFiles:
-            if omni(omniFile, "", outDir, lib, architecture, define, importModule, unifyAllocInit) > 0:
+            if omni(omniFile, "", outDir, lib, architecture, define, importModule, performBits, unifyAllocInit) > 0:
                 return 1
         return 0
 
 #Dispatch the omni function as the CLI one
 dispatch(omni_cli, 
-    short={"outName" : 'n'},
+    short={
+        "outName" : 'n',
+        "performBits" : 'b'
+    },
     
     help={ 
-            "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended to it.",
-            "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
-            "lib" : "Build a shared or static library.",
-            "architecture" : "Build architecture.",
-            "define" : "Define additional symbols for the compiler.",
-            "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
-            "unifyAllocInit" : "Unify\"OmniAllocObj\" with \"OmniInitObj\"."
+        "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended to it.",
+        "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
+        "lib" : "Build a shared or static library.",
+        "architecture" : "Build architecture.",
+        "define" : "Define additional symbols for the compiler.",
+        "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
+        "performBits" : "Specify precision for ins and outs in the perform function",
+        "unifyAllocInit" : "Unify\"OmniAllocObj\" with \"OmniInitObj\"."
     }
 
 )

@@ -226,34 +226,53 @@ macro unpackUGenVariables*(t : typed) =
 #Simply cast the inputs from SC in a indexable form in Nim
 macro castInsOuts*() =
     return quote do:
-        let 
-            ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
-            outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_SC)
+        when defined(performBits32):
+            let 
+                ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+                outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_SC)
+        
+        when defined(performBits64):
+            let 
+                ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_SC)
+                outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_SC)
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
-    #export the function to C when building a shared library
-    proc OmniPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "OmniPerform".} =    
-        #[
-        #Add the templates needed for OmniPerform to unpack variable names declared with "var" in cosntructor
-        generateTemplatesForPerformVarDeclarations()
 
-        #Cast the void* to UGen*
-        let ugen = cast[ptr UGen](ugen_void)
+    #used in SC
+    when defined(performBits32):
+        proc OmniPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "OmniPerform".} =    
+            #[
+            #Add the templates needed for OmniPerform to unpack variable names declared with "var" in cosntructor
+            generateTemplatesForPerformVarDeclarations()
 
-        #cast ins and outs
-        castInsOuts()
+            #Cast the void* to UGen*
+            let ugen = cast[ptr UGen](ugen_void)
 
-        #Unpack the variables at compile time. It will also expand on any Buffer types.
-        unpackUGenVariables(UGen)
-        ]#
+            #cast ins and outs
+            castInsOuts()
 
-        #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
-        parse_block_for_variables(code_block, false, true)
+            #Unpack the variables at compile time. It will also expand on any Buffer types.
+            unpackUGenVariables(UGen)
+            ]#
 
-        #UNLOCK buffers when multithread buffers are used...
-        when defined(multithreadBuffers):
-            unlock_buffers()
+            #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
+            parse_block_for_variables(code_block, false, true)
+
+            #UNLOCK buffers when multithread buffers are used...
+            when defined(multithreadBuffers):
+                unlock_buffers()
+
+    #used in Max/pd
+    when defined(performBits64):
+        proc OmniPerform*(ugen_void : pointer, bufsize : clong, ins_SC : ptr ptr cdouble, outs_SC : ptr ptr cdouble) : void {.exportc: "OmniPerform".} =    
+
+            #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
+            parse_block_for_variables(code_block, false, true)
+
+            #UNLOCK buffers when multithread buffers are used...
+            when defined(multithreadBuffers):
+                unlock_buffers()
 
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
     when defined(writeIO):
