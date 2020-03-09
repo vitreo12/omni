@@ -19,5 +19,8 @@ void OmniInitGlobal
     omni_get_samplerate_func = get_samplerate_func;
     omni_get_bufsize_func    = get_bufsize_func;
 
-    omni_print_func("Called Omni_Init\n");
+    //This bugs out in max's print...
+    size_t something = 1000;
+    if(omni_print_func)
+        omni_print_func("Called Omni_Init %lu \n", something);
 }
