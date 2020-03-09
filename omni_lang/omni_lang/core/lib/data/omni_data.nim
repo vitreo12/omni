@@ -1,4 +1,5 @@
 import ../alloc/omni_alloc
+import ../print/omni_print
 
 type
     C_size_t = culong

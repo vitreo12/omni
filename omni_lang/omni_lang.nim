@@ -9,14 +9,25 @@ export omni_macros
 ## LIB ##
 #########
 
-#Allocation AND Print... 
-#Print should be moved to a different module (once no more alloc debug in omni_alloc.nim is needed anymore)
+#Allocation
 import omni_lang/core/lib/alloc/omni_alloc
 export omni_alloc
 
 #Data
 import omni_lang/core/lib/data/omni_data
 export omni_data
+
+#Print
+import omni_lang/core/lib/print/omni_print
+export omni_print
+
+#Utilities (get samplerate/bufsize)
+import omni_lang/core/lib/utilities/omni_utilities
+export omni_utilities
+
+#Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
+import omni_lang/core/lib/init/omni_global_init
+export omni_global_init
 
 #math
 import math
