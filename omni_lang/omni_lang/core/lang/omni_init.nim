@@ -595,14 +595,17 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                     print("ERROR: Omni: build: invalid omni object")
                     return
                 
+                #let str = "hello"
+                #discard omni_print("YESS OmniInitObj!!!!\n")
+                
+                #print("YA OmniIniObj!")
+                #print(10.4)
+
                 let 
                     ugen        {.inject.}  : ptr UGen     = cast[ptr UGen](obj)     
                     ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
                     bufsize     {.inject.}  : int          = int(bufsize_in)
                     samplerate  {.inject.}  : float        = float(samplerate_in)
-                
-                print("samplerate_in:")
-                print(samplerate_in)
                 
                 #Add the templates needed for OmniConstructor to unpack variable names declared with "var" (different from the one in OmniPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -615,6 +618,8 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 #Assign ugen fields
                 `assign_ugen_fields`
+                
+                return
                     
 
         #Destructor

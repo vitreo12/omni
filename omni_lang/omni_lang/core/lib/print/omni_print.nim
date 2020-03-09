@@ -4,19 +4,19 @@
 #Pass optimization flag to C compiler
 {.passC: "-O3".}
 
-proc omni_print_C*(formatstr: cstring) : cint {.importc: "omni_print_C", varargs, cdecl.}
-
-proc omni_print*(formatstr: cstring) : int {.varargs.} =
-    return int(omni_print_C(formatstr))
+proc omni_print*(formatstr: cstring) : void {.importc: "omni_print_C", varargs, cdecl.}
 
 #string
-proc print*(str : string) : void {.inline.} =
-    discard omni_print("%s \n", str)
+template print*(str : string) : untyped =
+    omni_print(str & "\n")
 
+#These don't work in max...
+#[
 #int
-proc print*[T : SomeInteger](val : T) : void {.inline.} =
-    discard omni_print("%d \n", int(val))
+template print*[T : SomeInteger](val : T) : untyped =
+    omni_print("%d\n", int(val))
 
 #float
-proc print*[T : SomeFloat](val : T) : void {.inline.} =
-    discard omni_print("%f \n", float(val))
+template print*[T : SomeFloat](val : T) : untyped =
+    omni_print("%f\n", float(val))
+]#
