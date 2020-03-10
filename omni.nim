@@ -213,7 +213,7 @@ dispatch(omni_cli,
     },
     
     help={ 
-        "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended.",
+        "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended (e.g. \"OmniSaw.omni\" -> \"libOmniSaw" & $shared_lib_extension & "\").",
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
