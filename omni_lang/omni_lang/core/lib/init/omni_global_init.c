@@ -1,7 +1,8 @@
-#include "../print/omni_print.h"
 #include "../alloc/omni_alloc.h"
+#include "../print/omni_print.h"
 #include "../utilities/omni_samplerate_bufsize.h"
 
+//Initialize all the function pointers in one place.
 void OmniInitGlobal
     (
         alloc_func_t* alloc_func, 
@@ -12,15 +13,12 @@ void OmniInitGlobal
         get_bufsize_func_t* get_bufsize_func
     )
 {
-    omni_alloc_func          = alloc_func;
-    omni_realloc_func        = realloc_func;
-    omni_free_func           = free_func;
-    omni_print_func          = print_func;
-    omni_get_samplerate_func = get_samplerate_func;
-    omni_get_bufsize_func    = get_bufsize_func;
+    OmniInitAlloc(alloc_func, realloc_func, free_func);
+    OmniInitPrint(print_func);
+    OmniInitGetSamplerateGetBufsize(get_samplerate_func, get_bufsize_func);
 
-    //This bugs out in max's print...
+    print_func_t* omni_print_func = get_omni_print_func();
     size_t something = 1000;
     if(omni_print_func)
-        omni_print_func("Called Omni_Init %lu \n", something);
+        omni_print_func("Called Omni_Init %lu \n", something); //Weird values in Max's post...
 }
