@@ -28,14 +28,14 @@ when defined(Windows):
 #Generic error proc
 proc printError(msg : string) : void =
     setForegroundColor(fgRed)
-    writeStyled("ERROR[omni]: ", {styleBright}) 
+    writeStyled("ERROR [omni]: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
 #Generic success proc
 proc printDone(msg : string) : void =
     setForegroundColor(fgGreen)
-    writeStyled("DONE[omni]: ", {styleBright}) 
+    writeStyled("DONE [omni]: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
@@ -183,7 +183,7 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
-        printError("Unsuccessful omni compilation of " & $omniFileName & $omniFileExt & ".")
+        printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt & ".")
         return 1
 
     printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
