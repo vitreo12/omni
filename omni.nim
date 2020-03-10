@@ -10,30 +10,37 @@ const static_lib_extension = ".a"
 
 #Extensions for shared lib
 when defined(Linux):
-    const shared_lib_extension = ".so"
+    const 
+        shared_lib_extension = ".so"
+        default_compiler     = "gcc"
 
 when defined(MacOSX) or defined(MacOS):
-    const shared_lib_extension = ".dylib"
+    const 
+        shared_lib_extension = ".dylib"
+        default_compiler     = "clang"
 
 when defined(Windows):
-    const shared_lib_extension = ".dll"
+    const 
+        shared_lib_extension = ".dll"
+        default_compiler     = "gcc(MinGW)"
+
 
 #Generic error proc
 proc printError(msg : string) : void =
     setForegroundColor(fgRed)
-    writeStyled("ERROR: ", {styleBright}) 
+    writeStyled("ERROR[omni]: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
 #Generic success proc
 proc printDone(msg : string) : void =
     setForegroundColor(fgGreen)
-    writeStyled("DONE: ", {styleBright}) 
+    writeStyled("DONE[omni]: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : int = 32, unifyAllocInit : bool = true) : int =
+proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : int = 32, unifyAllocInit : bool = true) : int =
 
     let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
@@ -107,6 +114,10 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     #Actual compile command
     var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
     
+    #Add compiler info if not default compiler (which is passed in already from nim.cfg)
+    if compiler != default_compiler:
+        compile_command.add(" --cc:" & compiler)
+
     #Append additional definitions
     for new_define in define:
 
@@ -180,17 +191,17 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : int = 32, unifyAllocInit : bool = true) : int =
+proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : int = 32, unifyAllocInit : bool = true) : int =
     
     #echo "omniFiles"
     #echo omniFiles
 
     #Single file, pass the outName
     if omniFiles.len == 1:
-        return omni(omniFiles[0], outName, outDir, lib, architecture, define, importModule, performBits, unifyAllocInit)
+        return omni(omniFiles[0], outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit)
     else:
         for omniFile in omniFiles:
-            if omni(omniFile, "", outDir, lib, architecture, define, importModule, performBits, unifyAllocInit) > 0:
+            if omni(omniFile, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit) > 0:
                 return 1
         return 0
 
@@ -206,10 +217,11 @@ dispatch(omni_cli,
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
-        "define" : "Define additional symbols for the compiler.",
+        "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C compilers.",
+        "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
-        "performBits" : "Specify precision for ins and outs in the perform function",
-        "unifyAllocInit" : "Unify\"OmniAllocObj\" with \"OmniInitObj\"."
+        "performBits" : "Specify precision for ins and outs in the perform function.",
+        "unifyAllocInit" : "Unify \"OmniAllocObj\" with \"OmniInitObj\"."
     }
 
 )
