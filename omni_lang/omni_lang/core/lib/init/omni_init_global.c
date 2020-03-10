@@ -20,5 +20,5 @@ void OmniInitGlobal
     print_func_t* omni_print_func = get_omni_print_func();
     size_t something = 1000;
     if(omni_print_func)
-        omni_print_func("Called Omni_Init %lu \n", something); //Weird values in Max's post...
+        omni_print_func("Called OmniInitGlobal: %lu \n", something); //Weird values in Max's post...
 }

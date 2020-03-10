@@ -1,5 +1,5 @@
 #C file to compile together
-{.compile: "./omni_global_init.c".}
+{.compile: "./omni_init_global.c".}
 
 #Pass optimization flag to C compiler
 {.passC: "-O3".}

@@ -26,8 +26,8 @@ import omni_lang/core/lib/utilities/omni_utilities
 export omni_utilities
 
 #Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
-import omni_lang/core/lib/init/omni_global_init
-export omni_global_init
+import omni_lang/core/lib/init/omni_init_global
+export omni_init_global
 
 #math
 import math
