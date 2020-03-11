@@ -40,7 +40,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : int = 32, unifyAllocInit : bool = true) : int =
+proc omni_single_file(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : int = 32, unifyAllocInit : bool = true) : int =
 
     let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
@@ -191,22 +191,22 @@ proc omni(omniFile : string, outName : string = "", outDir : string = "", lib : 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni_cli(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : int = 32, unifyAllocInit : bool = true) : int =
+proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : int = 32, unifyAllocInit : bool = true) : int =
     
     #echo "omniFiles"
     #echo omniFiles
 
     #Single file, pass the outName
     if omniFiles.len == 1:
-        return omni(omniFiles[0], outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit)
+        return omni_single_file(omniFiles[0], outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit)
     else:
         for omniFile in omniFiles:
-            if omni(omniFile, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit) > 0:
+            if omni_single_file(omniFile, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit) > 0:
                 return 1
         return 0
 
 #Dispatch the omni function as the CLI one
-dispatch(omni_cli, 
+dispatch(omni, 
     short={
         "outName" : 'n',
         "performBits" : 'b'
