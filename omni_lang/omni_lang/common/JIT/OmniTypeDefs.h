@@ -8,9 +8,9 @@ typedef struct World World;
 typedef void init_world_func(void* inWorld);
 
 //Initialization function prototypes for the real time allocator (SC only)
-typedef void* RTAlloc_ptr(World *inWorld, size_t inSize);
-typedef void* RTRealloc_ptr(World *inWorld, void *inPtr, size_t inSize);
-typedef void  RTFree_ptr(World *inWorld, void *inPtr);
+typedef void* RTAlloc_ptr(World *inWorld, size_t in_size);
+typedef void* RTRealloc_ptr(World *inWorld, void *in_ptr, size_t in_size);
+typedef void  RTFree_ptr(World *inWorld, void *in_ptr);
 typedef void  init_alloc_function_pointers_func(RTAlloc_ptr* In_RTAlloc, RTRealloc_ptr* In_RTRealloc, RTFree_ptr* In_RTFree);
 
 //Omni module functions

@@ -548,11 +548,11 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 #allocation of "ugen" variable
                 `alloc_ugen`
 
-                let ugen_void_ptr = cast[pointer](ugen)
+                let ugen_ptr = cast[pointer](ugen)
 
-                if isNil(ugen_void_ptr):
+                if isNil(ugen_ptr):
                     print("ERROR: Omni: could not allocate memory")
-                    return ugen_void_ptr
+                    return ugen_ptr
 
                 #Unpack args. These will overwrite the previous empty templates
                 let 
@@ -573,7 +573,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 `assign_ugen_fields`      
                 
                 #Return the "ugen" variable as void pointer
-                return ugen_void_ptr
+                return ugen_ptr
         
         #This is for Max / PD
         when defined(separateAllocInit):
@@ -583,15 +583,15 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 `alloc_ugen`
 
                 #Return ugen as void ptr
-                let ugen_void_ptr = cast[pointer](ugen)
+                let ugen_ptr = cast[pointer](ugen)
 
-                if isNil(ugen_void_ptr):
+                if isNil(ugen_ptr):
                     print("ERROR: Omni: could not allocate memory")
 
-                return ugen_void_ptr
+                return ugen_ptr
 
-            proc Omni_UGenInit(obj : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "Omni_UGenInit".} =
-                if isNil(obj):
+            proc Omni_UGenInit(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "Omni_UGenInit".} =
+                if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return
                 
@@ -602,7 +602,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 #print(10.4)
 
                 let 
-                    ugen        {.inject.}  : ptr UGen     = cast[ptr UGen](obj)     
+                    ugen        {.inject.}  : ptr UGen     = cast[ptr UGen](ugen_ptr)     
                     ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
                     bufsize     {.inject.}  : int          = int(bufsize_in)
                     samplerate  {.inject.}  : float        = float(samplerate_in)

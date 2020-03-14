@@ -1,41 +1,40 @@
-#include "omni_alloc.h"
-#include "../print/omni_print.h"
+#include "../../omni.h"
 
 //Global allocation functions. These are set from Omni_InitAlloc
-alloc_func_t* omni_alloc_func;     // = malloc;  //Default with malloc
-realloc_func_t* omni_realloc_func; // = realloc; //Default with realloc
-free_func_t* omni_free_func;       // = free;    //Default it with free
+omni_alloc_func_t* omni_alloc_func;     // = malloc;  //Default with malloc
+omni_realloc_func_t* omni_realloc_func; // = realloc; //Default with realloc
+omni_free_func_t* omni_free_func;       // = free;    //Default it with free
 
-void Omni_InitAlloc(alloc_func_t* alloc_func, realloc_func_t* realloc_func, free_func_t* free_func)
+void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func)
 {
     omni_alloc_func   = alloc_func;
     omni_realloc_func = realloc_func;
     omni_free_func    = free_func;
 }
 
-void* omni_alloc_C(size_t inSize)
+void* omni_alloc_C(size_t in_size)
 {
-    print_func_t* omni_print_func = get_omni_print_func();
+    omni_print_func_t* omni_print_func = get_omni_print_func();
     if(omni_print_func)
-        omni_print_func("Calling omni_alloc_C with size: %d\n", (int)inSize);
+        omni_print_func("Calling omni_alloc_C with size: %d\n", (int)in_size);
 
-    return omni_alloc_func(inSize);
+    return omni_alloc_func(in_size);
 }
 
-void* omni_realloc_C(void *inPtr, size_t inSize)
+void* omni_realloc_C(void *in_ptr, size_t in_size)
 {
-    print_func_t* omni_print_func = get_omni_print_func();
+    omni_print_func_t* omni_print_func = get_omni_print_func();
     if(omni_print_func)
-        omni_print_func("Calling omni_realloc_C with size: %lu\n", inSize);
+        omni_print_func("Calling omni_realloc_C with size: %lu\n", in_size);
 
-    return omni_realloc_func(inPtr, inSize);
+    return omni_realloc_func(in_ptr, in_size);
 }
 
-void omni_free_C(void* inPtr)
+void omni_free_C(void* in_ptr)
 {
-    print_func_t* omni_print_func = get_omni_print_func();
+    omni_print_func_t* omni_print_func = get_omni_print_func();
     if(omni_print_func)
         omni_print_func("Calling omni_free_C\n");
 
-    omni_free_func(inPtr);
+    omni_free_func(in_ptr);
 }

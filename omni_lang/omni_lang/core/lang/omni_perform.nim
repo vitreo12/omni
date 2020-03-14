@@ -241,7 +241,7 @@ template perform*(code_block : untyped) {.dirty.} =
 
     #used in SC
     when defined(performBits32):
-        proc Omni_UGenPerform*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform".} =    
+        proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32".} =    
             #[
             #Add the templates needed for Omni_UGenPerform to unpack variable names declared with "var" in cosntructor
             generateTemplatesForPerformVarDeclarations()
@@ -265,7 +265,7 @@ template perform*(code_block : untyped) {.dirty.} =
 
     #used in Max/pd
     when defined(performBits64):
-        proc Omni_UGenPerform*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform".} =    
+        proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64".} =    
 
             #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
             parse_block_for_variables(code_block, false, true)

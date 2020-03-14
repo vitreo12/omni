@@ -5,6 +5,9 @@ const
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
+#Path to omni_lang
+const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
+
 #Extension for static lib
 const static_lib_extension = ".a"
 
@@ -40,7 +43,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni_single_file(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : int = 32, unifyAllocInit : bool = true) : int =
+proc omni_single_file(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
 
     let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
@@ -78,8 +81,8 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
         return 1
 
     #Check performBits argument
-    if performBits != 32 and performBits != 64:
-        printError("performBits: " & $performBits & " is an invalid number. Only valid numbers are 32 and 64.")
+    if performBits != "32" and performBits != "64" and performBits != "32/64":
+        printError("performBits: " & $performBits & " is invalid. Only valid valiues are \"32\", \"64\" and \"32/64\".")
         return 1
 
     #This is the path to the original omni file to be used in shell.
@@ -155,10 +158,12 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
         compile_command.add(" -d:separateAllocInit")
 
     #Set performBits flag
-    if performBits == 32:
+    if performBits == "32":
         compile_command.add(" -d:performBits32")
-    else:
+    elif performBits == "64":
         compile_command.add(" -d:performBits64")
+    else:
+        compile_command.add(" -d:performBits32 -d:performBits64")
 
     #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
     var import_omni_lang = true
@@ -186,22 +191,33 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
         printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt & ".")
         return 1
 
+    #Export omni.h too
+    if exportHeader:
+        let omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
+        let omni_header_out_path = outDirFullPath & "/omni.h"
+        
+        echo omni_header_path
+        echo outDirFullPath
+        copyFile(omni_header_path, omni_header_out_path)
+
+    echo "YE"
+
     printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : int = 32, unifyAllocInit : bool = true) : int =
+proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
     
     #echo "omniFiles"
     #echo omniFiles
 
     #Single file, pass the outName
     if omniFiles.len == 1:
-        return omni_single_file(omniFiles[0], outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit)
+        return omni_single_file(omniFiles[0], outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader)
     else:
         for omniFile in omniFiles:
-            if omni_single_file(omniFile, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit) > 0:
+            if omni_single_file(omniFile, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader) > 0:
                 return 1
         return 0
 
@@ -220,8 +236,9 @@ dispatch(omni,
         "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C compilers.",
         "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
-        "performBits" : "Specify precision for ins and outs in the perform function.",
-        "unifyAllocInit" : "Unify \"Omni_UGenAlloc\" with \"Omni_UGenInit\" into \"Omni_UGenAllocInit\"."
+        "performBits" : "Specify precision for ins and outs in the perform function. Accepted values are \"32\", \"64\" or \"32/64\".",
+        "unifyAllocInit" : "Unify \"Omni_UGenAlloc\" with \"Omni_UGenInit\" into \"Omni_UGenAllocInit\".",
+        "exportHeader" : "Export the \"omni.h\" header file together with the compiled lib."
     }
 
 )
