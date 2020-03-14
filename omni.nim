@@ -49,7 +49,7 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
 
     #Check if file exists
     if not fileFullPath.existsFile():
-        printError($fileFullPath & " doesn't exist.")
+        printError($fileFullPath & " does not exist.")
         return 1
 
     var 
@@ -77,7 +77,7 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
     
     #Check if dir exists
     if not outDirFullPath.existsDir():
-        printError("outDir: " & $outDirFullPath & " doesn't exist.")
+        printError("outDir: " & $outDirFullPath & " does not exist.")
         return 1
 
     #Check performBits argument
@@ -193,14 +193,15 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
 
     #Export omni.h too
     if exportHeader:
-        let omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
-        let omni_header_out_path = outDirFullPath & "/omni.h"
+        let 
+            omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
+            omni_header_out_path = outDirFullPath & "/omni.h"
         
-        echo omni_header_path
-        echo outDirFullPath
+        if not omni_header_path.existsFile():
+            printError("exportHeader: " & $omni_header_path & " does not exist.")
+            return 1
+        
         copyFile(omni_header_path, omni_header_out_path)
-
-    echo "YE"
 
     printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
 
