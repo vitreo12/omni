@@ -14,18 +14,18 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
     let is_ugen_destructor_bool = is_ugen_destructor.boolVal()
 
     if is_ugen_destructor_bool == true:
-        #Full proc definition for OmniDestructor. The result is: proc OmniDestructor*(ugen : ptr UGen) : void {.exportc: "OmniDestructor".} 
+        #Full proc definition for Omni_UGenFree. The result is: proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} 
         proc_def = nnkProcDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("OmniDestructor")
+                newIdentNode("Omni_UGenFree")
             ),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
                 newIdentNode("void"),
                 nnkIdentDefs.newTree(
-                    newIdentNode("obj_void"),
+                    newIdentNode("obj_ptr"),
                     newIdentNode("pointer"),
                     newEmptyNode()
                 )
@@ -33,7 +33,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
             nnkPragma.newTree(
                 nnkExprColonExpr.newTree(
                     newIdentNode("exportc"),
-                    newLit("OmniDestructor")
+                    newLit("Omni_UGenFree")
                 )
             ),
             newEmptyNode()
@@ -108,7 +108,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                         nnkPtrTy.newTree(
                         newIdentNode("UGen")
                         ),
-                        newIdentNode("obj_void")
+                        newIdentNode("obj_ptr")
                     )
                 )
             )  
@@ -151,12 +151,12 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                 )
             )
     
-    #let obj_void = cast[pointer](obj)
+    #let obj_ptr = cast[pointer](obj)
     if is_ugen_destructor_bool == false:
         proc_body.add(
             nnkLetSection.newTree(
                 nnkIdentDefs.newTree(
-                    newIdentNode("obj_void"),
+                    newIdentNode("obj_ptr"),
                     newEmptyNode(),
                     nnkCast.newTree(
                         newIdentNode("pointer"),
@@ -173,7 +173,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                     newIdentNode("not"),
                     nnkCall.newTree(
                         nnkDotExpr.newTree(
-                            newIdentNode("obj_void"),
+                            newIdentNode("obj_ptr"),
                             newIdentNode("isNil")
                         )
                     )
@@ -181,7 +181,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                 nnkStmtList.newTree(
                     nnkCall.newTree(
                         newIdentNode("omni_free"),
-                        newIdentNode("obj_void")
+                        newIdentNode("obj_ptr")
                     )
                 )
             )
@@ -531,7 +531,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
     code_block.del(code_block.len() - 1)
 
     result = quote do:
-        #Template that, when called, will generate the template for the name mangling of "_var" variables in the OmniPerform proc.
+        #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
         template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
@@ -543,7 +543,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         #This is for SC (Init + Build) are bundled together
         when defined(unifyAllocInit):
             #Initialize and build an Omni object
-            proc OmniAllocAndInitObj*(ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "OmniAllocAndInitObj"} =
+            proc Omni_UGenAllocInit*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : pointer {.exportc: "Omni_UGenAllocInit"} =
                 
                 #allocation of "ugen" variable
                 `alloc_ugen`
@@ -556,14 +556,14 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 #Unpack args. These will overwrite the previous empty templates
                 let 
-                    ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+                    ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
                     bufsize     {.inject.}  : int          = int(bufsize_in)
                     samplerate  {.inject.}  : float        = float(samplerate_in)
 
-                #Add the templates needed for OmniConstructor to unpack variable names declared with "var" (different from the one in OmniPerform, which uses unsafeAddr)
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
-                #Add the templates needed for OmniConstructor to unpack variable names declared with "let"
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
                 `templates_for_constructor_let_declarations`
 
                 #Actual body of the constructor
@@ -578,7 +578,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         #This is for Max / PD
         when defined(separateAllocInit):
             #This is just allocating memory, not running constructor
-            proc OmniAllocObj() : pointer {.exportc: "OmniAllocObj".} =
+            proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc".} =
                 #allocation of "ugen" variable
                 `alloc_ugen`
 
@@ -590,27 +590,27 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 return ugen_void_ptr
 
-            proc OmniInitObj(obj : pointer, ins_SC : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "OmniInitObj".} =
+            proc Omni_UGenInit(obj : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble) : void {.exportc: "Omni_UGenInit".} =
                 if isNil(obj):
                     print("ERROR: Omni: build: invalid omni object")
                     return
                 
                 #let str = "hello"
-                #discard omni_print("YESS OmniInitObj!!!!\n")
+                #discard omni_print("YESS Omni_UGenInit!!!!\n")
                 
                 #print("YA OmniIniObj!")
                 #print(10.4)
 
                 let 
                     ugen        {.inject.}  : ptr UGen     = cast[ptr UGen](obj)     
-                    ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
+                    ins_Nim     {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
                     bufsize     {.inject.}  : int          = int(bufsize_in)
                     samplerate  {.inject.}  : float        = float(samplerate_in)
                 
-                #Add the templates needed for OmniConstructor to unpack variable names declared with "var" (different from the one in OmniPerform, which uses unsafeAddr)
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
-                #Add the templates needed for OmniConstructor to unpack variable names declared with "let"
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
                 `templates_for_constructor_let_declarations`
                 
                 #Actual body of the constructor
@@ -623,7 +623,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                     
 
         #Destructor
-        #[ proc OmniDestructor*(ugen : ptr UGen) : void {.exportc: "OmniDestructor".} =
+        #[ proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} =
             let ugen_void_cast = cast[pointer](ugen)
             if not ugen_void_cast.isNil():
                 omni_free(ugen_void_cast)  ]#    

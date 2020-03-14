@@ -221,7 +221,7 @@ dispatch(omni,
         "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
         "performBits" : "Specify precision for ins and outs in the perform function.",
-        "unifyAllocInit" : "Unify \"OmniAllocObj\" with \"OmniInitObj\"."
+        "unifyAllocInit" : "Unify \"Omni_UGenAlloc\" with \"Omni_UGenInit\" into \"Omni_UGenAllocInit\"."
     }
 
 )

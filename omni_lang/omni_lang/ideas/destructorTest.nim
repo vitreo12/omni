@@ -41,7 +41,7 @@ dumpAstGen:
             omni_free(obj_cast)
 
 dumpAstGen:
-    proc OmniDestructor*(ugen : ptr UGen) : void {.exportc: "OmniDestructor".} =
+    proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} =
         let ugen_void_cast = cast[pointer](ugen)
         if not ugen_void_cast.isNil():
             omni_free(ugen_void_cast)     

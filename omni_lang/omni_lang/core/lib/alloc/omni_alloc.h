@@ -16,7 +16,7 @@ typedef void* realloc_func_t(void *inPtr, size_t inSize);
 typedef void  free_func_t(void *inPtr);
 //extern free_func_t* omni_free_func;
 
-extern void OmniInitAlloc(alloc_func_t* alloc_func, realloc_func_t* realloc_func, free_func_t* free_func);
+extern void Omni_InitAlloc(alloc_func_t* alloc_func, realloc_func_t* realloc_func, free_func_t* free_func);
 
 #ifdef __cplusplus
 }

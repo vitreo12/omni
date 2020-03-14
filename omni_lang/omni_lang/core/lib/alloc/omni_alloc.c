@@ -1,12 +1,12 @@
 #include "omni_alloc.h"
 #include "../print/omni_print.h"
 
-//Global allocation functions. These are set from OmniInitAlloc
+//Global allocation functions. These are set from Omni_InitAlloc
 alloc_func_t* omni_alloc_func;     // = malloc;  //Default with malloc
 realloc_func_t* omni_realloc_func; // = realloc; //Default with realloc
 free_func_t* omni_free_func;       // = free;    //Default it with free
 
-void OmniInitAlloc(alloc_func_t* alloc_func, realloc_func_t* realloc_func, free_func_t* free_func)
+void Omni_InitAlloc(alloc_func_t* alloc_func, realloc_func_t* realloc_func, free_func_t* free_func)
 {
     omni_alloc_func   = alloc_func;
     omni_realloc_func = realloc_func;

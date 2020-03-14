@@ -3,7 +3,7 @@
 #include "../utilities/omni_samplerate_bufsize.h"
 
 //Initialize all the function pointers in one place.
-void OmniInitGlobal
+void Omni_InitGlobal
     (
         alloc_func_t* alloc_func, 
         realloc_func_t* realloc_func, 
@@ -13,9 +13,9 @@ void OmniInitGlobal
         get_bufsize_func_t* get_bufsize_func
     )
 {
-    OmniInitAlloc(alloc_func, realloc_func, free_func);
-    OmniInitPrint(print_func);
-    OmniInitGetSamplerateGetBufsize(get_samplerate_func, get_bufsize_func);
+    Omni_InitAlloc(alloc_func, realloc_func, free_func);
+    Omni_InitPrint(print_func);
+    Omni_InitGetSamplerateGetBufsize(get_samplerate_func, get_bufsize_func);
 
     print_func_t* omni_print_func = get_omni_print_func();
     size_t something = 1000;

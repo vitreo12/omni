@@ -310,11 +310,11 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     
     #Add all stuff relative to initialization for perform function:
     #[
-        #Add the templates needed for OmniPerform to unpack variable names declared with "var" in cosntructor
+        #Add the templates needed for Omni_UGenPerform to unpack variable names declared with "var" in cosntructor
         generateTemplatesForPerformVarDeclarations()
 
         #Cast the void* to UGen*
-        let ugen = cast[ptr UGen](ugen_void)
+        let ugen = cast[ptr UGen](ugen_ptr)
 
         #cast ins and outs
         castInsOuts()
@@ -335,7 +335,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                         nnkPtrTy.newTree(
                             newIdentNode("UGen")
                         ),
-                        newIdentNode("ugen_void")
+                        newIdentNode("ugen_ptr")
                     )
                 )
             ),

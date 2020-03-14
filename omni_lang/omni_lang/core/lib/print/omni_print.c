@@ -3,7 +3,7 @@
 //Global print function. This is set in OmniIniPrint
 print_func_t* omni_print_func; // = printf; //Default it with printf
 
-void OmniInitPrint(print_func_t* print_func)
+void Omni_InitPrint(print_func_t* print_func)
 {
     omni_print_func = print_func;
 }

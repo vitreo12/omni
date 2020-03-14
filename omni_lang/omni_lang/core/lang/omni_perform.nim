@@ -228,26 +228,26 @@ macro castInsOuts*() =
     return quote do:
         when defined(performBits32):
             let 
-                ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_SC)
-                outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_SC)
+                ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
+                outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
         
         when defined(performBits64):
             let 
-                ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_SC)
-                outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_SC)
+                ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
+                outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
 
     #used in SC
     when defined(performBits32):
-        proc OmniPerform*(ugen_void : pointer, bufsize : cint, ins_SC : ptr ptr cfloat, outs_SC : ptr ptr cfloat) : void {.exportc: "OmniPerform".} =    
+        proc Omni_UGenPerform*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform".} =    
             #[
-            #Add the templates needed for OmniPerform to unpack variable names declared with "var" in cosntructor
+            #Add the templates needed for Omni_UGenPerform to unpack variable names declared with "var" in cosntructor
             generateTemplatesForPerformVarDeclarations()
 
             #Cast the void* to UGen*
-            let ugen = cast[ptr UGen](ugen_void)
+            let ugen = cast[ptr UGen](ugen_ptr)
 
             #cast ins and outs
             castInsOuts()
@@ -265,7 +265,7 @@ template perform*(code_block : untyped) {.dirty.} =
 
     #used in Max/pd
     when defined(performBits64):
-        proc OmniPerform*(ugen_void : pointer, bufsize : clong, ins_SC : ptr ptr cdouble, outs_SC : ptr ptr cdouble) : void {.exportc: "OmniPerform".} =    
+        proc Omni_UGenPerform*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform".} =    
 
             #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
             parse_block_for_variables(code_block, false, true)

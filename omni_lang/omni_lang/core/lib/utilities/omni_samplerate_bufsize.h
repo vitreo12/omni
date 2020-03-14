@@ -11,7 +11,7 @@ typedef double get_samplerate_func_t();
 typedef int    get_bufsize_func_t();
 //extern get_bufsize_func_t*    omni_get_bufsize_func;
 
-extern void OmniInitGetSamplerateGetBufsize(get_samplerate_func_t* get_samplerate_func, get_bufsize_func_t* get_bufsize_func);
+extern void Omni_InitGetSamplerateGetBufsize(get_samplerate_func_t* get_samplerate_func, get_bufsize_func_t* get_bufsize_func);
 
 #ifdef __cplusplus
 }

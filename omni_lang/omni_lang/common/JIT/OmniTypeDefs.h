@@ -14,6 +14,6 @@ typedef void  RTFree_ptr(World *inWorld, void *inPtr);
 typedef void  init_alloc_function_pointers_func(RTAlloc_ptr* In_RTAlloc, RTRealloc_ptr* In_RTRealloc, RTFree_ptr* In_RTFree);
 
 //Omni module functions
-typedef void* Omni_UGenConstructor_func(float** ins_SC, int bufsize, double samplerate);
+typedef void* Omni_UGenConstructor_func(float** ins_ptr, int bufsize, double samplerate);
 typedef void  Omni_UGenDestructor_func(void* obj_void);
-typedef void  Omni_UGenPerform_func(void* ugen_void, int buf_size, float** ins_SC, float** outs_SC);
+typedef void  Omni_UGenPerform_func(void* ugen_ptr, int buf_size, float** ins_ptr, float** outs_ptr);

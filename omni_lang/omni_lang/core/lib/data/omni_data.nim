@@ -69,11 +69,11 @@ proc destructor*[T](obj : Data[T]) : void =
     print("Calling Data's destructor\n")
 
     let 
-        obj_void  = cast[pointer](obj)
-        data_void = cast[pointer](obj.data)
+        obj_ptr  = cast[pointer](obj)
+        data_ptr = cast[pointer](obj.data)
 
-    omni_free(data_void)     #dealloc the data
-    omni_free(obj_void)      #dealloc actual object
+    omni_free(data_ptr)     #dealloc the data
+    omni_free(obj_ptr)      #dealloc actual object
    
 
 ##########

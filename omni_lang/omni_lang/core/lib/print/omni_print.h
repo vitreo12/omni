@@ -8,7 +8,7 @@ extern "C" {
 typedef void print_func_t(const char* formatString, ...);
 //extern print_func_t* omni_print_func;
 
-extern void OmniInitPrint(print_func_t* print_func);
+extern void Omni_InitPrint(print_func_t* print_func);
 
 extern print_func_t* get_omni_print_func();
 
