@@ -6,13 +6,22 @@ license       = "MIT"
 requires "nim >= 1.0.0"
 requires "cligen >= 0.9.41"
 
-installDirs = @["omni"]
+#Ignore omni_lang
+skipDirs = @["omni_lang"]
 
-#This are all the CLI interfaces
-bin = @["omnicollider"]
+#Compiler executable
+bin = @["omni"]
 
-#Task to build the Omni UGen for SuperCollider, allowing for JIT compilation of omni code
+#If using "nimble install" instead of "nimble installOmni", make sure omni-lang is still getting installed
+before install:
+    withDir(getPkgDir() & "/omni_lang"):
+        exec "nimble install"
 
-#Task to build the omni~ object for Max, allowing for JIT compilation of omni code
-
-#Task to build the omni~ object for pd, allowing for JIT compilation of omni code
+#before/after are BOTH needed for any of the two to work
+after install:
+    discard
+    
+#As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
+task installOmni, "Install the omni-lang package and the omni compiler":
+    #Build and install the omni compiler executable. This will also trigger the "before install" to install omni_lang
+    exec "nimble install --passNim:-d:release --passNim:-d:danger --passNim:--opt:speed"
