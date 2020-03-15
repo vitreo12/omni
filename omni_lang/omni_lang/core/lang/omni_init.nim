@@ -139,9 +139,11 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
             )   
         )
     
+    var variables_destructor_calls = nnkStmtList.newTree()
+
     if var_obj_positions.len() > 0:
         for var_index in var_obj_positions:
-            proc_body.add(
+            variables_destructor_calls.add(
                 nnkCall.newTree(
                     newIdentNode("destructor"),
                     nnkDotExpr.newTree(
@@ -150,6 +152,19 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                     )
                 )
             )
+    
+    if is_ugen_destructor_bool == true:
+        when defined(separateAllocInit):
+            variables_destructor_calls = nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("obj"),
+                        newIdentNode("is_initialized_let")
+                    ),
+                    variables_destructor_calls
+                )
+            )
+    
     
     #let obj_ptr = cast[pointer](obj)
     if is_ugen_destructor_bool == false:
@@ -179,6 +194,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
                     )
                 ),
                 nnkStmtList.newTree(
+                    variables_destructor_calls,
                     nnkCall.newTree(
                         newIdentNode("omni_free"),
                         newIdentNode("obj_ptr")
@@ -197,24 +213,6 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
     return quote do:
         `final_stmt`
 
-#[
-#This is needed for Max and PD, when creation of the Omni object can happen before init of audio driver
-template defineSetSamplerate() : untyped {.dirty.} =
-    proc setOmniObjSampleRate(obj : pointer, samplerate : cdouble) : void {.exportc: "setOmniObjSampleRate".} =
-        if not isNil(obj):
-            var omni_obj : ptr UGen = cast[ptr UGen](obj)
-            discard omni_print("setOmniObjSampleRate previous samplerate: %f\n", omni_obj.samplerate_let)
-            omni_obj.samplerate_let = float(samplerate)
-            discard omni_print("setOmniObjSampleRate: received %f\n", samplerate)
-            discard omni_print("setOmniObjSampleRate: %f\n", omni_obj.samplerate_let)
-
-    #[
-    proc setVectorSize(obj : pointer, vector_size : cint) : void =
-        if not isNil(obj):
-            let omni_obj = cast[ptr UGen](obj)
-            omni_obj.bufsize_let = vector_size
-    ]#
-]#
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
@@ -587,6 +585,8 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: could not allocate memory")
+                
+                ugen.is_initialized_let = false
 
                 return ugen_ptr
 
@@ -618,6 +618,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
 
                 #Assign ugen fields
                 `assign_ugen_fields`
+
+                #Successful init
+                ugen.is_initialized_let = true
                 
                 return
                     
@@ -702,6 +705,16 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
     )
+
+    #Add is_initialized_let variable (used when alloc and init are separated)
+    when defined(separateAllocInit):
+        var_names_and_types.add(
+            nnkIdentDefs.newTree(
+                newIdentNode("is_initialized_let"),
+                getType(bool),
+                newEmptyNode()
+            )
+        )
 
     #Add to final obj
     final_obj.add(var_names_and_types)

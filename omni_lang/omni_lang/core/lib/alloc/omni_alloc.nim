@@ -5,9 +5,9 @@
 {.passC: "-O3".}
 
 #C funcs
-proc omni_alloc_C*(in_size : culong)                    : pointer {.importc: "omni_alloc_C", cdecl.}
+proc omni_alloc_C*(in_size : culong)                     : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_realloc_C*(in_ptr : pointer, in_size : culong) : pointer {.importc: "omni_realloc_C", cdecl.}
-proc omni_free_C*(in_ptr : pointer)                     : void    {.importc: "omni_free_C", cdecl.}
+proc omni_free_C*(in_ptr : pointer)                      : void    {.importc: "omni_free_C", cdecl.}
 
 #Wrappers around the C functions
 proc omni_alloc*[N : SomeInteger](in_size : N)  : pointer {.inline.} =
