@@ -55,9 +55,12 @@ extern "C" {
     /*************************/
 
     //Alloc/Init
-    extern void* Omni_UGenAllocInit(float** ins_ptr, int bufsize, double samplerate);
+    extern void* Omni_UGenAllocInit32(float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    extern void* Omni_UGenAllocInit64(double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    
     extern void* Omni_UGenAlloc();
-    extern void  Omni_UGenInit(void* ugen_ptr, float** ins_ptr, int bufsize, double samplerate);
+    extern void  Omni_UGenInit32(void* ugen_ptr, float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    extern void  Omni_UGenInit64(void* ugen_ptr, double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform
     extern void  Omni_UGenPerform32(void* ugen_ptr, float**  ins_ptr, float**  outs_ptr, int bufsize);

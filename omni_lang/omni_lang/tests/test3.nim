@@ -1,10 +1,10 @@
 import macros
-import ../../omni_lang
+#import ../../omni_lang
 
 ins 1:
     "freq"
 
-outs 1
+outs 2
 
 expandMacros:
     init:
@@ -14,6 +14,9 @@ expandMacros:
 
         data = Data.new(3000)
 
+        buf = Buffer.new(1)
+        buf2 = Buffer.new(2)
+        
         print("hello")
 
 def twoPi():

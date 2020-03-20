@@ -55,9 +55,20 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     var 
         let_section         = nnkLetSection.newTree()
         get_buffers_section = nnkStmtList.newTree()
+
     
     #when multithreadBuffers compilation, define a unlock_buffers() template that will contain all the unlock_buffer calls
     when defined(multithreadBuffers):
+        
+        #Add the "failed_get_buffer" variable
+        get_buffers_section.add(nnkVarSection.newTree(
+            nnkIdentDefs.newTree(
+                newIdentNode("failed_get_buffer"),
+                newEmptyNode(),
+                newIdentNode("false")
+                )
+            )
+        )
         
         #template unlock_buffers() : untyped {.dirty.} =
         var 
@@ -147,20 +158,58 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 let parsed_dot_syntax = parseExpr(full_buffer_path)
 
                 #call the "get_buffer" procedure on the buffer, using the "Buffer.input_num" as index for "ins_Nim" channel
-                var new_buffer = nnkCall.newTree(
-                    newIdentNode("get_buffer"),
-                    parsed_dot_syntax,
-                    nnkBracketExpr.newTree(
-                        nnkBracketExpr.newTree(
-                            newIdentNode("ins_Nim"),
-                            nnkDotExpr.newTree(
-                                parsed_dot_syntax,
-                                newIdentNode("input_num")
+                #if not(get_buffer(....)):
+                #   failed_get_buffer = true
+                when defined(multithreadBuffers):
+                    var new_buffer = nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
+                            nnkPar.newTree(
+                                nnkPrefix.newTree(
+                                    newIdentNode("not"),
+                                    nnkPar.newTree(
+                                        nnkCall.newTree(
+                                            newIdentNode("get_buffer"),
+                                            parsed_dot_syntax,
+                                            nnkBracketExpr.newTree(
+                                                nnkBracketExpr.newTree(
+                                                    newIdentNode("ins_Nim"),
+                                                    nnkDotExpr.newTree(
+                                                        parsed_dot_syntax,
+                                                        newIdentNode("input_num")
+                                                    )
+                                                ),
+                                                newLit(0)
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            nnkStmtList.newTree(
+                                nnkAsgn.newTree(
+                                    newIdentNode("failed_get_buffer"),
+                                    newIdentNode("true")
+                                )
                             )
-                        ),
-                        newLit(0)
+                        )
                     )
-                )
+                else:
+                    var new_buffer = nnkDiscardStmt.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("get_buffer"),
+                            parsed_dot_syntax,
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("ins_Nim"),
+                                    nnkDotExpr.newTree(
+                                        parsed_dot_syntax,
+                                        newIdentNode("input_num")
+                                    )
+                                ),
+                                newLit(0)
+                            )
+                        )
+                    )
+    
                 
                 get_buffers_section.add(new_buffer)
 
@@ -205,6 +254,71 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 )
 
         let_section.add(ident_def_stmt)
+    
+
+    #Output silence and return from perform function if any of the buffers failed to acquire lock:
+    #[
+        if failed_get_buffer:
+            for i in 0 .. omni_outs:
+                for y in 0 .. bufsize - 1:
+                    outs_Nim[i][y] = 0.0'f64
+            return
+    ]#
+    when defined(multithreadBuffers):
+        get_buffers_section.add(
+            nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    newIdentNode("failed_get_buffer"),
+                    nnkStmtList.newTree(
+                        nnkForStmt.newTree(
+                            newIdentNode("audio_out_channel"),
+                            nnkInfix.newTree(
+                                newIdentNode(".."),
+                                newLit(0),
+                                nnkPar.newTree(
+                                    nnkInfix.newTree(
+                                        newIdentNode("-"),
+                                        newIdentNode("omni_outputs"),
+                                        newLit(1)
+                                    )
+                                )
+                            ),
+                            nnkStmtList.newTree(
+                                nnkForStmt.newTree(
+                                    newIdentNode("audio_out_sample"),
+                                    nnkInfix.newTree(
+                                        newIdentNode(".."),
+                                        newLit(0),
+                                        nnkPar.newTree(
+                                            nnkInfix.newTree(
+                                                newIdentNode("-"),
+                                                newIdentNode("bufsize"),
+                                                newLit(1)
+                                            )
+                                        )
+                                    ),
+                                    nnkStmtList.newTree(
+                                        nnkAsgn.newTree(
+                                            nnkBracketExpr.newTree(
+                                                nnkBracketExpr.newTree(
+                                                    newIdentNode("outs_Nim"),
+                                                    newIdentNode("audio_out_channel")
+                                                ),
+                                                newIdentNode("audio_out_sample")
+                                            ),
+                                        newLit(0.0)
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        nnkReturnStmt.newTree(
+                            newEmptyNode()
+                        )
+                    )
+                )
+            )
+        )
 
     result.add(let_section)
     result.add(get_buffers_section)
