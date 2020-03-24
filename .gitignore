@@ -8,3 +8,5 @@ omni/tests/test2
 omni/tests/test
 
 *.exe
+
+omni_lang/omni_lang/tests/test4

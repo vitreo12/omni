@@ -333,41 +333,34 @@ macro castInsOuts*() =
                 ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
                 outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
-#Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
-template perform*(code_block : untyped) {.dirty.} =
-
+template performInner*(code_block : untyped) {.dirty.} =
     #used in SC
     when defined(performBits32):
         proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32".} =    
-            #[
-            #Add the templates needed for Omni_UGenPerform to unpack variable names declared with "var" in cosntructor
-            generateTemplatesForPerformVarDeclarations()
+            #standard perform block
+            when declared(perform_block):
+                parse_block_for_variables(code_block, false, true)
+            
+            #sample block without perform
+            else:
+                parse_block_for_variables(code_block, false, true, true)
 
-            #Cast the void* to UGen*
-            let ugen = cast[ptr UGen](ugen_ptr)
-
-            #cast ins and outs
-            castInsOuts()
-
-            #Unpack the variables at compile time. It will also expand on any Buffer types.
-            unpackUGenVariables(UGen)
-            ]#
-
-            #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
-            parse_block_for_variables(code_block, false, true)
-
-            #UNLOCK buffers when multithread buffers are used...
+            #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):
                 unlock_buffers()
 
     #used in Max/pd
     when defined(performBits64):
         proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64".} =    
+            #standard perform block
+            when declared(perform_block):
+                parse_block_for_variables(code_block, false, true)
+            
+            #sample block without perform
+            else:
+                parse_block_for_variables(code_block, false, true, true)
 
-            #Append the whole code block, Wrap it in parse_block_for_variables in order to not have to declare vars/lets
-            parse_block_for_variables(code_block, false, true)
-
-            #UNLOCK buffers when multithread buffers are used...
+            #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):
                 unlock_buffers()
 
@@ -381,17 +374,16 @@ template perform*(code_block : untyped) {.dirty.} =
             let fullPathToNewFolder = getTempDir() #this has been passed in as command argument with -d:tempDir=fullPathToNewFolder
             writeFile($fullPathToNewFolder & "IO.txt", text)
 
-#Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
-#[ template sample*(code_block : untyped) {.dirty.} =
-    #Right before sample, define the new in1, in2, etc... macro for single sample retireval
-    generate_inputs_templates(omni_inputs, 1)
-
-    #Right before sample, define the new out1, out2, etc... macro for single sample retireval
-    generate_outputs_templates(omni_outputs, 1)
-
-    for audio_index_loop in 0..(bufsize - 1):
-        parse_block_for_variables(code_block, false, true)
+#Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
+template perform*(code_block : untyped) {.dirty.} =
+    let perform_block {.compileTime.} = true
     
-    #This is in case the user accesses in1, in2, etc again after sample block. 
-    #Since the template has been changed, now it would still read kr in the perform block.
-    let audio_index_loop = 0 ]#
+    performInner(code_block)
+
+#Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
+template sample*(code_block : untyped) {.dirty.} =
+    when not declared(perform_block):
+        performInner(code_block)
+    else:
+        static:
+            error("sample: there already is a \"perform\" block declared.")
