@@ -1,4 +1,4 @@
-ins 2, "bufnum", "speed"
+ins 2, "buffer", "speed"
 
 outs 1
 
