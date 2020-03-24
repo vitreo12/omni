@@ -252,7 +252,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
     #[ else:
         running_index_seq = @[0] ]#
 
-macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree().add(newEmptyNode())
@@ -261,12 +261,17 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     let 
         is_constructor_block = is_constructor_block_typed.boolVal()
         is_perform_block = is_perform_block_typed.boolVal()
+        is_sample_block = is_sample_block_typed.boolVal()
     
     #Using the global variable. Reset it at every call.
     var variable_names_table = newTable[string, string]()
 
-    #Find sample block:
-    if is_perform_block:
+    #Sample block without perform
+    if is_sample_block:
+        code_block = parse_sample_block(code_block)
+
+    #Standard perform block (is_sample_block is false here too)
+    elif is_perform_block:
         var found_sample_block = false
         
         for index, statement in code_block.pairs():
@@ -274,22 +279,21 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                 let var_ident = statement[0]
                 let var_misc  = statement[1]
                 
-                #Found it!
+                #Look for the sample block inside of perform
                 if var_ident.strVal == "sample":
                     let sample_block = var_misc
 
                     #Replace the sample: block with the new parsed one.
                     code_block[index] = parse_sample_block(sample_block)
 
-                    #echo astGenRepr code_block[index]
-                    
                     found_sample_block = true
 
                     break
             
-        #couldn't find sample block
+        #couldn't find sample block IN perform block
         if found_sample_block.not:
             error "perform: no \"sample\" block provided, or not at top level."
+        
     
     #Remove new statement from the block before all syntactic analysis.
     #This is needed for this to work:
