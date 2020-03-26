@@ -1,5 +1,3 @@
-#nim c --app:lib --gc:none --noMain:on -d:supercollider -d:release -d:danger --checks:off --assertions:off --opt:speed
-
 import macros
 import ../../omni_lang
 
@@ -12,24 +10,24 @@ outs 1:
 
 expandMacros:
     struct Phasor[T]:
-        T phase
+        phase T
 
 expandMacros:
     struct Something[T, Y]:
-        T       a
-        Data[Y] b
+        a T      
+        b Data[Y]
 
 expandMacros:
     struct SomeOtherStruct[T, Y]:
-        Phasor[T]       phasor 
-        Something[T, Y] something 
+        phasor    Phasor[T]        
+        something Something[T, Y] 
 
 expandMacros:
     def phasorDefault():
         return Phasor.new(0.0)
 
 expandMacros:
-    def someProcForPhasor[T](Phasor[T] p):
+    def someProcForPhasor[T](p Phasor[T]):
         p.phase = 0.23
 
 expandMacros:
@@ -48,6 +46,8 @@ expandMacros:
         #oneMore : float
         oneMore = 0.23
 
+        A_CONSTANT float = 0.5
+
         #print(bufsize, "\n")
         #print(samplerate, "\n")
         
@@ -59,8 +59,8 @@ expandMacros:
 
 expandMacros:
     perform:
-        Signal frequency 
-        Signal sine_out  
+        frequency Signal 
+        sine_out  Signal  
 
         sample:
             frequency = in1

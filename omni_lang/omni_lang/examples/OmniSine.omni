@@ -9,8 +9,8 @@ init:
     #build phase
 
 perform:
-    Signal frequency
-    Signal sine_out
+    frequency Signal
+    sine_out  Signal
 
     samplerate_minus_one = samplerate - 1.0
     twopi = 2 * PI

@@ -98,7 +98,7 @@ macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr
         proc_body.add(
             nnkCommand.newTree(
                 newIdentNode("print"),
-                newLit("Calling UGen\'s destructor\n")
+                newLit("\nCalling UGen\'s destructor")
             ),
             nnkLetSection.newTree(
                 nnkIdentDefs.newTree(

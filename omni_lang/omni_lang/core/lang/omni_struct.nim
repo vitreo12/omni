@@ -179,18 +179,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type : NimNode
             new_decl = nnkIdentDefs.newTree()
 
-        #float phase
+        #phase float
         if code_stmt_kind == nnkCommand:
             assert code_stmt.len == 2
-            assert code_stmt[1].kind == nnkIdent
+            assert code_stmt[0].kind == nnkIdent
             
             #This is needed for generics!
             if code_stmt[1].kind != nnkIdent:
                 if code_stmt[1].kind != nnkBracketExpr:
                     error("\"" & $ptr_name & "\": " & "Invalid struct body")
 
-            var_type = code_stmt[0]
-            var_name = code_stmt[1]
+            var_name = code_stmt[0]
+            var_type = code_stmt[1]
 
         #phase : float
         elif code_stmt_kind == nnkCall:

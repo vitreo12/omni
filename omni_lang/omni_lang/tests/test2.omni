@@ -6,34 +6,34 @@ outs 1
 
 expandMacros:
     struct Dummy[T]:
-        T a
+        a T 
 
     #[
     struct Dummy[T]:
-        a T 
+        T a
     ]#
 
     struct Phasor[T]:
-        float phase
-        Dummy[T] phase2
+        phase  float
+        phase2 Dummy[T] 
     
     #[
     struct Phasor[T]:
-        phase float
-        phase2 Dummy[T] 
+        float phase
+        Dummy[T] phase2
     ]#
 
 expandMacros:
-    def newPhasor(float a = 2.3, b = 0, c = 0, float d, e) -> Phasor[float]:
-        float y
-        float z = 0.0
-        return Phasor.new(y, Dummy.new(a + z))
-
-    #[
     def newPhasor(a float = 2.3, b = 0, c = 0, d float, e) Phasor[float]:
         y float
         z float = 0.0
         return Phasor.new(y, Dummy.new(a + z)) 
+
+    #[
+    def newPhasor(float a = 2.3, b = 0, c = 0, float d, e) -> Phasor[float]:
+        float y
+        float z = 0.0
+        return Phasor.new(y, Dummy.new(a + z))
     ]#
 
 expandMacros:
@@ -41,12 +41,12 @@ expandMacros:
         phasor = newPhasor(d = 0.2, e = false)
 
         #All capital letters define immutables automatically
-        float AN_IMMUTABLE = 1.0
+        AN_IMMUTABLE float = 1.0
 
 expandMacros:
     perform:
-        float increment = in1 / samplerate
-        #increment float = in1 / samplerate
+        increment float = in1 / samplerate
+        #float increment = in1 / samplerate
         
         SOME_OTHER_IMMUTABLE = AN_IMMUTABLE * 2 * PI 
 

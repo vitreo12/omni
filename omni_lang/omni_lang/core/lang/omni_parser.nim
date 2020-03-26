@@ -60,7 +60,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     if statement[0].strVal() == "build":
                         error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
 
-            #a : float OR a = 0.5 OR float a = 0.5 OR a : float = 0.5 OR float a
+            #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
             if statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
 
                 if statement.len < 2:
@@ -82,28 +82,21 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 
                 var is_no_colon_syntax = false
 
-                #float a = 0.5
+                #a float = 0.5
                 if var_ident_kind == nnkCommand:
-
-                    var_ident = var_ident[1]
+                    var_ident = var_ident[0]
                     
                     var_misc = nnkStmtList.newTree(
                         nnkAsgn.newTree(
-                            statement[0][0],
+                            statement[0][1],
                             statement[1]
                         )
                     )
-
+                    
                     is_no_colon_syntax = true
 
-                #float a
+                #a float
                 if statement_kind == nnkCommand:
-
-                    #Invert them in case it's "float a"... Quick fix from "a float". Would need a better rewrite
-                    let temp_var_ident = var_ident
-                    var_ident = var_misc
-                    var_misc  = temp_var_ident
-
                     var_misc = nnkStmtList.newTree(
                         var_misc
                     )
