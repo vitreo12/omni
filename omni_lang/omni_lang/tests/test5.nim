@@ -4,9 +4,6 @@ import macros
 ins 1
 outs 1
 
-init:
-    something = 0.0
-
 def something(a):
     return a * 0.5
 

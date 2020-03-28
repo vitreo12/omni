@@ -334,6 +334,11 @@ macro castInsOuts*() =
                 outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
 template performInner*(code_block : untyped) {.dirty.} =
+    #Create an empty init block if one wasn't defined by the user
+    when not declared(init_block):
+        init:
+            discard
+
     #used in SC
     when defined(performBits32):
         proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32".} =    

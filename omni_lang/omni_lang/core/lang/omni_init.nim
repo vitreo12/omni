@@ -722,6 +722,10 @@ macro init*(code_block : untyped) : untyped =
             samplerate       {.inject.} : float        = 0.0
             buffer_interface {.inject.} : pointer = nil
 
+        #Define that init exists, so perform doesn't create an empty one automatically
+        #Or, if perform is defining one, define init_block here so that it will still only be defined once
+        let init_block {.inject, compileTime.} = true
+
         parse_block_for_variables(`code_block`, true)
 
 #Equal to init:
