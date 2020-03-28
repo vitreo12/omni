@@ -632,12 +632,6 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         print("ERROR: Omni: build: invalid omni object")
                         return
                     
-                    #let str = "hello"
-                    #discard omni_print("YESS Omni_UGenInit!!!!\n")
-                    
-                    #print("YA OmniIniObj!")
-                    #print(10.4)
-
                     let 
                         ugen             {.inject.} : ptr UGen     = cast[ptr UGen](ugen_ptr)     
                         ins_Nim          {.inject.} : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
@@ -667,12 +661,6 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: build: invalid omni object")
                         return
-                    
-                    #let str = "hello"
-                    #discard omni_print("YESS Omni_UGenInit!!!!\n")
-                    
-                    #print("YA OmniIniObj!")
-                    #print(10.4)
 
                     let 
                         ugen             {.inject.} : ptr UGen      = cast[ptr UGen](ugen_ptr)     
