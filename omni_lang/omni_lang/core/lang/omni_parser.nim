@@ -419,7 +419,28 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                     
                     if new_array_assignment != nil:
                         typed_code_block[index] = new_array_assignment
-    
+
+        #Look for / , div , % , mod and replace them with safediv / safemod
+        elif typed_statement_kind == nnkInfix:
+            assert typed_statement.len == 3
+
+            let 
+                infix_symbol = typed_statement[0]
+                infix_str    = infix_symbol.strVal()
+
+            if infix_str == "/" or infix_str == "div":
+                typed_code_block[index] = nnkCall.newTree(
+                    newIdentNode("safediv"),
+                    typed_statement[1],
+                    typed_statement[2]
+                )
+
+            elif infix_str == "%" or infix_str == "mod":
+                typed_code_block[index] = nnkCall.newTree(
+                    newIdentNode("safemod"),
+                    typed_statement[1],
+                    typed_statement[2]
+                )
 
         #Look for var sections
         if typed_statement_kind == nnkVarSection:

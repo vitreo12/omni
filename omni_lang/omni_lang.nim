@@ -30,5 +30,5 @@ import omni_lang/core/lib/init/omni_init_global
 export omni_init_global
 
 #math
-import math
-export math
+import omni_lang/core/lib/math/omni_math
+export omni_math
