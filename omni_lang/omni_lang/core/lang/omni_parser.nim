@@ -79,6 +79,10 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 #If array syntax, skip. "a[i] = 10". This just sets the array entry, doesn't assign.
                 if var_ident_kind == nnkBracketExpr:
                     continue
+
+                #If an ambiguous openSym... Take the first symbol
+                if(var_ident_kind == nnkOpenSymChoice):
+                    var_ident = var_ident[0]
                 
                 var is_no_colon_syntax = false
 
