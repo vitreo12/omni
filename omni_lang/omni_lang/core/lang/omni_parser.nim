@@ -183,12 +183,23 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             
                 #a = 0.0
                 elif statement_kind == nnkAsgn:
+                    
                     let default_value = var_misc
 
-                    #WHEN statement for perform block:
-
                     #Ignore out1, out2, etc... so that it throws error if not defined!
-                    if not var_name.startsWith("out"):
+                    var is_out_variable = false
+
+                    if(var_name.startsWith("out")):
+                        #out1 / out10
+                        if var_name.len == 4:
+                            if var_name[3].isDigit:
+                                is_out_variable = true
+                        elif var_name.len == 5:
+                            if var_name[3].isDigit and var_name[4].isDigit:
+                                is_out_variable = true
+
+                    #Ignore out1, out2, etc...
+                    if not is_out_variable:
                         
                         #var a = 0.0
                         new_var_statement = nnkVarSection.newTree(
