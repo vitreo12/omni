@@ -187,47 +187,50 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                     #WHEN statement for perform block:
 
-                    #var a = 0.0
-                    new_var_statement = nnkVarSection.newTree(
-                        nnkIdentDefs.newTree(
-                            var_ident,
-                            newEmptyNode(),
-                            default_value,
+                    #Ignore out1, out2, etc... so that it throws error if not defined!
+                    if not var_name.startsWith("out"):
+                        
+                        #var a = 0.0
+                        new_var_statement = nnkVarSection.newTree(
+                            nnkIdentDefs.newTree(
+                                var_ident,
+                                newEmptyNode(),
+                                default_value,
+                            )
                         )
-                    )
 
-                    #This is needed to avoid renaming stuff that already is templates, etc...
-                    #[
-                        when declared("phase").not:
-                            var phase = ...
-                        else:
-                            phase = ...
-                    ]#
-                    #if is_perform_block:
-                    new_var_statement = nnkStmtList.newTree(
-                        nnkWhenStmt.newTree(
-                            nnkElifBranch.newTree(
-                                nnkDotExpr.newTree(
-                                    nnkCall.newTree(
-                                        newIdentNode("declared"),
-                                        var_ident
+                        #This is needed to avoid renaming stuff that already is templates, etc...
+                        #[
+                            when declared("phase").not:
+                                var phase = ...
+                            else:
+                                phase = ...
+                        ]#
+                        #if is_perform_block:
+                        new_var_statement = nnkStmtList.newTree(
+                            nnkWhenStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    nnkDotExpr.newTree(
+                                        nnkCall.newTree(
+                                            newIdentNode("declared"),
+                                            var_ident
+                                        ),
+                                        newIdentNode("not")
                                     ),
-                                    newIdentNode("not")
+                                    nnkStmtList.newTree(
+                                        new_var_statement
+                                    )
                                 ),
-                                nnkStmtList.newTree(
-                                    new_var_statement
-                                )
-                            ),
-                            nnkElse.newTree(
-                                nnkStmtList.newTree(
-                                    nnkAsgn.newTree(
-                                        new_var_statement[0][0],
-                                        new_var_statement[0][2]
+                                nnkElse.newTree(
+                                    nnkStmtList.newTree(
+                                        nnkAsgn.newTree(
+                                            new_var_statement[0][0],
+                                            new_var_statement[0][2]
+                                        )
                                     )
                                 )
                             )
                         )
-                    )
 
                 #Add var decl to code_block only if something actually has been assigned to it
                 #If using a template (like out1 in sample), new_var_statement would be nil here
