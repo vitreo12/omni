@@ -22,7 +22,7 @@ extern "C" {
     //extern omni_free_func_t*    omni_free_func;    // = free;    //Default it with free
     
     //Print
-    typedef void   omni_print_dbg_func_t(const char* format_string, size_t value);
+    typedef void   omni_print_str_val_func_t(const char* format_string, size_t value);
     typedef void   omni_print_str_func_t(const char* format_string);
     typedef void   omni_print_float_func_t(float value);
     typedef void   omni_print_int_func_t(int value);
@@ -45,7 +45,7 @@ extern "C" {
         omni_alloc_func_t* alloc_func, 
         omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 
-        omni_print_dbg_func_t* print_dbg_func, 
+        omni_print_str_val_func_t* print_str_val_func, 
         omni_print_str_func_t* print_str_func, 
         omni_print_float_func_t* print_float_func, 
         omni_print_int_func_t* print_int_func,
@@ -57,8 +57,8 @@ extern "C" {
     extern void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func);
 
     //Print
-    extern void Omni_InitPrint(omni_print_dbg_func_t* print_dbg_func, omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
-    extern omni_print_dbg_func_t* get_omni_print_dbg_func();
+    extern void Omni_InitPrint(omni_print_str_val_func_t* print_str_val_func, omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
+    extern omni_print_str_val_func_t* get_omni_print_str_val_func();
 
     //Utilities
     extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);

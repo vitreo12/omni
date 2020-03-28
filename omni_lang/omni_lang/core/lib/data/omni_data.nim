@@ -20,9 +20,9 @@ type
         
 #Having the strings as const as --gc:none is used
 const
-    size_error   = "WARNING: Data\'s size must be a positive number. Setting it to 1\n"
-    chans_error  = "WARNING: Data\'s chans must be a positive number. Setting it to 1\n"
-    bounds_error = "WARNING: Trying to access out of bounds Data.\n"
+    size_error   = "WARNING: Data\'s size must be a positive number. Setting it to 1"
+    chans_error  = "WARNING: Data\'s chans must be a positive number. Setting it to 1"
+    bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
 proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
