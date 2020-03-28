@@ -17,7 +17,7 @@ sample:
     #Transition
     if prevInVal - trig >= 0.9: 
         bufPosition += 1
-        bufPosition = bufPosition mod seqBuffer.len()
+        bufPosition = bufPosition % seqBuffer.len()
         outVal = seqBuffer[bufPosition]
 
     out1 = outVal

@@ -32,5 +32,5 @@ sample:
     out1 = out_value
     
     phase += freq / samplerate_minus_one
-    phase = phase mod 1.0
+    phase = phase % 1.0
     prev_value = out_value

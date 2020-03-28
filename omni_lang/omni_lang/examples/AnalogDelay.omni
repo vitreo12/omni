@@ -35,9 +35,9 @@ perform:
         input = in1
 
         #Read
-        index_value  = (phase - delay_time) and delay_mask
-        delay_value1 = delay_data[(index_value and delay_mask)]
-        delay_value2 = delay_data[((index_value + 1) and delay_mask)]
+        index_value  = (phase - delay_time) & delay_mask
+        delay_value1 = delay_data[(index_value & delay_mask)]
+        delay_value2 = delay_data[((index_value + 1) & delay_mask)]
         delay_value  = linear_interp(frac, delay_value1, delay_value2)
 
         out1 = delay_value
@@ -51,7 +51,7 @@ perform:
         delay_data[phase] = write_value 
 
         #Advance reading index and store it for next iteration
-        phase = (phase + 1) and delay_mask
+        phase = (phase + 1) & delay_mask
 
         #Store filter value for next iteration
         prev_value = write_value
