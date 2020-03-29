@@ -20,9 +20,9 @@ type
         
 #Having the strings as const as --gc:none is used
 const
-    size_error   = "WARNING: Data\'s size must be a positive number. Setting it to 1"
-    chans_error  = "WARNING: Data\'s chans must be a positive number. Setting it to 1"
-    bounds_error = "WARNING: Trying to access out of bounds Data."
+    size_error   = "WARNING: Data's size must be a positive number. Setting it to 1"
+    chans_error  = "WARNING: Data's chans must be a positive number. Setting it to 1"
+    #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
 proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
@@ -91,7 +91,7 @@ proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T =
         if int(i) < int(data_size):
             return data[i]
     else:
-        print(bounds_error)
+        #print(bounds_error)
         return T(0)  #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
 
 #more than 1 channel
@@ -107,7 +107,7 @@ proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) :
         if int(index) < int(data_size_X_chans):
             return data[index]
     else:
-        print(bounds_error)
+        #print(bounds_error)
         return T(0) #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
 
 ##########
@@ -124,8 +124,8 @@ proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void =
     if i >= 0:
         if int(i) < int(data_size):
             data[i] = x   
-    else:
-        print(bounds_error)
+    #else:
+    #    print(bounds_error)
 
 #more than 1 channel
 #proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
@@ -139,5 +139,5 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
     if index >= 0:
         if int(index) < int(data_size_X_chans):
             data[index] = x
-    else:
-        print(bounds_error)
+    #else:
+    #    print(bounds_error)
