@@ -1,7 +1,15 @@
 import ../../omni_lang
+import macros
 
-ins 1
-outs 1
+expandMacros:
+    ins 1:
+        "smt"
 
-sample:
-    out2 = in1
+    outs 1
+
+    init:
+        lalala = arg1
+        lalala = 10.23
+    
+    sample:
+        out1 = arg1

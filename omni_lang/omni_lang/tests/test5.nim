@@ -11,6 +11,9 @@ def amp2db(ampVal):
     return log10(float(ampVal))
 
 expandMacros:
+    init:
+        somthing = 10
+        
     sample:
         #echo in1
         a = sin(1.0) / 10

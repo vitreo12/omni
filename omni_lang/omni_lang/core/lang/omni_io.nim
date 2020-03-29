@@ -61,10 +61,6 @@ macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed) : u
                 #template for KR input, named in1, in2, etc..
                 nnkTemplateDef.newTree(
                     newIdentNode("in" & $i),
-                    #nnkPostfix.newTree(
-                    #newIdentNode("*"),
-                    #newIdentNode("in" & $i),      #name of template 
-                    #),
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkFormalParams.newTree(
@@ -86,6 +82,41 @@ macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed) : u
 
             #Accumulate result
             final_statement.add(temp_in_stmt_list)
+
+    return final_statement
+
+macro generate_args_templates*(num_of_inputs : typed) : untyped =
+    var 
+        final_statement = nnkStmtList.newTree()
+        num_of_inputs_VAL = num_of_inputs.intVal()
+
+    for i in 1..num_of_inputs_VAL:
+        let temp_in_stmt_list = nnkStmtList.newTree(
+            nnkTemplateDef.newTree(
+                newIdentNode("arg" & $i),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                newIdentNode("untyped")
+                ),
+                nnkPragma.newTree(
+                newIdentNode("dirty")
+                ),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                    nnkBracketExpr.newTree(
+                        nnkBracketExpr.newTree(
+                        newIdentNode("ins_Nim"),             #name of the ins buffer
+                        newLit(int(i - 1))               #literal value
+                        ),
+                        newLit(0)                        # ins[...][0]
+                    )
+                )
+            )
+        )
+
+        #Accumulate result
+        final_statement.add(temp_in_stmt_list)
 
     return final_statement
 
@@ -251,6 +282,8 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
             ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
         
         generate_inputs_templates(`num_of_inputs_VAL`, 0)
+
+        generate_args_templates(`num_of_inputs_VAL`)
         
         #Export to C
         proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
@@ -324,6 +357,8 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
+                generate_args_templates(`num_of_inputs_VAL`)
+        
                 #Export to C
                 proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
                     return int32(omni_inputs)
@@ -337,6 +372,8 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                     ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
+
+                generate_args_templates(`num_of_inputs_VAL`)
 
                 #Export to C
                 proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
@@ -397,6 +434,8 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
 
+                generate_args_templates(`num_of_inputs_VAL`)
+
                 #Export to C
                 proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
                     return int32(omni_inputs)
@@ -410,6 +449,8 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                     ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
 
                 generate_inputs_templates(`num_of_inputs_VAL`, 0)
+
+                generate_args_templates(`num_of_inputs_VAL`)
 
                 #Export to C
                 proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
