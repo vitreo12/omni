@@ -4,11 +4,12 @@
 
 ## **Requirements**
 
-### **Linux**
-
-Refer to your distribution's package manager and make sure you've got installed:
 1) [nim](https://nim-lang.org/)
 2) [git](https://git-scm.com/)
+
+### **Linux**
+
+Refer to your distribution's package manager and make sure you've got installed `nim` and `git`.
 
 ### **MacOS**
 
@@ -20,6 +21,11 @@ To install `brew`, simply open the `Terminal` app and run this command :
 After `brew` has been installed, run the following command in the `Terminal` app to install `nim`:
 
     brew install nim
+
+Then, make sure that the `~/.nimble/bin` directory is set in your shell `$PATH`.
+If using bash (the default shell in MacOS), simply edit (or create if it doesn't exist) the `~/.bash_profile` file and add this line to it: 
+
+    export PATH=$PATH:~/.nimble/bin
 
 ### **Windows:**
 
@@ -44,4 +50,4 @@ To install `omni` run these commands:
 
 ## **Usage**
 
-    omni ~/.nimble/pkgs/omni_lang-0.1.0/omni_lang/examples/OmniSaw.omni    
+    omni ~/.nimble/pkgs/omni_lang-0.1.0/omni_lang/examples/OmniSaw.omni
