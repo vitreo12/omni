@@ -199,10 +199,12 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
     
     num_of_inputs_VAL = int(num_of_inputs.intVal)     #Actual value of the int literal
 
-    if num_of_inputs_VAL < 0:
+    #Always have at least one input
+    if num_of_inputs_VAL == 0:
+        num_of_inputs_VAL = 1
+    elif num_of_inputs_VAL < 0:
         error("Expected a positive number for inputs number")
-    
-    if num_of_inputs_VAL > max_inputs_outputs:
+    elif num_of_inputs_VAL > max_inputs_outputs:
         error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
 
     var statement_counter = 0
@@ -281,10 +283,12 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 
                 num_of_inputs_VAL = int(statement.intVal)
                 
-                if num_of_inputs_VAL < 0:
+                #Always have at least one input
+                if num_of_inputs_VAL == 0:
+                    num_of_inputs_VAL = 1
+                elif num_of_inputs_VAL < 0:
                     error("Expected a positive number for inputs number")
-        
-                if num_of_inputs_VAL > max_inputs_outputs:
+                elif num_of_inputs_VAL > max_inputs_outputs:
                     error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
             else:
                 if statement.kind != nnkStrLit:
@@ -351,10 +355,12 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
         
         num_of_inputs_VAL = int(num_of_inputs.intVal)     #Actual value of the int literal
 
-        if num_of_inputs_VAL < 0:
+        #Always have at least one input
+        if num_of_inputs_VAL == 0:
+            num_of_inputs_VAL = 1
+        elif num_of_inputs_VAL < 0:
             error("Expected a positive number for inputs number")
-
-        if num_of_inputs_VAL > max_inputs_outputs:
+        elif num_of_inputs_VAL > max_inputs_outputs:
             error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
         
         #Check for correct length of param names
@@ -434,10 +440,12 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     
     num_of_outputs_VAL = int(num_of_outputs.intVal)     #Actual value of the int literal
 
-    if num_of_outputs_VAL < 0:
+    #Always have at least one output
+    if num_of_outputs_VAL == 0:
+        num_of_outputs_VAL = 1
+    elif num_of_outputs_VAL < 0:
         error("Expected a positive number for outputs number")
-    
-    if num_of_outputs_VAL > max_inputs_outputs:
+    elif num_of_outputs_VAL > max_inputs_outputs:
         error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
 
     var statement_counter = 0
@@ -517,10 +525,12 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 
                 num_of_outputs_VAL = int(statement.intVal)
                 
-                if num_of_outputs_VAL < 0:
+                #Always have at least one output
+                if num_of_outputs_VAL == 0:
+                    num_of_outputs_VAL = 1
+                elif num_of_outputs_VAL < 0:
                     error("Expected a positive number for outputs number")
-        
-                if num_of_outputs_VAL > max_inputs_outputs:
+                elif num_of_outputs_VAL > max_inputs_outputs:
                     error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
             else:
                 if statement.kind != nnkStrLit:
@@ -589,10 +599,12 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
         
         num_of_outputs_VAL = int(num_of_outputs.intVal)     #Actual value of the int literal
 
-        if num_of_outputs_VAL < 0:
+        #Always have at least one output
+        if num_of_outputs_VAL == 0:
+            num_of_outputs_VAL = 1
+        elif num_of_outputs_VAL < 0:
             error("Expected a positive number for outputs number")
-
-        if num_of_outputs_VAL > max_inputs_outputs:
+        elif num_of_outputs_VAL > max_inputs_outputs:
             error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
         
         #Check for correct length of param names
