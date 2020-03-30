@@ -10,3 +10,5 @@ omni/tests/test
 *.exe
 
 omni_lang/omni_lang/tests/test4
+
+omni_lang/omni_lang/tests/test7
