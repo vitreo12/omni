@@ -57,6 +57,7 @@ proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], siz
         total_size_uint        = size_data_type_uint * size_X_chans_uint
         data                   = cast[ArrayPtr[dataType]](omni_alloc0(culong(total_size_uint)))
 
+    #Register both the Data object and its data to the automatic memory management
     ugen_auto_mem.registerChild(result)
     ugen_auto_mem.registerChild(data)
     
