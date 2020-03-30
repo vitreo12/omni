@@ -1,218 +1,93 @@
 import macros
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
-macro defineDestructor*(obj : typed, ptr_name : untyped, generics : untyped, ptr_bracket_expr : untyped, var_names : untyped, is_ugen_destructor : bool) =
+macro defineUGenDestructor*(obj : typed, var_names : untyped) =
     var 
         final_stmt    = nnkStmtList.newTree()
         proc_def      : NimNode
-        init_formal_params = nnkFormalParams.newTree(newIdentNode("void"))
         proc_body     = nnkStmtList.newTree()
-            
-        var_obj_positions : seq[int]
-        ptr_name_str : string
-        
-    let is_ugen_destructor_bool = is_ugen_destructor.boolVal()
 
-    if is_ugen_destructor_bool == true:
-        #Full proc definition for Omni_UGenFree. The result is: proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} 
-        proc_def = nnkProcDef.newTree(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("Omni_UGenFree")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("void"),
-                nnkIdentDefs.newTree(
-                    newIdentNode("obj_ptr"),
-                    newIdentNode("pointer"),
-                    newEmptyNode()
-                )
-            ),
-            nnkPragma.newTree(
-                nnkExprColonExpr.newTree(
-                    newIdentNode("exportc"),
-                    newLit("Omni_UGenFree")
-                )
-            ),
-            newEmptyNode()
-        )
-    else:
-        #Just add proc destructor to proc def. Everything else will be added later
-        proc_def = nnkProcDef.newTree(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("destructor")
-            ),
-            newEmptyNode(),
-        )
-
-        #Actual name
-        ptr_name_str = ptr_name.strVal()
-
-    let rec_list = getImpl(obj)[2][2]
-    
-    #Extract if there is a ptr SomeObject_obj in the fields of the type, to add it to destructor procedure.
-    for index, ident_defs in rec_list:     
-        for entry in ident_defs:
-
-            var 
-                var_number : int
-                entry_impl : NimNode
-
-            if entry.kind == nnkSym:
-                entry_impl = getTypeImpl(entry)
-            elif entry.kind == nnkBracketExpr:
-                entry_impl = getTypeImpl(entry[0])
-            elif entry.kind == nnkPtrTy:             #the case for UGen, where variables are stored as ptr Phasor_obj, instead of Phasor       
-                entry_impl = entry
-            else:
-                continue 
-            
-            #It's a ptr to something. Check if it's a pointer to an "_obj"
-            if entry_impl.kind == nnkPtrTy:
-                
-                #Inner statement of ptr, could be a symbol (no generics, just the name) or a bracket (generics) 
-                let entry_inner = entry_impl[0]
-
-                #non-generic
-                if entry_inner.kind == nnkSym:
-                    let entry_inner_str = entry_inner.strVal()
-                    
-                    #Found it! add the position in the definition to the seq
-                    if entry_inner_str[len(entry_inner_str) - 4 .. len(entry_inner_str) - 1] == "_obj":
-                        var_number = index
-                        var_obj_positions.add(var_number)
-
-                #generic
-                elif entry_inner.kind == nnkBracketExpr:
-                    let entry_inner_str = entry_inner[0].strVal()
-
-                    #Found it! add the position in the definition to the seq
-                    if entry_inner_str[len(entry_inner_str) - 4 .. len(entry_inner_str) - 1] == "_obj":
-                        var_number = index
-                        var_obj_positions.add(var_number)
-    
-    if is_ugen_destructor_bool == true:
-        proc_body.add(
-            nnkCommand.newTree(
-                newIdentNode("print"),
-                newLit("\nCalling UGen\'s destructor")
-            ),
-            nnkLetSection.newTree(
-                nnkIdentDefs.newTree(
-                    newIdentNode("obj"),
-                    newEmptyNode(),
-                    nnkCast.newTree(
-                        nnkPtrTy.newTree(
-                        newIdentNode("UGen")
-                        ),
-                        newIdentNode("obj_ptr")
-                    )
-                )
-            )  
-        )
-    else:
-        #Generics stuff to add to destructor function declaration
-        if generics.len() > 0:
-            proc_def.add(generics)
-        else: #no generics
-            proc_def.add(newEmptyNode())
-
-        init_formal_params.add(
+    #Full proc definition for Omni_UGenFree. The result is: proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} 
+    proc_def = nnkProcDef.newTree(
+        nnkPostfix.newTree(
+            newIdentNode("*"),
+            newIdentNode("Omni_UGenFree")
+        ),
+        newEmptyNode(),
+        newEmptyNode(),
+        nnkFormalParams.newTree(
+            newIdentNode("void"),
             nnkIdentDefs.newTree(
-                newIdentNode("obj"),
-                ptr_bracket_expr,
+                newIdentNode("ugen_ptr"),
+                newIdentNode("pointer"),
                 newEmptyNode()
             )
-        )
-
-        proc_def.add(init_formal_params)
-        proc_def.add(newEmptyNode())
-        proc_def.add(newEmptyNode())
-
-        proc_body.add(
-            nnkCommand.newTree(
-                newIdentNode("print"),
-                newLit("Calling " & $ptr_name_str & "\'s destructor\n" )
-            )   
-        )
-    
-    var variables_destructor_calls = nnkStmtList.newTree()
-
-    if var_obj_positions.len() > 0:
-        for var_index in var_obj_positions:
-            variables_destructor_calls.add(
-                nnkCall.newTree(
-                    newIdentNode("destructor"),
-                    nnkDotExpr.newTree(
-                        newIdentNode("obj"),
-                        var_names[var_index]        #retrieve the correct name from the body of the struct
-                    )
-                )
+        ),
+        nnkPragma.newTree(
+            nnkExprColonExpr.newTree(
+                newIdentNode("exportc"),
+                newLit("Omni_UGenFree")
             )
-    
-    if is_ugen_destructor_bool == true:
-        when defined(separateAllocInit):
-            variables_destructor_calls = nnkIfStmt.newTree(
-                nnkElifBranch.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("obj"),
-                        newIdentNode("is_initialized_let")
-                    ),
-                    variables_destructor_calls
-                )
-            )
-    
-    
-    #let obj_ptr = cast[pointer](obj)
-    if is_ugen_destructor_bool == false:
-        proc_body.add(
-            nnkLetSection.newTree(
-                nnkIdentDefs.newTree(
-                    newIdentNode("obj_ptr"),
-                    newEmptyNode(),
-                    nnkCast.newTree(
-                        newIdentNode("pointer"),
-                        newIdentNode("obj")
-                    )
-                )
-            )
-        )
+        ),
+        newEmptyNode()
+    )
 
     proc_body.add(
-        nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-                nnkPrefix.newTree(
-                    newIdentNode("not"),
+        nnkCommand.newTree(
+            newIdentNode("print"),
+            newLit("\nCalling UGen\'s destructor")
+        ),
+        nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+                newIdentNode("ugen"),
+                newEmptyNode(),
+                nnkCast.newTree(
+                    nnkPtrTy.newTree(
+                        newIdentNode("UGen")
+                    ),
+                    newIdentNode("ugen_ptr")
+                )
+            )
+        )  
+    )
+
+    when defined(separateAllocInit):
+        proc_body.add(
+            nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("ugen"),
+                        newIdentNode("is_initialized_let")
+                    ),
                     nnkCall.newTree(
+                        newIdentNode("freeOmniAutoMem"),
                         nnkDotExpr.newTree(
-                            newIdentNode("obj_ptr"),
-                            newIdentNode("isNil")
+                            newIdentNode("ugen"),
+                            newIdentNode("auto_mem_let")
                         )
-                    )
-                ),
-                nnkStmtList.newTree(
-                    variables_destructor_calls,
-                    nnkCall.newTree(
-                        newIdentNode("omni_free"),
-                        newIdentNode("obj_ptr")
                     )
                 )
             )
         )
-    )
+    else:
+        proc_body.add(
+            nnkCall.newTree(
+                newIdentNode("freeOmniAutoMem"),
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode("auto_mem_let")
+                )
+            )
+        )
+
 
     proc_def.add(proc_body)
 
     final_stmt.add(proc_def)
 
-    #echo astGenRepr final_stmt
+    echo repr final_stmt
 
-    return quote do:
-        `final_stmt`
-
+    return final_stmt
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
@@ -398,7 +273,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
         for empty_var_statement in empty_var_statements:
             #Trying to pass in an unitialized "var" variable
             if empty_var_statement == build_macro_var_name: #They both are nnkIdents. They can be compared.
-                error("\"" & $(empty_var_statement.strVal()) & "\" is a non-initialized variable. It can't be an input to a \"new\" statement.")
+                error("\"" & $(empty_var_statement.strVal()) & "\" is a non-initialized variable. It can't be an input to a \"build\" statement.")
         
         #Check if any of the var_declarations are inputs to the "build" macro. If so, append their variable name with "_var"
         for var_declaration in var_declarations:
@@ -547,18 +422,26 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                     #allocation of "ugen" variable
                     `alloc_ugen`
 
-                    let ugen_ptr = cast[pointer](ugen)
+                    let ugen_ptr {.inject.} = cast[pointer](ugen)
 
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: could not allocate memory")
-                        return ugen_ptr
+                        return nil
+
+                    #Initialize auto_mem
+                    ugen.auto_mem_let = allocInitOmniAutoMem()
+
+                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                        print("ERROR: Omni: could not allocate auto_mem")
+                        return nil
 
                     #Unpack args. These will overwrite the previous empty templates
                     let 
-                        ins_Nim          {.inject.} : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
-                        bufsize          {.inject.} : int          = int(bufsize_in)
-                        samplerate       {.inject.} : float        = float(samplerate_in)
-                        buffer_interface {.inject.} : pointer      = buffer_interface_in
+                        ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](ins_ptr)
+                        bufsize          {.inject.} : int             = int(bufsize_in)
+                        samplerate       {.inject.} : float           = float(samplerate_in)
+                        ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
+                        buffer_interface {.inject.} : pointer         = buffer_interface_in
 
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -581,7 +464,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                     #allocation of "ugen" variable
                     `alloc_ugen`
 
-                    let ugen_ptr = cast[pointer](ugen)
+                    let ugen_ptr {.inject.} = cast[pointer](ugen)
 
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: could not allocate memory")
@@ -617,7 +500,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 `alloc_ugen`
 
                 #Return ugen as void ptr
-                let ugen_ptr = cast[pointer](ugen)
+                let ugen_ptr {.inject.} = cast[pointer](ugen)
 
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: could not allocate memory")
@@ -639,6 +522,15 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         samplerate       {.inject.} : float        = float(samplerate_in)
                         buffer_interface {.inject.} : pointer      = buffer_interface_in
                     
+                     #Initialize auto_mem
+                    ugen.auto_mem_let = allocInitOmniAutoMem()
+
+                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                        print("ERROR: Omni: could not allocate auto_mem")
+                        return
+
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
+
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
 
@@ -692,7 +584,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
             if not ugen_void_cast.isNil():
                 omni_free(ugen_void_cast)  ]#    
         
-        defineDestructor(UGen, nil, nil, nil, `final_var_names`, true)
+        defineUGenDestructor(UGen, `final_var_names`)
 
         #defineSetSamplerate()
             
@@ -705,10 +597,17 @@ macro init*(code_block : untyped) : untyped =
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 
-            ins_Nim          {.inject.} : CFloatPtrPtr = cast[CFloatPtrPtr](0)
-            bufsize          {.inject.} : int          = 0
-            samplerate       {.inject.} : float        = 0.0
-            buffer_interface {.inject.} : pointer = nil
+            bufsize          {.inject.} : int             = 0
+            samplerate       {.inject.} : float           = 0.0
+            buffer_interface {.inject.} : pointer         = nil
+            ugen_ptr         {.inject.} : pointer         = nil
+            ugen_auto_mem    {.inject.} : ptr OmniAutoMem = nil
+
+        when defined(performBits32):
+            let ins_Nim      {.inject.} : CFloatPtrPtr    = cast[CFloatPtrPtr](0)
+        
+        when defined(performBits64):
+            let ins_Nim      {.inject.} : CDoublePtrPtr   = cast[CDoublePtrPtr](0)
 
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define init_block here so that it will still only be defined once
@@ -762,6 +661,17 @@ macro build*(var_names : varargs[typed]) =
 
         var_name_and_type.add(newEmptyNode())
         var_names_and_types.add(var_name_and_type)
+
+    #Add auto_mem_let variable (ptr OmniAutoMem)
+    var_names_and_types.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("auto_mem_let"),
+            nnkPtrTy.newTree(
+                newIdentNode("OmniAutoMem")
+            ),
+            newEmptyNode()
+        )
+    )
     
     #Add samplerate_let variable
     var_names_and_types.add(

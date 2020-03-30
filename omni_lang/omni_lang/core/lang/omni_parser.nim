@@ -513,7 +513,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         
                         #If not a symbol/ident or a dotexpr, it probably is a function call. Abort!
                         if equals_statement_kind != nnkSym and equals_statement_kind != nnkIdent and equals_statement_kind != nnkDotExpr:
-                            error "\"" & $var_symbol.strVal() & "\": structs cannot be allocated in the perform/sample block."
+                            error "\"" & $var_symbol.strVal() & "\": structs cannot be allocated in the \"perform\" and \"sample\" blocks."
 
                     let old_statement_body = typed_code_block[index][0]
 

@@ -1,4 +1,5 @@
 import ../alloc/omni_alloc
+import ../auto_mem/omni_auto_mem
 import ../print/omni_print
 
 type
@@ -25,7 +26,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
+proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType] =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
@@ -57,12 +58,18 @@ proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S 
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
         data                   = cast[ArrayPtr[dataType]](omni_alloc0(cast[C_size_t](total_size_uint)))
+
+    ugen_auto_mem.registerChild(result)
+    ugen_auto_mem.registerChild(data)
     
     #Fill the object layout
     result.data         = data
     result.chans        = chans_uint
     result.size         = size_uint
     result.size_X_chans = size_X_chans_uint
+
+template new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    innerInit(Data, size, chans, dataType, ugen_auto_mem)
 
 #Deallocation proc
 proc destructor*[T](obj : Data[T]) : void =

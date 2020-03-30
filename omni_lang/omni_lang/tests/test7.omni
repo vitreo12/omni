@@ -1,9 +1,11 @@
 import ../../omni_lang
 import macros
+import math
 
 expandMacros:
     ins 1
     outs 1
+
 
     def someAlloc():
         a = Data.new(10)
@@ -12,6 +14,9 @@ expandMacros:
     def someMoreAlloc(data):
         return 0.5
 
+    def someSine[T](a T) T:
+        return sin(a)
+
     init:
         a = someAlloc()
         b = Data.new(10)
@@ -19,5 +24,5 @@ expandMacros:
 
         build c
 
-sample:
-    out1 = in1
+    sample:
+        out1 = in1

@@ -13,6 +13,10 @@ export omni_macros
 import omni_lang/core/lib/alloc/omni_alloc
 export omni_alloc
 
+#Automatic memory management
+import omni_lang/core/lib/auto_mem/omni_auto_mem
+export omni_auto_mem
+
 #Data
 import omni_lang/core/lib/data/omni_data
 export omni_data
