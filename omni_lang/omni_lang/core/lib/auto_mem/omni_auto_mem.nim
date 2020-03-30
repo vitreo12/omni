@@ -3,7 +3,7 @@
 import ../alloc/omni_alloc
 import ../print/omni_print
 
-const OmniAutoMemSize = 1
+const OmniAutoMemSize = 100
 
 type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**

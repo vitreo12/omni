@@ -391,8 +391,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             template_body
         )
     )
-
-    #echo repr template_def
     
     #Add everything to result
     final_stmt_list.add(new_proc_def)
