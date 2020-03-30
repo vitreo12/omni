@@ -50,9 +50,11 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
             )
         )  
     )
+    
+    var is_initialized_if = nnkStmtList.newTree()
 
     when defined(separateAllocInit):
-        proc_body.add(
+        is_initialized_if.add(
             nnkIfStmt.newTree(
                 nnkElifBranch.newTree(
                     nnkDotExpr.newTree(
@@ -69,8 +71,9 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
                 )
             )
         )
-    else:
-        proc_body.add(
+    
+    when defined(unifyAllocInit):
+        is_initialized_if.add(
             nnkCall.newTree(
                 newIdentNode("freeOmniAutoMem"),
                 nnkDotExpr.newTree(
@@ -80,12 +83,32 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
             )
         )
 
+    proc_body.add(
+        nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkPrefix.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen_ptr"),
+                            newIdentNode("isNil")
+                        )
+                    )
+                ),
+                nnkStmtList.newTree(
+                    is_initialized_if,
+                    nnkCall.newTree(
+                        newIdentNode("omni_free"),
+                        newIdentNode("ugen_ptr")
+                    )
+                )
+            )
+        )
+    )
 
     proc_def.add(proc_body)
 
     final_stmt.add(proc_def)
-
-    echo repr final_stmt
 
     return final_stmt
 
@@ -342,11 +365,11 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                 ),
                 nnkCall.newTree(
                     newIdentNode("omni_alloc"),
-                    nnkCast.newTree(
+                    nnkCall.newTree(
                         newIdentNode("culong"),
                             nnkCall.newTree(
-                            newIdentNode("sizeof"),
-                            newIdentNode("UGen")
+                                newIdentNode("sizeof"),
+                                newIdentNode("UGen")
                         )
                     )                 
                 )

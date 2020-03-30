@@ -3,8 +3,6 @@ import ../auto_mem/omni_auto_mem
 import ../print/omni_print
 
 type
-    C_size_t = culong
-
     ArrayPtr[T] = ptr UncheckedArray[T]
 
     Data_obj[T] = object
@@ -50,14 +48,14 @@ proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], siz
         size_data_obj = sizeof(Data_obj[dataType])
 
     #Actual object, assigned to result
-    result = cast[Data[dataType]](omni_alloc(cast[C_size_t](size_data_obj)))
+    result = cast[Data[dataType]](omni_alloc(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 
         size_data_type_uint    = uint(sizeof(dataType))
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
-        data                   = cast[ArrayPtr[dataType]](omni_alloc0(cast[C_size_t](total_size_uint)))
+        data                   = cast[ArrayPtr[dataType]](omni_alloc0(culong(total_size_uint)))
 
     ugen_auto_mem.registerChild(result)
     ugen_auto_mem.registerChild(data)

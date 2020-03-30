@@ -185,7 +185,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         
         #Add inline pragma
         proc_def.add(nnkPragma.newTree(
-            newIdentNode("inline")
+                newIdentNode("inline")
             )
         )   
 
