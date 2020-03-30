@@ -440,8 +440,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](ins_ptr)
                         bufsize          {.inject.} : int             = int(bufsize_in)
                         samplerate       {.inject.} : float           = float(samplerate_in)
-                        ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
                         buffer_interface {.inject.} : pointer         = buffer_interface_in
+
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
 
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -470,12 +471,21 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         print("ERROR: Omni: could not allocate memory")
                         return ugen_ptr
 
+                    #Initialize auto_mem
+                    ugen.auto_mem_let = allocInitOmniAutoMem()
+
+                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                        print("ERROR: Omni: could not allocate auto_mem")
+                        return nil
+
                     #Unpack args. These will overwrite the previous empty templates
                     let 
                         ins_Nim          {.inject.} : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
                         bufsize          {.inject.} : int           = int(bufsize_in)
                         samplerate       {.inject.} : float         = float(samplerate_in) 
                         buffer_interface {.inject.} : pointer       = buffer_interface_in
+
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
 
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -522,7 +532,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         samplerate       {.inject.} : float        = float(samplerate_in)
                         buffer_interface {.inject.} : pointer      = buffer_interface_in
                     
-                     #Initialize auto_mem
+                    #Initialize auto_mem
                     ugen.auto_mem_let = allocInitOmniAutoMem()
 
                     if isNil(cast[pointer](ugen.auto_mem_let)):
@@ -560,6 +570,15 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         bufsize          {.inject.} : int           = int(bufsize_in)
                         samplerate       {.inject.} : float         = float(samplerate_in)
                         buffer_interface {.inject.} : pointer       = buffer_interface_in
+
+                    #Initialize auto_mem
+                    ugen.auto_mem_let = allocInitOmniAutoMem()
+
+                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                        print("ERROR: Omni: could not allocate auto_mem")
+                        return
+
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
             
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
