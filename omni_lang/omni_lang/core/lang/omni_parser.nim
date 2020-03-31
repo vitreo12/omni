@@ -557,7 +557,7 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
 
     #echo repr result
 
-    #if constructor block, run the constructor_inner macro on the resulting block.
+    #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
@@ -569,10 +569,10 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
             result.add(build_statement)
 
         
-        #Run the whole block through the constructor_inner macro. This will build the actual
+        #Run the whole block through the init_inner macro. This will build the actual
         #constructor function, and it will run the untyped version of the "build" macro.
         result = nnkCall.newTree(
-            newIdentNode("constructor_inner"),
+            newIdentNode("init_inner"),
             nnkStmtList.newTree(
                 result
             )

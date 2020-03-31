@@ -65,7 +65,7 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
                         newIdentNode("freeOmniAutoMem"),
                         nnkDotExpr.newTree(
                             newIdentNode("ugen"),
-                            newIdentNode("auto_mem_let")
+                            newIdentNode("ugen_auto_mem_let")
                         )
                     )
                 )
@@ -78,7 +78,7 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
                 newIdentNode("freeOmniAutoMem"),
                 nnkDotExpr.newTree(
                     newIdentNode("ugen"),
-                    newIdentNode("auto_mem_let")
+                    newIdentNode("ugen_auto_mem_let")
                 )
             )
         )
@@ -128,7 +128,7 @@ macro debug*() =
 
 
 #This has been correctly parsed!
-macro constructor_inner*(code_block_stmt_list : untyped) =
+macro init_inner*(code_block_stmt_list : untyped) =
     #Extract the actual parsed code_block from the nnkStmtList
     let code_block = code_block_stmt_list[0]
 
@@ -452,9 +452,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         return nil
 
                     #Initialize auto_mem
-                    ugen.auto_mem_let = allocInitOmniAutoMem()
+                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
-                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                         print("ERROR: Omni: could not allocate auto_mem")
                         return nil
 
@@ -465,7 +465,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         samplerate       {.inject.} : float           = float(samplerate_in)
                         buffer_interface {.inject.} : pointer         = buffer_interface_in
 
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
 
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -495,9 +495,9 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         return ugen_ptr
 
                     #Initialize auto_mem
-                    ugen.auto_mem_let = allocInitOmniAutoMem()
+                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
-                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                         print("ERROR: Omni: could not allocate auto_mem")
                         return nil
 
@@ -508,7 +508,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         samplerate       {.inject.} : float         = float(samplerate_in) 
                         buffer_interface {.inject.} : pointer       = buffer_interface_in
 
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
 
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -556,13 +556,13 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         buffer_interface {.inject.} : pointer      = buffer_interface_in
                     
                     #Initialize auto_mem
-                    ugen.auto_mem_let = allocInitOmniAutoMem()
+                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
-                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                         print("ERROR: Omni: could not allocate auto_mem")
                         return
 
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
 
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -595,13 +595,13 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
                         buffer_interface {.inject.} : pointer       = buffer_interface_in
 
                     #Initialize auto_mem
-                    ugen.auto_mem_let = allocInitOmniAutoMem()
+                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
-                    if isNil(cast[pointer](ugen.auto_mem_let)):
+                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                         print("ERROR: Omni: could not allocate auto_mem")
                         return
 
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.auto_mem_let
+                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
             
                     #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                     `templates_for_constructor_var_declarations`
@@ -632,7 +632,7 @@ macro constructor_inner*(code_block_stmt_list : untyped) =
             
 
 #This generates:
-    #constructor_inner:
+    #init_inner:
         #PARSED code_block
 macro init*(code_block : untyped) : untyped =
     return quote do:
@@ -704,10 +704,10 @@ macro build*(var_names : varargs[typed]) =
         var_name_and_type.add(newEmptyNode())
         var_names_and_types.add(var_name_and_type)
 
-    #Add auto_mem_let variable (ptr OmniAutoMem)
+    #Add ugen_auto_mem_let variable (ptr OmniAutoMem)
     var_names_and_types.add(
         nnkIdentDefs.newTree(
-            newIdentNode("auto_mem_let"),
+            newIdentNode("ugen_auto_mem_let"),
             nnkPtrTy.newTree(
                 newIdentNode("OmniAutoMem")
             ),

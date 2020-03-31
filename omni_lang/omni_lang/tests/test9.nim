@@ -18,6 +18,9 @@ expandMacros:
     struct Bah:
         phase float
 
+    def something():
+        return 0.5
+
     init:
         #c = SomethingElse.new(1, 2)
         a = Something.new(1, Data.new(10), SomethingElse.new(1.34, 14.2))
@@ -26,4 +29,4 @@ expandMacros:
         build a
 
     sample:
-        out1 = in1
+        out1 = something()
