@@ -286,10 +286,10 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
         generate_args_templates(`num_of_inputs_VAL`)
         
         #Export to C
-        proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+        proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs", dynlib.} =
             return int32(omni_inputs)
 
-        proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
+        proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names", dynlib.} =
             return cast[ptr cchar](ugen_input_names)
 
 macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
@@ -360,10 +360,10 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 generate_args_templates(`num_of_inputs_VAL`)
         
                 #Export to C
-                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs", dynlib.} =
                     return int32(omni_inputs)
 
-                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names".} =
+                proc get_ugen_input_names() : ptr ptr cstring {.exportc: "get_ugen_input_names", dynlib.} =
                     return cast[ptr ptr cstring](ugen_input_names)
         else:
             return quote do:
@@ -376,10 +376,10 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 generate_args_templates(`num_of_inputs_VAL`)
 
                 #Export to C
-                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs", dynlib.} =
                     return int32(omni_inputs)
 
-                proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
+                proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names", dynlib.} =
                     return cast[ptr cchar](ugen_input_names)
 
     #The standard form (derived by using num_of_inputs as int literal, and successive param_names as varargs[untyped]):
@@ -437,10 +437,10 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 generate_args_templates(`num_of_inputs_VAL`)
 
                 #Export to C
-                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs", dynlib.} =
                     return int32(omni_inputs)
 
-                proc get_ugen_input_names() : ptr char {.exportc: "get_ugen_input_names".} =
+                proc get_ugen_input_names() : ptr char {.exportc: "get_ugen_input_names", dynlib.} =
                     return cast[ptr char](ugen_input_names)
         else:
             return quote do:
@@ -453,10 +453,10 @@ macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped =
                 generate_args_templates(`num_of_inputs_VAL`)
 
                 #Export to C
-                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs".} =
+                proc get_omni_inputs() : int32 {.exportc: "get_omni_inputs", dynlib.} =
                     return int32(omni_inputs)
 
-                proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names".} =
+                proc get_ugen_input_names() : ptr cchar {.exportc: "get_ugen_input_names", dynlib.} =
                     return cast[ptr cchar](ugen_input_names)
 
 
@@ -536,10 +536,10 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
         #generate_outputs_templates(`num_of_outputs_VAL`, 0)
         
         #Export to C
-        proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+        proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs", dynlib.} =
             return int32(omni_outputs)
 
-        proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
+        proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names", dynlib.} =
             return cast[ptr cchar](ugen_output_names)
 
 macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
@@ -609,10 +609,10 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names".} =
+                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names", dynlib.} =
                     return cast[ptr ptr cstring](ugen_output_names)
         else:
             return quote do:
@@ -624,10 +624,10 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
+                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names", dynlib.} =
                     return cast[ptr cchar](ugen_output_names)
 
     #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
@@ -684,10 +684,10 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr char {.exportc: "get_ugen_output_names".} =
+                proc get_ugen_output_names() : ptr char {.exportc: "get_ugen_output_names", dynlib.} =
                     return cast[ptr char](ugen_output_names)
         else:
             return quote do:
@@ -699,8 +699,8 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 #generate_outputs_templates(`num_of_outputs_VAL`, 0)
 
                 #Export to C
-                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs".} =
+                proc get_omni_outputs() : int32 {.exportc: "get_omni_outputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names".} =
+                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names", dynlib.} =
                     return cast[ptr cchar](ugen_output_names)

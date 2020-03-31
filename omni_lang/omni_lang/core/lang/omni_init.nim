@@ -7,7 +7,7 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
         proc_def      : NimNode
         proc_body     = nnkStmtList.newTree()
 
-    #Full proc definition for Omni_UGenFree. The result is: proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} 
+    #Full proc definition for Omni_UGenFree. The result is: proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree", dynlib.} 
     proc_def = nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
@@ -27,7 +27,8 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
             nnkExprColonExpr.newTree(
                 newIdentNode("exportc"),
                 newLit("Omni_UGenFree")
-            )
+            ),
+            newIdentNode("dynlib")
         ),
         newEmptyNode()
     )
@@ -440,7 +441,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         when defined(unifyAllocInit):
             #Initialize and build an Omni object
             when defined(performBits32):
-                proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32"} =
+                proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
                     
                     #allocation of "ugen" variable
                     `alloc_ugen`
@@ -483,7 +484,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     return ugen_ptr
 
             when defined(performBits64):
-                proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64"} =
+                proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
                     
                     #allocation of "ugen" variable
                     `alloc_ugen`
@@ -528,7 +529,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #This is for Max / PD
         when defined(separateAllocInit):
             #This is just allocating memory, not running constructor
-            proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc".} =
+            proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
                 #allocation of "ugen" variable
                 `alloc_ugen`
 
@@ -543,7 +544,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 return ugen_ptr
             
             when defined(performBits32):
-                proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit32".} =
+                proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit32", dynlib.} =
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: build: invalid omni object")
                         return
@@ -582,7 +583,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     return
 
             when defined(performBits64):
-                proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit64".} =
+                proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit64", dynlib.} =
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: build: invalid omni object")
                         return
@@ -621,7 +622,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     return
 
         #Destructor
-        #[ proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree".} =
+        #[ proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree", dynlib.} =
             let ugen_void_cast = cast[pointer](ugen)
             if not ugen_void_cast.isNil():
                 omni_free(ugen_void_cast)  ]#    

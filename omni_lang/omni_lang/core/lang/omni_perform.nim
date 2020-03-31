@@ -341,7 +341,7 @@ template performInner*(code_block : untyped) {.dirty.} =
 
     #used in SC
     when defined(performBits32):
-        proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32".} =    
+        proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib.} =    
             #standard perform block
             when declared(perform_block):
                 parse_block_for_variables(code_block, false, true)
@@ -356,7 +356,7 @@ template performInner*(code_block : untyped) {.dirty.} =
 
     #used in Max/pd
     when defined(performBits64):
-        proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64".} =    
+        proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
             #standard perform block
             when declared(perform_block):
                 parse_block_for_variables(code_block, false, true)
@@ -385,7 +385,7 @@ template perform*(code_block : untyped) {.dirty.} =
     
     performInner(code_block)
 
-#Simply wrap the code block in a for loop. Still marked as {.dirty.} to export symbols to context.
+#Run perform inner, but directly to the for loop
 template sample*(code_block : untyped) {.dirty.} =
     when not declared(perform_block):
         performInner(code_block)
