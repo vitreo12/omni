@@ -18,6 +18,9 @@ expandMacros:
     struct Bah:
         phase float
 
+    struct Dejfff:
+        data Data[float]
+
     def something():
         return 0.5
 
