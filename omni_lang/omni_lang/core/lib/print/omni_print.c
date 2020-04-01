@@ -7,7 +7,7 @@ omni_print_str_func_t*     omni_print_str_func   = NULL;
 omni_print_float_func_t*   omni_print_float_func = NULL;
 omni_print_int_func_t*     omni_print_int_func   = NULL;
 
-void Omni_InitPrint(
+OMNI_DLL_EXPORT void Omni_InitPrint(
     omni_print_debug_func_t*   print_debug_func, 
     omni_print_str_func_t*     print_str_func, 
     omni_print_float_func_t*   print_float_func, 

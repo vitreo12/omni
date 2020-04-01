@@ -24,7 +24,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType] =
+proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
@@ -68,19 +68,7 @@ proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], siz
     result.size_X_chans = size_X_chans_uint
 
 template new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    innerInit(Data, size, chans, dataType, ugen_auto_mem)
-
-#Deallocation proc
-proc destructor*[T](obj : Data[T]) : void =
-    print("Calling Data's destructor")
-
-    let 
-        obj_ptr  = cast[pointer](obj)
-        data_ptr = cast[pointer](obj.data)
-
-    omni_free(data_ptr)     #dealloc the data
-    omni_free(obj_ptr)      #dealloc actual object
-   
+    innerInit(Data, size, chans, dataType, ugen_auto_mem)   
 
 ##########
 # GETTER #
@@ -88,7 +76,7 @@ proc destructor*[T](obj : Data[T]) : void =
 
 #1 channel
 #proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T 
-proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T =
+proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
     let 
         data       = a.data
         data_size  = a.size
@@ -102,7 +90,7 @@ proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T =
 
 #more than 1 channel
 #proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
-proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T =
+proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T {.inline.} =
     let 
         data              = a.data
         data_size         = a.size
@@ -122,7 +110,7 @@ proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) :
 
 #1 channel   
 #proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =    
-proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void =
+proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
     let 
         data      = a.data
         data_size = a.size
@@ -135,7 +123,7 @@ proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void =
 
 #more than 1 channel
 #proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
-proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void =
+proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void {.inline.} =
     let 
         data              = a.data
         data_size         = a.size

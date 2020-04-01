@@ -6,7 +6,7 @@ omni_realloc_func_t* omni_realloc_func  = (omni_realloc_func_t*)realloc; //Defau
 omni_free_func_t*    omni_free_func     = (omni_free_func_t*)free;       //Default it with free
 
 //Provide custom alloc/realloc/free
-void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func)
+OMNI_DLL_EXPORT void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func)
 {
     omni_alloc_func   = alloc_func;
     omni_realloc_func = realloc_func;
