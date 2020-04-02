@@ -539,7 +539,7 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
         proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
             return int32(omni_outputs)
 
-        proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names", dynlib.} =
+        proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
             return cast[ptr cchar](ugen_output_names)
 
 macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
@@ -612,7 +612,7 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr ptr cstring {.exportc: "get_ugen_output_names", dynlib.} =
+                proc Omni_UGenOutputNames() : ptr ptr cstring {.exportc: "Omni_UGenOutputNames", dynlib.} =
                     return cast[ptr ptr cstring](ugen_output_names)
         else:
             return quote do:
@@ -627,7 +627,7 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names", dynlib.} =
+                proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
                     return cast[ptr cchar](ugen_output_names)
 
     #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
@@ -687,7 +687,7 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr char {.exportc: "get_ugen_output_names", dynlib.} =
+                proc Omni_UGenOutputNames() : ptr char {.exportc: "Omni_UGenOutputNames", dynlib.} =
                     return cast[ptr char](ugen_output_names)
         else:
             return quote do:
@@ -702,5 +702,5 @@ macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped 
                 proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
                     return int32(omni_outputs)
 
-                proc get_ugen_output_names() : ptr cchar {.exportc: "get_ugen_output_names", dynlib.} =
+                proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
                     return cast[ptr cchar](ugen_output_names)
