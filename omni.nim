@@ -43,14 +43,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni_single_file(omniFile : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
-
-    let fileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
-
-    #Check if file exists
-    if not fileFullPath.existsFile():
-        printError($fileFullPath & " does not exist.")
-        return 1
+proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -114,8 +107,8 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
     #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Omni/issues/12745
     setCurrentDir(outDirFullPath)
     
-    #Actual compile command
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
+    #Actual compile command. NOTE THE -f:on TO FORCE RECOMPILATION AND DEBUG CORRECT LINKED MODULES! IT WILL BE REMOVED!!!
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger -f:on"
     
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
@@ -209,18 +202,36 @@ proc omni_single_file(omniFile : string, outName : string = "", outDir : string 
 
 #Unpack files arg and pass it to compiler
 proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
-    
-    #echo "omniFiles"
-    #echo omniFiles
+    for omniFile in omniFiles:
+        #Get full extended path
+        let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
-    #Single file, pass the outName
-    if omniFiles.len == 1:
-        return omni_single_file(omniFiles[0], outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader)
-    else:
-        for omniFile in omniFiles:
-            if omni_single_file(omniFile, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader) > 0:
-                return 1
-        return 0
+        #If it's a file, compile it
+        if omniFileFullPath.existsFile():
+            #if just one file in CLI, also pass the outName flag
+            if omniFiles.len == 1:
+                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader)
+            else:
+                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader) > 0:
+                    return 1
+
+        #If it's a dir, compile all .omni/.oi files in it
+        elif omniFileFullPath.existsDir():
+            for kind, dirFile in walkDir(omniFileFullPath):
+                if kind == pcFile:
+                    let 
+                        dirFileFullPath = dirFile.normalizedPath().expandTilde().absolutePath()
+                        dirFileExt = dirFileFullPath.splitFile().ext
+                    
+                    if dirFileExt == ".omni" or dirFileExt == ".oi":
+                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader) > 0:
+                            return 1
+
+        else:
+            printError($omniFileFullPath & " does not exist.")
+            return 1
+    
+    return 0
 
 #Dispatch the omni function as the CLI one
 dispatch(omni, 
@@ -230,7 +241,7 @@ dispatch(omni,
     },
     
     help={ 
-        "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended (e.g. \"OmniSaw.omni\" -> \"libOmniSaw" & $shared_lib_extension & "\").",
+        "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended (e.g. \"OmniSaw.omni\" -> \"libOmniSaw" & $shared_lib_extension & "\"). This flag doesn't work for multiple files or directories.",
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",

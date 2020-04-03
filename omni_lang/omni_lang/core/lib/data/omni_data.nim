@@ -1,9 +1,8 @@
 import ../alloc/omni_alloc
+import ../auto_mem/omni_auto_mem
 import ../print/omni_print
 
 type
-    C_size_t = culong
-
     ArrayPtr[T] = ptr UncheckedArray[T]
 
     Data_obj[T] = object
@@ -25,7 +24,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : Data[dataType] =
+proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
@@ -49,14 +48,18 @@ proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S 
         size_data_obj = sizeof(Data_obj[dataType])
 
     #Actual object, assigned to result
-    result = cast[Data[dataType]](omni_alloc(cast[C_size_t](size_data_obj)))
+    result = cast[Data[dataType]](omni_alloc(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 
         size_data_type_uint    = uint(sizeof(dataType))
         size_X_chans_uint      = size_uint * chans_uint
         total_size_uint        = size_data_type_uint * size_X_chans_uint
-        data                   = cast[ArrayPtr[dataType]](omni_alloc0(cast[C_size_t](total_size_uint)))
+        data                   = cast[ArrayPtr[dataType]](omni_alloc0(culong(total_size_uint)))
+
+    #Register both the Data object and its data to the automatic memory management
+    ugen_auto_mem.registerChild(result)
+    ugen_auto_mem.registerChild(data)
     
     #Fill the object layout
     result.data         = data
@@ -64,17 +67,8 @@ proc new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S 
     result.size         = size_uint
     result.size_X_chans = size_X_chans_uint
 
-#Deallocation proc
-proc destructor*[T](obj : Data[T]) : void =
-    print("Calling Data's destructor")
-
-    let 
-        obj_ptr  = cast[pointer](obj)
-        data_ptr = cast[pointer](obj.data)
-
-    omni_free(data_ptr)     #dealloc the data
-    omni_free(obj_ptr)      #dealloc actual object
-   
+template new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    innerInit(Data, size, chans, dataType, ugen_auto_mem)   
 
 ##########
 # GETTER #
@@ -82,7 +76,7 @@ proc destructor*[T](obj : Data[T]) : void =
 
 #1 channel
 #proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T 
-proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T =
+proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
     let 
         data       = a.data
         data_size  = a.size
@@ -96,7 +90,7 @@ proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T =
 
 #more than 1 channel
 #proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
-proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T =
+proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T {.inline.} =
     let 
         data              = a.data
         data_size         = a.size
@@ -116,7 +110,7 @@ proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) :
 
 #1 channel   
 #proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =    
-proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void =
+proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
     let 
         data      = a.data
         data_size = a.size
@@ -129,7 +123,7 @@ proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void =
 
 #more than 1 channel
 #proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
-proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void =
+proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void {.inline.} =
     let 
         data              = a.data
         data_size         = a.size

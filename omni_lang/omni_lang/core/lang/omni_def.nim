@@ -2,14 +2,20 @@ import macros
 
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
     var 
+        proc_and_template = nnkStmtList.newTree()
+
         proc_def = nnkProcDef.newTree()
         proc_return_type : NimNode
         proc_name : NimNode
         proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
-        
-        #Pass the proc body to the parse_block_for_variables macro to avoid var/let declarations
-        proc_body = nnkStmtList.newTree(
+
+        template_def = nnkTemplateDef.newTree()
+        template_name : NimNode
+        template_body_call = nnkCall.newTree()
+
+    #Pass the proc body to the parse_block_for_variables macro to avoid var/let declarations!!!
+    var proc_body = nnkStmtList.newTree(
             nnkCall.newTree(
                 newIdentNode("parse_block_for_variables"),
                 code_block
@@ -68,12 +74,21 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #Formal params
         proc_formal_params.add(proc_return_type)    
+
+        #Add template and proc names
+        template_name = proc_name
+        proc_name = newIdentNode(proc_name.strVal() & "_inner")
+        
+        #Add proc name to template call
+        template_body_call.add(proc_name)
         
         let args_block = name_with_args[1..name_with_args.len-1]
     
         for index, statement in args_block.pairs():
             
-            var new_arg : NimNode
+            var 
+                arg_name : NimNode
+                new_arg : NimNode
 
             let statement_kind = statement.kind
 
@@ -82,7 +97,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 assert statement.len == 2
 
                 var 
-                    arg_name : NimNode
                     arg_type : NimNode
                     arg_value : NimNode
 
@@ -111,16 +125,19 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 
                 assert statement.len == 2
 
+                arg_name = statement[0]
+
                 new_arg = nnkIdentDefs.newTree(
-                    statement[0],
+                    arg_name,
                     statement[1],
                     newEmptyNode()
                 )
             
             #a -> a : auto
             elif statement_kind == nnkIdent:
+                arg_name = statement
                 new_arg = nnkIdentDefs.newTree(
-                    statement,
+                    arg_name,
                     newIdentNode("auto"),
                     newEmptyNode()
                 )
@@ -128,57 +145,22 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             else:
                 error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
 
-            #[
-            #Not specified kind, defaults to auto: def sine(a) -> proc sine(a : auto)
-            elif statement_kind != nnkExprColonExpr:
-
-                #def sine(a)
-                if statement.len == 0:
-                    new_arg = nnkIdentDefs.newTree(
-                        statement,
-                        newIdentNode("auto"),
-                        newEmptyNode()
-                    )
-                
-                #[
-                #def sine(a 0.0):
-                elif statement.len == 2:
-                    new_arg = nnkIdentDefs.newTree(
-                        statement[0],
-                        newIdentNode("auto"),
-                        statement[1]
-                    )
-                ]#
-            
-            #def sin(a : float)
-            else:
-                let arg_name = statement[0]
-                let arg_type = statement[1]
-
-                #providing default value
-                if arg_type.kind == nnkCommand:
-                    if arg_type.len == 2:
-                        new_arg = nnkIdentDefs.newTree(
-                            arg_name,
-                            arg_type[0],
-                            arg_type[1]
-                        )
-                
-                #no default value
-                else:
-                    new_arg = nnkIdentDefs.newTree(
-                        arg_name,
-                        arg_type,
-                        newEmptyNode()
-                    )
-            ]#
-                    
-            #echo astGenRepr new_arg
-
             proc_formal_params.add(new_arg)
-                
-        #Add name of func
-        proc_def.add(proc_name)
+
+            #Add arg name to template call
+            template_body_call.add(arg_name)
+        
+        # ========== #
+        # BUILD PROC #
+        # ========== #
+
+        #Add name of func (with _inner appended) with * for export
+        proc_def.add(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                proc_name
+            )
+        )
 
         #Add generics
         if proc_generic_params.len > 0:
@@ -187,19 +169,77 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         else:
             proc_def.add(newEmptyNode())
             proc_def.add(newEmptyNode())
-        
+
+        #Add ugen_auto_mem : ptr OmniAutoMem
+        proc_formal_params.add(nnkIdentDefs.newTree(
+                newIdentNode("ugen_auto_mem"),
+                nnkPtrTy.newTree(
+                    newIdentNode("OmniAutoMem")
+                ),
+                newEmptyNode()
+            )
+        )
+
         #Add formal args
         proc_def.add(proc_formal_params)
-        proc_def.add(newEmptyNode())
+        
+        #Add inline pragma
+        proc_def.add(nnkPragma.newTree(
+                newIdentNode("inline")
+            )
+        )   
+
         proc_def.add(newEmptyNode())
         
         #Add function body (with checks for var/lets macro)
         proc_def.add(proc_body)
 
+        # ============== #
+        # BUILD TEMPLATE #
+        # ============== #
+
+        #Add name with * for export
+        template_def.add(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                template_name
+            )
+        )
+
+        #Add generics
+        if proc_generic_params.len > 0:
+            template_def.add(newEmptyNode())
+            template_def.add(proc_generic_params)
+        else:
+            template_def.add(newEmptyNode())
+            template_def.add(newEmptyNode())
+
+        #Add formal args (Removing the last one, which is ugen_auto_mem : ptr OmniAutoMem, and substituting the first one (the return type) with "untyped")
+        let template_formal_params = proc_formal_params.copy
+        template_formal_params.del(template_formal_params.len - 1)
+        template_formal_params[0] = newIdentNode("untyped")
+        template_def.add(template_formal_params)
+        template_def.add(newEmptyNode())
+        template_def.add(newEmptyNode())
+
+        #Add ugen_auto_mem to template call
+        template_body_call.add(newIdentNode("ugen_auto_mem"))
+        
+        #Add body (just call _inner proc, adding "ugen_auto_mem" at the end)
+        template_def.add(
+            nnkStmtList.newTree(
+                template_body_call
+            )
+        )
+
         #echo astGenRepr proc_def
-        #echo repr proc_def        
+        #echo repr proc_def 
+        #echo repr template_def       
              
     else:
         error "Invalid syntax for def"
 
-    return proc_def
+    proc_and_template.add(proc_def)
+    proc_and_template.add(template_def)
+
+    return proc_and_template

@@ -1,7 +1,7 @@
 #include "../../omni.h"
 
 //Initialize all the function pointers in one place.
-void Omni_InitGlobal(
+OMNI_DLL_EXPORT void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
         omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 

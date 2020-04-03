@@ -2,34 +2,56 @@ import macros
 
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
-        final_stmt_list = nnkStmtList.newTree()
-        type_section    = nnkTypeSection.newTree()
-        obj_type_def    = nnkTypeDef.newTree()      #the Phasor_obj block
-        obj_ty          = nnkObjectTy.newTree()     #the body of the Phasor_obj   
-        rec_list        = nnkRecList.newTree()      #the variable declaration section of Phasor_obj
+        final_stmt_list = nnkStmtList.newTree()          #return statement
+        type_section    = nnkTypeSection.newTree()       #the whole type section (both _obj and ptr)
+        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_obj block
+        obj_ty          = nnkObjectTy.newTree(           #the body of the Phasor_obj 
+            newEmptyNode(),  
+            newEmptyNode()
+        )      
+        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_obj
         
-        ptr_type_def    = nnkTypeDef.newTree()      #the Phasor = ptr Phasor_obj block
-        ptr_ty          = nnkPtrTy.newTree()        #the ptr type expressing ptr Phasor_obj
+        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_obj block
+        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_obj
         
-        new_proc_def        = nnkProcDef.newTree()      #the init* function
-        new_formal_params   = nnkFormalParams.newTree()
-        new_fun_body        = nnkStmtList.newTree()
-
-    obj_ty.add(newEmptyNode())
-    obj_ty.add(newEmptyNode())
+        proc_def             = nnkProcDef.newTree()      #the innerInit* proc
+        proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
+        proc_body            = nnkStmtList.newTree()     #body of the proc
+        
+        template_def = nnkTemplateDef.newTree()          #the new* template
+        template_formal_params : NimNode
+        template_body_call = nnkCall.newTree()
     
     var 
         obj_name : NimNode
         ptr_name : NimNode
-        generics = nnkGenericParams.newTree()  #If generics are present in struct definition
+
+        generics = nnkGenericParams.newTree()          #If generics are present in struct definition
         generics_proc_def = nnkGenericParams.newTree() #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
         obj_bracket_expr : NimNode
         ptr_bracket_expr : NimNode
 
-        var_names : seq[NimNode]
-        var_types : seq[NimNode]
-    
+    #The name of the function with the asterisk, in case of supporting modules in the future
+    #proc innerInit
+    proc_def.add(
+        nnkPostfix.newTree(
+            newIdentNode("*"),
+            newIdentNode("innerInit")
+        ),
+        newEmptyNode()
+    )
+
+    #Add name with * for export
+    #template new
+    template_def.add(
+        nnkPostfix.newTree(
+            newIdentNode("*"),
+            newIdentNode("new")
+        ),
+        newEmptyNode()
+    )
+
     #Using generics
     if struct_name.kind == nnkBracketExpr:
         obj_name = newIdentNode($(struct_name[0].strVal()) & "_obj")  #Phasor_obj
@@ -53,15 +75,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 newIdentNode("*"),
                 ptr_name
             )
-        )
-
-        #The name of the function with the asterisk, in case of supporting modules in the future
-        #Note that new_proc_def for generics has just one newEmptyNode()
-        new_proc_def.add(nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("new")
-            ),
-            newEmptyNode()
         )
 
         #Initialize them to be bracket expressions
@@ -100,23 +113,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     generics.add(generic_proc)
                     generics_proc_def.add(generic_proc_proc_def)
 
-                #If [T : SomeFloat or SomeInteger... etc...]
+                #If [T : Something etc...]
                 else:
                     error($ptr_name.strVal() & $ "\'s generic type \"" & $(child[0].strVal()) & "\" contains subtypes. These are not supported. Struct's generic types are defaulted to only be SomeNumber.")
-
-                    #This works, but it's better to not to use it.
-                    #[ #All the generics (including the "or" infixes, etc...)
-                    for inner_index, inner_child in child:
-
-                        #Add the name of the generics to a table, to be used for ptr
-                        if inner_index == 0:
-                            obj_bracket_expr.add(inner_child)
-                            ptr_bracket_expr.add(inner_child)
-                        
-                        generic_proc.add(inner_child)
-                    
-                    generic_proc.add(newEmptyNode())
-                    generics.add(generic_proc) ]#
             
         #Add generics to obj type
         obj_type_def.add(generics)
@@ -125,7 +124,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_type_def.add(generics)
 
         #Add generics to proc definition. (proc init*[T : SomeNumber, Y : SomeNumber]...) These will have added the ": SomeNumber" on each generic.
-        new_proc_def.add(generics_proc_def)
+        proc_def.add(generics_proc_def)
+
+        #Add generics to template definition
+        template_def.add(generics_proc_def)
         
         #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_bracket_expr)
@@ -155,12 +157,13 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        #The name of the function with the asterisk, in case of supporting modules in the future
-        new_proc_def.add(nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("new")
-            ),
-            newEmptyNode(),
+        #Add one more empty node (needed when no generics)
+        proc_def.add(
+            newEmptyNode()
+        )
+
+        #Add one more empty node (needed when no generics)
+        template_def.add(
             newEmptyNode()
         )
 
@@ -171,6 +174,55 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr = obj_name
         ptr_bracket_expr = ptr_name
 
+    #Add Phasor[T, Y] return type
+    proc_formal_params.add(ptr_bracket_expr)
+
+    #Add first argument: obj_type : typedesc[Phasor[T, Y]]
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("obj_type"),
+            nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                ptr_bracket_expr
+            ),
+            newEmptyNode()
+        )   
+    )
+
+    #Add the allocation of the struct as first entry i n the body of the struct
+    proc_body.add(
+        nnkAsgn.newTree(
+            newIdentNode("result"),
+            nnkCast.newTree(
+                ptr_bracket_expr,
+                nnkCall.newTree(
+                        newIdentNode("omni_alloc"),
+                        nnkCall.newTree(
+                            newIdentNode("culong"),
+                                nnkCall.newTree(
+                                    newIdentNode("sizeof"),
+                                    obj_bracket_expr
+                                )
+                            )                 
+                        )
+                )
+            )
+        )
+
+    #Add "registerChild(ugen_auto_mem, result)"
+    proc_body.add(
+        nnkCall.newTree(
+            newIdentNode("registerChild"),
+            newIdentNode("ugen_auto_mem"),
+            newIdentNode("result")
+        )
+    )
+
+    #add innerInit func and ptr name to template's call statement (calling innerInit) using "obj_type"
+    template_body_call.add(newIdentNode("innerInit"))
+    template_body_call.add(newIdentNode("obj_type"))
+
+    #Loop over struct's body
     for code_stmt in code_block:
         let code_stmt_kind = code_stmt.kind
 
@@ -205,18 +257,38 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_name = code_stmt[0]
             var_type = code_stmt[1][0]
 
-        var_names.add(var_name)
-        var_types.add(var_type)
-
         new_decl.add(var_name)
         new_decl.add(var_type)
         new_decl.add(newEmptyNode())
 
         rec_list.add(new_decl)
+
+        #Add to arg list for innerInit proc
+        proc_formal_params.add(
+            nnkIdentDefs.newTree(
+                var_name,
+                var_type,
+                newEmptyNode()
+            )
+        )
+
+        #Add result.phase = phase, etc... assignments
+        proc_body.add(
+            nnkAsgn.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("result"),
+                    var_name
+                ),
+                var_name
+            )
+        )
+
+        #Add the list of var names to the template's innerInit function call
+        template_body_call.add(var_name)
     
-    ####################################
+    # ================================ #
     # Add all things related to object #
-    ####################################
+    # ================================ #
 
     #Add var : type declarations to obj declaration
     obj_ty.add(rec_list)
@@ -227,9 +299,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the type declaration of Phasor_obj to the type section
     type_section.add(obj_type_def)
     
-    #####################################
+    # ================================= #
     # Add all things related to pointer #
-    #####################################
+    # ================================= #
     
     #Add the ptr_ty inners to ptr_type_def
     ptr_type_def.add(ptr_ty)
@@ -240,83 +312,62 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the whole type section to result
     final_stmt_list.add(type_section)
     
-    ################
-    # INIT SECTION #
-    ################
+    # ============== #
+    # INNERINIT PROC #
+    # ============== #
     
-    #Add Phasor[T, Y] return type
-    new_formal_params.add(ptr_bracket_expr)
-
-    #Add obj_type : typedesc[Phasor[T, Y]]
-    new_formal_params.add(nnkIdentDefs.newTree(
-            newIdentNode("obj_type"),
-            nnkBracketExpr.newTree(
-                newIdentNode("typedesc"),
-                ptr_bracket_expr
+    #Add ugen_auto_mem : ptr OmniAutoMem as last argument
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("ugen_auto_mem"),
+            nnkPtrTy.newTree(
+                newIdentNode("OmniAutoMem")
             ),
             newEmptyNode()
-        )   
-    )
-
-    #Add args to function
-    for index, var_name in var_names:
-        var new_arg = nnkIdentDefs.newTree(
-            var_name,
-            var_types[index],
-            newEmptyNode()
-        )
-
-        new_formal_params.add(new_arg)
-
-    new_proc_def.add(new_formal_params)
-
-    new_proc_def.add(newEmptyNode())
-    new_proc_def.add(newEmptyNode())
-
-    #Cast and rtalloc operators
-    new_fun_body.add(
-        nnkAsgn.newTree(
-            newIdentNode("result"),
-            nnkCast.newTree(
-                ptr_bracket_expr,
-                nnkCall.newTree(
-                        newIdentNode("omni_alloc"),
-                        nnkCast.newTree(
-                            newIdentNode("culong"),
-                                nnkCall.newTree(
-                                newIdentNode("sizeof"),
-                                obj_bracket_expr
-                        )
-                    )                 
-                )
-            )
         )
     )
 
-    #Add result.phase = phase, etc..
-    for index, var_name in var_names:
-        new_fun_body.add(
-            nnkAsgn.newTree(
-                nnkDotExpr.newTree(
-                    newIdentNode("result"),
-                    var_name
-                ),
-                var_name
-            )
-        )
+    #Add proc_formal_params to proc definition
+    proc_def.add(proc_formal_params)
+
+    #add inline pragma to proc definition
+    proc_def.add(nnkPragma.newTree(
+            newIdentNode("inline")
+        ),
+        newEmptyNode()
+    )
     
     #Add the function body to the proc declaration
-    new_proc_def.add(new_fun_body)
+    proc_def.add(proc_body)
+
+    #Add proc to result
+    final_stmt_list.add(proc_def)
+
+    # ============ #
+    # NEW TEMPLATE #
+    # ============ #
+
+    #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last entry, which is the ugen_auto_mem argument
+    template_formal_params = proc_formal_params.copy
+    template_formal_params.del(template_formal_params.len - 1)
+    template_formal_params[0] = newIdentNode("untyped")
+    template_def.add(template_formal_params)
+    template_def.add(newEmptyNode())
+    template_def.add(newEmptyNode())
+
+    #echo repr template_formal_params
+
+    #Add function ugen_auto_mem to template call (it's the last argument for the innerInit proc)
+    template_body_call.add(newIdentNode("ugen_auto_mem"))
+
+    #Add body (just call _inner proc, adding "ugen_auto_mem" at the end)
+    template_def.add(
+        template_body_call
+    )
     
-    #Add everything to result
-    final_stmt_list.add(new_proc_def)
+    #Add template to result
+    final_stmt_list.add(template_def)
     
-    #If using result, it was bugging. Needs to be returned like this to be working properly. don't know why.
+    #If returning without quote, it bugs. Needs to be returned like this to be working properly. don't know why.
     return quote do:
         `final_stmt_list`
-        
-        #defining the destructor requires to use another macro with a typed argument for the type, in order to inspect its fields.
-
-        #generics or generics_pproc_def here? it should be the same, as long as object was constructed with generics_proc_def (which not only
-        #contains "[T, Y]", but "[T : SomeNumber, Y : SomeNumber]"). These are not necessary for a generic destructor. It would work on them too.
-        defineDestructor(`obj_name`, `ptr_name`, `generics`, `ptr_bracket_expr`, `var_names`, false)

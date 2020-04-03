@@ -1,8 +1,15 @@
-#ifndef _OMNI_HEADER_
-#define _OMNI_HEADER_
+#ifndef _OMNI_H_
+#define _OMNI_H_
 
 //For platform's size_t and malloc/realloc/free (defaults for omni's allocator)
 #include "stdlib.h"
+
+//Needed for .dll export
+#ifdef _WIN32
+    #define OMNI_DLL_EXPORT __declspec(dllexport)
+#else
+    #define OMNI_DLL_EXPORT __attribute__ ((visibility("default")))
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +48,7 @@ extern "C" {
     /****************************/
 
     //Global (initialize alloc, print, utilities in one place)
-    extern void Omni_InitGlobal(
+    OMNI_DLL_EXPORT extern void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
         omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 
@@ -54,33 +61,40 @@ extern "C" {
     );
 
     //Alloc
-    extern void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func);
+    OMNI_DLL_EXPORT extern void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func);
 
     //Print
-    extern void Omni_InitPrint(omni_print_debug_func_t* print_debug_func, omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
-    extern omni_print_debug_func_t* get_omni_print_debug_func();
+    OMNI_DLL_EXPORT extern void Omni_InitPrint(omni_print_debug_func_t* print_debug_func, omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
+    OMNI_DLL_EXPORT extern omni_print_debug_func_t* get_omni_print_debug_func();
 
     //Utilities
-    extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);
+    OMNI_DLL_EXPORT extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);
 
     /*************************/
     /* Omni module functions */
     /*************************/
 
+    //I/O
+    OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
+    OMNI_DLL_EXPORT extern char** Omni_UGenInputNames();
+
+    OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();
+    OMNI_DLL_EXPORT extern char** Omni_UGenOutputNames();
+
     //Alloc/Init
-    extern void* Omni_UGenAllocInit32(float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
-    extern void* Omni_UGenAllocInit64(double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit64(double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
     
-    extern void* Omni_UGenAlloc();
-    extern void  Omni_UGenInit32(void* ugen_ptr, float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
-    extern void  Omni_UGenInit64(void* ugen_ptr, double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern void*  Omni_UGenAlloc();
+    OMNI_DLL_EXPORT extern void   Omni_UGenInit32(void* ugen_ptr, float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern void   Omni_UGenInit64(void* ugen_ptr, double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform
-    extern void  Omni_UGenPerform32(void* ugen_ptr, float**  ins_ptr, float**  outs_ptr, int bufsize);
-    extern void  Omni_UGenPerform64(void* ugen_ptr, double** ins_ptr, double** outs_ptr, int bufsize);
+    OMNI_DLL_EXPORT extern void   Omni_UGenPerform32(void* ugen_ptr, float**  ins_ptr, float**  outs_ptr, int bufsize);
+    OMNI_DLL_EXPORT extern void   Omni_UGenPerform64(void* ugen_ptr, double** ins_ptr, double** outs_ptr, int bufsize);
 
     //Free
-    extern void  Omni_UGenFree(void* ugen_ptr);
+    OMNI_DLL_EXPORT extern void   Omni_UGenFree(void* ugen_ptr);
 
 #ifdef __cplusplus
 }
