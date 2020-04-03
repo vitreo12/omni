@@ -446,7 +446,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     #allocation of "ugen" variable
                     `alloc_ugen`
 
-                    let ugen_ptr {.inject.} = cast[pointer](ugen)
+                    let ugen_ptr = cast[pointer](ugen)
 
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: could not allocate memory")
@@ -461,7 +461,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                     #Unpack args. These will overwrite the previous empty templates
                     let 
-                        ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](ins_ptr)
+                        ins_Nim          {.inject.} : CFloatPtrPtr    = cast[CFloatPtrPtr](ins_ptr)
                         bufsize          {.inject.} : int             = int(bufsize_in)
                         samplerate       {.inject.} : float           = float(samplerate_in)
                         buffer_interface {.inject.} : pointer         = buffer_interface_in
@@ -489,7 +489,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     #allocation of "ugen" variable
                     `alloc_ugen`
 
-                    let ugen_ptr {.inject.} = cast[pointer](ugen)
+                    let ugen_ptr = cast[pointer](ugen)
 
                     if isNil(ugen_ptr):
                         print("ERROR: Omni: could not allocate memory")
@@ -534,7 +534,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 `alloc_ugen`
 
                 #Return ugen as void ptr
-                let ugen_ptr {.inject.} = cast[pointer](ugen)
+                let ugen_ptr = cast[pointer](ugen)
 
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: could not allocate memory")
