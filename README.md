@@ -48,6 +48,21 @@ To install `omni` run these commands:
 
     nimble installOmni
 
+## **Sine ocillator example**
+
+```yaml
+ins:  1
+outs: 1
+
+init:
+    phase = 0.0
+
+sample:
+    freq_incr = in1 / samplerate
+    out1 = sin(phase * 2 * PI)
+    phase = (phase + freq_incr) % 1.0
+```
+
 ## **Usage**
 
     omni ~/.nimble/pkgs/omni_lang-0.1.0/omni_lang/examples/OmniSaw.omni
