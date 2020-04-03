@@ -48,7 +48,7 @@ To install `omni` run these commands:
 
     nimble installOmni
 
-## **Sine ocillator example**
+## **Sine oscillator example**
 
 ```yaml
 ins:  1
