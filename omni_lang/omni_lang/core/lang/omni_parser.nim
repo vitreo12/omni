@@ -1,5 +1,21 @@
 import macros, tables, strutils
 
+#This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
+proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
+    var hasAtleastOneAlphaChar = false
+    if s.len == 0: return false
+    for c in s:
+        if skipNonAlpha:
+            var charIsAlpha = c.isAlphaAscii()
+            if not hasAtleastOneAlphaChar:
+                hasAtleastOneAlphaChar = charIsAlpha
+            if charIsAlpha and (not isUpperAscii(c)):
+                return false
+        else:
+            if not isUpperAscii(c):
+                return false
+    return if skipNonAlpha: hasAtleastOneAlphaChar else: true
+
 #Node replacement for sample block
 proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
     return nnkStmtList.newTree(
@@ -478,8 +494,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
             ]#
 
             #Look for consts: capital letters.
-            #isUpperAscii is deprecated from nim >= 0.2. build your own.
-            if var_name.isUpperAscii(true):
+            if var_name.isStrUpperAscii(true):
                 let old_statement_body = typed_code_block[index][0]
 
                 #Create new let statement
