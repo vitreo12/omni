@@ -108,7 +108,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     setCurrentDir(outDirFullPath)
     
     #Actual compile command. NOTE THE -f:on TO FORCE RECOMPILATION AND DEBUG CORRECT LINKED MODULES! IT WILL BE REMOVED!!!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --gc:none --noMain --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger -f:on"
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --forceBuild:on --gc:none --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
     
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
