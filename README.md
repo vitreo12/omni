@@ -67,4 +67,4 @@ sample:
 
     omni ~/.nimble/pkgs/omni_lang-0.1.0/omni_lang/examples/OmniSaw.omni -o:./
 
-This command will compile an antialiased sawtooth oscillator (part of the examples), and output a shared library (`libOmniSaw.so/dylib/dll`) and a header file (`omni.h`) in the current folder.
+This command will compile an antialiased sawtooth oscillator (part of the examples) to a shared library (`libOmniSaw.so/dylib/dll`), together with a header file (`omni.h`), in the current folder.
