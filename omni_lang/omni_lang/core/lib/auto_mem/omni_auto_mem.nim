@@ -37,10 +37,12 @@ proc registerChild*(auto_mem : ptr OmniAutoMem, child : pointer) : void {.inline
     if isNil(auto_mem.allocs):
         return
 
+    #Increment after assignment (so it starts at 0, and realloc will happen when last allocation in the array is reached)
     omni_print_debug("OmniAutoMem: registering child: ", culong(cast[uint](child)))
     auto_mem.allocs[auto_mem.num_allocs] = child
     auto_mem.num_allocs += 1
 
+    #Increment total size and realloc when reaching limit
     if (auto_mem.num_allocs mod OmniAutoMemSize) == 0:
         let new_length = int(auto_mem.num_allocs + OmniAutoMemSize)
         omni_print_debug("OmniAutoMem: reached allocs limit, reallocating memory with new length: ", culong(new_length))

@@ -1,5 +1,5 @@
 type
-    Signal*        = float32
+    Signal*        = float
     Signal64*      = float64
     Signal32*      = float32
     CFloatPtr*     = ptr UncheckedArray[cfloat]       #float*
