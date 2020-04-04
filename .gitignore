@@ -1,10 +1,11 @@
 .vscode/
 
 *.so
+*.dylib
+*.dll
+*.exe
 
 omni
-
-*.exe
 
 omni_lang/omni_lang/tests
 !omni_lang/omni_lang/tests/*.nim
