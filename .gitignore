@@ -4,15 +4,8 @@
 
 omni
 
-omni/tests/test2
-omni/tests/test
-
 *.exe
 
-omni_lang/omni_lang/tests/test4
-
-omni_lang/omni_lang/tests/test7
-
-omni_lang/omni_lang/tests/test9
-
-omni_lang/omni_lang/tests/test8
+omni_lang/omni_lang/tests
+!omni_lang/omni_lang/tests/*.nim
+!omni_lang/omni_lang/tests/*.omni
