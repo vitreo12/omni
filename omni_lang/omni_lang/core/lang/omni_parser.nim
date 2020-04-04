@@ -1,5 +1,14 @@
 import macros, tables, strutils
 
+let validStdTypes {.compileTime.} = [
+    "array",
+    "bool", 
+    "enum",
+    "float", "float32", "float64",
+    "int", "int32", "int64",
+    "uint", "uint32", "uint64"
+]
+
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
     var hasAtleastOneAlphaChar = false
@@ -70,7 +79,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     
                     variable_names_table[var_name] = var_name
 
-            #Look for "build:" statement. If there are any, it's an error. Only at last position there should be.
+            #Look for "build:" statement. If there are any, it's an error. Only at last position there should be one.
             if is_constructor_block:
                 if statement_kind == nnkCall or statement_kind == nnkCommand:
                     if statement[0].strVal() == "build":
@@ -390,6 +399,8 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #echo astGenRepr code_block
     #echo astGenRepr final_block
 
+    #echo repr final_block
+
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
@@ -450,7 +461,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                     if new_array_assignment != nil:
                         typed_code_block[index] = new_array_assignment
 
-        #Look for / , div , % , mod and replace them with safediv / safemod
+        #Look for / , div , % , mod and replace them with safediv and safemod
         elif typed_statement_kind == nnkInfix:
             assert typed_statement.len == 3
 
@@ -493,6 +504,33 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                 ) 
             ]#
 
+            #Check if it's a valid type
+            var var_type_real : string
+
+            #echo astGenRepr var_type
+            
+            #array / seq / structs, extract the actual name
+            if var_type.kind == nnkBracketExpr or var_type.kind == nnkPtrTy:
+                let var_type_inner = var_type[0]
+                
+                #struct with generics
+                if var_type_inner.kind == nnkBracketExpr:
+                    var_type_real = var_type_inner[0].strVal()
+                #no generics
+                else:
+                    var_type_real = var_type[0].strVal()
+            
+            #standard types
+            else:
+                var_type_real = var_type.strVal()
+
+            #is it a supported val or a struct?
+            let is_a_valid_val = (var_type_real in validStdTypes) or (var_type_real.endsWith("_obj"))
+            
+            #error out if it's not a valid type
+            if not is_a_valid_val:
+                error("\"" & $var_name & "\" has an invalid type: \"" & $var_type_real & "\".")
+            
             #Look for consts: capital letters.
             if var_name.isStrUpperAscii(true):
                 let old_statement_body = typed_code_block[index][0]
