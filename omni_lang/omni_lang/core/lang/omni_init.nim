@@ -177,7 +177,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 
                 #Found one! add the sym to seq. It's a nnkIdent.
                 if var_declaration[2].kind == nnkEmpty:
-                    empty_var_statements.add(var_declaration_name)
+                    #Only add it if it's not a static array: c array[100, float]
+                    if var_declaration[1].kind != nnkBracketExpr:
+                        empty_var_statements.add(var_declaration_name)
 
                 #[
                     RESULT:
