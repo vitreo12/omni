@@ -643,7 +643,7 @@ macro init*(code_block : untyped) : untyped =
             bufsize          {.inject.} : int             = 0
             samplerate       {.inject.} : float           = 0.0
             buffer_interface {.inject.} : pointer         = nil
-            ugen_ptr         {.inject.} : pointer         = nil
+            #ugen_ptr         {.inject.} : pointer         = nil
             ugen_auto_mem    {.inject.} : ptr OmniAutoMem = nil
 
         when defined(performBits32):
