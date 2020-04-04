@@ -24,3 +24,27 @@ proc omni_realloc*[N : SomeInteger](in_ptr : pointer, in_size : N) : pointer {.i
 
 proc omni_free*(in_ptr : pointer) : void {.inline.} =
     omni_free_C(in_ptr)
+
+
+# ===================================================== #
+# Discard the use of alloc / alloc0 / realloc / dealloc #
+# ===================================================== #
+
+from macros import error
+
+proc alloc*[N : SomeInteger](in_size : N) : void =
+    static:
+        error("alloc is not supported. Use Data to allocate memory.")
+
+proc alloc0*[N : SomeInteger](in_size : N) : void =
+    static:
+        error("alloc0 is not supported. Use Data to allocate memory.")
+
+proc realloc*[N : SomeInteger](in_ptr : pointer, in_size : N) : void =
+    static:
+        error("realloc is not supported. Use Data to allocate memory.")
+
+#Don't know why this doesn't work...
+#[ proc dealloc*(in_ptr : pointer) : void =
+    static:
+        error("dealloc is not supported") ]#
