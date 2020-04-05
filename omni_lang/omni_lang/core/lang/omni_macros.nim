@@ -8,6 +8,10 @@ import omni_perform
 
 export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
 
+#Needed for def's arg parsing
+import omni_type_checker
+export omni_type_checker
+
 #Utilities
 import omni_types
 

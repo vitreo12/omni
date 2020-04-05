@@ -7,13 +7,16 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         proc_def = nnkProcDef.newTree()
         proc_return_type : NimNode
         proc_name : NimNode
-        proc_name_without_inner_str : string
+        proc_name_without_inner : NimNode
         proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
 
         template_def = nnkTemplateDef.newTree()
         template_name : NimNode
         template_body_call = nnkCall.newTree()
+
+        generics : seq[NimNode]
+        checkValidTypes = nnkStmtList.newTree()
 
     #Pass the proc body to the parse_block_for_variables macro to avoid var/let declarations!!!
     var proc_body = nnkStmtList.newTree(
@@ -70,6 +73,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                         newEmptyNode()
                     )
                 )
+
+                generics.add(entry)
         
         #No Generics
         elif first_statement.kind == nnkIdent:
@@ -80,7 +85,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #Add template and proc names
         template_name = proc_name
-        proc_name_without_inner_str = proc_name.strVal()
+        proc_name_without_inner = proc_name
         proc_name = newIdentNode(proc_name.strVal() & "_inner")
         
         #Add proc name to template call
@@ -137,8 +142,36 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             else:
                 error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
 
+            var arg_type_is_generic = false
+
+            #Check if any of the argument is a generic (e.g, phase T, freq Y)
+            if generics.len > 0:
+                if arg_type in generics:
+                    arg_type_is_generic = true
+
+            #only add check for current type if is not a generic one
+            if not arg_type_is_generic:
+                #This is a struct that has generics in it (e.g, Phasor[T])
+                var arg_type_without_generics : NimNode
+                if arg_type.kind == nnkBracketExpr:
+                    arg_type_without_generics = arg_type[0]
+                else:
+                    arg_type_without_generics = arg_type
+
+                #Add validity type checks to output. arg_name needs to be passed as a string literal.
+                checkValidTypes.add(
+                    nnkCall.newTree(
+                        newIdentNode("checkValidType_macro"),
+                        arg_type_without_generics,
+                        newLit(arg_name.strVal()), 
+                        newLit(true),
+                        newLit(false),
+                        newLit(proc_name_without_inner.strVal())
+                    )
+                )
+
             #Check type validity
-            checkValidType(arg_type, arg_name.strVal(), is_proc_arg=true, proc_name=proc_name_without_inner_str)
+            #checkValidType(arg_type, arg_name.strVal(), is_proc_arg=true, proc_name=proc_name_without_inner_str)
 
             #new arg
             new_arg = nnkIdentDefs.newTree(
@@ -245,4 +278,14 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     proc_and_template.add(proc_def)
     proc_and_template.add(template_def)
 
-    return proc_and_template
+    #echo repr proc_and_template
+
+    #echo astGenRepr proc_formal_params
+    #echo repr checkValidTypes
+
+    return quote do:
+        #Run validity type check on each argument of the def
+        `checkValidTypes`
+
+        #Actually instantiate def (proc + template)
+        `proc_and_template`
