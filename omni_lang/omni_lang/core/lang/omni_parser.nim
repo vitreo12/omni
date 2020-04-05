@@ -23,12 +23,13 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         nnkCall.newTree(
           newIdentNode("generate_inputs_templates"),
           newIdentNode("omni_inputs"),
+          newLit(1),
+          newLit(0),
           newLit(1)
         ),
         nnkCall.newTree(
           newIdentNode("generate_outputs_templates"),
-          newIdentNode("omni_outputs"),
-          newLit(1)
+          newIdentNode("omni_outputs")
         ),
         nnkForStmt.newTree(
           newIdentNode("audio_index_loop"),
@@ -462,7 +463,9 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         typed_code_block[index] = new_array_assignment
 
                 #Check type of all arguments for other function calls (not array access related) 
-                elif typed_statement.len > 1:
+                #Ignore function ending in _min_max (the one used for input min/max conditional)
+                #THIS IS NOT SAFE! min_max could be assigned by user to another def
+                elif typed_statement.len > 1 and not(function_name.endsWith("_min_max")):
                     for i, arg in typed_statement.pairs():
                         #ignore i == 0 (the function_name)
                         if i == 0:

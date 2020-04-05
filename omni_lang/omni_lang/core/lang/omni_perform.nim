@@ -375,7 +375,7 @@ template performInner*(code_block : untyped) {.dirty.} =
         
         #static == compile time block
         static:
-            let text = $omni_inputs & "\n" & $ugen_input_names & "\n" & $omni_outputs & "\n" & ugen_output_names
+            let text = $omni_inputs & "\n" & $omni_input_names & "\n" & $omni_outputs & "\n" & omni_output_names
             let fullPathToNewFolder = getTempDir() #this has been passed in as command argument with -d:tempDir=fullPathToNewFolder
             writeFile($fullPathToNewFolder & "IO.txt", text)
 
