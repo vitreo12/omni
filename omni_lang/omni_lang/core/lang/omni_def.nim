@@ -1,4 +1,4 @@
-import macros
+import macros, omni_type_checker
 
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
     var 
@@ -7,6 +7,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         proc_def = nnkProcDef.newTree()
         proc_return_type : NimNode
         proc_name : NimNode
+        proc_name_without_inner_str : string
         proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
 
@@ -34,10 +35,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             name_with_args = function_signature
             proc_return_type = newIdentNode("auto")
         
+        #def a() float:
         elif function_signature_kind == nnkCommand:
             name_with_args   = function_signature[0]
             proc_return_type = function_signature[1]
         
+        #def a() -> float:
         elif function_signature_kind == nnkInfix:
             
             if function_signature[0].strVal() != "->":
@@ -77,6 +80,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #Add template and proc names
         template_name = proc_name
+        proc_name_without_inner_str = proc_name.strVal()
         proc_name = newIdentNode(proc_name.strVal() & "_inner")
         
         #Add proc name to template call
@@ -88,6 +92,9 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             var 
                 arg_name : NimNode
+                arg_type : NimNode
+                arg_value : NimNode
+                
                 new_arg : NimNode
 
             let statement_kind = statement.kind
@@ -95,10 +102,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             #a float = 0.5 -> a : float = 0.5 / a = 0.5 -> a : auto = 0.5
             if statement_kind == nnkExprEqExpr:                
                 assert statement.len == 2
-
-                var 
-                    arg_type : NimNode
-                    arg_value : NimNode
 
                 #a float = 0.5
                 if statement[0].kind == nnkCommand:
@@ -113,12 +116,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                     arg_type = newIdentNode("auto")
                 
                 arg_value = statement[1]
-
-                new_arg = nnkIdentDefs.newTree(
-                    arg_name,
-                    arg_type,
-                    arg_value
-                )
             
             #a float -> a : float
             elif statement_kind == nnkCommand:
@@ -126,25 +123,31 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 assert statement.len == 2
 
                 arg_name = statement[0]
+                arg_type = statement[1]
+                arg_value = newEmptyNode()
 
-                new_arg = nnkIdentDefs.newTree(
-                    arg_name,
-                    statement[1],
-                    newEmptyNode()
-                )
             
             #a -> a : auto
             elif statement_kind == nnkIdent:
                 arg_name = statement
-                new_arg = nnkIdentDefs.newTree(
-                    arg_name,
-                    newIdentNode("auto"),
-                    newEmptyNode()
-                )
+                arg_type = newIdentNode("auto")
+                arg_value = newEmptyNode()
+                
 
             else:
                 error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
 
+            #Check type validity
+            checkValidType(arg_type, arg_name.strVal(), is_proc_arg=true, proc_name=proc_name_without_inner_str)
+
+            #new arg
+            new_arg = nnkIdentDefs.newTree(
+                arg_name,
+                arg_type,
+                newEmptyNode()
+            )
+            
+            #add to formal params
             proc_formal_params.add(new_arg)
 
             #Add arg name to template call

@@ -1,54 +1,5 @@
-import macros, tables, strutils
-
-let 
-    #These are all the types that a var declaration support
-    varDeclTypes {.compileTime.} = [
-        "array",
-        "bool", 
-        "enum",
-        "float", "float32", "float64",
-        "int", "int32", "int64",
-        "uint", "uint32", "uint64",
-    ]
-
-    #These are additional types that function calls support
-    additionalArgTypes {.compileTime.} = [
-        "string",
-        "cstring",
-        "pointer",
-        "typeDesc",
-        "OmniAutoMem",
-        "UGen"
-    ]
-
-#Check if it's a valid parsed type!
-proc checkValidType(var_type : NimNode, var_name : string = "", is_function_arg : bool = false, function_name : string = "") : void {.compileTime.} =
-    var var_type_real : string
-
-    #Bracket expr (seq / array), pointer (structs / ptr ...), extract the actual name
-    if var_type.kind == nnkBracketExpr or var_type.kind == nnkPtrTy:
-        let var_type_inner = var_type[0]
-        
-        #struct with generics
-        if var_type_inner.kind == nnkBracketExpr:
-            var_type_real = var_type_inner[0].strVal()
-        #no generics
-        else:
-            var_type_real = var_type[0].strVal()
-    
-    #standard types
-    else:
-        var_type_real = var_type.strVal()
-
-    #If it's not in standard supported types, or it's not a struct, error out!
-    if not is_function_arg:
-        if not ((var_type_real in varDeclTypes) or (var_type_real.endsWith("_obj"))):
-            error("\"" & $var_name & "\" has an invalid type: \"" & $var_type_real & "\".")
-    else:
-        #If function arg, it should accept strings/cstrings too! 
-        if not ((var_type_real in varDeclTypes) or (var_type_real in additionalArgTypes) or (var_type_real.endsWith("_obj"))):
-            error("Call to \"" & $function_name & "\" : argument number " & $var_name & " has an invalid type: \"" & $var_type_real & "\".")
-    
+#remove tables here and move isStrUpperAscii (and strutils) to another module
+import macros, tables, strutils, omni_type_checker
 
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
@@ -520,7 +471,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         let arg_type  = arg.getTypeInst().getTypeImpl()
                         
                         #Check validity of each argument to function
-                        checkValidType(arg_type, $i, is_function_arg=true, function_name=function_name)
+                        checkValidType(arg_type, $i, is_proc_call=true, proc_name=function_name)
 
         #Look for / , div , % , mod and replace them with safediv and safemod
         elif typed_statement_kind == nnkInfix:

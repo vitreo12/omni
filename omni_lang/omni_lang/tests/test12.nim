@@ -8,6 +8,7 @@ outs 1
 def something(a):
     return 0.5
 
+
 init:
     phase = 0.0
     prev_value = 0.0
