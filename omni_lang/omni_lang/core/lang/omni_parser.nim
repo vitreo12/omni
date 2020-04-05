@@ -24,8 +24,7 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
           newIdentNode("generate_inputs_templates"),
           newIdentNode("omni_inputs"),
           newLit(1),
-          newLit(0),
-          newLit(1)
+          newLit(0)
         ),
         nnkCall.newTree(
           newIdentNode("generate_outputs_templates"),

@@ -2,6 +2,9 @@ import macros
 
 const max_inputs_outputs = 32
 
+#Some crazy number
+const RANDOM_FLOAT = -12312418241.1249124194
+
 const acceptedCharsForParamName = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
@@ -9,173 +12,222 @@ proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
         in_num = "in" & $index
         in_min = in_num & "_min"
         in_max = in_num & "_max"
-
-    return nnkProcDef.newTree(
-        nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode(in_num & "_min_max")         
-        ),
-        newEmptyNode(),
-        nnkGenericParams.newTree(
-        nnkIdentDefs.newTree(
-            newIdentNode("T"),
-            newIdentNode("SomeFloat"),
-            newEmptyNode()
-        )
-        ),
-        nnkFormalParams.newTree(
-        newIdentNode("T"),
-        nnkIdentDefs.newTree(
-            newIdentNode(in_num),
-            newIdentNode("T"),
-            newEmptyNode()
-        )
-        ),
-        newEmptyNode(),
-        newEmptyNode(),
-        nnkStmtList.newTree(
-        nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-            nnkInfix.newTree(
-                newIdentNode("<"),
-                newIdentNode(in_num),
+    
+    return nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
                 newIdentNode(in_min)
             ),
             nnkStmtList.newTree(
-                nnkReturnStmt.newTree(
-                nnkCall.newTree(
+                nnkProcDef.newTree(
+                    nnkPostfix.newTree(
+                        newIdentNode("*"),
+                        newIdentNode(in_num & "_min_max")         
+                    ),
+                    newEmptyNode(),
+                    nnkGenericParams.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode("T"),
+                        newIdentNode("SomeFloat"),
+                        newEmptyNode()
+                    )
+                    ),
+                    nnkFormalParams.newTree(
                     newIdentNode("T"),
-                    newIdentNode(in_min)
-                )
-                )
-            )
-            ),
-            nnkElifBranch.newTree(
-            nnkInfix.newTree(
-                newIdentNode(">"),
-                newIdentNode(in_num),
-                newIdentNode(in_max)
-            ),
-            nnkStmtList.newTree(
-                nnkReturnStmt.newTree(
-                nnkCall.newTree(
-                    newIdentNode("T"),
-                    newIdentNode(in_max)
-                )
-                )
-            )
-            ),
-            nnkElse.newTree(
-            nnkStmtList.newTree(
-                nnkReturnStmt.newTree(
-                newIdentNode(in_num)
-                )
-            )
-            )
-        )
-        )
-    )
-
-proc generate_ar_in_template(index : SomeInteger, has_min_max : SomeInteger) : NimNode {.compileTime.} =
-    let in_num = "in" & $index
-
-    if has_min_max == 1:
-        return nnkTemplateDef.newTree(
-            newIdentNode(in_num),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-                nnkCall.newTree(
-                    newIdentNode(in_num & "_min_max"),
-                    nnkBracketExpr.newTree(
-                        nnkBracketExpr.newTree(
-                            newIdentNode("ins_Nim"),
-                            newLit(int(index - 1))
+                    nnkIdentDefs.newTree(
+                        newIdentNode(in_num),
+                        newIdentNode("T"),
+                        newEmptyNode()
+                    )
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                    nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode("<"),
+                            newIdentNode(in_num),
+                            newIdentNode(in_min)
                         ),
-                        newIdentNode("audio_index_loop")
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("T"),
+                                newIdentNode(in_min)
+                            )
+                            )
+                        )
+                        ),
+                        nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode(">"),
+                            newIdentNode(in_num),
+                            newIdentNode(in_max)
+                        ),
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("T"),
+                                newIdentNode(in_max)
+                            )
+                            )
+                        )
+                        ),
+                        nnkElse.newTree(
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                            newIdentNode(in_num)
+                            )
+                        )
+                        )
+                    )
                     )
                 )
             )
         )
-    else:
-        return nnkTemplateDef.newTree(
-            newIdentNode(in_num),             #name of template
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                        newIdentNode("ins_Nim"),             #name of the ins buffer
-                        newLit(int(index - 1))               #literal value
-                    ),
-                    newIdentNode("audio_index_loop") #name of the looping variable
-                )
-            )
-        )
+    )
 
-proc generate_kr_in_template(index : SomeInteger, has_min_max : SomeInteger) : NimNode {.compileTime.} =
-    let in_num = "in" & $index
-    if has_min_max == 1:
-        return nnkTemplateDef.newTree(
-            newIdentNode(in_num),             #name of template
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
+proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
+    let 
+        in_num : string = "in" & $(index)
+        in_num_min : string = in_num & "_min"
+        in_num_min_max  : string = in_num_min & "_max"
+
+        index_minus_one : int = int(index) - 1
+
+    #Generate template if proc for min max is defined
+    return nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_num_min)
             ),
-            newEmptyNode(),
-            newEmptyNode(),
             nnkStmtList.newTree(
-                nnkCall.newTree(
-                    newIdentNode(in_num & "_min_max"),
-                    nnkBracketExpr.newTree(
-                        newIdentNode("ins_Nim"),             #name of the ins buffer
-                        newLit(int(index - 1))               #literal value
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),             #name of template
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
                     ),
-                    newLit(0)                        # ins[...][0]
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode(in_num_min_max),
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("ins_Nim"),
+                                    newLit(index_minus_one)
+                                ),
+                                newIdentNode("audio_index_loop")
+                            )
+                        )
+                    ) 
+                )
+            )
+        ),
+        nnkElse.newTree(
+            nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),            
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkBracketExpr.newTree(
+                            nnkBracketExpr.newTree(
+                                newIdentNode("ins_Nim"),
+                                newLit(index_minus_one)
+                            ),
+                            newIdentNode("audio_index_loop")
+                        )
+                    )
                 )
             )
         )
-    else:
-        return nnkTemplateDef.newTree(
-            newIdentNode(in_num),             #name of template
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
+    )
+
+proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
+    let 
+        in_num : string = "in" & $(index)
+        in_num_min : string = in_num & "_min"
+        in_num_min_max  : string = in_num_min & "_max"
+
+        index_minus_one : int = int(index) - 1
+
+    #Generate template if proc for min max is defined
+    return nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_num_min)
             ),
-            newEmptyNode(),
-            newEmptyNode(),
             nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                        newIdentNode("ins_Nim"),             #name of the ins buffer
-                        newLit(int(index - 1))               #literal value
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),             #name of template
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
                     ),
-                    newLit(0)                        # ins[...][0]
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode(in_num_min_max),
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("ins_Nim"),
+                                    newLit(index_minus_one)
+                                ),
+                                newLit(0)
+                            )
+                        )
+                    ) 
+                )
+            )
+        ),
+        nnkElse.newTree(
+            nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),            
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkBracketExpr.newTree(
+                            nnkBracketExpr.newTree(
+                                newIdentNode("ins_Nim"),
+                                newLit(index_minus_one)
+                            ),
+                            newLit(0)
+                        )
+                    )
                 )
             )
         )
+    )
+
 
 #Generate in1, in2, in3...etc templates
-macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, generate_min_max : typed = 0, has_min_max : typed = 0) : untyped =
+macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, generate_min_max : typed = 0) : untyped =
     var final_statement = nnkStmtList.newTree()
 
     var 
         num_of_inputs_VAL = num_of_inputs.intVal()
         generate_ar = generate_ar.intVal() #boolVal() doesn't work here.
         generate_min_max = generate_min_max.intVal()
-        has_min_max = has_min_max.intVal()
 
     if generate_min_max == 1:
         for i in 1..num_of_inputs_VAL:
@@ -183,12 +235,12 @@ macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, gen
 
     if generate_ar == 1:
         for i in 1..num_of_inputs_VAL:
-            final_statement.add(generate_ar_in_template(i, has_min_max))
+            final_statement.add(generate_ar_in_template(i))
 
     else:
         for i in 1..num_of_inputs_VAL:
-            final_statement.add(generate_kr_in_template(i, has_min_max))
-
+            final_statement.add(generate_kr_in_template(i))
+    
     return final_statement
 
 macro generate_args_templates*(num_of_inputs : typed) : untyped =
@@ -367,7 +419,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float], mi
         error("Got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
 
     result = nnkConstSection.newTree()
-
+    
     var 
         defaults_array = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
@@ -388,20 +440,26 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float], mi
             min_val = min_vals[i]
             max_val = max_vals[i]
 
+        #Always add defaults, they will be 0 if not specified
         defaults_array_bracket.add(newLit(default_val))
 
-        result.add(
-            nnkConstDef.newTree(
-                newIdentNode("in" & $(i_plus_one) & "_min"),
-                newEmptyNode(),
-                newLit(min_val)
-            ),
-            nnkConstDef.newTree(
-                newIdentNode("in" & $(i_plus_one) & "_max"),
-                newEmptyNode(),
-                newLit(max_val)
+        if min_val != RANDOM_FLOAT:
+            result.add(
+                nnkConstDef.newTree(
+                    newIdentNode("in" & $(i_plus_one) & "_min"),
+                    newEmptyNode(),
+                    newLit(min_val)
+                )
             )
-        )
+
+        if max_val != RANDOM_FLOAT:
+            result.add(
+                nnkConstDef.newTree(
+                    newIdentNode("in" & $(i_plus_one) & "_max"),
+                    newEmptyNode(),
+                    newLit(max_val)
+                )
+            )
     
     defaults_array.add(defaults_array_bracket)
 
@@ -432,7 +490,6 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit and param_names_kind != nnkCommand and param_names_kind != nnkNilLit:
         error("Expected a block statement after the number of inputs")
 
-
     #Always have at least one input
     if num_of_inputs_VAL == 0:
         num_of_inputs_VAL = 1
@@ -440,6 +497,17 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         error("Expected a positive number for inputs number")
     elif num_of_inputs_VAL > max_inputs_outputs:
         error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
+
+    #init the seqs
+    default_vals = newSeq[float](num_of_inputs_VAL)
+    min_vals     = newSeq[float](num_of_inputs_VAL)
+    max_vals     = newSeq[float](num_of_inputs_VAL)
+
+    #Fill them with float(-1e9), but keep default's one to 0
+    for i in 0..(num_of_inputs_VAL-1):
+        default_vals[i] = 0.0
+        min_vals[i] = RANDOM_FLOAT
+        max_vals[i] = RANDOM_FLOAT
 
     var statement_counter = 0
 
@@ -490,9 +558,9 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
                     let (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
                     
-                    default_vals.add(default_val)
-                    min_vals.add(min_val)
-                    max_vals.add(max_val)
+                    default_vals[statement_counter] = default_val
+                    min_vals[statement_counter] = min_val
+                    max_vals[statement_counter] = max_val
                 
                 #Just {0, 0, 1} / {0 0 1}, no param name provided!
                 elif statement_kind == nnkCurly:
@@ -502,9 +570,9 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
                     let (default_val, min_val, max_val) = extractDefaultMinMax(statement, param_name)
                     
-                    default_vals.add(default_val)
-                    min_vals.add(min_val)
-                    max_vals.add(max_val)
+                    default_vals[statement_counter] = default_val
+                    min_vals[statement_counter] = min_val
+                    max_vals[statement_counter] = max_val
 
                 statement_counter += 1
                     
@@ -526,47 +594,27 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     #Assign to node
     param_names_node = newLit(param_names_string)
 
-    #If default/min/max are defined
-    if default_vals.len > 0:
-        let defaults_mins_maxs = buildDefaultMinMaxArrays(num_of_inputs_VAL, default_vals, min_vals, max_vals)
+    let defaults_mins_maxs = buildDefaultMinMaxArrays(num_of_inputs_VAL, default_vals, min_vals, max_vals)
 
-        return quote do: 
-            const 
-                omni_inputs {.inject.}      = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                omni_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
+    return quote do: 
+        const 
+            omni_inputs {.inject.}      = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
 
-            #const statement for defaults / mins / maxs
-            `defaults_mins_maxs`
-            
-            #Generate procs for min/max
-            generate_inputs_templates(`num_of_inputs_VAL`, 0, 1)
+        #const statement for defaults / mins / maxs
+        `defaults_mins_maxs`
+        
+        #Generate procs for min/max
+        generate_inputs_templates(`num_of_inputs_VAL`, 0, 1)
 
-            generate_args_templates(`num_of_inputs_VAL`)
-            
-            #Export to C
-            proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-                return int32(omni_inputs)
+        generate_args_templates(`num_of_inputs_VAL`)
+        
+        #Export to C
+        proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
+            return int32(omni_inputs)
 
-            proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-                return cast[ptr cchar](omni_input_names)
-    
-    #no default/min/max
-    else:
-        return quote do: 
-            const 
-                omni_inputs {.inject.}      = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                omni_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
-            
-            generate_inputs_templates(`num_of_inputs_VAL`, 0)
-
-            generate_args_templates(`num_of_inputs_VAL`)
-            
-            #Export to C
-            proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-                return int32(omni_inputs)
-
-            proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-                return cast[ptr cchar](omni_input_names)
+        proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
+            return cast[ptr cchar](omni_input_names)
 
 
 macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
