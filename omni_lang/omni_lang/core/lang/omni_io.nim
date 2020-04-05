@@ -2,87 +2,245 @@ import macros
 
 const max_inputs_outputs = 32
 
+#Some crazy number
+const RANDOM_FLOAT = -12312418241.1249124194
+
 const acceptedCharsForParamName = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
-#Generate in1, in2, in3...etc templates
-macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed) : untyped =
-    var final_statement = nnkStmtList.newTree()
-
-    #This generates:
-    #[  
-        THIS IS CALLED AT TOP OF SCRIPT.
-        if generate_ar == 0:
-            template in1*() : untyped =
-                ins_Nim[0][0] 
-
-        THIS IS CALLED RIGHT BEFORE PERFORM LOOP. IT OVERWRITES PREVIOUS ONE.
-        if generate_ar == 1: 
-            template in1*() : untyped =
-                ins_Nim[0][audio_index_loop] 
-    ]#
-
-    var 
-        num_of_inputs_VAL = num_of_inputs.intVal()
-        generate_ar = generate_ar.intVal() #boolVal() doesn't work here.
-
-    if generate_ar == 1:
-        for i in 1..num_of_inputs_VAL:
-            #template for AR input, named in1, in2, etc...
-            let temp_in_stmt_list = nnkTemplateDef.newTree(
-                newIdentNode("in" & $i),
-                #nnkPostfix.newTree(
-                #newIdentNode("*"),
-                #newIdentNode("in" & $i),             #name of template
-                #),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
-                newIdentNode("untyped")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
-                    newIdentNode("ins_Nim"),             #name of the ins buffer
-                    newLit(int(i - 1))               #literal value
+proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
+    let 
+        in_num = "in" & $index
+        in_min = in_num & "_min"
+        in_max = in_num & "_max"
+    
+    return nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_min)
+            ),
+            nnkStmtList.newTree(
+                nnkProcDef.newTree(
+                    nnkPostfix.newTree(
+                        newIdentNode("*"),
+                        newIdentNode(in_num & "_min_max")         
                     ),
-                    newIdentNode("audio_index_loop") #name of the looping variable
-                )
-                )
-            )
-
-            #Accumulate result
-            final_statement.add(temp_in_stmt_list)
-
-    else:
-        for i in 1..num_of_inputs_VAL:
-            let temp_in_stmt_list = nnkStmtList.newTree(
-                #template for KR input, named in1, in2, etc..
-                nnkTemplateDef.newTree(
-                    newIdentNode("in" & $i),
                     newEmptyNode(),
-                    newEmptyNode(),
+                    nnkGenericParams.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode("T"),
+                        newIdentNode("SomeFloat"),
+                        newEmptyNode()
+                    )
+                    ),
                     nnkFormalParams.newTree(
-                    newIdentNode("untyped")
+                    newIdentNode("T"),
+                    nnkIdentDefs.newTree(
+                        newIdentNode(in_num),
+                        newIdentNode("T"),
+                        newEmptyNode()
+                    )
                     ),
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                    nnkBracketExpr.newTree(
-                        nnkBracketExpr.newTree(
-                        newIdentNode("ins_Nim"),             #name of the ins buffer
-                        newLit(int(i - 1))               #literal value
+                    nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode("<"),
+                            newIdentNode(in_num),
+                            newIdentNode(in_min)
                         ),
-                        newLit(0)                        # ins[...][0]
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("T"),
+                                newIdentNode(in_min)
+                            )
+                            )
+                        )
+                        ),
+                        nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode(">"),
+                            newIdentNode(in_num),
+                            newIdentNode(in_max)
+                        ),
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("T"),
+                                newIdentNode(in_max)
+                            )
+                            )
+                        )
+                        ),
+                        nnkElse.newTree(
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                            newIdentNode(in_num)
+                            )
+                        )
+                        )
                     )
                     )
                 )
             )
+        )
+    )
 
-            #Accumulate result
-            final_statement.add(temp_in_stmt_list)
+proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
+    let 
+        in_num : string = "in" & $(index)
+        in_num_min : string = in_num & "_min"
+        in_num_min_max  : string = in_num_min & "_max"
 
+        index_minus_one : int = int(index) - 1
+
+    #Generate template if proc for min max is defined
+    return nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_num_min)
+            ),
+            nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),             #name of template
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode(in_num_min_max),
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("ins_Nim"),
+                                    newLit(index_minus_one)
+                                ),
+                                newIdentNode("audio_index_loop")
+                            )
+                        )
+                    ) 
+                )
+            )
+        ),
+        nnkElse.newTree(
+            nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),            
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkBracketExpr.newTree(
+                            nnkBracketExpr.newTree(
+                                newIdentNode("ins_Nim"),
+                                newLit(index_minus_one)
+                            ),
+                            newIdentNode("audio_index_loop")
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
+    let 
+        in_num : string = "in" & $(index)
+        in_num_min : string = in_num & "_min"
+        in_num_min_max  : string = in_num_min & "_max"
+
+        index_minus_one : int = int(index) - 1
+
+    #Generate template if proc for min max is defined
+    return nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_num_min)
+            ),
+            nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),             #name of template
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode(in_num_min_max),
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("ins_Nim"),
+                                    newLit(index_minus_one)
+                                ),
+                                newLit(0)
+                            )
+                        )
+                    ) 
+                )
+            )
+        ),
+        nnkElse.newTree(
+            nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode(in_num),            
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkBracketExpr.newTree(
+                            nnkBracketExpr.newTree(
+                                newIdentNode("ins_Nim"),
+                                newLit(index_minus_one)
+                            ),
+                            newLit(0)
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+
+#Generate in1, in2, in3...etc templates
+macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, generate_min_max : typed = 0) : untyped =
+    var final_statement = nnkStmtList.newTree()
+
+    var 
+        num_of_inputs_VAL = num_of_inputs.intVal()
+        generate_ar = generate_ar.intVal() #boolVal() doesn't work here.
+        generate_min_max = generate_min_max.intVal()
+
+    if generate_min_max == 1:
+        for i in 1..num_of_inputs_VAL:
+            final_statement.add(generate_min_max_procs(i))
+
+    if generate_ar == 1:
+        for i in 1..num_of_inputs_VAL:
+            final_statement.add(generate_ar_in_template(i))
+
+    else:
+        for i in 1..num_of_inputs_VAL:
+            final_statement.add(generate_kr_in_template(i))
+    
     return final_statement
 
 macro generate_args_templates*(num_of_inputs : typed) : untyped =
@@ -97,20 +255,14 @@ macro generate_args_templates*(num_of_inputs : typed) : untyped =
                 newEmptyNode(),
                 newEmptyNode(),
                 nnkFormalParams.newTree(
-                newIdentNode("untyped")
+                    newIdentNode("untyped")
                 ),
                 nnkPragma.newTree(
-                newIdentNode("dirty")
+                    newIdentNode("dirty")
                 ),
                 newEmptyNode(),
                 nnkStmtList.newTree(
-                    nnkBracketExpr.newTree(
-                        nnkBracketExpr.newTree(
-                        newIdentNode("ins_Nim"),             #name of the ins buffer
-                        newLit(int(i - 1))               #literal value
-                        ),
-                        newLit(0)                        # ins[...][0]
-                    )
+                    newIdentNode("in" & $i)
                 )
             )
         )
@@ -120,115 +272,223 @@ macro generate_args_templates*(num_of_inputs : typed) : untyped =
 
     return final_statement
 
-#Generate in1, in2, in3...etc templates
-macro generate_outputs_templates*(num_of_outputs : typed, generate_ar : typed) : untyped =
-    var final_statement = nnkStmtList.newTree()
 
-    #This generates:
-    #[  
-        THIS IS CALLED AT TOP OF SCRIPT.
-        if generate_ar == 0:
-            template out1*() : untyped =
-                outs_Nim[0][0] 
-
-        THIS IS CALLED RIGHT BEFORE PERFORM LOOP. IT OVERWRITES PREVIOUS ONE.
-        if generate_ar == 1: 
-            template out1*() : untyped =
-                outs_Nim[0][audio_index_loop] 
-    ]#
-
+macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
     var 
+        final_statement = nnkStmtList.newTree()
         num_of_outputs_VAL = num_of_outputs.intVal()
-        generate_ar = generate_ar.intVal() #boolVal() doesn't work here.
 
-    if generate_ar == 1:
-        for i in 1..num_of_outputs_VAL:
-            #template for AR output, named out1, out2, etc...
-            let temp_in_stmt_list = nnkTemplateDef.newTree(
-                newIdentNode("out" & $i),
-                #nnkPostfix.newTree(
-                #newIdentNode("*"),
-                #newIdentNode("out" & $i),             #name of template
-                #),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
+    for i in 1..num_of_outputs_VAL:
+        #template for AR output, named out1, out2, etc...
+        let temp_in_stmt_list = nnkTemplateDef.newTree(
+            newIdentNode("out" & $i),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
                 newIdentNode("untyped")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkStmtList.newTree(
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+            nnkBracketExpr.newTree(
                 nnkBracketExpr.newTree(
-                    nnkBracketExpr.newTree(
                     newIdentNode("outs_Nim"),             #name of the outs buffer
                     newLit(int(i - 1))               #literal value
-                    ),
-                    newIdentNode("audio_index_loop") #name of the looping variable
-                )
-                )
+                ),
+                newIdentNode("audio_index_loop") #name of the looping variable
             )
-
-            #Accumulate result
-            final_statement.add(temp_in_stmt_list)
-
-    else:
-        for i in 1..num_of_outputs_VAL:
-            let temp_in_stmt_list = nnkStmtList.newTree(
-                #template for KR output, named out1, out2, etc..
-                nnkTemplateDef.newTree(
-                    newIdentNode("out" & $i),
-                    #nnkPostfix.newTree(
-                    #newIdentNode("*"),
-                    #newIdentNode("out" & $i),      #name of template 
-                    #),
-                    newEmptyNode(),
-                    newEmptyNode(),
-                    nnkFormalParams.newTree(
-                    newIdentNode("untyped")
-                    ),
-                    newEmptyNode(),
-                    newEmptyNode(),
-                    nnkStmtList.newTree(
-                    nnkBracketExpr.newTree(
-                        nnkBracketExpr.newTree(
-                        newIdentNode("outs_Nim"),             #name of the outs buffer
-                        newLit(int(i - 1))               #literal value
-                        ),
-                        newLit(0)                        # outs[...][0]
-                    )
-                    )
-                )
             )
+        )
 
-            #Accumulate result
-            final_statement.add(temp_in_stmt_list)
+        #Accumulate result
+        final_statement.add(temp_in_stmt_list)
 
     return final_statement
 
+proc checkValidParamName(param_name : string) : void =
+    for individualChar in param_name:
+        if not (individualChar in acceptedCharsForParamName):
+            error("Invalid character " & $individualChar & $ " in input name " & $param_name)
 
-#macro ins_2(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
-#    return ins(num_of_inputs, param_names)
+proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tuple[defult : float, min : float, max : float] {.compileTime.} =
+    let default_min_max_len = default_min_max.len()
 
-#The block form (derived from using num_of_inputs as int literal, and param_names as a code block.):
-#inputs 1:
-#   "freq"
-macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
+    var 
+        default_num : float = 0.0
+        min_num     : float = 0.0
+        max_num     : float = 0.0
+
+    #Extract def / min / max values
+    for index, value in default_min_max.pairs():
+        let value_kind = value.kind
+        
+        #{0, 0, 1} / {0, 1}
+        if value_kind == nnkIntLit or value_kind == nnkFloatLit:
+            var value_num : float
+            if value_kind == nnkIntLit:
+                value_num = float(value.intVal()) 
+            else:
+                value_num = value.floatVal()
+
+            if default_min_max_len == 3:
+                case index:
+                    of 0:
+                        default_num = value_num
+                    of 1:
+                        min_num = value_num
+                    of 2:
+                        max_num = value_num
+                    else:
+                        discard
+            elif default_min_max_len == 2:
+                case index:
+                    of 0:
+                        min_num = value_num
+                    of 1:
+                        max_num = value_num
+                    else:
+                        discard
+
+        #{0 0 1} / {0 1}
+        elif value_kind == nnkCommand:
+            assert value.len == 2
+            
+            let second_stmt = value[1]
+            let second_stmt_kind = second_stmt.kind
+
+            var
+                default_stmt : NimNode
+                default_stmt_kind : NimNodeKind
+                min_stmt : NimNode
+                min_stmt_kind : NimNodeKind
+                max_stmt : NimNode
+                max_stmt_kind : NimNodeKind
+
+            #{0 0 1}
+            if second_stmt_kind == nnkCommand:
+                default_stmt = value[0]
+                default_stmt_kind = default_stmt.kind
+                min_stmt = second_stmt[0]
+                min_stmt_kind = min_stmt.kind
+                max_stmt = second_stmt[1]
+                max_stmt_kind = max_stmt.kind
+
+            #{0 1}
+            elif second_stmt_kind == nnkIntLit or second_stmt_kind == nnkFloatLit:
+                min_stmt = value[0]
+                min_stmt_kind = min_stmt.kind
+                max_stmt = value[1]
+                max_stmt_kind = max_stmt.kind
+
+            else:
+                error("Invalid syntax for input \"" & $param_name & "\"")
+
+            #Might be empty
+            if not isNil(default_stmt):
+                if default_stmt_kind == nnkIntLit:
+                    default_num = float(default_stmt.intVal())
+                elif default_stmt_kind == nnkFloatLit:
+                    default_num = default_stmt.floatVal()
+                else:
+                    error("Invalid syntax for default value of input \"" & $param_name & "\"")
+
+            if min_stmt_kind == nnkIntLit:
+                min_num = float(min_stmt.intVal())
+            elif min_stmt_kind == nnkFloatLit:
+                min_num = min_stmt.floatVal()
+            else:
+                error("Invalid syntax for min value of input \"" & $param_name & "\"")
+
+            if max_stmt_kind == nnkIntLit:
+                max_num = float(max_stmt.intVal())
+            elif max_stmt_kind == nnkFloatLit:
+                max_num = max_stmt.floatVal()
+            else:
+                error("Invalid syntax for max value of input \"" & $param_name & "\"")
+            
+        else:
+            error("Invalid syntax for input \"" & $param_name & "\"")
+
+    return (default_num, min_num, max_num)
+
+proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float], min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
+    let default_vals_len = default_vals.len()
+
+    #Find mismatch. Perhaps user hasn't defined def/min/max for some params
+    if num_of_inputs != default_vals_len:
+        error("Got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
+
+    result = nnkConstSection.newTree()
+    
+    var 
+        defaults_array = nnkConstDef.newTree(
+            nnkPragmaExpr.newTree(
+                newIdentNode("default_vals"),
+                nnkPragma.newTree(
+                    newIdentNode("inject")
+                )
+            ),
+            newEmptyNode()
+        )
+
+        defaults_array_bracket = nnkBracket.newTree()
+
+    for i in 0..(num_of_inputs-1):
+        let
+            i_plus_one = i + 1
+            default_val = default_vals[i]
+            min_val = min_vals[i]
+            max_val = max_vals[i]
+
+        #Always add defaults, they will be 0 if not specified
+        defaults_array_bracket.add(newLit(default_val))
+
+        if min_val != RANDOM_FLOAT:
+            result.add(
+                nnkConstDef.newTree(
+                    newIdentNode("in" & $(i_plus_one) & "_min"),
+                    newEmptyNode(),
+                    newLit(min_val)
+                )
+            )
+
+        if max_val != RANDOM_FLOAT:
+            result.add(
+                nnkConstDef.newTree(
+                    newIdentNode("in" & $(i_plus_one) & "_max"),
+                    newEmptyNode(),
+                    newLit(max_val)
+                )
+            )
+    
+    defaults_array.add(defaults_array_bracket)
+
+    result.add(defaults_array)
+    
+
+macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     
     var 
         num_of_inputs_VAL : int
         param_names_string : string = ""
         param_names_node : NimNode
 
+        default_vals : seq[float]
+        min_vals     : seq[float]
+        max_vals     : seq[float]
+
     let param_names_kind = param_names.kind
 
-    #Must be an int literal
-    if num_of_inputs.kind != nnkIntLit: #Just as the expectKind proc
-        error("Expected the number of inputs to be expressed by an integer literal value")
+    #Must be an int literal OR nnkStmtListExpr (for ins: 1)
+    if num_of_inputs.kind == nnkIntLit: 
+        num_of_inputs_VAL = int(num_of_inputs.intVal)     
+    elif num_of_inputs.kind == nnkStmtListExpr:
+        num_of_inputs_VAL = int(num_of_inputs[0].intVal)    
+    else:
+        error("Expected the number of inputs to be expressed as an integer literal value")
 
-    if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit:
+    if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit and param_names_kind != nnkCommand and param_names_kind != nnkNilLit:
         error("Expected a block statement after the number of inputs")
-    
-    num_of_inputs_VAL = int(num_of_inputs.intVal)     #Actual value of the int literal
 
     #Always have at least one input
     if num_of_inputs_VAL == 0:
@@ -238,50 +498,114 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
     elif num_of_inputs_VAL > max_inputs_outputs:
         error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
 
+    #init the seqs
+    default_vals = newSeq[float](num_of_inputs_VAL)
+    min_vals     = newSeq[float](num_of_inputs_VAL)
+    max_vals     = newSeq[float](num_of_inputs_VAL)
+
+    #Fill them with float(-1e9), but keep default's one to 0
+    for i in 0..(num_of_inputs_VAL-1):
+        default_vals[i] = 0.0
+        min_vals[i] = RANDOM_FLOAT
+        max_vals[i] = RANDOM_FLOAT
+
     var statement_counter = 0
 
-    #This is for the inputs 1, "freq" case... input 2, "freq", "stmt" is covered in the other macro
+    #This is for the inputs 1, "freq" case. (where "freq" is not viewed as varargs)
+    #input 2, "freq", "stmt" is covered in the other macro
     if param_names_kind == nnkStrLit:
         let param_name = param_names.strVal()
         
-        for individualChar in param_name:
-            if not (individualChar in acceptedCharsForParamName):
-                error("Invalid character " & $individualChar & $ " in input name " & $param_name)
+        checkValidParamName(param_name)
         
         param_names_string.add($param_name & ",")
         statement_counter = 1
 
-    #Normal block case
+    #block case
     else:
-        for statement in param_names.children():
-            if statement.kind != nnkStrLit:
-                error("Expected parameter name number " & $(statement_counter + 1) & " to be a string literal value")
-            
-            let param_name = statement.strVal()
+        #multiple statements: "freq" {440, 0, 22000} OR "freq" {440 0 22000}
+        if param_names_kind == nnkStmtList:
+            for statement in param_names.children():
+                let statement_kind = statement.kind
 
-            for individualChar in param_name:
-                if not (individualChar in acceptedCharsForParamName):
-                    error("Invalid character " & $individualChar & $ " in input name " & $param_name)
-            
-            param_names_string.add($param_name & ",")
-            statement_counter += 1
+                #"freq"
+                if statement_kind == nnkStrLit:
+                    let param_name = statement.strVal()
+
+                    checkValidParamName(param_name)
+                    
+                    param_names_string.add($param_name & ",")
+                
+                #"freq" {440, 0, 22000} OR "freq" {440 0 22000}
+                elif statement_kind == nnkCommand:
+                    assert statement.len == 2
+
+                    #The name of the param
+                    let param_name_node = statement[0]
+                    if param_name_node.kind != nnkStrLit:
+                        error("Expected input name number " & $(statement_counter + 1) & " to be a string literal value")
+
+                    let param_name = param_name_node.strVal()
+                    checkValidParamName(param_name)
+
+                    param_names_string.add($param_name & ",")
+                
+                    #The list of { }
+                    let default_min_max = statement[1]
+
+                    if default_min_max.kind != nnkCurly:
+                        error("Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets.")
+
+                    let (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                    
+                    default_vals[statement_counter] = default_val
+                    min_vals[statement_counter] = min_val
+                    max_vals[statement_counter] = max_val
+                
+                #Just {0, 0, 1} / {0 0 1}, no param name provided!
+                elif statement_kind == nnkCurly:
+                    let param_name = "in" & $(statement_counter+1)
+                    
+                    param_names_string.add($param_name & ",")
+
+                    let (default_val, min_val, max_val) = extractDefaultMinMax(statement, param_name)
+                    
+                    default_vals[statement_counter] = default_val
+                    min_vals[statement_counter] = min_val
+                    max_vals[statement_counter] = max_val
+
+                statement_counter += 1
+                    
+        #Single "freq" {440, 0, 22000} OR "freq" on same line: ins 1, "freq" {440, 0, 22000}
+        elif param_names_kind == nnkCommand:
+            error("ins: syntax not implemented yet")
 
     #Remove trailing coma
     if param_names_string.len > 1:
         param_names_string = param_names_string[0..param_names_string.high-1]
     
+    #inputs count mismatch
+    if param_names_kind == nnkNilLit:
+        param_names_string = "__NO_PARAM_NAMES__"
+    else:
+        if statement_counter != num_of_inputs_VAL:
+            error("Expected " & $num_of_inputs_VAL & " input names, got " & $statement_counter)
+
     #Assign to node
     param_names_node = newLit(param_names_string)
-    
-    if statement_counter != num_of_inputs_VAL:
-        error("Expected " & $num_of_inputs_VAL & " param names, got " & $statement_counter)
+
+    let defaults_mins_maxs = buildDefaultMinMaxArrays(num_of_inputs_VAL, default_vals, min_vals, max_vals)
 
     return quote do: 
         const 
-            omni_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-            ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
+            omni_inputs {.inject.}      = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
+
+        #const statement for defaults / mins / maxs
+        `defaults_mins_maxs`
         
-        generate_inputs_templates(`num_of_inputs_VAL`, 0)
+        #Generate procs for min/max
+        generate_inputs_templates(`num_of_inputs_VAL`, 0, 1)
 
         generate_args_templates(`num_of_inputs_VAL`)
         
@@ -290,180 +614,10 @@ macro ins*(num_of_inputs : untyped, param_names : untyped) : untyped =
             return int32(omni_inputs)
 
         proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-            return cast[ptr cchar](ugen_input_names)
-
-macro ins*(num_of_inputs : untyped, param_names : varargs[untyped]) : untyped = 
-    
-    var 
-        num_of_inputs_VAL : int
-        param_names_string : string = ""
-        param_names_node : NimNode
-
-    #The other block form (derived from num_of_inputs being a block of code)
-    #inputs: 
-    #   1
-    #   "freq"
-    if num_of_inputs.kind == nnkStmtList:
-        
-        var 
-            statement_counter = 0
-            param_names_counter = 0
-
-        for statement in num_of_inputs.children():
-            if statement_counter == 0:
-                if statement.kind != nnkIntLit:
-                    error("Expected the number of inputs to be expressed by an integer literal value")
-                
-                num_of_inputs_VAL = int(statement.intVal)
-                
-                #Always have at least one input
-                if num_of_inputs_VAL == 0:
-                    num_of_inputs_VAL = 1
-                elif num_of_inputs_VAL < 0:
-                    error("Expected a positive number for inputs number")
-                elif num_of_inputs_VAL > max_inputs_outputs:
-                    error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
-            else:
-                if statement.kind != nnkStrLit:
-                    error("Expected parameter name number " & $statement_counter & " to be a string literal value")
-                
-                let param_name = statement.strVal()
-
-                for individualChar in param_name:
-                    if not (individualChar in acceptedCharsForParamName):
-                        error("Invalid character " & $individualChar & $ " in input name " & $param_name)
-                
-                param_names_string.add($param_name & ",")
-
-                param_names_counter += 1
-
-            statement_counter += 1
-
-        #Remove trailing coma
-        if param_names_string.len > 1:
-            param_names_string = param_names_string[0..param_names_string.high-1]
-        
-        #Assign to node
-        param_names_node = newLit(param_names_string)
-
-        if param_names_counter > 0:
-            if param_names_counter != num_of_inputs_VAL:
-                error("Expected " & $num_of_inputs_VAL & " param names, got " & $param_names_counter)
-
-            return quote do: 
-                const 
-                    omni_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                    ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
-                
-                generate_inputs_templates(`num_of_inputs_VAL`, 0)
-
-                generate_args_templates(`num_of_inputs_VAL`)
-        
-                #Export to C
-                proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-                    return int32(omni_inputs)
-
-                proc Omni_UGenInputNames() : ptr ptr cstring {.exportc: "Omni_UGenInputNames", dynlib.} =
-                    return cast[ptr ptr cstring](ugen_input_names)
-        else:
-            return quote do:
-                const 
-                    omni_inputs {.inject.} = `num_of_inputs_VAL`  
-                    ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
-
-                generate_inputs_templates(`num_of_inputs_VAL`, 0)
-
-                generate_args_templates(`num_of_inputs_VAL`)
-
-                #Export to C
-                proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-                    return int32(omni_inputs)
-
-                proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-                    return cast[ptr cchar](ugen_input_names)
-
-    #The standard form (derived by using num_of_inputs as int literal, and successive param_names as varargs[untyped]):
-    #inputs 1, "freq"  OR inputs(1, "freq")
-    else:
-
-        #Must be an int literal
-        if num_of_inputs.kind != nnkIntLit: #Just as the expectKind proc
-            error("Expected the number of inputs to be expressed by an integer literal value")
-        
-        num_of_inputs_VAL = int(num_of_inputs.intVal)     #Actual value of the int literal
-
-        #Always have at least one input
-        if num_of_inputs_VAL == 0:
-            num_of_inputs_VAL = 1
-        elif num_of_inputs_VAL < 0:
-            error("Expected a positive number for inputs number")
-        elif num_of_inputs_VAL > max_inputs_outputs:
-            error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
-        
-        #Check for correct length of param names
-        if len(param_names) > 0:
-            if len(param_names) != num_of_inputs_VAL:
-                error("Expected " & $num_of_inputs_VAL & " param names, got " & $(len(param_names)))
-            
-            #Check if all param names are string literal values
-            for index, param_name_var in param_names:
-                if param_name_var.kind != nnkStrLit:
-                    error("Expected parameter name number " & $(index + 1) & " to be a string literal value")
-                
-                #Add literal string value to the nnkBracket NimNode
-                let param_name = param_name_var.strVal()
-
-                for individualChar in param_name:
-                    if not (individualChar in acceptedCharsForParamName):
-                        error("Invalid character " & $individualChar & $ " in input name " & $param_name)
-                
-                param_names_string.add($param_name & ",")
-            
-            #Remove trailing coma
-            if param_names_string.len > 1:
-                param_names_string = param_names_string[0..param_names_string.high-1]
-            
-            #Assign to node
-            param_names_node = newLit(param_names_string)
-            
-            #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
-            return quote do: 
-                const 
-                    omni_inputs {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                    ugen_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block
-
-                generate_inputs_templates(`num_of_inputs_VAL`, 0)
-
-                generate_args_templates(`num_of_inputs_VAL`)
-
-                #Export to C
-                proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-                    return int32(omni_inputs)
-
-                proc Omni_UGenInputNames() : ptr char {.exportc: "Omni_UGenInputNames", dynlib.} =
-                    return cast[ptr char](ugen_input_names)
-        else:
-            return quote do:
-                const 
-                    omni_inputs {.inject.} = `num_of_inputs_VAL` 
-                    ugen_input_names {.inject.} = "__NO_PARAM_NAMES__"
-
-                generate_inputs_templates(`num_of_inputs_VAL`, 0)
-
-                generate_args_templates(`num_of_inputs_VAL`)
-
-                #Export to C
-                proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-                    return int32(omni_inputs)
-
-                proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-                    return cast[ptr cchar](ugen_input_names)
+            return cast[ptr cchar](omni_input_names)
 
 
-#The block form (derived from using num_of_outputs as int literal, and param_names as a code block.):
-#outputs 1:
-#   "freq"
-macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
+macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     
     var 
         num_of_outputs_VAL : int
@@ -472,14 +626,16 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
 
     let param_names_kind = param_names.kind
 
-    #Must be an int literal
-    if num_of_outputs.kind != nnkIntLit: #Just as the expectKind proc
-        error("Expected the number of outputs to be expressed by an integer literal value")
+    #Must be an int literal OR nnkStmtListExpr (for ins: 1)
+    if num_of_outputs.kind == nnkIntLit: 
+        num_of_outputs_VAL = int(num_of_outputs.intVal)     
+    elif num_of_outputs.kind == nnkStmtListExpr:
+        num_of_outputs_VAL = int(num_of_outputs[0].intVal)    
+    else:
+        error("Expected the number of outputs to be expressed as an integer literal value")
 
-    if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit:
+    if param_names_kind != nnkStmtList and param_names_kind != nnkStrLit and param_names_kind != nnkCommand and param_names_kind != nnkNilLit:
         error("Expected a block statement after the number of outputs")
-    
-    num_of_outputs_VAL = int(num_of_outputs.intVal)     #Actual value of the int literal
 
     #Always have at least one output
     if num_of_outputs_VAL == 0:
@@ -506,13 +662,11 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     else:
         for statement in param_names.children():
             if statement.kind != nnkStrLit:
-                error("Expected parameter name number " & $(statement_counter + 1) & " to be a string literal value")
+                error("Expected output name number " & $(statement_counter + 1) & " to be a string literal value")
             
             let param_name = statement.strVal()
 
-            for individualChar in param_name:
-                if not (individualChar in acceptedCharsForParamName):
-                    error("Invalid character " & $individualChar & $ " in output name " & $param_name)
+            checkValidParamName(param_name)
             
             param_names_string.add($param_name & ",")
             statement_counter += 1
@@ -521,186 +675,26 @@ macro outs*(num_of_outputs : untyped, param_names : untyped) : untyped =
     if param_names_string.len > 1:
         param_names_string = param_names_string[0..param_names_string.high-1]
     
+    #outputs count mismatch
+    if param_names_kind == nnkNilLit:
+        param_names_string = "__NO_PARAM_NAMES__"
+    else:
+        if statement_counter != num_of_outputs_VAL:
+            error("Expected " & $num_of_outputs_VAL & " input names, got " & $statement_counter)
+    
     #Assign to node
     param_names_node = newLit(param_names_string)
-    
-    if statement_counter != num_of_outputs_VAL:
-        error("Expected " & $num_of_outputs_VAL & " param names, got " & $statement_counter)
 
     return quote do: 
         const 
-            omni_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
-            ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
+            omni_outputs {.inject.}      = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+            omni_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
         
-        #For now, only keep the template for ar out, generated before sample block
-        #generate_outputs_templates(`num_of_outputs_VAL`, 0)
+        #generate_outputs_templates(`num_of_outputs_VAL`)
         
         #Export to C
         proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
             return int32(omni_outputs)
 
         proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-            return cast[ptr cchar](ugen_output_names)
-
-macro outs*(num_of_outputs : untyped, param_names : varargs[untyped]) : untyped = 
-    
-    var 
-        num_of_outputs_VAL : int
-        param_names_string : string = ""
-        param_names_node : NimNode
-
-    #The other block form (derived from num_of_outputs being a block of code)
-    #outputs: 
-    #   1
-    #   "freq"
-    if num_of_outputs.kind == nnkStmtList:
-        
-        var 
-            statement_counter = 0
-            param_names_counter = 0
-
-        for statement in num_of_outputs.children():
-            if statement_counter == 0:
-                if statement.kind != nnkIntLit:
-                    error("Expected the number of outputs to be expressed by an integer literal value")
-                
-                num_of_outputs_VAL = int(statement.intVal)
-                
-                #Always have at least one output
-                if num_of_outputs_VAL == 0:
-                    num_of_outputs_VAL = 1
-                elif num_of_outputs_VAL < 0:
-                    error("Expected a positive number for outputs number")
-                elif num_of_outputs_VAL > max_inputs_outputs:
-                    error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
-            else:
-                if statement.kind != nnkStrLit:
-                    error("Expected parameter name number " & $statement_counter & " to be a string literal value")
-                
-                let param_name = statement.strVal()
-
-                for individualChar in param_name:
-                    if not (individualChar in acceptedCharsForParamName):
-                        error("Invalid character " & $individualChar & $ " in output name " & $param_name)
-                
-                param_names_string.add($param_name & ",")
-
-                param_names_counter += 1
-
-            statement_counter += 1
-
-        #Remove trailing coma
-        if param_names_string.len > 1:
-            param_names_string = param_names_string[0..param_names_string.high-1]
-        
-        #Assign to node
-        param_names_node = newLit(param_names_string)
-
-        if param_names_counter > 0:
-            if param_names_counter != num_of_outputs_VAL:
-                error("Expected " & $num_of_outputs_VAL & " param names, got " & $param_names_counter)
-
-            return quote do: 
-                const 
-                    omni_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
-                    ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
-                
-                #For now, only keep the template for ar out, generated before sample block
-                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
-
-                #Export to C
-                proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
-                    return int32(omni_outputs)
-
-                proc Omni_UGenOutputNames() : ptr ptr cstring {.exportc: "Omni_UGenOutputNames", dynlib.} =
-                    return cast[ptr ptr cstring](ugen_output_names)
-        else:
-            return quote do:
-                const 
-                    omni_outputs {.inject.} = `num_of_outputs_VAL`  
-                    ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
-
-                #For now, only keep the template for ar out, generated before sample block
-                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
-
-                #Export to C
-                proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
-                    return int32(omni_outputs)
-
-                proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-                    return cast[ptr cchar](ugen_output_names)
-
-    #The standard form (derived by using num_of_outputs as int literal, and successive param_names as varargs[untyped]):
-    #outputs 1, "freq"  OR outputs(1, "freq")
-    else:
-
-        #Must be an int literal
-        if num_of_outputs.kind != nnkIntLit: #Just as the expectKind proc
-            error("Expected the number of outputs to be expressed by an integer literal value")
-        
-        num_of_outputs_VAL = int(num_of_outputs.intVal)     #Actual value of the int literal
-
-        #Always have at least one output
-        if num_of_outputs_VAL == 0:
-            num_of_outputs_VAL = 1
-        elif num_of_outputs_VAL < 0:
-            error("Expected a positive number for outputs number")
-        elif num_of_outputs_VAL > max_inputs_outputs:
-            error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
-        
-        #Check for correct length of param names
-        if len(param_names) > 0:
-            if len(param_names) != num_of_outputs_VAL:
-                error("Expected " & $num_of_outputs_VAL & " param names, got " & $(len(param_names)))
-            
-            #Check if all param names are string literal values
-            for index, param_name_var in param_names:
-                if param_name_var.kind != nnkStrLit:
-                    error("Expected parameter name number " & $(index + 1) & " to be a string literal value")
-                
-                #Add literal string value to the nnkBracket NimNode
-                let param_name = param_name_var.strVal()
-
-                for individualChar in param_name:
-                    if not (individualChar in acceptedCharsForParamName):
-                        error("Invalid character " & $individualChar & $ " in output name " & $param_name)
-                
-                param_names_string.add($param_name & ",")
-            
-            #Remove trailing coma
-            if param_names_string.len > 1:
-                param_names_string = param_names_string[0..param_names_string.high-1]
-            
-            #Assign to node
-            param_names_node = newLit(param_names_string)
-            
-            #Actual return statement: a valid NimNode wrapped in the "quote do:" syntax.
-            return quote do: 
-                const 
-                    omni_outputs {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
-                    ugen_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block
-
-                #For now, only keep the template for ar out, generated before sample block
-                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
-
-                #Export to C
-                proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
-                    return int32(omni_outputs)
-
-                proc Omni_UGenOutputNames() : ptr char {.exportc: "Omni_UGenOutputNames", dynlib.} =
-                    return cast[ptr char](ugen_output_names)
-        else:
-            return quote do:
-                const 
-                    omni_outputs {.inject.} = `num_of_outputs_VAL` 
-                    ugen_output_names {.inject.} = "__NO_PARAM_NAMES__"
-
-                #For now, only keep the template for ar out, generated before sample block
-                #generate_outputs_templates(`num_of_outputs_VAL`, 0)
-
-                #Export to C
-                proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
-                    return int32(omni_outputs)
-
-                proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-                    return cast[ptr cchar](ugen_output_names)
+            return cast[ptr cchar](omni_output_names)

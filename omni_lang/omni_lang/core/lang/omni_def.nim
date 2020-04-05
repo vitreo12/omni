@@ -1,4 +1,4 @@
-import macros
+import macros, omni_type_checker
 
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
     var 
@@ -7,12 +7,16 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         proc_def = nnkProcDef.newTree()
         proc_return_type : NimNode
         proc_name : NimNode
+        proc_name_without_inner : NimNode
         proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
 
         template_def = nnkTemplateDef.newTree()
         template_name : NimNode
         template_body_call = nnkCall.newTree()
+
+        generics : seq[NimNode]
+        checkValidTypes = nnkStmtList.newTree()
 
     #Pass the proc body to the parse_block_for_variables macro to avoid var/let declarations!!!
     var proc_body = nnkStmtList.newTree(
@@ -34,10 +38,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             name_with_args = function_signature
             proc_return_type = newIdentNode("auto")
         
+        #def a() float:
         elif function_signature_kind == nnkCommand:
             name_with_args   = function_signature[0]
             proc_return_type = function_signature[1]
         
+        #def a() -> float:
         elif function_signature_kind == nnkInfix:
             
             if function_signature[0].strVal() != "->":
@@ -67,6 +73,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                         newEmptyNode()
                     )
                 )
+
+                generics.add(entry)
         
         #No Generics
         elif first_statement.kind == nnkIdent:
@@ -77,6 +85,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #Add template and proc names
         template_name = proc_name
+        proc_name_without_inner = proc_name
         proc_name = newIdentNode(proc_name.strVal() & "_inner")
         
         #Add proc name to template call
@@ -88,6 +97,9 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             var 
                 arg_name : NimNode
+                arg_type : NimNode
+                arg_value : NimNode
+                
                 new_arg : NimNode
 
             let statement_kind = statement.kind
@@ -95,10 +107,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             #a float = 0.5 -> a : float = 0.5 / a = 0.5 -> a : auto = 0.5
             if statement_kind == nnkExprEqExpr:                
                 assert statement.len == 2
-
-                var 
-                    arg_type : NimNode
-                    arg_value : NimNode
 
                 #a float = 0.5
                 if statement[0].kind == nnkCommand:
@@ -113,12 +121,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                     arg_type = newIdentNode("auto")
                 
                 arg_value = statement[1]
-
-                new_arg = nnkIdentDefs.newTree(
-                    arg_name,
-                    arg_type,
-                    arg_value
-                )
             
             #a float -> a : float
             elif statement_kind == nnkCommand:
@@ -126,25 +128,59 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 assert statement.len == 2
 
                 arg_name = statement[0]
+                arg_type = statement[1]
+                arg_value = newEmptyNode()
 
-                new_arg = nnkIdentDefs.newTree(
-                    arg_name,
-                    statement[1],
-                    newEmptyNode()
-                )
             
             #a -> a : auto
             elif statement_kind == nnkIdent:
                 arg_name = statement
-                new_arg = nnkIdentDefs.newTree(
-                    arg_name,
-                    newIdentNode("auto"),
-                    newEmptyNode()
-                )
+                arg_type = newIdentNode("auto")
+                arg_value = newEmptyNode()
+                
 
             else:
                 error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
 
+            var arg_type_is_generic = false
+
+            #Check if any of the argument is a generic (e.g, phase T, freq Y)
+            if generics.len > 0:
+                if arg_type in generics:
+                    arg_type_is_generic = true
+
+            #only add check for current type if is not a generic one
+            if not arg_type_is_generic:
+                #This is a struct that has generics in it (e.g, Phasor[T])
+                var arg_type_without_generics : NimNode
+                if arg_type.kind == nnkBracketExpr:
+                    arg_type_without_generics = arg_type[0]
+                else:
+                    arg_type_without_generics = arg_type
+
+                #Add validity type checks to output. arg_name needs to be passed as a string literal.
+                checkValidTypes.add(
+                    nnkCall.newTree(
+                        newIdentNode("checkValidType_macro"),
+                        arg_type_without_generics,
+                        newLit(arg_name.strVal()), 
+                        newLit(true),
+                        newLit(false),
+                        newLit(proc_name_without_inner.strVal())
+                    )
+                )
+
+            #Check type validity
+            #checkValidType(arg_type, arg_name.strVal(), is_proc_arg=true, proc_name=proc_name_without_inner_str)
+
+            #new arg
+            new_arg = nnkIdentDefs.newTree(
+                arg_name,
+                arg_type,
+                newEmptyNode()
+            )
+            
+            #add to formal params
             proc_formal_params.add(new_arg)
 
             #Add arg name to template call
@@ -242,4 +278,14 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     proc_and_template.add(proc_def)
     proc_and_template.add(template_def)
 
-    return proc_and_template
+    #echo repr proc_and_template
+
+    #echo astGenRepr proc_formal_params
+    #echo repr checkValidTypes
+
+    return quote do:
+        #Run validity type check on each argument of the def
+        `checkValidTypes`
+
+        #Actually instantiate def (proc + template)
+        `proc_and_template`

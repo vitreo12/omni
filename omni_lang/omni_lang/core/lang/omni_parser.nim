@@ -1,13 +1,5 @@
-import macros, tables, strutils
-
-let validStdTypes {.compileTime.} = [
-    "array",
-    "bool", 
-    "enum",
-    "float", "float32", "float64",
-    "int", "int32", "int64",
-    "uint", "uint32", "uint64"
-]
+#remove tables here and move isStrUpperAscii (and strutils) to another module
+import macros, tables, strutils, omni_type_checker
 
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
@@ -31,12 +23,12 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         nnkCall.newTree(
           newIdentNode("generate_inputs_templates"),
           newIdentNode("omni_inputs"),
-          newLit(1)
+          newLit(1),
+          newLit(0)
         ),
         nnkCall.newTree(
           newIdentNode("generate_outputs_templates"),
-          newIdentNode("omni_outputs"),
-          newLit(1)
+          newIdentNode("omni_outputs")
         ),
         nnkForStmt.newTree(
           newIdentNode("audio_index_loop"),
@@ -414,9 +406,15 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
 proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, templates_to_ignore : TableRef[string, string], is_perform_block : bool = false) : void {.compileTime.} =  
     #Look inside the typed block, which contains info about types, etc...
     for index, typed_statement in typed_code_block.pairs():
+        #kind of current inspected block
         let typed_statement_kind = typed_statement.kind
 
-        if typed_statement_kind == nnkEmpty:
+        #Useless types to inspect, skip them
+        if typed_statement_kind   == nnkEmpty:
+            continue
+        elif typed_statement_kind == nnkSym:
+            continue
+        elif typed_statement_kind == nnkIdent:
             continue
 
         #Look for templates to ignore
@@ -427,10 +425,14 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
             continue
         ]#
 
-        #Fix Data/Buffer access: from [] = (delay_data, phase, write_value) to delay_data[phase] = write_value
+        #If it's a function call
         if typed_statement_kind == nnkCall:
             if typed_statement[0].kind == nnkSym:
-                if typed_statement[0].strVal() == "[]=":                
+                
+                let function_name = typed_statement[0].strVal()
+
+                #Fix Data/Buffer access: from [] = (delay_data, phase, write_value) to delay_data[phase] = write_value
+                if function_name == "[]=":                
                     var new_array_assignment : NimNode
 
                     #1 channel
@@ -445,8 +447,6 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
 
                     #Multi channel
                     else:
-                        #echo astGenRepr typed_statement
-
                         let bracket_expr = nnkBracketExpr.newTree(typed_statement[1])
                         
                         #Extract indexes
@@ -460,6 +460,20 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                     
                     if new_array_assignment != nil:
                         typed_code_block[index] = new_array_assignment
+
+                #Check type of all arguments for other function calls (not array access related) 
+                #Ignore function ending in _min_max (the one used for input min/max conditional)
+                #THIS IS NOT SAFE! min_max could be assigned by user to another def
+                elif typed_statement.len > 1 and not(function_name.endsWith("_min_max")):
+                    for i, arg in typed_statement.pairs():
+                        #ignore i == 0 (the function_name)
+                        if i == 0:
+                            continue
+                        
+                        let arg_type  = arg.getTypeInst().getTypeImpl()
+                        
+                        #Check validity of each argument to function
+                        checkValidType(arg_type, $i, is_proc_call=true, proc_name=function_name)
 
         #Look for / , div , % , mod and replace them with safediv and safemod
         elif typed_statement_kind == nnkInfix:
@@ -505,32 +519,8 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
             ]#
 
             #Check if it's a valid type
-            var var_type_real : string
-
-            #echo astGenRepr var_type
-            
-            #array / seq / structs, extract the actual name
-            if var_type.kind == nnkBracketExpr or var_type.kind == nnkPtrTy:
-                let var_type_inner = var_type[0]
+            checkValidType(var_type, var_name)
                 
-                #struct with generics
-                if var_type_inner.kind == nnkBracketExpr:
-                    var_type_real = var_type_inner[0].strVal()
-                #no generics
-                else:
-                    var_type_real = var_type[0].strVal()
-            
-            #standard types
-            else:
-                var_type_real = var_type.strVal()
-
-            #is it a supported val or a struct?
-            let is_a_valid_val = (var_type_real in validStdTypes) or (var_type_real.endsWith("_obj"))
-            
-            #error out if it's not a valid type
-            if not is_a_valid_val:
-                error("\"" & $var_name & "\" has an invalid type: \"" & $var_type_real & "\".")
-            
             #Look for consts: capital letters.
             if var_name.isStrUpperAscii(true):
                 let old_statement_body = typed_code_block[index][0]
