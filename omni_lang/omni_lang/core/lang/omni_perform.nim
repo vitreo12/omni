@@ -397,14 +397,23 @@ template performInner*(code_block : untyped) {.dirty.} =
         
         #static == compile time block
         static:
-            let text = $omni_inputs & "\n" & $omni_input_names & "\n" & $omni_outputs & "\n" & omni_output_names
-            let fullPathToNewFolder = getTempDir() #this has been passed in as command argument with -d:tempDir=fullPathToNewFolder
+            var text = $omni_inputs & "\n" & $omni_input_names & "\n" 
+            
+            for index, default_val in omni_defaults:
+                if index == (omni_inputs - 1):
+                    text.add($default_val & "\n") 
+                    break
+                text.add($default_val & ",")
+
+            text.add($omni_outputs & "\n" & omni_output_names)
+
+            #this has been passed in as command argument with -d:tempDir
+            let fullPathToNewFolder = getTempDir()
             writeFile($fullPathToNewFolder & "IO.txt", text)
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
     let perform_block {.compileTime.} = true
-    
     performInner(code_block)
 
 #Run perform inner, but directly to the for loop
