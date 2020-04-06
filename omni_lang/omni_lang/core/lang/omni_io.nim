@@ -355,7 +355,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
             if default_min_max_len == 3:
                 case index:
                     of 0:
-                        default_num = value_num
+                        default_num = float32(value_num)
                     of 1:
                         min_num = value_num
                     of 2:
@@ -408,9 +408,9 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
             #Might be empty
             if not isNil(default_stmt):
                 if default_stmt_kind == nnkIntLit:
-                    default_num = float(default_stmt.intVal())
+                    default_num = float32(default_stmt.intVal())
                 elif default_stmt_kind == nnkFloatLit:
-                    default_num = default_stmt.floatVal()
+                    default_num = float32(default_stmt.floatVal())
                 else:
                     error("Invalid syntax for default value of input \"" & $param_name & "\"")
 
@@ -433,7 +433,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
     return (default_num, min_num, max_num)
 
-proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float], min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
+proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
     let default_vals_len = default_vals.len()
 
     #Find mismatch. Perhaps user hasn't defined def/min/max for some params
@@ -445,7 +445,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float], mi
     var 
         defaults_array = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("default_vals"),
+                newIdentNode("omni_defaults"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -495,7 +495,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         param_names_string : string = ""
         param_names_node : NimNode
 
-        default_vals : seq[float]
+        default_vals : seq[float32]
         min_vals     : seq[float]
         max_vals     : seq[float]
 
@@ -521,7 +521,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
 
     #init the seqs
-    default_vals = newSeq[float](num_of_inputs_VAL)
+    default_vals = newSeq[float32](num_of_inputs_VAL)
     min_vals     = newSeq[float](num_of_inputs_VAL)
     max_vals     = newSeq[float](num_of_inputs_VAL)
 
@@ -637,6 +637,9 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
         proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
             return cast[ptr cchar](omni_input_names)
+
+        proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
+            return cast[ptr cfloat](omni_defaults)
 
 
 macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
