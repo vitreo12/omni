@@ -1,4 +1,6 @@
-ins 2, "buffer", "speed"
+ins 2:
+    "buffer"
+    "speed"
 
 outs 1
 
