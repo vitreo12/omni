@@ -397,15 +397,15 @@ template performInner*(code_block : untyped) {.dirty.} =
         
         #static == compile time block
         static:
-            var text = $omni_inputs & "\n" & $omni_input_names & "\n" 
+            var text = $omni_inputs & "\n" & $omni_input_names_const & "\n" 
             
-            for index, default_val in omni_defaults:
+            for index, default_val in omni_defaults_const:
                 if index == (omni_inputs - 1):
                     text.add($default_val & "\n") 
                     break
                 text.add($default_val & ",")
 
-            text.add($omni_outputs & "\n" & omni_output_names)
+            text.add($omni_outputs & "\n" & omni_output_names_const)
 
             #this has been passed in as command argument with -d:tempDir
             let fullPathToNewFolder = getTempDir()
