@@ -46,15 +46,15 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
+proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
         {.fatal: "Data's dataType must be SomeNumber".}
 
     var 
-        real_size  = size
-        real_chans = chans
+        real_size  = int(size)
+        real_chans = int(chans)
     
     if real_size < 1:
         print(size_error)
@@ -89,7 +89,7 @@ proc innerInit*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], siz
     result.size         = size_uint
     result.size_X_chans = size_X_chans_uint
 
-template new*[S : SomeInteger, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
     innerInit(Data, size, chans, dataType, ugen_auto_mem)   
 
 ##########
@@ -157,3 +157,12 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
             data[index] = x
     #else:
     #    print(bounds_error)
+
+proc len*[T](data : Data[T]) : int =
+    return int(data.size)
+
+proc size*[T](data : Data[T]) : int =
+    return int(data.size_X_chans)
+
+proc nchans*[T](data : Data[T]) : int =
+    return int(data.chans)
