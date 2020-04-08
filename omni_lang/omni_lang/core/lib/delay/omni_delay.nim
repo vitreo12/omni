@@ -23,13 +23,13 @@
 import ../alloc/omni_alloc
 import ../data/omni_data
 import ../auto_mem/omni_auto_mem
-import math
+import ../math/omni_math
 
 type
     Delay_obj[T] = object
-        mask      : int
-        increment : int
-        data      : Data[T]
+        mask  : int
+        phase : int
+        data  : Data[T]
 
     Delay*[T] = ptr Delay_obj[T]
 
@@ -52,7 +52,7 @@ proc innerInit*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), 
 
     #Assign values
     result.mask = mask
-    result.increment = 0
+    result.phase = 0
     result.data = data
 
 template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
@@ -60,10 +60,16 @@ template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), da
 
 #Read proc
 proc read*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], delay_time : Y) : T {.inline.} =
-    let index = (delay.increment - int(delay_time)) and delay.mask
-    return delay.data[index]
+    let 
+        float_delay_time = float(delay_time)
+        frac : float = float_delay_time - delay_time
+        index  = (delay.phase - int(delay_time))
+        index1 = index and delay.mask
+        index2 = (index + 1) and delay.mask
+
+    return linear_interp(frac, delay.data[index1], delay.data[index2])
 
 #Write proc
 proc write*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], val : Y) : void {.inline.} =
-    delay.data[delay.increment] = T(val)
-    delay.increment = (delay.increment + 1) and delay.mask
+    delay.data[delay.phase] = T(val)
+    delay.phase = (delay.phase + 1) and delay.mask
