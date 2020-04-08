@@ -83,3 +83,9 @@ proc safediv*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
 #% identifier (going to be replaced with safemod after parsing). Keeping safemod so that nim's parser it's happy with return type
 proc `%`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
     return safemod(a, b)
+
+
+
+#interpolation functions
+proc linear_interp*[T : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : T, x1 : Y, x2 : Z) : auto =
+    return x1 + (a * (x2 - x1))

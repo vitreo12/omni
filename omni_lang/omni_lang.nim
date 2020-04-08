@@ -43,6 +43,10 @@ export omni_auto_mem
 import omni_lang/core/lib/data/omni_data
 export omni_data
 
+#Delay
+import omni_lang/core/lib/delay/omni_delay
+export omni_delay
+
 #Print
 import omni_lang/core/lib/print/omni_print
 export omni_print

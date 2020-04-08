@@ -440,12 +440,23 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
     if num_of_inputs != default_vals_len:
         error("Got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
 
-    result = nnkConstSection.newTree()
+    result = nnkStmtList.newTree()
     
     var 
-        defaults_array = nnkConstDef.newTree(
+        deafault_min_max_const_section = nnkConstSection.newTree()
+        defaults_array_let_section = nnkLetSection.newTree()
+        defaults_array_const = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("omni_defaults"),
+                newIdentNode("omni_defaults_const"),
+                nnkPragma.newTree(
+                    newIdentNode("inject")
+                )
+            ),
+            newEmptyNode()
+        )
+        defaults_array_let = nnkIdentDefs.newTree(
+            nnkPragmaExpr.newTree(
+                newIdentNode("omni_defaults_let"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -466,26 +477,42 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
         defaults_array_bracket.add(newLit(default_val))
 
         if min_val != RANDOM_FLOAT:
-            result.add(
+            deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
-                    newIdentNode("in" & $(i_plus_one) & "_min"),
+                    nnkPragmaExpr.newTree(
+                        newIdentNode("in" & $(i_plus_one) & "_min"),
+                        nnkPragma.newTree(
+                            newIdentNode("inject")
+                        )
+                    ),
                     newEmptyNode(),
                     newLit(min_val)
                 )
             )
 
         if max_val != RANDOM_FLOAT:
-            result.add(
+            deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
-                    newIdentNode("in" & $(i_plus_one) & "_max"),
+                    nnkPragmaExpr.newTree(
+                        newIdentNode("in" & $(i_plus_one) & "_max"),
+                        nnkPragma.newTree(
+                            newIdentNode("inject")
+                        )
+                    ),
                     newEmptyNode(),
                     newLit(max_val)
                 )
             )
-    
-    defaults_array.add(defaults_array_bracket)
 
-    result.add(defaults_array)
+    defaults_array_const.add(defaults_array_bracket)
+    deafault_min_max_const_section.add(defaults_array_const)
+
+    defaults_array_let.add(defaults_array_bracket)
+    defaults_array_let_section.add(defaults_array_let)
+
+    #Declare min max as const, the array as both const (for static IO at the end of perform) and let (so i can get its memory address for Omni_UGenDefaults())
+    result.add(deafault_min_max_const_section)
+    result.add(defaults_array_let_section)
     
 
 macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
@@ -525,7 +552,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     min_vals     = newSeq[float](num_of_inputs_VAL)
     max_vals     = newSeq[float](num_of_inputs_VAL)
 
-    #Fill them with float(-1e9), but keep default's one to 0
+    #Fill them with a random float, but keep default's one to 0
     for i in 0..(num_of_inputs_VAL-1):
         default_vals[i] = 0.0
         min_vals[i] = RANDOM_FLOAT
@@ -620,8 +647,10 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
     return quote do: 
         const 
-            omni_inputs {.inject.}      = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-            omni_input_names {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
+            omni_inputs            {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_input_names_const {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
+
+        let omni_input_names_let   {.inject.} = `param_names_node`
 
         #const statement for defaults / mins / maxs
         `defaults_mins_maxs`
@@ -636,10 +665,10 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
             return int32(omni_inputs)
 
         proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-            return cast[ptr cchar](omni_input_names)
+            return cast[ptr cchar](omni_input_names_let.unsafeAddr)
 
         proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
-            return cast[ptr cfloat](omni_defaults)
+            return cast[ptr cfloat](omni_defaults_let.unsafeAddr)
 
 
 macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
@@ -712,8 +741,10 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
 
     return quote do: 
         const 
-            omni_outputs {.inject.}      = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
-            omni_output_names {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
+            omni_outputs            {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+            omni_output_names_const {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
+        
+        let omni_output_names_let   {.inject.} = `param_names_node`
         
         #generate_outputs_templates(`num_of_outputs_VAL`)
         
@@ -722,4 +753,4 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
             return int32(omni_outputs)
 
         proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-            return cast[ptr cchar](omni_output_names)
+            return cast[ptr cchar](omni_output_names_let.unsafeAddr)
