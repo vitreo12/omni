@@ -50,7 +50,7 @@ To install `omni` run these commands:
 
 ## **Sine oscillator example**
 
-```yaml
+```nim
 ins:  1
 outs: 1
 
