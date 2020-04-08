@@ -1,20 +1,17 @@
 ins 1:
-    "freq"
+    "freq" {440 1 22000}
 
 outs 1
  
 init:
+    samplerate_minus_one = samplerate - 1.0
+    twopi = 2 * PI
     phase = 0.0
-
-    #build phase
 
 perform:
     frequency Signal #aka float
     sine_out  Signal
-
-    samplerate_minus_one = samplerate - 1.0
-    twopi = 2 * PI
-
+    
     sample:
         frequency = abs(in1)
 
