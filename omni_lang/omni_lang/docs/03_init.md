@@ -1,6 +1,6 @@
 # init
 
-The `init` block takes care of initializing and storing all variables that might be needed in your algorithm. Also, here is where all the creation of any `struct` (more on them later) should happen.
+The `init` block takes care of initializing and storing all variables that might be needed in your algorithm. This is also where the creation of any `struct` (more on them later) should happen.
 
 
 1) Here `myVariable` is created in the `init` block and passed over the `sample` block (more on it later). `myVariable` can then be accessed and modified in the `sample` block, creating an increasing ramp over one second that goes from 0 to `samplerate` (`samplerate` is a keyword to retrieve the current system samplerate).

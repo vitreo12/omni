@@ -1,6 +1,6 @@
 # Code structure
 
-Omni files are divided into different block statements, each one with a different purpose. A simple sinusoidal oscillator, can be expressed as simply as this:
+Omni files are divided into different block statements. A simple sinusoidal oscillator can be expressed as simply as this:
 
 ```nim
 ins:  1
@@ -15,7 +15,7 @@ sample:
     phase = (phase + freq_incr) % 1.0
 ```
 
-In the previous oscillator example, the `ins` and `outs` block define the number of inputs and outputs of the algorithm. The `init` block defines the initialization of variables whose state is store and preserved in the `sample` block, which implement the algorithm sample by sample. The `in1` and `out1` variables are dynamically created by omni to represent the input and output values at the current sample, as described by the `ins` and `outs` macros.
+In the previous oscillator example, the ins and outs block define the number of inputs and outputs of the algorithm. The init block defines the initialization of variables whose state is store and preserved in the sample block, which implement the algorithm sample by sample. The in1 and out1 variables are dynamically created by omni to represent the input and output values at the current sample, as described by the ins and outs macros.
 
 More information on all the block types follows in the next docs.
 
@@ -27,9 +27,9 @@ As you might have noticed, declaration of variables in omni doesn't need any key
 ```nim
 init:
     phase float = 0.0
-```
 
-All variables of standard types, excluding the ones assigned to an instantiation of a `struct` (more on them later), are modifiable. To declare a non-modifiable variable, declare it with all upper cases:
+All variables of standard types, excluding the ones assigned to an instantiation of a struct (more on them later), are modifiable. To declare a non-modifiable variable, declare it with all upper cases:
+```
 
 ```nim
 init:
@@ -39,4 +39,5 @@ init:
 
 # Keywords
 
-``` if, elif, else, case, for, while, mod, and, or, not, isnot, is, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, Signal, Signal32, Signal64```
+ ```if, elif, else, case, for, while, mod, and, or, not, isnot, is, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, Signal, Signal32, Signal64```
+ 
