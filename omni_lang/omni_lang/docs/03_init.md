@@ -3,35 +3,46 @@
 The `init` block takes care of initializing and storing all variables that might be needed in your algorithm. Also, here is where all the creation of any `struct` (more on them later) should happen.
 
 
-```nim
-ins  1
-outs 1
+1) Here `myVariable` is created in the `init` block and passed over the `sample` block (more on it later). `myVariable` can then be accessed and modified in the `sample` block, creating an increasing ramp over one second that goes from 0 to `samplerate` (`samplerate` is a keyword to retrieve the current system samplerate).
 
-init:
-    myVariable = 0.0
+    ```nim
+    ins  1
+    outs 1
 
-sample:
-    out1 = myVariable
-```
+    init:
+        myVariable = 0.0
 
+    sample:
+        out1 = myVariable
+        myVariable += 1
+        myVariable = myVariable % samplerate
+    ```
 
-```nim
-ins 2:
-    "input"
-    "delayTime" {0.5, 0, 1}
+2) This is a slightly more complex example that shows the use of memory allocation via the creation of a `Delay` (more on it later). Here is also used the `build` block, which only passes specific variables to `sample`, as `init` passes by default all declared variables in its scope.
 
-outs 1
+    ```nim
+    ins 2:
+        "input"
+        "delayTime" {0.5, 0, 1}
 
-init:
-    delayLength  = samplerate
-    myDelay = Delay.new(delayLength)
+    outs 1
 
-    #the build block only passes specific variables to perform/sample
-    build:
-        myDelay
+    init:
+        delayLength  = samplerate
+        myDelay = Delay.new(delayLength)
 
-sample:
-    input = in1
-    out1 = input + myDelay.read(in2 * samplerate)
-    myDelay.write(input)
-```
+        #the build block only passes specific variables to perform/sample
+        build:
+            myDelay
+
+    sample:
+        input = in1
+
+        #input + read the delay line, using the second input as a delay time control
+        outVal = (input * 0.5) + (myDelay.read(in2 * samplerate) * 0.5)
+        
+        out1 = outVal
+
+        #write input to the delay line
+        myDelay.write(input)
+    ```
