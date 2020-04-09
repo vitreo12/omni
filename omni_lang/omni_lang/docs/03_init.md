@@ -14,8 +14,7 @@ The `init` block takes care of initializing and storing all variables that might
 
     sample:
         out1 = myVariable
-        myVariable += 1
-        myVariable = myVariable % samplerate
+        myVariable = (myVariable + 1) % samplerate
     ```
 
 2) This is a slightly more complex example that shows the use of memory allocation via the creation of a `Delay` (more on it later). Here is also used the `build` block, which only passes specific variables to `sample`, as `init` passes by default all declared variables in its scope.
