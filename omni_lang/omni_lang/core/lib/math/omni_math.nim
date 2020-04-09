@@ -28,6 +28,56 @@ export math
 # ...
 # ...
 
+# ========= #
+# Operators #
+# ========= #
+
+proc `+`[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    when Y is SomeFloat:
+        return Y(a) + b
+    else:
+        return a + T(b)
+
+proc `-`[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    when Y is SomeFloat:
+        return Y(a) - b
+    else:
+        return a - T(b)
+
+# ================= #
+# safemod / safediv #
+# ================= #
+
+#Going to replace "%" and "mod" with "safemod"
+proc safemod*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    when Y is SomeFloat:
+        if b != Y(0):
+            return Y(a) mod b
+        else:
+            return Y(0)
+    else:
+        if b != Y(0):
+            return a mod T(b)
+        else:
+            return T(0)
+
+#Going to replace "/" and "div" with "safediv"
+proc safediv*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    when Y is SomeFloat:
+        if b != Y(0):
+            return Y(a) / b
+        else:
+            return Y(0)
+    else:
+        if b != Y(0):
+            return a / T(b)
+        else:
+            return 0.0
+
+#% identifier (going to be replaced with safemod after parsing). Keeping safemod so that nim's parser it's happy with return type
+proc `%`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    return safemod(a, b)
+
 # ================== #
 # Bitwise operations #
 # ================== #
@@ -50,42 +100,9 @@ proc `>>`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
 proc `~`*[T : SomeInteger, Y : SomeInteger](a : T) : auto {.inline.} =
     return not a
 
-# ================= #
-# safemod / safediv #
-# ================= #
+# ======================= #
+# Interpolation functions #
+# ======================= #
 
-#Going to replace "%" and "mod"
-proc safemod*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
-    when Y is SomeFloat:
-        if b != Y(0):
-            return Y(a) mod b
-        else:
-            return Y(0)
-    else:
-        if b != Y(0):
-            return a mod T(b)
-        else:
-            return T(0)
-
-#Going to replace "/" and "div"
-proc safediv*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
-    when Y is SomeFloat:
-        if b != Y(0):
-            return Y(a) / b
-        else:
-            return Y(0)
-    else:
-        if b != Y(0):
-            return a / T(b)
-        else:
-            return 0.0
-
-#% identifier (going to be replaced with safemod after parsing). Keeping safemod so that nim's parser it's happy with return type
-proc `%`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
-    return safemod(a, b)
-
-
-
-#interpolation functions
 proc linear_interp*[T : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : T, x1 : Y, x2 : Z) : auto =
     return x1 + (a * (x2 - x1))

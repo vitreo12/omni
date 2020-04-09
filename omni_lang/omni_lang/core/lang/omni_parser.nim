@@ -96,8 +96,10 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             #Look for "build:" statement. If there are any, it's an error. Only at last position there should be one.
             if is_constructor_block:
                 if statement_kind == nnkCall or statement_kind == nnkCommand:
-                    if statement[0].strVal() == "build":
-                        error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
+                    let statement_first = statement[0]
+                    if statement_first.kind == nnkIdent or statement_first.kind == nnkSym:
+                        if statement_first.strVal() == "build":
+                           error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
 
             #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
             if statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
@@ -354,10 +356,13 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #of all the parsing.
     var build_statement : NimNode
     if is_constructor_block:
-        if code_block.last().kind == nnkCall or code_block.last().kind == nnkCommand:
-            if code_block.last()[0].strVal() == "build":
-                build_statement = code_block.last()
-                code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
+        let code_block_last = code_block.last()
+        if code_block_last.kind == nnkCall or code_block_last.kind == nnkCommand:
+            let code_block_last_first = code_block_last[0]
+            if code_block_last_first.kind == nnkIdent or code_block_last_first.kind == nnkSym:
+                if code_block_last_first.strVal() == "build":
+                    build_statement = code_block_last
+                    code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
     #Look for var  declarations recursively in all blocks
     parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block)

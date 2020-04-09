@@ -139,7 +139,7 @@ proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
 
     if i >= 0:
         if int(i) < int(data_size):
-            data[i] = x   
+            data[i] = T(x)   
     #else:
     #    print(bounds_error)
 
@@ -154,7 +154,7 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
         
     if index >= 0:
         if int(index) < int(data_size_X_chans):
-            data[index] = x
+            data[index] = T(x)
     #else:
     #    print(bounds_error)
 
