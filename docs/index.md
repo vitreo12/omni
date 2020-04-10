@@ -15,18 +15,18 @@ When running the `omni` compiler, the output is either a static or shared librar
 
 ## [01 - Syntax](01_syntax.md)
 
-## [02 - `ins` and `outs`](02_ins_outs.md)
+## [02 - The ins and outs blocks](02_ins_outs.md)
 
-## [03 - The `init` block](03_init.md)
+## [03 - The init block](03_init.md)
 
-## [04 - The `perform` and `sample` blocks](04_perform_sample.md)
+## [04 - The perform and sample blocks](04_perform_sample.md)
 
-## [05 - Functions: `def`](05_def.md)
+## [05 - Functions: def](05_def.md)
 
-## [06 - Custom types: `struct`](06_struct.md)
+## [06 - Custom types: struct](06_struct.md)
 
-## [07 - Memory allocation: `Data`](07_data.md)
+## [07 - Memory allocation: Data](07_data.md)
 
-## [08 - External memory: `Buffer`](08_buffer.md)
+## [08 - External memory: Buffer](08_buffer.md)
 
-## [09 - Stdlib: `Delay`](09_delay.md)
+## [09 - Stdlib: Delay](09_delay.md)
