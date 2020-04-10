@@ -13,6 +13,8 @@ Run `omni -h` to get help on all the available flags.
 
 When running the `omni` compiler, the output is either a static or shared library (depending on the `--lib` flag). Along with it, an `omni.h` file (depending on the `--exportHeader` flag) containing all the callable functions in the shared/static library will be exported.
 
+## Documentation
+
 ### [01 - Syntax](01_syntax.md)
 
 ### [02 - The ins and outs blocks](02_ins_outs.md)
