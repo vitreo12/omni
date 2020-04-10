@@ -1,4 +1,4 @@
-## [00 - What is Omni?](00_what_is_omni.md)
+## [00 - What is omni?](00_what_is_omni.md)
 
 ## [01 - Syntax](01_syntax.md)
 
