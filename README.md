@@ -71,4 +71,4 @@ This command will compile an antialiased sawtooth oscillator (part of the exampl
 
 ## **Docs**
 
-Checkout omni's [documentation](https://github.com/vitreo12/omni/tree/master/omni_lang/omni_lang/docs)
+Checkout omni's [documentation](https://vitreo12.github.io/omni/)
