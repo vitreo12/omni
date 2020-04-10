@@ -1,6 +1,11 @@
 # **omni**
 
-`omni` is a DSL for low-level audio programming.
+Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
+It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
+
+Omni leverages nim and C to  compile code to self-contained static or shared libraries that can then be loaded and used anywhere. So far, two wrappers have already been written to compile Omni code to [SuperCollider](https://supercollider.github.io/) UGens ([omnicollider](https://github.com/vitreo12/omnicollider)), or [Max 8](https://cycling74.com/) objects ([omnimax](https://github.com/vitreo12/omnimax)).
+
+Also, a basic syntax highlighting [VSCode](https://code.visualstudio.com/) plugin is available by simply looking for [omni](https://github.com/vitreo12/vscode-omni) in the Extensions Marketplace.
 
 ## **Requirements**
 
@@ -48,6 +53,18 @@ To install `omni` run these commands:
 
     nimble installOmni
 
+## **Usage**
+
+Once you've installed omni, the `omni` executable will be placed in your `~/.nimble/bin` folder.
+
+Run `omni -h` to get help on all the available flags.
+
+When running the `omni` compiler, the output is either a static or shared library (depending on the `--lib` flag). Along with it, an `omni.h` file (depending on the `--exportHeader` flag) containing all the callable functions in the shared/static library will be exported.
+
+    omni ~/.nimble/pkgs/omni_lang-0.1.0/examples/OmniSaw.omni -o:./
+
+This command will compile an antialiased sawtooth oscillator (part of the examples) to a shared library (`libOmniSaw.so/dylib/dll`), together with a header file (`omni.h`), in the current folder.
+
 ## **Sine oscillator example**
 
 ```nim
@@ -63,12 +80,6 @@ sample:
     phase = (phase + freq_incr) % 1.0
 ```
 
-## **Usage**
-
-    omni ~/.nimble/pkgs/omni_lang-0.1.0/omni_lang/examples/OmniSaw.omni -o:./
-
-This command will compile an antialiased sawtooth oscillator (part of the examples) to a shared library (`libOmniSaw.so/dylib/dll`), together with a header file (`omni.h`), in the current folder.
-
 ## **Docs**
 
-Checkout omni's [documentation](https://vitreo12.github.io/omni/)
+Checkout omni's [documentation](https://vitreo12.github.io/omni/).
