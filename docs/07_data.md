@@ -1,3 +1,5 @@
+<div style="text-align: justify">
+
 ## Data
 
 `Data` is an in-built kind of `struct` that allows to allocate a certain amount of memory to be used and accessed as an array.
@@ -43,3 +45,5 @@ sample:
 
     readIndex = (readIndex + 1) % dataLength
 ```
+
+</div>

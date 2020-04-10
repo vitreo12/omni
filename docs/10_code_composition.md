@@ -1,3 +1,5 @@
+<div style="text-align: justify">
+
 ## Code composition
 
 Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `include` statement.
@@ -29,3 +31,5 @@ sample:
     myVec.setValues(in1, in2, in3)
     out1 = myVec.x * myVec.y * myVec.z
 ```
+
+</div>

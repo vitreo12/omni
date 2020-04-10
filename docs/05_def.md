@@ -1,3 +1,5 @@
+<div style="text-align: justify">
+
 ## def
 
 A `def` is a function. It's a way to structure omni code with re-usable blocks.
@@ -58,3 +60,5 @@ Return type can of course be a generic type:
 def mySum[T, Y](a T = 0, b Y = 0) T:
     return a + b
 ```
+
+</div>
