@@ -304,7 +304,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
     #[ else:
         running_index_seq = @[0] ]#
 
-macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false) : untyped =
+macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree().add(newEmptyNode())
@@ -314,6 +314,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
         is_constructor_block = is_constructor_block_typed.boolVal()
         is_perform_block = is_perform_block_typed.boolVal()
         is_sample_block = is_sample_block_typed.boolVal()
+        bits_32_or_64 = bits_32_or_64_typed.boolVal()
     
     #Using the global variable. Reset it at every call.
     var variable_names_table = newTable[string, string]()
@@ -382,6 +383,14 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
         unpackUGenVariables(UGen)
     ]#
     if is_perform_block:
+        var castInsOuts_call = nnkCall.newTree()
+
+        #true == 64, false == 32
+        if bits_32_or_64:
+            castInsOuts_call.add(newIdentNode("castInsOuts64"))
+        else:
+            castInsOuts_call.add(newIdentNode("castInsOuts32"))
+
         code_block = nnkStmtList.newTree(
             nnkCall.newTree(
                 newIdentNode("generateTemplatesForPerformVarDeclarations")
@@ -398,9 +407,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                     )
                 )
             ),
-            nnkCall.newTree(
-                newIdentNode("castInsOuts")
-            ),
+            castInsOuts_call,
             nnkCall.newTree(
                 newIdentNode("unpackUGenVariables"),
                 newIdentNode("UGen")

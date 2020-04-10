@@ -343,17 +343,17 @@ macro unpackUGenVariables*(t : typed) =
     return unpackUGenVariablesProc(t)
 
 #Simply cast the inputs from SC in a indexable form in Nim
-macro castInsOuts*() =
+macro castInsOuts32*() =
     return quote do:
-        when defined(performBits32):
-            let 
-                ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
-                outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
-        
-        when defined(performBits64):
-            let 
-                ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
-                outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
+        let 
+            ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
+            outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
+
+macro castInsOuts64*() =
+    return quote do:
+        let 
+            ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
+            outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
 template performInner*(code_block : untyped) {.dirty.} =
     #Create an empty init block if one wasn't defined by the user
@@ -366,11 +366,11 @@ template performInner*(code_block : untyped) {.dirty.} =
         proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib.} =    
             #standard perform block
             when declared(perform_block):
-                parse_block_for_variables(code_block, false, true)
+                parse_block_for_variables(code_block, false, true, bits_32_or_64_typed = false)
             
             #sample block without perform
             else:
-                parse_block_for_variables(code_block, false, true, true)
+                parse_block_for_variables(code_block, false, true, true, false)
 
             #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):
@@ -381,11 +381,11 @@ template performInner*(code_block : untyped) {.dirty.} =
         proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
             #standard perform block
             when declared(perform_block):
-                parse_block_for_variables(code_block, false, true)
+                parse_block_for_variables(code_block, false, true, bits_32_or_64_typed = true)
             
             #sample block without perform
             else:
-                parse_block_for_variables(code_block, false, true, true)
+                parse_block_for_variables(code_block, false, true, true, true)
 
             #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):

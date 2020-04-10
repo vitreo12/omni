@@ -65,7 +65,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32", exportHeader : bool = true) : int =
+proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32/64", exportHeader : bool = true) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -217,7 +217,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32", exportHeader : bool = true) : int =
+proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
     for omniFile in omniFiles:
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()

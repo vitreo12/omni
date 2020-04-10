@@ -571,14 +571,10 @@ macro init*(code_block : untyped) : untyped =
             bufsize          {.inject.} : int             = 0
             samplerate       {.inject.} : float           = 0.0
             buffer_interface {.inject.} : pointer         = nil
-            #ugen_ptr         {.inject.} : pointer         = nil
             ugen_auto_mem    {.inject.} : ptr OmniAutoMem = nil
 
-        when defined(performBits32):
-            let ins_Nim      {.inject.} : CFloatPtrPtr    = cast[CFloatPtrPtr](0)
-        
-        when defined(performBits64):
-            let ins_Nim      {.inject.} : CDoublePtrPtr   = cast[CDoublePtrPtr](0)
+        #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
+        let ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
 
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define init_block here so that it will still only be defined once
