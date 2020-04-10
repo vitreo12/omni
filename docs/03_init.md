@@ -1,4 +1,4 @@
-# init
+## init
 
 The `init` block takes care of initializing and storing all variables that might be needed in your algorithm. This is also where the creation of any `struct` (more on them later) should happen.
 

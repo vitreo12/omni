@@ -1,4 +1,4 @@
-# struct
+## struct
 
 A `struct` is a way to create custom object with custom fields. 
 

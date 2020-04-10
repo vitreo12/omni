@@ -1,4 +1,4 @@
-# ins / outs
+## ins / outs
 
 The `ins` and `outs` blocks express the number of inputs and outputs channels of the algorithm implemented. They always must be expressed at the top of the omni file.
 

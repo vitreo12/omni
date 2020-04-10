@@ -5,7 +5,7 @@ Omni leverages nim and C to  compile code to self-contained static or shared lib
 
 Also, a basic syntax highlighting [VSCode](https://code.visualstudio.com/) plugin is available by simply looking for [omni](https://github.com/vitreo12/vscode-omni) in the Extensions Marketplace.
 
-# The omni CLI 
+## The omni CLI 
 
 Once you've installed omni, the `omni` executable will be placed in your `~/.nimble/bin` folder.
 
