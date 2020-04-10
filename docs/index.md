@@ -1,5 +1,3 @@
-<div style="text-align: justify">
-
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
 It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
 
@@ -32,5 +30,3 @@ When running the `omni` compiler, the output is either a static or shared librar
 ## [08 - External memory: Buffer](08_buffer.md)
 
 ## [09 - Stdlib: Delay](09_delay.md)
-
-</div>
