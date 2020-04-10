@@ -65,7 +65,7 @@ proc printDone(msg : string) : void =
     writeStyled(msg & "\n")
 
 #Actual compiler
-proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
+proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32", exportHeader : bool = true) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -166,12 +166,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
             if define_path.contains('/') or define_path.contains('\\'):
                 compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
 
-    #Set the unifyAllocInit / separateInitBuild flags.
-    if unifyAllocInit:
-        compile_command.add(" -d:unifyAllocInit")
-    else:
-        compile_command.add(" -d:separateAllocInit")
-
     #Set performBits flag
     if performBits == "32":
         compile_command.add(" -d:performBits32")
@@ -223,7 +217,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32", unifyAllocInit : bool = true, exportHeader : bool = true) : int =
+proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32", exportHeader : bool = true) : int =
     for omniFile in omniFiles:
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
@@ -232,9 +226,9 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
         if omniFileFullPath.existsFile():
             #if just one file in CLI, also pass the outName flag
             if omniFiles.len == 1:
-                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader)
+                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader)
             else:
-                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader) > 0:
+                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -246,7 +240,7 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, unifyAllocInit, exportHeader) > 0:
+                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader) > 0:
                             return 1
 
         else:
@@ -270,9 +264,7 @@ dispatch(omni,
         "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C compilers.",
         "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
-        "performBits" : "Specify precision for ins and outs in the perform function. Accepted values are \"32\", \"64\" or \"32/64\".",
-        "unifyAllocInit" : "Unify \"Omni_UGenAlloc\" with \"Omni_UGenInit\" into \"Omni_UGenAllocInit\".",
+        "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are \"32\", \"64\" or \"32/64\".",
         "exportHeader" : "Export the \"omni.h\" header file together with the compiled lib."
     }
-
 )

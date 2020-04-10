@@ -74,37 +74,23 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
         )  
     )
     
-    var is_initialized_if = nnkStmtList.newTree()
-
-    when defined(separateAllocInit):
-        is_initialized_if.add(
-            nnkIfStmt.newTree(
-                nnkElifBranch.newTree(
+    let is_initialized_if = nnkStmtList.newTree(
+        nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode("is_initialized_let")
+                ),
+                nnkCall.newTree(
+                    newIdentNode("freeOmniAutoMem"),
                     nnkDotExpr.newTree(
                         newIdentNode("ugen"),
-                        newIdentNode("is_initialized_let")
-                    ),
-                    nnkCall.newTree(
-                        newIdentNode("freeOmniAutoMem"),
-                        nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
-                            newIdentNode("ugen_auto_mem_let")
-                        )
+                        newIdentNode("ugen_auto_mem_let")
                     )
                 )
             )
         )
-    
-    when defined(unifyAllocInit):
-        is_initialized_if.add(
-            nnkCall.newTree(
-                newIdentNode("freeOmniAutoMem"),
-                nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
-                    newIdentNode("ugen_auto_mem_let")
-                )
-            )
-        )
+    )
 
     proc_body.add(
         nnkIfStmt.newTree(
@@ -460,190 +446,108 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
+        #This is just allocating memory, not running constructor
+        proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
+            #allocation of "ugen" variable
+            `alloc_ugen`
 
-        #This is for SC (Init + Build) are bundled together
-        when defined(unifyAllocInit):
-            #Initialize and build an Omni object
-            when defined(performBits32):
-                proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
-                    
-                    #allocation of "ugen" variable
-                    `alloc_ugen`
+            #Return ugen as void ptr
+            let ugen_ptr = cast[pointer](ugen)
 
-                    let ugen_ptr = cast[pointer](ugen)
+            if isNil(ugen_ptr):
+                print("ERROR: Omni: could not allocate memory")
+            
+            ugen.is_initialized_let = false
 
-                    if isNil(ugen_ptr):
-                        print("ERROR: Omni: could not allocate memory")
-                        return nil
-
-                    #Initialize auto_mem
-                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
-
-                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
-                        print("ERROR: Omni: could not allocate auto_mem")
-                        return nil
-
-                    #Unpack args. These will overwrite the previous empty templates
-                    let 
-                        ins_Nim          {.inject.} : CFloatPtrPtr    = cast[CFloatPtrPtr](ins_ptr)
-                        bufsize          {.inject.} : int             = int(bufsize_in)
-                        samplerate       {.inject.} : float           = float(samplerate_in)
-                        buffer_interface {.inject.} : pointer         = buffer_interface_in
-
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                    `templates_for_constructor_var_declarations`
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                    `templates_for_constructor_let_declarations`
-
-                    #Actual body of the constructor
-                    `code_block`
-
-                    #assignment of fields
-                    `assign_ugen_fields`      
-                    
-                    #Return the "ugen" variable as void pointer
-                    return ugen_ptr
-
-            when defined(performBits64):
-                proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
-                    
-                    #allocation of "ugen" variable
-                    `alloc_ugen`
-
-                    let ugen_ptr = cast[pointer](ugen)
-
-                    if isNil(ugen_ptr):
-                        print("ERROR: Omni: could not allocate memory")
-                        return ugen_ptr
-
-                    #Initialize auto_mem
-                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
-
-                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
-                        print("ERROR: Omni: could not allocate auto_mem")
-                        return nil
-
-                    #Unpack args. These will overwrite the previous empty templates
-                    let 
-                        ins_Nim          {.inject.} : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
-                        bufsize          {.inject.} : int           = int(bufsize_in)
-                        samplerate       {.inject.} : float         = float(samplerate_in) 
-                        buffer_interface {.inject.} : pointer       = buffer_interface_in
-
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                    `templates_for_constructor_var_declarations`
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                    `templates_for_constructor_let_declarations`
-
-                    #Actual body of the constructor
-                    `code_block`
-
-                    #assignment of fields
-                    `assign_ugen_fields`  
-                    
-                    #Return the "ugen" variable as void pointer
-                    return ugen_ptr
+            return ugen_ptr
         
-        #This is for Max / PD
-        when defined(separateAllocInit):
-            #This is just allocating memory, not running constructor
-            proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
-                #allocation of "ugen" variable
-                `alloc_ugen`
-
-                #Return ugen as void ptr
-                let ugen_ptr = cast[pointer](ugen)
-
+        when defined(performBits32):
+            proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit32", dynlib.} =
                 if isNil(ugen_ptr):
-                    print("ERROR: Omni: could not allocate memory")
+                    print("ERROR: Omni: build: invalid omni object")
+                    return
                 
-                ugen.is_initialized_let = false
+                let 
+                    ugen             {.inject.} : ptr UGen     = cast[ptr UGen](ugen_ptr)     
+                    ins_Nim          {.inject.} : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
+                    bufsize          {.inject.} : int          = int(bufsize_in)
+                    samplerate       {.inject.} : float        = float(samplerate_in)
+                    buffer_interface {.inject.} : pointer      = buffer_interface_in
+                
+                #Initialize auto_mem
+                ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
+                if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
+                    print("ERROR: Omni: could not allocate auto_mem")
+                    return
+
+                let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
+
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
+                `templates_for_constructor_var_declarations`
+
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
+                `templates_for_constructor_let_declarations`
+                
+                #Actual body of the constructor
+                `code_block`
+
+                #Assign ugen fields
+                `assign_ugen_fields`
+
+                #Successful init
+                ugen.is_initialized_let = true
+                
+                return
+
+            proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
+                let ugen_ptr = Omni_UGenAlloc()
+                Omni_UGenInit32(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in)
                 return ugen_ptr
-            
-            when defined(performBits32):
-                proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit32", dynlib.} =
-                    if isNil(ugen_ptr):
-                        print("ERROR: Omni: build: invalid omni object")
-                        return
-                    
-                    let 
-                        ugen             {.inject.} : ptr UGen     = cast[ptr UGen](ugen_ptr)     
-                        ins_Nim          {.inject.} : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
-                        bufsize          {.inject.} : int          = int(bufsize_in)
-                        samplerate       {.inject.} : float        = float(samplerate_in)
-                        buffer_interface {.inject.} : pointer      = buffer_interface_in
-                    
-                    #Initialize auto_mem
-                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
-                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
-                        print("ERROR: Omni: could not allocate auto_mem")
-                        return
-
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                    `templates_for_constructor_var_declarations`
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                    `templates_for_constructor_let_declarations`
-                    
-                    #Actual body of the constructor
-                    `code_block`
-
-                    #Assign ugen fields
-                    `assign_ugen_fields`
-
-                    #Successful init
-                    ugen.is_initialized_let = true
-                    
+        when defined(performBits64):
+            proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit64", dynlib.} =
+                if isNil(ugen_ptr):
+                    print("ERROR: Omni: build: invalid omni object")
                     return
 
-            when defined(performBits64):
-                proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit64", dynlib.} =
-                    if isNil(ugen_ptr):
-                        print("ERROR: Omni: build: invalid omni object")
-                        return
+                let 
+                    ugen             {.inject.} : ptr UGen      = cast[ptr UGen](ugen_ptr)     
+                    ins_Nim          {.inject.} : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
+                    bufsize          {.inject.} : int           = int(bufsize_in)
+                    samplerate       {.inject.} : float         = float(samplerate_in)
+                    buffer_interface {.inject.} : pointer       = buffer_interface_in
 
-                    let 
-                        ugen             {.inject.} : ptr UGen      = cast[ptr UGen](ugen_ptr)     
-                        ins_Nim          {.inject.} : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
-                        bufsize          {.inject.} : int           = int(bufsize_in)
-                        samplerate       {.inject.} : float         = float(samplerate_in)
-                        buffer_interface {.inject.} : pointer       = buffer_interface_in
+                #Initialize auto_mem
+                ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
 
-                    #Initialize auto_mem
-                    ugen.ugen_auto_mem_let = allocInitOmniAutoMem()
-
-                    if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
-                        print("ERROR: Omni: could not allocate auto_mem")
-                        return
-
-                    let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-            
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                    `templates_for_constructor_var_declarations`
-
-                    #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                    `templates_for_constructor_let_declarations`
-                    
-                    #Actual body of the constructor
-                    `code_block`
-
-                    #Assign ugen fields
-                    `assign_ugen_fields`
-
-                    #Successful init
-                    ugen.is_initialized_let = true
-                    
+                if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
+                    print("ERROR: Omni: could not allocate auto_mem")
                     return
+
+                let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
+        
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
+                `templates_for_constructor_var_declarations`
+
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
+                `templates_for_constructor_let_declarations`
+                
+                #Actual body of the constructor
+                `code_block`
+
+                #Assign ugen fields
+                `assign_ugen_fields`
+
+                #Successful init
+                ugen.is_initialized_let = true
+                
+                return
+
+            proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
+                let ugen_ptr = Omni_UGenAlloc()
+                Omni_UGenInit64(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in)
+                return ugen_ptr
 
         #Destructor
         #[ proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree", dynlib.} =
@@ -749,15 +653,14 @@ macro build*(var_names : varargs[typed]) =
         )
     )
 
-    #Add is_initialized_let variable (used when alloc and init are separated)
-    when defined(separateAllocInit):
-        var_names_and_types.add(
-            nnkIdentDefs.newTree(
-                newIdentNode("is_initialized_let"),
-                getType(bool),
-                newEmptyNode()
-            )
+    #Add is_initialized_let variable
+    var_names_and_types.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("is_initialized_let"),
+            getType(bool),
+            newEmptyNode()
         )
+    )
 
     #Add to final obj
     final_obj.add(var_names_and_types)
