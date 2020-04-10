@@ -339,14 +339,14 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
     var 
         default_num : float = 0.0
-        min_num     : float = 0.0
-        max_num     : float = 0.0
+        min_num     : float = RANDOM_FLOAT
+        max_num     : float = RANDOM_FLOAT
 
     #Extract def / min / max values
     for index, value in default_min_max.pairs():
         let value_kind = value.kind
-        
-        #{0, 0, 1} / {0, 1}
+
+        #{0, 0, 1} / {0, 1} / {0}
         if value_kind == nnkIntLit or value_kind == nnkFloatLit:
             var value_num : float
             if value_kind == nnkIntLit:
@@ -372,6 +372,8 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
                         max_num = value_num
                     else:
                         discard
+            elif default_min_max_len == 1:
+                default_num = float32(value_num)
 
         #{0 0 1} / {0 1}
         elif value_kind == nnkCommand:
@@ -574,7 +576,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
     #block case
     else:
-        #multiple statements: "freq" {440, 0, 22000} OR "freq" {440 0 22000}
+        #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if param_names_kind == nnkStmtList:
             for statement in param_names.children():
                 let statement_kind = statement.kind
