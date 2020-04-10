@@ -49,62 +49,64 @@ proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
                     ),
                     newEmptyNode(),
                     nnkGenericParams.newTree(
-                    nnkIdentDefs.newTree(
-                        newIdentNode("T"),
-                        newIdentNode("SomeFloat"),
-                        newEmptyNode()
-                    )
+                        nnkIdentDefs.newTree(
+                            newIdentNode("T"),
+                            newIdentNode("SomeFloat"),
+                            newEmptyNode()
+                        )
                     ),
                     nnkFormalParams.newTree(
-                    newIdentNode("T"),
-                    nnkIdentDefs.newTree(
-                        newIdentNode(in_num),
                         newIdentNode("T"),
-                        newEmptyNode()
-                    )
+                        nnkIdentDefs.newTree(
+                            newIdentNode(in_num),
+                            newIdentNode("T"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("inline")
                     ),
                     newEmptyNode(),
-                    newEmptyNode(),
                     nnkStmtList.newTree(
-                    nnkIfStmt.newTree(
-                        nnkElifBranch.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode("<"),
-                            newIdentNode(in_num),
-                            newIdentNode(in_min)
-                        ),
-                        nnkStmtList.newTree(
-                            nnkReturnStmt.newTree(
-                            nnkCall.newTree(
-                                newIdentNode("T"),
-                                newIdentNode(in_min)
-                            )
+                        nnkIfStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode("<"),
+                                    newIdentNode(in_num),
+                                    newIdentNode(in_min)
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkReturnStmt.newTree(
+                                        nnkCall.newTree(
+                                            newIdentNode("T"),
+                                            newIdentNode(in_min)
+                                        )
+                                    )
+                                )
+                            ),
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode(">"),
+                                    newIdentNode(in_num),
+                                    newIdentNode(in_max)
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkReturnStmt.newTree(
+                                        nnkCall.newTree(
+                                            newIdentNode("T"),
+                                            newIdentNode(in_max)
+                                        )
+                                    )
+                                )
+                            ),
+                            nnkElse.newTree(
+                                nnkStmtList.newTree(
+                                    nnkReturnStmt.newTree(
+                                    newIdentNode(in_num)
+                                    )
+                                )
                             )
                         )
-                        ),
-                        nnkElifBranch.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode(">"),
-                            newIdentNode(in_num),
-                            newIdentNode(in_max)
-                        ),
-                        nnkStmtList.newTree(
-                            nnkReturnStmt.newTree(
-                            nnkCall.newTree(
-                                newIdentNode("T"),
-                                newIdentNode(in_max)
-                            )
-                            )
-                        )
-                        ),
-                        nnkElse.newTree(
-                        nnkStmtList.newTree(
-                            nnkReturnStmt.newTree(
-                            newIdentNode(in_num)
-                            )
-                        )
-                        )
-                    )
                     )
                 )
             )
