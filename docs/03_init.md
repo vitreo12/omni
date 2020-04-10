@@ -1,9 +1,9 @@
-# init
+## init
 
 The `init` block takes care of initializing and storing all variables that might be needed in your algorithm. This is also where the creation of any `struct` (more on them later) should happen.
 
 
-1) Here `myVariable` is created in the `init` block and passed over the `sample` block (more on it later). `myVariable` can then be accessed and modified in the `sample` block, creating an increasing ramp over one second that goes from 0 to `samplerate` (`samplerate` is a keyword to retrieve the current system samplerate).
+1. Here `myVariable` is created in the `init` block and passed over the `sample` block (more on it later). `myVariable` can then be accessed and modified in the `sample` block, creating an increasing ramp over one second that goes from 0 to `samplerate` (`samplerate` is a keyword to retrieve the current system samplerate).
 
     ```nim
     ins  1
@@ -17,7 +17,7 @@ The `init` block takes care of initializing and storing all variables that might
         myVariable = (myVariable + 1) % samplerate
     ```
 
-2) This is a slightly more complex example that shows the use of memory allocation via the creation of a `Delay` (more on it later). Here is also used the `build` block, which only passes specific variables to `sample`, as `init` passes by default all declared variables in its scope.
+2. This is a slightly more complex example that shows the use of memory allocation via the creation of a `Delay` (more on it later). Here is also used the `build` block, which only passes specific variables to `sample`, as `init` passes by default all declared variables in its scope.
 
     ```nim
     ins 2:

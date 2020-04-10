@@ -1,19 +1,34 @@
-## [00 - What is omni?](00_what_is_omni.md)
+Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
+It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
 
-## [01 - Syntax](01_syntax.md)
+Omni leverages nim and C to  compile code to self-contained static or shared libraries that can then be loaded and used anywhere. So far, two wrappers have already been written to compile Omni code to [SuperCollider](https://supercollider.github.io/) UGens ([omnicollider](https://github.com/vitreo12/omnicollider)), or [Max 8](https://cycling74.com/) objects ([omnimax](https://github.com/vitreo12/omnimax)).
 
-## [02 - `ins` and `outs`](02_ins_outs.md)
+Also, a basic syntax highlighting [VSCode](https://code.visualstudio.com/) plugin is available by simply looking for [omni](https://github.com/vitreo12/vscode-omni) in the Extensions Marketplace.
 
-## [03 - The `init` block](03_init.md)
+## The omni CLI 
 
-## [04 - The `perform` and `sample` blocks](04_perform_sample.md)
+Once you've installed omni, the `omni` executable will be placed in your `~/.nimble/bin` folder.
 
-## [05 - Functions: `def`](05_def.md)
+Run `omni -h` to get help on all the available flags.
 
-## [06 - Custom types: `struct`](06_struct.md)
+When running the `omni` compiler, the output is either a static or shared library (depending on the `--lib` flag). Along with it, an `omni.h` file (depending on the `--exportHeader` flag) containing all the callable functions in the shared/static library will be exported.
 
-## [07 - Memory allocation: `Data`](07_data.md)
+## Documentation
 
-## [08 - Stdlib: `Delay`](08_delay.md)
+### [01 - Syntax](01_syntax.md)
 
-## [09 - Code composition](09_code_composition.md)
+### [02 - The ins and outs blocks](02_ins_outs.md)
+
+### [03 - The init block](03_init.md)
+
+### [04 - The perform and sample blocks](04_perform_sample.md)
+
+### [05 - Functions: def](05_def.md)
+
+### [06 - Custom types: struct](06_struct.md)
+
+### [07 - Memory allocation: Data](07_data.md)
+
+### [08 - External memory: Buffer](08_buffer.md)
+
+### [09 - Stdlib: Delay](09_delay.md)

@@ -1,4 +1,4 @@
-# def
+## def
 
 A `def` is a function. It's a way to structure omni code with re-usable blocks.
 

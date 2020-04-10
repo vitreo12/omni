@@ -31,6 +31,9 @@ requires "cligen >= 0.9.41"
 #Ignore omni_lang
 skipDirs = @["omni_lang"]
 
+#Install examples
+installDirs = @["examples"]
+
 #Compiler executable
 bin = @["omni"]
 

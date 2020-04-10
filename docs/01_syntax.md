@@ -1,4 +1,4 @@
-# Code structure
+## Code structure
 
 Omni files are divided into different block statements. A simple sinusoidal oscillator can be expressed as simply as this:
 
@@ -19,7 +19,7 @@ In the previous oscillator example, the `ins` and `outs` blocks define the numbe
 
 More information on all the block types follows in the next docs.
 
-# Syntax
+## Syntax
 
 As you might have noticed, declaration of variables in omni doesn't need any keyword. Despite being a strictly statically typed language, all types are inferred by the return type of a given statement. Optionally, types can be explicitly set with this syntax:
 
@@ -50,6 +50,6 @@ init:
     y = a.mySum(b)  #alternative "method" calling syntax
 ```
 
-# Keywords
+## Keywords
 
  ```if, elif, else, case, for, while, mod, and, or, not, isnot, is, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, Signal, Signal32, Signal64```

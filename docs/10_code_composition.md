@@ -1,4 +1,4 @@
-# Code composition
+## Code composition
 
 Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `include` statement.
 
