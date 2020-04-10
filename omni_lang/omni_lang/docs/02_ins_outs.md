@@ -35,7 +35,7 @@ There are different ways to express them:
    ins 3:
        "freq"  {440, 1, 22000} #3 values = default / min / max
        "phase" {0, 1}          #2 values = min / max
-       "amp"   {0, 1}          #2 values = min / max
+       "amp"   {0.5}           #1 value  = default
    
    outs 2:
        "firstOutput"
