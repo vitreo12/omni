@@ -1,5 +1,3 @@
-<div style="text-align: justify">
-
 ## init
 
 The `init` block takes care of initializing and storing all variables that might be needed in your algorithm. This is also where the creation of any `struct` (more on them later) should happen.
@@ -47,5 +45,3 @@ The `init` block takes care of initializing and storing all variables that might
         #write input to the delay line
         myDelay.write(input)
     ```
-
-</div>

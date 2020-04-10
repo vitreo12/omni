@@ -1,5 +1,3 @@
-<div style="text-align: justify">
-
 ## Code structure
 
 Omni files are divided into different block statements. A simple sinusoidal oscillator can be expressed as simply as this:
@@ -55,5 +53,3 @@ init:
 ## Keywords
 
  ```if, elif, else, case, for, while, mod, and, or, not, isnot, is, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, Signal, Signal32, Signal64```
-
- </div>

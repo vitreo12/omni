@@ -1,5 +1,3 @@
-<div style="text-align: justify">
-
 ## Delay
 
 `Delay` is a convenient implementation of a linearly interpolated delay line. It provides two methods to be used in the `sample` block: `read` and `write`.
@@ -21,5 +19,3 @@ sample:
     out1 = input + delayVal
     myDelay.write(input)
 ```
-
-</div>

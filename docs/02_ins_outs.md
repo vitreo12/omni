@@ -1,5 +1,3 @@
-<div style="text-align: justify">
-
 ## ins / outs
 
 The `ins` and `outs` blocks express the number of inputs and outputs channels of the algorithm implemented. They always must be expressed at the top of the omni file.
@@ -43,5 +41,3 @@ There are different ways to express them:
        "firstOutput"
        "secondOutput"
    ```
-
-</div>

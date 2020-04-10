@@ -1,5 +1,3 @@
-<div style="text-align: justify">
-
 ## struct
 
 A `struct` is a way to create custom object with custom fields. 
@@ -67,5 +65,3 @@ init:
 sample:
     out1 = myVec1.x * myVec1.y * myVec1.z
 ```
-
-</div>
