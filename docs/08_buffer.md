@@ -1,6 +1,6 @@
 ## Buffer
 
-`Buffer` is a special construct that is implemented on a per-wrapper basis. It doesn't exist as a standalone omni `struct`, but it only works if the wrapper around omni (like [omnicollider]() and [omnimax]()) implement it. Its purpose is to deal with memory allocated from outside of omni, as it's the case with SuperCollider's or Max's own buffers. Check [here](11_writing_wrappers.md) for a description on how to write an omni wrapper (including the `Buffer` interface).
+`Buffer` is a special construct that is implemented on a per-wrapper basis. It doesn't exist as a standalone omni `struct`, but it only works if the wrapper around omni (like [omnicollider](https://github.com/vitreo12/omnicollider) and [omnimax](https://github.com/vitreo12/omnimax)) implement it. Its purpose is to deal with memory allocated from outside of omni, as it's the case with SuperCollider's or Max's own buffers. Check [here](11_writing_wrappers.md) for a description on how to write an omni wrapper (including the `Buffer` interface).
 
 ### *MyBuffer.omni*:
 ```nim
@@ -38,8 +38,14 @@ b = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav");
 
 ### Max
 
+**Check omnimax's [readme](https://github.com/vitreo12/omnimax) for more information on the calling syntax of Max objects compiled with omni.**
+
 After compiling the omni code with
 
     omnimax MyBuffer.omni
 
 the `Buffer` interface will look like so:
+
+<p align="left">
+  <img width="559" height="444" src="max_buffer.png">
+</p>
