@@ -2,11 +2,22 @@
 
 `Buffer` is a special construct that is implemented on a per-wrapper basis. It doesn't exist as a standalone omni `struct`, but it only works if the wrapper around omni (like [omnicollider](https://github.com/vitreo12/omnicollider) and [omnimax](https://github.com/vitreo12/omnimax)) implement it. Its purpose is to deal with memory allocated from outside of omni, as it's the case with SuperCollider's or Max's own buffers. Check [here](11_writing_wrappers.md) for a description on how to write an omni wrapper (including the `Buffer` interface).
 
+## Buffer methods
+
+These are methods that only work in the `perform` or `sample` blocks. If used in the `init` block, they will yield 0:
+
+1. `length`     : returns the length of the `Buffer`.
+2. `size`       : returns the total length of the `Buffer` (length * channels).
+3. `chans`      : returns the number of channels of the `Buffer`.
+4. `samplerate` : returns the samplerate of the `Buffer`.
+
+## Example
+
 ### *MyBuffer.omni*:
 ```nim
 ins 2:
     "buffer"
-    "speed" {1, 0, 10}
+    "speed" {1, 0.1, 10}
 
 outs: 1
 
