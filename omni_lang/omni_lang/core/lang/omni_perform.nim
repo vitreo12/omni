@@ -267,9 +267,25 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
             for i in 0 .. omni_outs:
                 for y in 0 .. bufsize - 1:
                     outs_Nim[i][y] = 0.0'f64
+            unlock_buffers()
             return
     ]#
     if at_least_one_buffer:
+        var append_unlock_buffers = nnkStmtList.newTree()
+
+        when defined(multithreadBuffers):
+            append_unlock_buffers.add(
+                nnkCall.newTree(
+                    newIdentNode("unlock_buffers")
+                )
+            )
+        
+        append_unlock_buffers.add(
+            nnkReturnStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
         get_buffers_section.add(
             nnkIfStmt.newTree(
                 nnkElifBranch.newTree(
@@ -317,17 +333,16 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                                 )
                             )
                         ),
-                        nnkReturnStmt.newTree(
-                            newEmptyNode()
-                        )
+                        append_unlock_buffers,
                     )
                 )
             )
         )
 
+    echo repr get_buffers_section
+
     result.add(let_section)
-    result.add(get_buffers_section)
-    
+
     #When multithread buffers compilation, add the unlock template 
     when defined(multithreadBuffers):
         
@@ -337,6 +352,8 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
 
         multithread_unlock_buffers_template_def.add(multithread_unlock_buffers_body)
         result.add(multithread_unlock_buffers_template_def)
+
+    result.add(get_buffers_section)
 
 #Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
 macro unpackUGenVariables*(t : typed) =
