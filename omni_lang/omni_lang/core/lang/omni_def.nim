@@ -188,6 +188,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                         newLit(arg_name.strVal()), 
                         newLit(true),
                         newLit(false),
+                        newLit(false),
                         newLit(proc_name_without_inner.strVal())
                     )
                 )

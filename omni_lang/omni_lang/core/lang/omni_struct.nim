@@ -43,6 +43,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         template_def = nnkTemplateDef.newTree()          #the new* template
         template_formal_params : NimNode
         template_body_call = nnkCall.newTree()
+
+        generics_seq : seq[NimNode]
+        checkValidTypes = nnkStmtList.newTree()        #Check that types fed to struct are correct omni types
     
     var 
         obj_name : NimNode
@@ -134,6 +137,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
                     generics.add(generic_proc)
                     generics_proc_def.add(generic_proc_proc_def)
+                    
+                    generics_seq.add(child)
 
                 #If [T : Something etc...]
                 else:
@@ -253,6 +258,11 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type : NimNode
             new_decl = nnkIdentDefs.newTree()
 
+        #NO type defined, default it to float
+        if code_stmt_kind == nnkIdent:
+            var_name = code_stmt
+            var_type = newIdentNode("float")
+
         #phase float
         if code_stmt_kind == nnkCommand:
             assert code_stmt.len == 2
@@ -284,6 +294,35 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         new_decl.add(newEmptyNode())
 
         rec_list.add(new_decl)
+
+        var var_type_is_generic = false
+
+        #Check if any of the argument is a generic (e.g, phase T, freq Y)
+        if generics_seq.len > 0:
+            if var_type in generics_seq:
+                var_type_is_generic = true
+
+        #only add check for current type if is not a generic one
+        if not var_type_is_generic: 
+            #This is a struct that has generics in it (e.g, Phasor[T])
+            var var_type_without_generics : NimNode
+            if var_type.kind == nnkBracketExpr:
+                var_type_without_generics = var_type[0]
+            else:
+                var_type_without_generics = var_type
+
+            #Add validity type checks to output.
+            checkValidTypes.add(
+                nnkCall.newTree(
+                    newIdentNode("checkValidType_macro"),
+                    var_type_without_generics,
+                    newLit(var_name.strVal()), 
+                    newLit(false),
+                    newLit(false),
+                    newLit(true),
+                    newLit(ptr_name.strVal())
+                )
+            )
 
         #Add to arg list for innerInit proc
         proc_formal_params.add(
@@ -389,7 +428,27 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     
     #Add template to result
     final_stmt_list.add(template_def)
+
+    let init_struct = nnkCall.newTree(
+        newIdentNode("init_struct"),
+        ptr_name
+    )
     
     #If returning without quote, it bugs. Needs to be returned like this to be working properly. don't know why.
     return quote do:
+        `checkValidTypes`
         `final_stmt_list`
+        `init_struct`
+
+macro init_struct*(struct_name : typed) : untyped =
+    let ptr_struct_type = struct_name.getType()
+    
+    var obj_struct_type : NimNode
+    
+    #Generics
+    if ptr_struct_type[1][1].kind == nnkBracketExpr:
+        obj_struct_type = (ptr_struct_type[1][1][0]).getTypeImpl()
+    else:
+        obj_struct_type = (ptr_struct_type[1][1]).getType()
+    
+    echo astGenRepr obj_struct_type
