@@ -339,7 +339,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
             )
         )
 
-    echo repr get_buffers_section
+   #echo repr get_buffers_section
 
     result.add(let_section)
 

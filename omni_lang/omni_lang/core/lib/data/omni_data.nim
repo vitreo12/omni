@@ -95,7 +95,7 @@ template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size :
 # GETTER #
 ##########
 
-proc getter[T](data : Data[T], index : int = 0, channel : int = 0) : T {.inline.} =
+proc getter[T](data : Data[T], channel : int = 0, index : int = 0) : T {.inline.} =
     let chans = data.chans
     
     var actual_index : int
@@ -112,38 +112,46 @@ proc getter[T](data : Data[T], index : int = 0, channel : int = 0) : T {.inline.
 
 #1 channel 
 proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
-    return a.getter(int(i))
+    return a.getter(0, int(i))
 
 #more than 1 channel (i1 == channel, i2 == index)
 proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T {.inline.} =
-    return a.getter(int(i2), int(i1))
+    return a.getter(int(i1), int(i2))
 
 #linear interp read (1 channel)
 proc read*[I : SomeNumber; T](data : Data[T], index : I) : float {.inline.} =
-    let 
-        data_len = data.size
-        index1 : int = safemod(int(index), data_len)
-        index2 : int = safemod(index1 + 1, data_len)
-        frac : float  = float(index) - float(index1)
+    let data_len = data.size
     
-    return linear_interp(frac, data.getter(index1), data.getter(index2))
+    if data_len <= 0:
+        return 0.0
+
+    let 
+        index1 : int = int(index) mod data_len
+        index2 : int = (index1 + 1) mod data_len
+        frac : float = float(index) - float(index1)
+    
+    return linear_interp(frac, data.getter(0, index1), data.getter(0, index2))
 
 #linear interp read (more than 1 channel) (i1 == channel, i2 == index)
 proc read*[I1 : SomeNumber, I2 : SomeNumber; T](data : Data[T], chan : I1, index : I2) : float {.inline.} =
-    let 
-        data_len = data.size
-        chan_int = int(chan)
-        index1 : int = safemod(int(index), data_len)
-        index2 : int = safemod(index1 + 1, data_len)
-        frac : float  = float(index) - float(index1)
+    let data_len = data.size
     
-    return linear_interp(frac, data.getter(index1, chan_int), data.getter(index2, chan_int))
+    if data_len <= 0:
+        return 0.0
+    
+    let
+        chan_int = int(chan)
+        index1 : int = int(index) mod data_len
+        index2 : int = (index1 + 1) mod data_len
+        frac : float = float(index) - float(index1)
+    
+    return linear_interp(frac, data.getter(chan_int, index1), data.getter(chan_int, index2))
 
 ##########
 # SETTER #
 ##########
 
-proc setter[T, Y](data : Data[T], index : int = 0, channel : int = 0, x : Y) : void {.inline.} =
+proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : void {.inline.} =
     let chans = data.chans
     
     var actual_index : int
@@ -158,11 +166,11 @@ proc setter[T, Y](data : Data[T], index : int = 0, channel : int = 0, x : Y) : v
 
 #1 channel     
 proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
-    a.setter(int(i), int(0), x)
+    a.setter(int(0), int(i), x)
 
 #more than 1 channel (i1 == channel, i2 == index)
 proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void {.inline.} =
-    a.setter(int(i2), int(i1), x)
+    a.setter(int(i1), int(i2), x)
 
 #########
 # INFOS #
