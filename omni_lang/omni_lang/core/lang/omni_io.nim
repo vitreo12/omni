@@ -22,7 +22,7 @@
 
 import macros
 
-const max_inputs_outputs = 32
+const omni_max_inputs_outputs_const* = 32
 
 #Some crazy number
 const RANDOM_FLOAT = -12312418241.1249124194
@@ -548,8 +548,8 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         num_of_inputs_VAL = 1
     elif num_of_inputs_VAL < 0:
         error("Expected a positive number for inputs number")
-    elif num_of_inputs_VAL > max_inputs_outputs:
-        error("Exceeded maximum number of inputs, " & $max_inputs_outputs)
+    elif num_of_inputs_VAL > omni_max_inputs_outputs_const:
+        error("Exceeded maximum number of inputs, " & $omni_max_inputs_outputs_const)
 
     #init the seqs
     default_vals = newSeq[float32](num_of_inputs_VAL)
@@ -700,8 +700,8 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
         num_of_outputs_VAL = 1
     elif num_of_outputs_VAL < 0:
         error("Expected a positive number for outputs number")
-    elif num_of_outputs_VAL > max_inputs_outputs:
-        error("Exceeded maximum number of outputs, " & $max_inputs_outputs)
+    elif num_of_outputs_VAL > omni_max_inputs_outputs_const:
+        error("Exceeded maximum number of outputs, " & $omni_max_inputs_outputs_const)
 
     var statement_counter = 0
 
