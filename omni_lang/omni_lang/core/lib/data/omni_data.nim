@@ -23,15 +23,16 @@
 import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
 import ../print/omni_print
+import ../math/omni_math
 
 type
     ArrayPtr[T] = ptr UncheckedArray[T]
 
     Data_obj[T] = object
         data  : ArrayPtr[T]
-        size  : uint
-        chans : uint
-        size_X_chans : uint
+        size  : int
+        chans : int
+        size_X_chans : int
 
     #Only export Data
     Data*[T] = ptr Data_obj[T]
@@ -46,7 +47,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
+proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
@@ -64,20 +65,18 @@ proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size
         print(chans_error)
         real_chans = 1
 
-    let 
-        size_uint     = uint(real_size)
-        chans_uint    = uint(real_chans)
-        size_data_obj = sizeof(Data_obj[dataType])
+    let size_data_obj = sizeof(Data_obj[dataType])
 
     #Actual object, assigned to result
     result = cast[Data[dataType]](omni_alloc(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 
+        size_X_chans           = real_size * real_chans
+        size_X_chans_uint      = uint(size_X_chans)
         size_data_type_uint    = uint(sizeof(dataType))
-        size_X_chans_uint      = size_uint * chans_uint
-        total_size_uint        = size_data_type_uint * size_X_chans_uint
-        data                   = cast[ArrayPtr[dataType]](omni_alloc0(culong(total_size_uint)))
+        total_size_culong      = culong(size_data_type_uint * size_X_chans_uint)
+        data                   = cast[ArrayPtr[dataType]](omni_alloc0(total_size_culong))
 
     #Register both the Data object and its data to the automatic memory management
     ugen_auto_mem.registerChild(result)
@@ -85,9 +84,9 @@ proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size
     
     #Fill the object layout
     result.data         = data
-    result.chans        = chans_uint
-    result.size         = size_uint
-    result.size_X_chans = size_X_chans_uint
+    result.chans        = real_chans
+    result.size         = real_size
+    result.size_X_chans = size_X_chans
 
 template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
     innerInit(Data, size, chans, dataType, ugen_auto_mem)   
@@ -96,73 +95,84 @@ template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size :
 # GETTER #
 ##########
 
-#1 channel
-#proc `[]`*[I : SomeInteger, T](a : Data[T] or Data_obj[T], i : I) : T 
-proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
-    let 
-        data       = a.data
-        data_size  = a.size
-
-    if i >= 0:
-        if int(i) < int(data_size):
-            return data[i]
-    else:
-        #print(bounds_error)
-        return T(0)  #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
-
-#more than 1 channel
-#proc `[]`*[I1 : SomeInteger, I2 : SomeInteger; T](a : Data[T] or Data_obj[T], i1 : I1, i2 : I2) : T =
-proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T {.inline.} =
-    let 
-        data              = a.data
-        data_size         = a.size
-        data_size_X_chans = a.size_X_chans
-        index             = (int(i1) * int(data_size)) + int(i2)
+proc getter[T](data : Data[T], index : int = 0, channel : int = 0) : T {.inline.} =
+    let chans = data.chans
     
-    if index >= 0:
-        if int(index) < int(data_size_X_chans):
-            return data[index]
+    var actual_index : int
+    
+    if chans == 1:
+        actual_index = index
     else:
-        #print(bounds_error)
-        return T(0) #This should probably just raise an error here. Not everything is convertible to 0. Imagine to use Data for something else than numbers, like objects.
+        actual_index = (index * chans) + channel
+    
+    if actual_index >= 0 and actual_index < data.size_X_chans:
+        return data.data[actual_index]
+    
+    return T(0)
+
+#1 channel 
+proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
+    return a.getter(int(i))
+
+#more than 1 channel (i1 == channel, i2 == index)
+proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T {.inline.} =
+    return a.getter(int(i2), int(i1))
+
+#linear interp read (1 channel)
+proc read*[I : SomeNumber; T](data : Data[T], index : I) : float {.inline.} =
+    let 
+        data_len = data.size
+        index1 : int = safemod(int(index), data_len)
+        index2 : int = safemod(index1 + 1, data_len)
+        frac : float  = float(index) - float(index1)
+    
+    return linear_interp(frac, data.getter(index1), data.getter(index2))
+
+#linear interp read (more than 1 channel) (i1 == channel, i2 == index)
+proc read*[I1 : SomeNumber, I2 : SomeNumber; T](data : Data[T], chan : I1, index : I2) : float {.inline.} =
+    let 
+        data_len = data.size
+        chan_int = int(chan)
+        index1 : int = safemod(int(index), data_len)
+        index2 : int = safemod(index1 + 1, data_len)
+        frac : float  = float(index) - float(index1)
+    
+    return linear_interp(frac, data.getter(index1, chan_int), data.getter(index2, chan_int))
 
 ##########
 # SETTER #
 ##########
 
-#1 channel   
-#proc `[]=`*[I : SomeInteger, T, S](a : Data[T] or var Data_obj[T], i : I, x : S) : void =    
+proc setter[T, Y](data : Data[T], index : int = 0, channel : int = 0, x : Y) : void {.inline.} =
+    let chans = data.chans
+    
+    var actual_index : int
+    
+    if chans == 1:
+        actual_index = index
+    else:
+        actual_index = (index * chans) + channel
+    
+    if actual_index >= 0 and actual_index < data.size_X_chans:
+        data.data[actual_index] = T(x)
+
+#1 channel     
 proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
-    let 
-        data      = a.data
-        data_size = a.size
+    a.setter(int(i), int(0), x)
 
-    if i >= 0:
-        if int(i) < int(data_size):
-            data[i] = T(x)   
-    #else:
-    #    print(bounds_error)
-
-#more than 1 channel
-#proc `[]=`*[I1 : SomeInteger, I2 : SomeInteger; T, S](a : Data[T] or var Data_obj[T], i1 : I1, i2 : I2, x : S) : void =
+#more than 1 channel (i1 == channel, i2 == index)
 proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void {.inline.} =
-    let 
-        data              = a.data
-        data_size         = a.size
-        data_size_X_chans = a.size_X_chans
-        index             = (int(i1) * int(data_size)) + int(i2)
-        
-    if index >= 0:
-        if int(index) < int(data_size_X_chans):
-            data[index] = T(x)
-    #else:
-    #    print(bounds_error)
+    a.setter(int(i2), int(i1), x)
+
+#########
+# INFOS #
+#########
 
 proc len*[T](data : Data[T]) : int =
-    return int(data.size)
+    return data.size
 
 proc size*[T](data : Data[T]) : int =
-    return int(data.size_X_chans)
+    return data.size_X_chans
 
-proc nchans*[T](data : Data[T]) : int =
-    return int(data.chans)
+proc chans*[T](data : Data[T]) : int =
+    return data.chans
