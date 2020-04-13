@@ -532,7 +532,7 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
     final_stmt_list.add(template_def)
 
     #Convert the typed statement to an untyped one
-    let final_stmt_untyped = typedToUntyped(final_stmt_list)
+    let final_stmt_list_untyped = typedToUntyped(final_stmt_list)
     
     return quote do:
-        `final_stmt_untyped`
+        `final_stmt_list_untyped`
