@@ -46,7 +46,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         generics = nnkGenericParams.newTree()          #If generics are present in struct definition
 
         obj_bracket_expr : NimNode
-        ptr_bracket_expr : NimNode
+        #ptr_bracket_expr : NimNode
 
     #Using generics
     if struct_name.kind == nnkBracketExpr:
@@ -77,9 +77,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr = nnkBracketExpr.newTree(
             obj_name
         )
-        ptr_bracket_expr = nnkBracketExpr.newTree(
-            ptr_name
-        )
+        #ptr_bracket_expr = nnkBracketExpr.newTree(
+        #    ptr_name
+        #)
 
         for index, child in struct_name:
             if index == 0:
@@ -93,7 +93,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     obj_bracket_expr.add(child)
 
                     #Also add the name of the generic to the Phasor[T, Y...]
-                    ptr_bracket_expr.add(child)
+                    #ptr_bracket_expr.add(child)
 
                     generic_proc.add(
                         child,
@@ -148,7 +148,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
         obj_bracket_expr = obj_name
-        ptr_bracket_expr = ptr_name
+        #ptr_bracket_expr = ptr_name
 
     #Loop over struct's body
     for code_stmt in code_block:
