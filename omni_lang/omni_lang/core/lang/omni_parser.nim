@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 #remove tables here and move isStrUpperAscii (and strutils) to another module
-import macros, tables, strutils, omni_type_checker
+import macros, tables, strutils, omni_type_checker, omni_macros_utilities
 
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
@@ -101,6 +101,18 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                         if statement_first.strVal() == "build":
                            error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
 
+            #a (no types, defaults to float)
+            #[ 
+            if statement_kind == nnkIdent:
+                code_block[index] = nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                        statement,
+                        newIdentNode("float"),
+                        newEmptyNode()
+                    )
+                )  
+            ]#
+           
             #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
             if statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
 
@@ -630,7 +642,7 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
     #Basically, what's needed is to turn all newSymNode into newIdentNode.
     #Sym are already semantically checked, Idents are not...
     #Maybe just replace Syms with Idents instead? It would be much safer than this...
-    result = parseStmt(inner_block.repr())
+    result = typedToUntyped(inner_block)
 
     #echo repr result
 

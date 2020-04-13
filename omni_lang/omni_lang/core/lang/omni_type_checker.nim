@@ -31,7 +31,8 @@ let
         "float", "float32", "float64",
         "int", "int32", "int64",
         "uint", "uint32", "uint64",
-        "Signal", "Signal32", "Signal64"
+        "sig", "sig32", "sig64",
+        "signal", "signal32", "signal64"
     ]
 
     #These are additional types that function arguments support
@@ -50,37 +51,53 @@ let
     ]
 
 
-proc isStruct*(var_type : NimNode) : bool {.compileTime.} =
+proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.compileTime.} =
+    var 
+        type_tree : NimNode
+        inner_type_tree : NimNode
+        inner_type_tree_kind : NimNodeKind
     
-    let type_tree = var_type.getType()
-    
-    assert type_tree.len == 2
-
-    #echo "isStruct"
-    #echo astGenRepr var_type
-
-    let 
-        #type_tree_kind = type_tree.kind 
+    if not is_struct_field:
+        type_tree = var_type.getType()
+        if type_tree.len < 2:
+            return false
         inner_type_tree = type_tree[1]
         inner_type_tree_kind = inner_type_tree.kind
-    
-    if inner_type_tree_kind == nnkBracketExpr:
-        let inner_inner_type_tree = inner_type_tree[1]
+        
+        if inner_type_tree_kind == nnkBracketExpr:
+            let inner_inner_type_tree = inner_type_tree[1]
 
-        #struct with generics
-        if inner_inner_type_tree.kind == nnkBracketExpr:
-            if inner_inner_type_tree[0].strVal().endsWith("_obj"):
+            #struct with generics
+            if inner_inner_type_tree.kind == nnkBracketExpr:
+                if inner_inner_type_tree[0].strVal().endsWith("_obj"):
+                    return true
+            
+            #normal struct
+            elif inner_type_tree[1].strVal().endsWith("_obj"):
+                return true
+    
+        elif inner_type_tree_kind == nnkSym:
+            if inner_type_tree.strVal().endsWith("_obj"):
+                return true
+
+    else:
+        type_tree = var_type.getTypeImpl()
+        if type_tree.kind != nnkPtrTy:
+            return false
+        
+        inner_type_tree = type_tree[0]
+        inner_type_tree_kind = inner_type_tree.kind
+
+        if inner_type_tree_kind == nnkBracketExpr:
+            let inner_inner_type_tree = inner_type_tree[0]
+
+            if inner_inner_type_tree.strVal().endsWith("_obj"):
+                return true
+            
+        elif inner_type_tree_kind == nnkSym:
+            if inner_type_tree.strVal().endsWith("_obj"):
                 return true
         
-        #normal struct
-        elif inner_type_tree[1].strVal().endsWith("_obj"):
-            return true
-    
-    #not a struct?
-    elif inner_type_tree_kind == nnkSym:
-        if inner_type_tree.strVal().endsWith("_obj"):
-            return true
-
     return false
 
 
@@ -117,22 +134,22 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
                 proc_name_real = proc_name[0..(proc_name.len - 7)] #remove _inner
             else:
                 proc_name_real = proc_name
-            error("Call to \'" & $proc_name_real & "\' : argument number " & $var_name & " is of unsupported type: \'" & $var_type & "\'.")
+            error("Call to \'" & $proc_name_real & "\' : argument number " & $var_name & " is of unknown type: \'" & $var_type & "\'.")
     
     #proc argument (static)
     elif is_proc_arg:
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type.isStruct())):
-            error("\'def " & $proc_name & "\' : argument \'" & $var_name & "\' is of unsupported type: \'" & $var_type_str & "\'.")
-
-    #variable declaration
-    elif is_proc_call:
-        if not ((var_type_str in varDeclTypes) or (var_type.isStruct())):
-            error("\'" & $var_name & "\' is of unsupported type: \'" & $var_type_str & "\'.")
+            error("\'def " & $proc_name & "\' : argument \'" & $var_name & "\' is of unknown type: \'" & $var_type_str & "\'.")
 
     #struct field
-    else:
+    elif is_struct_field:
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
-            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' is of unsupported type: \'" & $var_type_str & "\'.")
+            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' is of unknown type: \'" & $var_type_str & "\'.")
+
+    #variable declaration
+    else:
+        if not ((var_type_str in varDeclTypes) or (var_type.isStruct())):
+            error("\'" & $var_name & "\' is of unknown type: \'" & $var_type_str & "\'.")
 
         
 #This is used for def's argument type checking
