@@ -150,7 +150,6 @@ macro init_inner*(code_block_stmt_list : untyped) =
         templates_for_constructor_var_declarations = nnkStmtList.newTree()
         templates_for_constructor_let_declarations = nnkStmtList.newTree()
 
-        empty_var_statements : seq[NimNode]
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
         alloc_ugen : NimNode
@@ -182,12 +181,6 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #Then, modify the field in the code_block to be "variableName_var"
                 code_block[outer_index][inner_index][0] = new_var_declaration
-                
-                #Found one! add the sym to seq. It's a nnkIdent.
-                if var_declaration[2].kind == nnkEmpty:
-                    #Only add it if it's not a static array: c array[100, float]
-                    if var_declaration[1].kind != nnkBracketExpr:
-                        empty_var_statements.add(var_declaration_name)
 
                 #[
                     RESULT:
@@ -303,12 +296,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         code_block.add(call_to_build_macro)
 
     #Check the variables that are passed to call_to_build_macro
-    for index, build_macro_var_name in call_to_build_macro:               #loop over every passed in variables to the "build" call
-        for empty_var_statement in empty_var_statements:
-            #Trying to pass in an unitialized "var" variable
-            if empty_var_statement == build_macro_var_name: #They both are nnkIdents. They can be compared.
-                error("\"" & $(empty_var_statement.strVal()) & "\" is a non-initialized variable. It can't be an input to a \"build\" statement.")
-        
+    for index, build_macro_var_name in call_to_build_macro:
         #Check if any of the var_declarations are inputs to the "build" macro. If so, append their variable name with "_var"
         for var_declaration in var_declarations:
             if var_declaration == build_macro_var_name:

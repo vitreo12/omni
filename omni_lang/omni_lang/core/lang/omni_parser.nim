@@ -602,34 +602,30 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                 #Replace the entry in the untyped block, which has yet to be semantically evaluated.
                 typed_code_block[index] = new_let_statement
 
-            #Look for ptr types
+            #Look for ptr types, structs
             if var_type.kind == nnkPtrTy:
-                
-                var type_name = var_type[0]
-
-                #generics, extract the name from bracket
-                if type_name.kind == nnkBracketExpr:
-                    type_name = type_name[0]
-
-                let type_name_str = type_name.strVal
-                
                 #Found a struct!
-                if type_name_str[len(type_name_str) - 4..type_name_str.high] == "_obj":
+                if var_type.isStruct():
+                    let old_statement_body = typed_code_block[index][0]
 
+                    #Detect if it's a non-initialized struct variable (e.g "data Data[float]")
+                    if old_statement_body.len == 3:
+                        if old_statement_body[2].kind == nnkEmpty:
+                            let error_var_name = old_statement_body[0]
+                            error("\'" & $error_var_name & "\': structs must be instantiated on declaration.")
+                            
                     #In perform, allow assignment to already allocated ones, but not creation of new ones (or calling functions that return structs, generally)
                     #This is allowed: a = data  (if data was already allocated in constructor)
                     #This is allowed: a = b.data (if b was already allocated in constructor)
-                    #This is not allowed a = Data.init(100)
+                    #This is not allowed a = Data.new(100)
                     if is_perform_block:
                         let equals_statement_kind = typed_statement[0][2].kind
                         
                         #If not a symbol/ident or a dotexpr, it probably is a function call. Abort!
                         if equals_statement_kind != nnkSym and equals_statement_kind != nnkIdent and equals_statement_kind != nnkDotExpr:
-                            error "\"" & $var_symbol.strVal() & "\": structs cannot be allocated in the \"perform\" and \"sample\" blocks."
+                            error "\'" & $var_symbol.strVal() & "\': structs cannot be allocated in the \'perform\' or \'sample\' blocks."
 
-                    let old_statement_body = typed_code_block[index][0]
-
-                    #Create new let statement
+                    #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
                         old_statement_body
                     )
