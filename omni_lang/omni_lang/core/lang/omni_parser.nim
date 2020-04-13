@@ -163,8 +163,8 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 let var_name = var_ident.strVal
 
                 #If already there is an entry, skip. Keep the first found one.
-                if variable_names_table.hasKey(var_name):
-                    continue
+                #if variable_names_table.hasKey(var_name):
+                #    continue
                 
                 #And modify source code with the ident node
                 var new_var_statement : NimNode
@@ -239,62 +239,72 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     
                     let default_value = var_misc
 
-                    #Ignore out1, out2, etc... so that it throws error if not defined!
+                    #Prevent the user from defining out1, out2... etc...
                     var is_out_variable = false
 
-                    if(var_name.startsWith("out")):
-                        #out1 / out10
-                        if var_name.len == 4:
-                            if var_name[3].isDigit:
-                                is_out_variable = true
-                        elif var_name.len == 5:
-                            if var_name[3].isDigit and var_name[4].isDigit:
-                                is_out_variable = true
+                    if not is_perform_block:
+                        if(var_name.startsWith("out")):
+                            #out1 / out10
+                            if var_name.len == 4:
+                                if var_name[3].isDigit:
+                                    is_out_variable = true
+                            elif var_name.len == 5:
+                                if var_name[3].isDigit and var_name[4].isDigit:
+                                    is_out_variable = true
 
-                    #Ignore out1, out2, etc...
-                    if not is_out_variable:
+                        if is_out_variable:
+                            error("Can't declare a variable as \'" & $var_name & "\'")
                         
-                        #var a = 0.0
-                        new_var_statement = nnkVarSection.newTree(
-                            nnkIdentDefs.newTree(
-                                var_ident,
-                                newEmptyNode(),
-                                default_value,
-                            )
+                    #var a = 0.0
+                    new_var_statement = nnkVarSection.newTree(
+                        nnkIdentDefs.newTree(
+                            var_ident,
+                            newEmptyNode(),
+                            default_value,
                         )
+                    )
 
-                        #This is needed to avoid renaming stuff that already is templates, etc...
-                        #[
-                            when declared("phase").not:
-                                var phase = ...
-                            else:
-                                phase = ...
-                        ]#
-                        #if is_perform_block:
-                        new_var_statement = nnkStmtList.newTree(
-                            nnkWhenStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    nnkDotExpr.newTree(
-                                        nnkCall.newTree(
-                                            newIdentNode("declared"),
-                                            var_ident
-                                        ),
-                                        newIdentNode("not")
+                    let
+                        var_name_assignmant = new_var_statement[0][0]
+                        var_assign = new_var_statement[0][2]
+
+                    #This is needed to avoid renaming stuff that already is templates, etc...
+                    #[
+                        when declared("phase").not:
+                            var phase = ...
+                        else:
+                            phase = typeof(phase)(...)
+                    ]#
+                    new_var_statement = nnkStmtList.newTree(
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkDotExpr.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("declared"),
+                                        var_ident
                                     ),
-                                    nnkStmtList.newTree(
-                                        new_var_statement
-                                    )
+                                    newIdentNode("not")
                                 ),
-                                nnkElse.newTree(
-                                    nnkStmtList.newTree(
-                                        nnkAsgn.newTree(
-                                            new_var_statement[0][0],
-                                            new_var_statement[0][2]
+                                nnkStmtList.newTree(
+                                    new_var_statement
+                                )
+                            ),
+                            nnkElse.newTree(
+                                nnkStmtList.newTree(
+                                    nnkAsgn.newTree(
+                                        var_name_assignmant,
+                                        nnkCall.newTree(
+                                            nnkCall.newTree(
+                                                newIdentNode("typeof"),
+                                                var_name_assignmant
+                                            ),
+                                            var_assign
                                         )
                                     )
                                 )
                             )
                         )
+                    )
 
                 #Add var decl to code_block only if something actually has been assigned to it
                 #If using a template (like out1 in sample), new_var_statement would be nil here
