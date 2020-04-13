@@ -90,7 +90,6 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             if statement_kind == nnkVarSection or statement_kind == nnkLetSection:
                 for var_decl in statement.children():
                     let var_name = var_decl[0].strVal()
-                    
                     variable_names_table[var_name] = var_name
 
             #Look for "build:" statement. If there are any, it's an error. Only at last position there should be one.
@@ -99,7 +98,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     let statement_first = statement[0]
                     if statement_first.kind == nnkIdent or statement_first.kind == nnkSym:
                         if statement_first.strVal() == "build":
-                           error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
+                           error "init: the \'build\' call, if used, must only be one and at the last position of the \'init\' block."
 
             #a (no types, defaults to float)
             #[ 
@@ -226,7 +225,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                                         nnkPragma.newTree(
                                             nnkExprColonExpr.newTree(
                                                 newIdentNode("fatal"),
-                                                newLit("can't re-define variable \"" & $var_name & "\". It's already been defined.")
+                                                newLit("can't re-define variable \'" & $var_name & "\'. It's already been defined.")
                                             )
                                         )
                                     )
@@ -241,70 +240,84 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                     #Prevent the user from defining out1, out2... etc...
                     var is_out_variable = false
-
-                    if not is_perform_block:
-                        if(var_name.startsWith("out")):
-                            #out1 / out10
-                            if var_name.len == 4:
-                                if var_name[3].isDigit:
-                                    is_out_variable = true
-                            elif var_name.len == 5:
-                                if var_name[3].isDigit and var_name[4].isDigit:
-                                    is_out_variable = true
-
-                        if is_out_variable:
-                            error("Can't declare a variable as \'" & $var_name & "\'")
-                        
-                    #var a = 0.0
-                    new_var_statement = nnkVarSection.newTree(
-                        nnkIdentDefs.newTree(
-                            var_ident,
-                            newEmptyNode(),
-                            default_value,
+                    if(var_name.startsWith("out")):
+                        #out1 / out10
+                        if var_name.len == 4:
+                            if var_name[3].isDigit:
+                                is_out_variable = true
+                        elif var_name.len == 5:
+                            if var_name[3].isDigit and var_name[4].isDigit:
+                                is_out_variable = true
+                    
+                    #not an out1, out2..etc..
+                    if not is_out_variable:
+                        #var a = 0.0
+                        new_var_statement = nnkVarSection.newTree(
+                            nnkIdentDefs.newTree(
+                                var_ident,
+                                newEmptyNode(),
+                                default_value,
+                            )
                         )
-                    )
 
-                    let
-                        var_name_assignmant = new_var_statement[0][0]
-                        var_assign = new_var_statement[0][2]
+                        let
+                            var_name_assignment = new_var_statement[0][0]
+                            var_assign = new_var_statement[0][2]
 
-                    #This is needed to avoid renaming stuff that already is templates, etc...
-                    #[
-                        when declared("phase").not:
-                            var phase = ...
-                        else:
-                            phase = typeof(phase)(...)
-                    ]#
-                    new_var_statement = nnkStmtList.newTree(
-                        nnkWhenStmt.newTree(
-                            nnkElifBranch.newTree(
-                                nnkDotExpr.newTree(
-                                    nnkCall.newTree(
-                                        newIdentNode("declared"),
-                                        var_ident
-                                    ),
-                                    newIdentNode("not")
-                                ),
-                                nnkStmtList.newTree(
-                                    new_var_statement
-                                )
-                            ),
-                            nnkElse.newTree(
-                                nnkStmtList.newTree(
-                                    nnkAsgn.newTree(
-                                        var_name_assignmant,
+                        #This is needed to avoid renaming stuff that already had been defined in a previous variable, templates, etc...
+                        #[
+                            when declared("phase").not:
+                                var phase = ...
+                            else:
+                                phase = typeof(phase)(...)
+                        ]#
+                    
+                        new_var_statement = nnkStmtList.newTree(
+                            nnkWhenStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    nnkDotExpr.newTree(
                                         nnkCall.newTree(
+                                            newIdentNode("declared"),
+                                            var_ident
+                                        ),
+                                        newIdentNode("not")
+                                    ),
+                                    nnkStmtList.newTree(
+                                        new_var_statement
+                                    )
+                                ),
+                                nnkElse.newTree(
+                                    nnkStmtList.newTree(
+                                        nnkAsgn.newTree(
+                                            var_name_assignment,
                                             nnkCall.newTree(
-                                                newIdentNode("typeof"),
-                                                var_name_assignmant
-                                            ),
-                                            var_assign
+                                                nnkCall.newTree(
+                                                    newIdentNode("typeof"),
+                                                    var_name_assignment
+                                                ),
+                                                var_assign
+                                            )
                                         )
                                     )
                                 )
                             )
                         )
-                    )
+
+                    #out1 = ... (ONLY in perform / sample blocks)
+                    else:
+                        if is_perform_block:
+                            let out_var = newIdentNode(var_name)
+                            new_var_statement = nnkAsgn.newTree(
+                                out_var,
+                                nnkCall.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("typeof"),
+                                        out_var
+                                    ),
+                                    default_value
+                                )
+                            )
+
 
                 #Add var decl to code_block only if something actually has been assigned to it
                 #If using a template (like out1 in sample), new_var_statement would be nil here
@@ -320,7 +333,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             #echo repr code_block
 
             #Run the function recursively
-            parse_block_recursively_for_variables(statement, variable_names_table, is_perform_block)
+            parse_block_recursively_for_variables(statement, variable_names_table, is_constructor_block, is_perform_block)
     
     #Reset at end of chain
     #[ else:
@@ -367,7 +380,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
             
         #couldn't find sample block IN perform block
         if found_sample_block.not:
-            error "perform: no \"sample\" block provided, or not at top level."
+            error "perform: no \'sample\' block provided, or not at top level."
         
     
     #Remove new statement from the block before all syntactic analysis.

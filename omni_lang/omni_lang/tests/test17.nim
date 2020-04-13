@@ -16,5 +16,6 @@ expandMacros:
         #out1 = 0
     
     sample:
-        out1 = b
+        a = 1 / 3
+        out1 = 0.5
         #something = c
