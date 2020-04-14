@@ -47,7 +47,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
+proc struct_init_inner*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
@@ -89,7 +89,7 @@ proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size
     result.size_X_chans = size_X_chans
 
 template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    innerInit(Data, size, chans, dataType, ugen_auto_mem)   
+    struct_init_inner(Data, size, chans, dataType, ugen_auto_mem)   
 
 ##########
 # GETTER #

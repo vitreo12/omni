@@ -253,19 +253,19 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the whole type section to result
     final_stmt_list.add(type_section)
 
-    #The init_struct macro, which will declare the "proc innerInit ..." and the "template new ..."
-    let init_struct = nnkCall.newTree(
-        newIdentNode("init_struct"),
+    #The init_struct macro, which will declare the "proc struct_init_inner ..." and the "template new ..."
+    let struct_create_init_proc_and_template = nnkCall.newTree(
+        newIdentNode("struct_create_init_proc_and_template"),
         ptr_name
     )
     
     return quote do:
         `checkValidTypes`
         `final_stmt_list`
-        `init_struct`
+        `struct_create_init_proc_and_template`
 
-#Declare the "proc innerInit ..." and the "template new ...", doing all sorts of type checks
-macro init_struct*(ptr_struct_name : typed) : untyped =
+#Declare the "proc struct_init_inner ..." and the "template new ...", doing all sorts of type checks
+macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     let 
         ptr_struct_type = ptr_struct_name.getType()
         obj_struct_name = ptr_struct_type[1][1]
@@ -281,7 +281,7 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
 
         generics_proc_def    = nnkGenericParams.newTree() #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
-        proc_def             = nnkProcDef.newTree()      #the innerInit* proc
+        proc_def             = nnkProcDef.newTree()      #the struct_init_inner* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
         
@@ -290,11 +290,11 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
         template_body_call = nnkCall.newTree()
 
     #The name of the function with the asterisk, in case of supporting modules in the future
-    #proc innerInit
+    #proc struct_init_inner
     proc_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("innerInit")
+            newIdentNode("struct_init_inner")
         ),
         newEmptyNode()
     )
@@ -404,8 +404,8 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
         )
     )
 
-    #add innerInit func and ptr name to template's call statement (calling innerInit) using "obj_type"
-    template_body_call.add(newIdentNode("innerInit"))
+    #add struct_init_inner func and ptr name to template's call statement (calling struct_init_inner) using "obj_type"
+    template_body_call.add(newIdentNode("struct_init_inner"))
     template_body_call.add(newIdentNode("obj_type"))
 
     let struct_fields = obj_struct_type[2]
@@ -436,7 +436,7 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
         if not(field_is_struct):
             arg_field_value = newIntLitNode(0)
 
-        #Add to arg list for innerInit proc
+        #Add to arg list for struct_init_inner proc
         proc_formal_params.add(
             nnkIdentDefs.newTree(
                 field_name,
@@ -472,12 +472,12 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
                 )
             )
 
-        #Add the list of var names to the template's innerInit function call
+        #Add the list of var names to the template's struct_init_inner function call
         template_body_call.add(field_name)
 
-    # ============== #
-    # INNERINIT PROC #
-    # ============== #
+    # ====================== #
+    # STRUCT_INIT_INNER PROC #
+    # ====================== #
     
     #Add ugen_auto_mem : ptr OmniAutoMem as last argument
     proc_formal_params.add(
@@ -520,7 +520,7 @@ macro init_struct*(ptr_struct_name : typed) : untyped =
 
     #echo repr template_formal_params
 
-    #Add function ugen_auto_mem to template call (it's the last argument for the innerInit proc)
+    #Add function ugen_auto_mem to template call (it's the last argument for the struct_init_inner proc)
     template_body_call.add(newIdentNode("ugen_auto_mem"))
 
     #Add body (just call _inner proc, adding "ugen_auto_mem" at the end)
