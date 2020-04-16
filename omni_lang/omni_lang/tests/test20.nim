@@ -21,6 +21,12 @@ init:
     dataB = Data.new(10, dataType=B)
     c = C.new(dataB, B.new(A.new(Buffer.new(1), Data.new(10, dataType=Data[Buffer])), Buffer.new(1), Data.new(10, dataType=A)))
     
+    #c_let.b[..]
+    #           .data[..]
+    #                    .data[..][..]
+    #           .a
+    #             .data[..][..]
+
     #[ for i in (0..dataB.size-1):
         data = Data.new(10, dataType=Data[float])
         for y in (0..data.size-1):
