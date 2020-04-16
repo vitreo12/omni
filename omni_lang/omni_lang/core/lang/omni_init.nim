@@ -20,7 +20,140 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import macros, strutils, tables, omni_finder
+
+proc buildDataTableRecursive(final_data_table : var OrderedTable[string, string], full_data_paths : seq[string], full_data_datas_paths : seq[string]) {.compileTime.} =
+    for full_data_path in full_data_paths:
+        var temp_table : seq[string]
+
+        final_data_table.add(full_data_path, full_data_path)
+        
+        for full_data_datas_path in full_data_datas_paths:
+            var full_data_datas_path_var = full_data_datas_path
+            
+            let 
+                full_data_datas_path_split = full_data_datas_path.split('.')
+                full_data_datas_path_last_name = full_data_datas_path_split[full_data_datas_path_split.len-1]
+            
+            full_data_datas_path_var.removeSuffix("." & full_data_datas_path_last_name)
+            
+            echo full_data_datas_path_var
+
+            if full_data_datas_path == full_data_datas_path_var and full_data_datas_path != full_data_path:
+                final_data_table.add(full_data_path, full_data_datas_path)
+                temp_table.add(full_data_datas_path)
+            
+        #if temp_table.len > 0:
+        #    buildDataTableRecursive(final_data_table, temp_table, full_data_datas_paths)
+
+#This will create a checkDatasValidity proc that checks Datas validity, to be executed at end of init
+macro findDatasAndBuffersAndDeclareProcs*(ugen : typed) : untyped =
+    var 
+        full_data_paths : seq[string]
+        full_buffer_paths : seq[string]
+
+        full_data_datas_paths : seq[string]
+        full_buffer_datas_paths : seq[string]
+
+    findTwoStructRecursive(ugen, false, "Data", "Buffer", "ugen", full_data_paths, full_buffer_paths, full_data_datas_paths, full_buffer_datas_paths)
+    
+    result = nnkStmtList.newTree()
+
+   #[  echo full_data_paths
+    echo full_buffer_paths
+    echo full_data_datas_paths
+    echo full_buffer_datas_paths ]#
+
+    var final_data_table = initOrderedTable[string, string]()
+
+    buildDataTableRecursive(final_data_table, full_data_paths, full_data_datas_paths)
+
+    for index, entry in final_data_table:
+        echo (index, entry)
+
+    error("SHHSH")
+    
+    if full_data_paths.len > 0:
+        var checkDatasValidityProc = nnkProcDef.newTree(
+            newIdentNode("checkDatasValidity"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("bool"),
+                nnkIdentDefs.newTree(
+                    newIdentNode("ugen"),
+                    nnkPtrTy.newTree(
+                        newIdentNode("UGen")
+                    ),
+                    newEmptyNode()
+                ),
+            ),
+            newEmptyNode(),
+            newEmptyNode()
+        ) 
+
+        var proc_body = nnkStmtList.newTree(
+            nnkVarSection.newTree(
+                nnkIdentDefs.newTree(
+                    newIdentNode("valid_datas"),
+                    newIdentNode("bool"),
+                    newIdentNode("true")
+                )
+            )
+        )
+        
+        for full_data_path in full_data_paths:
+            let parsed_dot_syntax = parseExpr(full_data_path)
+            proc_body.add(
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkPar.newTree(
+                            nnkPrefix.newTree(
+                                newIdentNode("not"),
+                                nnkCall.newTree(
+                                    newIdentNode("checkDataValidity"),
+                                    parsed_dot_syntax
+                                )
+                            )
+                        ),
+                        nnkStmtList.newTree(
+                                nnkAsgn.newTree(
+                                newIdentNode("valid_datas"),
+                                newIdentNode("false")
+                            )
+                        )
+                    )
+                )
+            )
+        
+        checkDatasValidityProc.add(proc_body)
+        result.add(checkDatasValidityProc)
+
+    if full_buffer_paths.len > 0:
+        var getBuffersInPerformProc = nnkProcDef.newTree(
+            newIdentNode("getBuffersInPerform"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("bool"),
+                nnkIdentDefs.newTree(
+                    newIdentNode("ugen"),
+                    nnkPtrTy.newTree(
+                        newIdentNode("UGen")
+                    ),
+                    newEmptyNode()
+                ),
+            ),
+            newEmptyNode(),
+            newEmptyNode()
+        ) 
+
+        var proc_body = nnkStmtList.newTree()
+
+        getBuffersInPerformProc.add(proc_body)
+        result.add(getBuffersInPerformProc)
+        
+    echo repr result
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
 macro defineUGenDestructor*(obj : typed, var_names : untyped) =
@@ -75,12 +208,12 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
     )
     
     let is_initialized_if = nnkStmtList.newTree(
-        nnkIfStmt.newTree(
+        #[ nnkIfStmt.newTree(
             nnkElifBranch.newTree(
                 nnkDotExpr.newTree(
                     newIdentNode("ugen"),
                     newIdentNode("is_initialized_let")
-                ),
+                ), ]#
                 nnkCall.newTree(
                     newIdentNode("freeOmniAutoMem"),
                     nnkDotExpr.newTree(
@@ -88,8 +221,8 @@ macro defineUGenDestructor*(obj : typed, var_names : untyped) =
                         newIdentNode("ugen_auto_mem_let")
                     )
                 )
-            )
-        )
+        #[     )
+        ) ]#
     )
 
     proc_body.add(
@@ -434,6 +567,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
+        #Check if all entries in all Datas are valid
+        findDatasAndBuffersAndDeclareProcs(UGen)
+
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
             #allocation of "ugen" variable
@@ -449,11 +585,14 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
             return ugen_ptr
         
+        #Define Omni_UGenFree
+        defineUGenDestructor(UGen, `final_var_names`)
+        
         when defined(performBits32):
-            proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit32", dynlib.} =
+            proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
-                    return
+                    return 0
                 
                 let 
                     ugen             {.inject.} : ptr UGen     = cast[ptr UGen](ugen_ptr)     
@@ -467,7 +606,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                     print("ERROR: Omni: could not allocate auto_mem")
-                    return
+                    return 0
 
                 let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
 
@@ -483,21 +622,30 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #Check Datas validity
+                when declared(checkDatasValidity):
+                    if not checkDatasValidity(ugen):
+                        return 0
+
                 #Successful init
                 ugen.is_initialized_let = true
                 
-                return
+                return 1
 
             proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
                 let ugen_ptr = Omni_UGenAlloc()
-                Omni_UGenInit32(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in)
-                return ugen_ptr
+                if Omni_UGenInit32(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
+                    return ugen_ptr
+                else:
+                    if not isNil(ugen_ptr):
+                        Omni_UGenFree(ugen_ptr)
+                    return cast[pointer](nil)
 
         when defined(performBits64):
-            proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : void {.exportc: "Omni_UGenInit64", dynlib.} =
+            proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
-                    return
+                    return 0
 
                 let 
                     ugen             {.inject.} : ptr UGen      = cast[ptr UGen](ugen_ptr)     
@@ -511,7 +659,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                     print("ERROR: Omni: could not allocate auto_mem")
-                    return
+                    return 0
 
                 let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
         
@@ -527,30 +675,26 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #Check Datas validity
+                when declared(checkDatasValidity):
+                    if not checkDatasValidity(ugen):
+                        ugen.is_initialized_let = false
+                        return 0
+                    
                 #Successful init
                 ugen.is_initialized_let = true
                 
-                return
+                return 1
 
             proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
                 let ugen_ptr = Omni_UGenAlloc()
-                Omni_UGenInit64(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in)
-                return ugen_ptr
-
-        #Destructor
-        #[ proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree", dynlib.} =
-            let ugen_void_cast = cast[pointer](ugen)
-            if not ugen_void_cast.isNil():
-                omni_free(ugen_void_cast)  ]#    
-        
-        defineUGenDestructor(UGen, `final_var_names`)
-
-        #defineSetSamplerate()
-            
-
-#This generates:
-    #init_inner:
-        #PARSED code_block
+                if Omni_UGenInit64(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
+                    return ugen_ptr
+                else:
+                    if not isNil(ugen_ptr):
+                        Omni_UGenFree(ugen_ptr)
+                    return cast[pointer](nil)
+                
 macro init*(code_block : untyped) : untyped =
     return quote do:
         #Trick the compiler of the existence of these variables in order to parse the block.

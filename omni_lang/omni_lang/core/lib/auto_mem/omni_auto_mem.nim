@@ -94,9 +94,11 @@ proc removeChildren*(auto_mem : ptr OmniAutoMem) : void {.inline.} =
         return
 
     let num_allocs = auto_mem.num_allocs
-    for i in 0..(num_allocs-1):
-        auto_mem.removeChild(i)
+    if num_allocs > 0:
+        for i in 0..(num_allocs-1):
+            auto_mem.removeChild(i)
     
+    #Reset count
     auto_mem.num_allocs = 0
 
 proc freeOmniAutoMem*(auto_mem : ptr OmniAutoMem) : void {.inline.} =
