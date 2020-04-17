@@ -55,25 +55,27 @@ macro findDatasAndBuffersAndDeclareProcs*(ugen : typed) : untyped =
         full_data_datas_paths : seq[string]
         full_buffer_datas_paths : seq[string]
 
-    findTwoStructRecursive(ugen, false, "Data", "Buffer", "ugen", full_data_paths, full_buffer_paths, full_data_datas_paths, full_buffer_datas_paths)
+    findTwoStructRecursiveAA(ugen, false, "Data", "Buffer", "ugen", full_data_paths, full_buffer_paths)
+    
+    #[ findTwoStructRecursive(ugen, false, "Data", "Buffer", "ugen", full_data_paths, full_buffer_paths, full_data_datas_paths, full_buffer_datas_paths)
     
     result = nnkStmtList.newTree()
-
+ ]#
    #[  echo full_data_paths
     echo full_buffer_paths
     echo full_data_datas_paths
     echo full_buffer_datas_paths ]#
 
-    var final_data_table = initOrderedTable[string, string]()
+    #[ var final_data_table = initOrderedTable[string, string]()
 
     buildDataTableRecursive(final_data_table, full_data_paths, full_data_datas_paths)
 
     for index, entry in final_data_table:
         echo (index, entry)
 
-    error("SHHSH")
+    error("SHHSH") ]#
     
-    if full_data_paths.len > 0:
+    #[ if full_data_paths.len > 0:
         var checkDatasValidityProc = nnkProcDef.newTree(
             newIdentNode("checkDatasValidity"),
             newEmptyNode(),
@@ -153,7 +155,7 @@ macro findDatasAndBuffersAndDeclareProcs*(ugen : typed) : untyped =
         getBuffersInPerformProc.add(proc_body)
         result.add(getBuffersInPerformProc)
         
-    echo repr result
+    echo repr result ]#
 
 #All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
 macro defineUGenDestructor*(obj : typed, var_names : untyped) =
