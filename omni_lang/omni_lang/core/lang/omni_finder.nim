@@ -20,27 +20,55 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import macros, strutils
 
-proc findTwoStructRecursiveAA*(t : NimNode, is_t_a_variable : bool = true, struct1_to_find : string, struct2_to_find : string, original_object_name : string, full_structs1_path : var seq[string], full_structs2_path : var seq[string]) : void {.compileTime.} =
-    var type_def : NimNode
+macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
+    result = nnkStmtList.newTree()
 
-    #Some generic types
-    if t.kind == nnkIdent:
-        return
-    
-    #if t is a variable name, retrieve type from it. If it's already a type, get it's type implementation right away
-    if is_t_a_variable:
-        type_def = getTypeImpl(t)
+    let is_ugen_bool = is_ugen.boolVal()
+    var t_type : NimNode
+    if is_ugen_bool:
+        t_type = nnkPtrTy.newTree(newIdentNode("UGen"))
     else:
-        let type_impl = getImpl(t)
+        if t.kind != nnkIdent or t.kind != nnkSym:
+            error("Not a valid object type!")
+        t_type = newIdentNode(t.strVal())
+
+    var 
+        proc_def = nnkProcDef.newTree(
+            newIdentNode("checkDatasAndStructsValidity"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("bool"),
+                nnkIdentDefs.newTree(
+                    newIdentNode("obj"),
+                    t_type,
+                    newEmptyNode()
+                )
+            ),
+            nnkPragma.newTree(
+                newIdentNode("inline")
+            ),
+            newEmptyNode()
+        )
+        
+        proc_body = nnkStmtList.newTree()
+    
+    var type_def : NimNode
+    if is_ugen_bool:
+        let type_impl = t.getImpl()
         if type_impl.len < 2:
             return
         type_def = type_impl[2]
+    else:
+        let type_impl = t.getType()[1][1]
+        if type_impl.kind == nnkBracketExpr:
+            type_def = (type_impl[0]).getTypeImpl()
+        else:
+            type_def = type_impl.getTypeImpl()
     
     var actual_type_def : NimNode
-
-    #echo astGenRepr type_def
 
     #If it's a pointer, exctract
     if type_def.kind == nnkPtrTy:   
@@ -49,14 +77,13 @@ proc findTwoStructRecursiveAA*(t : NimNode, is_t_a_variable : bool = true, struc
             actual_type_def = getTypeImpl(type_def[0][0])
         else:
             actual_type_def = getTypeImpl(type_def[0])
-
     #Pass the definition through
     else:
         actual_type_def = type_def
 
     #If it's not an object type, abort the search.
     if actual_type_def.kind != nnkObjectTy:
-        return
+        error("Not a valid object type!")
 
     let rec_list = actual_type_def[2]
 
@@ -80,234 +107,274 @@ proc findTwoStructRecursiveAA*(t : NimNode, is_t_a_variable : bool = true, struc
         let var_name_kind = var_name.kind
 
         if var_name_kind != nnkIdent and var_name_kind != nnkSym:
-            return
-
-        let 
-            type_to_inspect_string = type_to_inspect.strVal()
-            interp_var_name = $original_object_name & "." & $(var_name.strVal())
-        
-        #Found the struct type we've been searching for!
-        if type_to_inspect_string == struct1_to_find or type_to_inspect_string == (struct1_to_find & "_obj"):
-            echo "Found struct: ", interp_var_name
-            full_structs1_path.add(interp_var_name)
-
-        #Found the struct type we've been searching for!
-        if type_to_inspect_string == struct2_to_find or type_to_inspect_string == (struct2_to_find & "_obj"):
-            echo "Found struct: ", interp_var_name
-            full_structs2_path.add(interp_var_name)
-        
-        #Run the function recursively. t is now a type for sure.
-        findTwoStructRecursiveAA(type_to_inspect, false, struct1_to_find, struct2_to_find, interp_var_name, full_structs1_path, full_structs2_path)
-
-
-
-
-proc findTwoStructRecursive*(t : NimNode, is_t_a_variable : bool = true, struct1_to_find : string, struct2_to_find : string, original_object_name : string, full_structs1_path : var seq[string], full_structs2_path : var seq[string], full_data_datas_paths : var seq[string], full_buffer_datas_paths : var seq[string], is_data : bool = false) : void {.compileTime.} =
-    var type_def : NimNode
-
-    #Some generic types
-    if t.kind == nnkIdent:
-        return
-    
-    if t.kind != nnkSym:
-        return
-
-    #if t is a variable name, retrieve type from it. If it's already a type, get it's type implementation right away
-    if is_t_a_variable:
-        type_def = getTypeImpl(t)
-    else:
-        let type_impl = getImpl(t)
-        if type_impl.len < 2:
-            return
-        type_def = type_impl[2]
-    
-    var actual_type_def : NimNode
-
-    #echo astGenRepr type_def
-
-    #If it's a pointer, exctract
-    if type_def.kind == nnkPtrTy:   
-        #if generic
-        if type_def[0].kind == nnkBracketExpr:
-            actual_type_def = getTypeImpl(type_def[0][0])
-        else:
-            actual_type_def = getTypeImpl(type_def[0])
-
-    #Pass the definition through
-    else:
-        actual_type_def = type_def
-
-    #If it's not an object type, abort the search.
-    if actual_type_def.kind != nnkObjectTy:
-        return
-
-    let rec_list = actual_type_def[2]
-
-    for ident_defs in rec_list:
-        var
-            var_name = ident_defs[0]
-            var_type = ident_defs[1]
-        
-        var 
-            type_to_inspect : NimNode
-            type_to_inspect_string : string
-            interp_var_name : string
-
-        #if ptr
-        if var_type.kind == nnkPtrTy:
-            var_type = var_type[0]
-        
-        #if generic
-        if var_type.kind == nnkBracketExpr:
-            type_to_inspect = var_type[0]
-            type_to_inspect_string = type_to_inspect.strVal()
-            let generic_type = var_type[1]
-            interp_var_name = $original_object_name & "." & $(var_name.strVal())
-            if type_to_inspect_string == "Data_obj" or type_to_inspect_string == "Data":
-                findTwoStructRecursive(generic_type, false, struct1_to_find, struct2_to_find, interp_var_name, full_data_datas_paths, full_buffer_datas_paths, full_data_datas_paths, full_buffer_datas_paths, true)
-        else:
-            type_to_inspect = var_type
-        
-        let var_name_kind = var_name.kind
-
-        if var_name_kind != nnkIdent and var_name_kind != nnkSym:
-            return
-
-        type_to_inspect_string = type_to_inspect.strVal()
-        interp_var_name = $original_object_name & "." & $(var_name.strVal())
-    
-        #Found the struct type we've been searching for!
-        if type_to_inspect_string == struct1_to_find or type_to_inspect_string == (struct1_to_find & "_obj"):
-            #if is_data:
-            #    full_structs1_path.add(original_object_name)
-            full_structs1_path.add(interp_var_name)
-
-        #Found the struct type we've been searching for!
-        if type_to_inspect_string == struct2_to_find or type_to_inspect_string == (struct2_to_find & "_obj"):
-            #if is_data:
-            #    full_structs2_path.add(original_object_name)
-            full_structs2_path.add(interp_var_name)
-        
-        #Run the function recursively. t is now a type for sure.
-        findTwoStructRecursive(type_to_inspect, false, struct1_to_find, struct2_to_find, interp_var_name, full_structs1_path, full_structs2_path, full_data_datas_paths, full_buffer_datas_paths)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-proc findStructRecursive*(t : NimNode, is_t_a_variable : bool = true, struct_to_find : string, original_object_name : string, full_structs_path : var seq[string]) : void {.compileTime.} =
-    var type_def : NimNode
-
-    #Some generic types
-    if t.kind == nnkIdent:
-        return
-    
-    #if t is a variable name, retrieve type from it. If it's already a type, get it's type implementation right away
-    if is_t_a_variable:
-        type_def = getTypeImpl(t)
-    else:
-        let type_impl = getImpl(t)
-        if type_impl.len < 2:
-            return
-        type_def = type_impl[2]
-    
-    var actual_type_def : NimNode
-
-    #If it's a pointer, exctract
-    if type_def.kind == nnkPtrTy:
-        
-        #if generic
-        if type_def[0].kind == nnkBracketExpr:
-            actual_type_def = getTypeImpl(type_def[0][0])
-        else:
-            actual_type_def = getTypeImpl(type_def[0])
-
-    #Pass the definition through
-    else:
-        actual_type_def = type_def
-
-    #If it's not an object type, abort the search.
-    if actual_type_def.kind != nnkObjectTy:
-        return
-
-    let rec_list = actual_type_def[2]
-
-    for ident_defs in rec_list:
-        var
-            var_name = ident_defs[0]
-            var_type = ident_defs[1]
-        
-        var type_to_inspect : NimNode
-
-        #if ptr
-        if var_type.kind == nnkPtrTy:
-            var_type = var_type[0]
-        
-        #if generic
-        if var_type.kind == nnkBracketExpr:
-            type_to_inspect = var_type[0]
-        else:
-            type_to_inspect = var_type
-        
-        let var_name_kind = var_name.kind
-
-        if var_name_kind != nnkIdent and var_name_kind != nnkSym:
-            return
-
-        let 
-            type_to_inspect_string = type_to_inspect.strVal()
-            interp_var_name = $original_object_name & "." & $(var_name.strVal())
-        
-        #Found the struct type we've been searching for!
-        if type_to_inspect_string == struct_to_find or type_to_inspect_string == (struct_to_find & "_obj"):
-            echo "Found struct: ", interp_var_name
-            full_structs_path.add(interp_var_name)
-        
-        #Run the function recursively. t is now a type for sure.
-        findStructRecursive(type_to_inspect, false, struct_to_find, interp_var_name, full_structs_path)
+            continue
+
+        let type_to_inspect_string = type_to_inspect.strVal()
+
+        let var_name_ident = newIdentNode(var_name.strVal())
+
+        #Found a data
+        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_obj":
+            if var_type.kind != nnkBracketExpr:
+                continue
+
+            #Add the data itself first
+            proc_body.add(
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkPrefix.newTree(
+                            newIdentNode("not"),
+                            nnkCall.newTree(
+                                newIdentNode("checkDataValidity"),
+                                nnkDotExpr.newTree(
+                                    newIdentNode("obj"),
+                                    var_name_ident
+                                )
+                            )
+                        ),
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                                newIdentNode("false")
+                            )
+                        )
+                    )
+                )
+            )
+
+            #Check if it's a Data[Data[Data[...]]]
+            var interim_type = var_type
+
+            var 
+                final_stmt = nnkStmtList.newTree()
+                previous_loop_stmt : NimNode
+                previous_body_stmt : NimNode
+                prev_index_ident : NimNode
+                prev_index_entry : NimNode
+            
+            var 
+                counter = 0
+                max_count = 10000
+
+            while(true):
+                var 
+                    data_content = interim_type[1]
+                    type_name : NimNode
+                    is_data = false
+
+                if data_content.kind == nnkBracketExpr:
+                    type_name = data_content[0]
+                    if type_name.strVal() == "Data" or type_name.strVal() == "Data_obj":
+                        is_data = true
+                        interim_type = data_content        
+                else:
+                    break
+
+                let 
+                    index_ident = newIdentNode("i" & $counter)
+                    index_entry = newIdentNode("entry" & $counter)
+
+                #If it hits a Data, add "checkDataValidity"
+                if is_data:
+                    if counter == 0:
+                        let data_name = nnkDotExpr.newTree(
+                            newIdentNode("obj"),
+                            var_name
+                        )
+
+                        previous_body_stmt = nnkStmtList.newTree(
+                            nnkLetSection.newTree(
+                                nnkIdentDefs.newTree(
+                                    index_entry,
+                                    newEmptyNode(),
+                                    nnkBracketExpr.newTree(
+                                        data_name,
+                                        index_ident
+                                    )
+                                )
+                            ),
+                            nnkIfStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    nnkPrefix.newTree(
+                                        newIdentNode("not"),
+                                        nnkCall.newTree(
+                                            newIdentNode("checkDataValidity"),
+                                            index_entry
+                                        )
+                                    ),
+                                    nnkStmtList.newTree(
+                                        nnkReturnStmt.newTree(
+                                            newIdentNode("false")
+                                        )
+                                    )
+                                )
+                            )
+                        )
+
+                        previous_loop_stmt = nnkForStmt.newTree(
+                            index_ident,
+                            nnkInfix.newTree(
+                                newIdentNode(".."),
+                                newLit(0),
+                                nnkPar.newTree(
+                                    nnkInfix.newTree(
+                                        newIdentNode("-"),
+                                        nnkCall.newTree(
+                                            newIdentNode("size"),
+                                            data_name
+                                        ),
+                                        newLit(1)
+                                    )
+                                )
+                            ),
+                            previous_body_stmt
+                        )
+
+                    else:
+                        previous_body_stmt.add(
+                            nnkForStmt.newTree(
+                                index_ident,
+                                nnkInfix.newTree(
+                                    newIdentNode(".."),
+                                    newLit(0),
+                                    nnkPar.newTree(
+                                        nnkInfix.newTree(
+                                            newIdentNode("-"),
+                                            nnkCall.newTree(
+                                                newIdentNode("size"),
+                                                prev_index_entry
+                                            ),
+                                            newLit(1)
+                                        )
+                                    )
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkLetSection.newTree(
+                                        nnkIdentDefs.newTree(
+                                            index_entry,
+                                            newEmptyNode(),
+                                            nnkBracketExpr.newTree(
+                                                prev_index_entry,
+                                                index_ident
+                                            )
+                                        )
+                                    ),
+                                    nnkIfStmt.newTree(
+                                        nnkElifBranch.newTree(
+                                            nnkPrefix.newTree(
+                                                newIdentNode("not"),
+                                                nnkCall.newTree(
+                                                    newIdentNode("checkDataValidity"),
+                                                    index_entry
+                                                )
+                                            ),
+                                            nnkStmtList.newTree(
+                                                nnkReturnStmt.newTree(
+                                                    newIdentNode("false")
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                        
+                        #Update
+                        previous_body_stmt = previous_body_stmt[2][2]
+
+                    prev_index_ident = index_ident
+                    prev_index_entry = index_entry
+                    
+                #If it hits a struct add "checkDatasAndStructsValidity" and exit the loop
+                else:
+                    previous_body_stmt.add(
+                        nnkForStmt.newTree(
+                            index_ident,
+                            nnkInfix.newTree(
+                                newIdentNode(".."),
+                                newLit(0),
+                                nnkPar.newTree(
+                                    nnkInfix.newTree(
+                                        newIdentNode("-"),
+                                        nnkCall.newTree(
+                                            newIdentNode("size"),
+                                            prev_index_entry
+                                        ),
+                                        newLit(1)
+                                    )
+                                )
+                            ),
+                            nnkStmtList.newTree(
+                                nnkLetSection.newTree(
+                                    nnkIdentDefs.newTree(
+                                        index_entry,
+                                        newEmptyNode(),
+                                        nnkBracketExpr.newTree(
+                                            prev_index_entry,
+                                            index_ident
+                                        )
+                                    )
+                                ),
+                                nnkIfStmt.newTree(
+                                    nnkElifBranch.newTree(
+                                        nnkPrefix.newTree(
+                                            newIdentNode("not"),
+                                            nnkCall.newTree(
+                                                newIdentNode("checkDatasAndStructsValidity"),
+                                                index_entry
+                                            )
+                                        ),
+                                        nnkStmtList.newTree(
+                                            nnkReturnStmt.newTree(
+                                                newIdentNode("false")
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                    
+                    #Exit loop!
+                    break
+                
+                #Increat index counter
+                counter += 1
+                if counter >= max_count:
+                    error("Infinite type inference loop")
+            
+            #Add the thingy to result
+            if previous_loop_stmt != nil:
+                proc_body.add(previous_loop_stmt)
+
+        #Found a struct
+        elif type_to_inspect_string.endsWith("_obj"):
+            proc_body.add(
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkPrefix.newTree(
+                            newIdentNode("not"),
+                            nnkCall.newTree(
+                                newIdentNode("checkDatasAndStructsValidity"),
+                                nnkDotExpr.newTree(
+                                    newIdentNode("obj"),
+                                    var_name_ident
+                                )
+                            )
+                        ),
+                        nnkStmtList.newTree(
+                            nnkReturnStmt.newTree(
+                                newIdentNode("false")
+                            )
+                        )
+                    )
+                )
+            )
+
+    #Add all the stuff to the result
+    proc_body.add(
+        nnkReturnStmt.newTree(
+            newIdentNode("true")
+        )
+    )
+    proc_def.add(proc_body)
+    result.add(proc_def)

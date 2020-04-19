@@ -258,11 +258,17 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         newIdentNode("struct_create_init_proc_and_template"),
         ptr_name
     )
+
+    let findDatasAndStructs = nnkCall.newTree(
+        newIdentNode("findDatasAndStructs"),
+        ptr_name
+    )
     
     return quote do:
         `checkValidTypes`
         `final_stmt_list`
         `struct_create_init_proc_and_template`
+        `findDatasAndStructs`
 
 #Declare the "proc struct_init_inner ..." and the "template new ...", doing all sorts of type checks
 macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =

@@ -174,7 +174,7 @@ proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : 
         elif T is Y:
             data.data[actual_index] = x
         else:
-            {.fatal: "Invalid dataType for Data's setter function".}
+            {.fatal: "\'" & $T & "\': invalid dataType for Data's setter function".}
 
 #1 channel     
 proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
