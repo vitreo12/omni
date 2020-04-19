@@ -7,11 +7,11 @@ expandMacros:
         increment Y
         data Data[T]
 
-    def newDelay(len int) Delay[float, int]:
+    def newDelay(len int):
         delay_length = nextPowerOfTwo(len)
         data  = Data.new(delay_length)
         mask  = delay_length - 1
-        return Delay[float, int].new(mask, 0, data)
+        return Delay.new(mask, 0, data)
         
     def read[T, Y](delay Delay[T, Y], delay_time float):
         index = (delay.increment - int(delay_time)) and delay.mask

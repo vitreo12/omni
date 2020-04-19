@@ -47,7 +47,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
+proc struct_init_inner*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
@@ -89,7 +89,7 @@ proc innerInit*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size
     result.size_X_chans = size_X_chans
 
 template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    innerInit(Data, size, chans, dataType, ugen_auto_mem)   
+    struct_init_inner(Data, size, chans, dataType, ugen_auto_mem)   
 
 ##########
 # GETTER #
@@ -126,9 +126,10 @@ proc read*[I : SomeNumber; T](data : Data[T], index : I) : float {.inline.} =
         return 0.0
 
     let 
-        index1 : int = int(index) mod data_len
+        index_int = int(index)
+        index1 : int = index_int mod data_len
         index2 : int = (index1 + 1) mod data_len
-        frac : float = float(index) - float(index1)
+        frac : float = float(index) - float(index_int)
     
     return linear_interp(frac, data.getter(0, index1), data.getter(0, index2))
 
@@ -141,9 +142,10 @@ proc read*[I1 : SomeNumber, I2 : SomeNumber; T](data : Data[T], chan : I1, index
     
     let
         chan_int = int(chan)
-        index1 : int = int(index) mod data_len
+        index_int = int(index)
+        index1 : int = index_int mod data_len
         index2 : int = (index1 + 1) mod data_len
-        frac : float = float(index) - float(index1)
+        frac : float = float(index) - float(index_int)
     
     return linear_interp(frac, data.getter(chan_int, index1), data.getter(chan_int, index2))
 

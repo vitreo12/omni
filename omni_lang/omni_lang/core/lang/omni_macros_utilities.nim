@@ -20,14 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-type
-    signal*        = float
-    signal64*      = float64
-    signal32*      = float32
-    sig*           = float
-    sig64*         = float64
-    sig32*         = float32
-    CFloatPtr*     = ptr UncheckedArray[cfloat]       #float*
-    CFloatPtrPtr*  = ptr UncheckedArray[CFloatPtr]    #float**
-    CDoublePtr*    = ptr UncheckedArray[cdouble]      #double*
-    CDoublePtrPtr* = ptr UncheckedArray[CDoublePtr]   #double**
+import macros
+
+proc typedToUntyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
+    return parseStmt(code_block.repr())

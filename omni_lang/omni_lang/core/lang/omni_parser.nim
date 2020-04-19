@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 #remove tables here and move isStrUpperAscii (and strutils) to another module
-import macros, tables, strutils, omni_type_checker
+import macros, tables, strutils, omni_type_checker, omni_macros_utilities
 
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
@@ -90,7 +90,6 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             if statement_kind == nnkVarSection or statement_kind == nnkLetSection:
                 for var_decl in statement.children():
                     let var_name = var_decl[0].strVal()
-                    
                     variable_names_table[var_name] = var_name
 
             #Look for "build:" statement. If there are any, it's an error. Only at last position there should be one.
@@ -99,8 +98,20 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     let statement_first = statement[0]
                     if statement_first.kind == nnkIdent or statement_first.kind == nnkSym:
                         if statement_first.strVal() == "build":
-                           error "init: the \"build\" call, if used, must only be one and at the last position of the \"init\" block."
+                           error "init: the \'build\' call, if used, must only be one and at the last position of the \'init\' block."
 
+            #a (no types, defaults to float)
+            #[ 
+            if statement_kind == nnkIdent:
+                code_block[index] = nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                        statement,
+                        newIdentNode("float"),
+                        newEmptyNode()
+                    )
+                )  
+            ]#
+           
             #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
             if statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
 
@@ -151,8 +162,8 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 let var_name = var_ident.strVal
 
                 #If already there is an entry, skip. Keep the first found one.
-                if variable_names_table.hasKey(var_name):
-                    continue
+                #if variable_names_table.hasKey(var_name):
+                #    continue
                 
                 #And modify source code with the ident node
                 var new_var_statement : NimNode
@@ -214,7 +225,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                                         nnkPragma.newTree(
                                             nnkExprColonExpr.newTree(
                                                 newIdentNode("fatal"),
-                                                newLit("can't re-define variable \"" & $var_name & "\". It's already been defined.")
+                                                newLit("can't re-define variable \'" & $var_name & "\'. It's already been defined.")
                                             )
                                         )
                                     )
@@ -227,9 +238,8 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     
                     let default_value = var_misc
 
-                    #Ignore out1, out2, etc... so that it throws error if not defined!
+                    #Prevent the user from defining out1, out2... etc...
                     var is_out_variable = false
-
                     if(var_name.startsWith("out")):
                         #out1 / out10
                         if var_name.len == 4:
@@ -238,10 +248,9 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                         elif var_name.len == 5:
                             if var_name[3].isDigit and var_name[4].isDigit:
                                 is_out_variable = true
-
-                    #Ignore out1, out2, etc...
+                    
+                    #not an out1, out2..etc..
                     if not is_out_variable:
-                        
                         #var a = 0.0
                         new_var_statement = nnkVarSection.newTree(
                             nnkIdentDefs.newTree(
@@ -251,14 +260,18 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                             )
                         )
 
-                        #This is needed to avoid renaming stuff that already is templates, etc...
+                        let
+                            var_name_assignment = new_var_statement[0][0]
+                            var_assign = new_var_statement[0][2]
+
+                        #This is needed to avoid renaming stuff that already had been defined in a previous variable, templates, etc...
                         #[
                             when declared("phase").not:
                                 var phase = ...
                             else:
-                                phase = ...
+                                phase = typeof(phase)(...)
                         ]#
-                        #if is_perform_block:
+                    
                         new_var_statement = nnkStmtList.newTree(
                             nnkWhenStmt.newTree(
                                 nnkElifBranch.newTree(
@@ -276,13 +289,35 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                                 nnkElse.newTree(
                                     nnkStmtList.newTree(
                                         nnkAsgn.newTree(
-                                            new_var_statement[0][0],
-                                            new_var_statement[0][2]
+                                            var_name_assignment,
+                                            nnkCall.newTree(
+                                                nnkCall.newTree(
+                                                    newIdentNode("typeof"),
+                                                    var_name_assignment
+                                                ),
+                                                var_assign
+                                            )
                                         )
                                     )
                                 )
                             )
                         )
+
+                    #out1 = ... (ONLY in perform / sample blocks)
+                    else:
+                        if is_perform_block:
+                            let out_var = newIdentNode(var_name)
+                            new_var_statement = nnkAsgn.newTree(
+                                out_var,
+                                nnkCall.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("typeof"),
+                                        out_var
+                                    ),
+                                    default_value
+                                )
+                            )
+
 
                 #Add var decl to code_block only if something actually has been assigned to it
                 #If using a template (like out1 in sample), new_var_statement would be nil here
@@ -298,7 +333,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             #echo repr code_block
 
             #Run the function recursively
-            parse_block_recursively_for_variables(statement, variable_names_table, is_perform_block)
+            parse_block_recursively_for_variables(statement, variable_names_table, is_constructor_block, is_perform_block)
     
     #Reset at end of chain
     #[ else:
@@ -345,7 +380,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
             
         #couldn't find sample block IN perform block
         if found_sample_block.not:
-            error "perform: no \"sample\" block provided, or not at top level."
+            error "perform: no \'sample\' block provided, or not at top level."
         
     
     #Remove new statement from the block before all syntactic analysis.
@@ -567,34 +602,30 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                 #Replace the entry in the untyped block, which has yet to be semantically evaluated.
                 typed_code_block[index] = new_let_statement
 
-            #Look for ptr types
+            #Look for ptr types, structs
             if var_type.kind == nnkPtrTy:
-                
-                var type_name = var_type[0]
-
-                #generics, extract the name from bracket
-                if type_name.kind == nnkBracketExpr:
-                    type_name = type_name[0]
-
-                let type_name_str = type_name.strVal
-                
                 #Found a struct!
-                if type_name_str[len(type_name_str) - 4..type_name_str.high] == "_obj":
+                if var_type.isStruct():
+                    let old_statement_body = typed_code_block[index][0]
 
+                    #Detect if it's a non-initialized struct variable (e.g "data Data[float]")
+                    if old_statement_body.len == 3:
+                        if old_statement_body[2].kind == nnkEmpty:
+                            let error_var_name = old_statement_body[0]
+                            error("\'" & $error_var_name & "\': structs must be instantiated on declaration.")
+                            
                     #In perform, allow assignment to already allocated ones, but not creation of new ones (or calling functions that return structs, generally)
                     #This is allowed: a = data  (if data was already allocated in constructor)
                     #This is allowed: a = b.data (if b was already allocated in constructor)
-                    #This is not allowed a = Data.init(100)
+                    #This is not allowed a = Data.new(100)
                     if is_perform_block:
                         let equals_statement_kind = typed_statement[0][2].kind
                         
                         #If not a symbol/ident or a dotexpr, it probably is a function call. Abort!
                         if equals_statement_kind != nnkSym and equals_statement_kind != nnkIdent and equals_statement_kind != nnkDotExpr:
-                            error "\"" & $var_symbol.strVal() & "\": structs cannot be allocated in the \"perform\" and \"sample\" blocks."
+                            error "\'" & $var_symbol.strVal() & "\': structs cannot be allocated in the \'perform\' or \'sample\' blocks."
 
-                    let old_statement_body = typed_code_block[index][0]
-
-                    #Create new let statement
+                    #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
                         old_statement_body
                     )
@@ -630,7 +661,7 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
     #Basically, what's needed is to turn all newSymNode into newIdentNode.
     #Sym are already semantically checked, Idents are not...
     #Maybe just replace Syms with Idents instead? It would be much safer than this...
-    result = parseStmt(inner_block.repr())
+    result = typedToUntyped(inner_block)
 
     #echo repr result
 
