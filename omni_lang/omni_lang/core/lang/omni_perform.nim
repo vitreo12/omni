@@ -164,7 +164,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                 else:
                     findBuffersRecursive(ptr_type, var_name_string_with_ugen, full_buffers_path)
 
-            for full_buffer_path in full_buffers_path:
+            #[ for full_buffer_path in full_buffers_path:
                 #expand the string like "ugen.myVariable_let.myBuffer" to a parsed dot syntax.
                 let parsed_dot_syntax = parseExpr(full_buffer_path)
 
@@ -226,7 +226,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                     )
 
                     multithread_unlock_buffers_body.add(new_unlock_buffer)
-
+ ]#
         #Variables with in-built types. They return nnkNilLit
         elif var_desc_type_def.kind == nnkNilLit:
             #var variables

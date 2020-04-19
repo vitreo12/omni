@@ -20,23 +20,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils
+import macros, strutils, omni_type_checker
 
 macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
     let is_ugen_bool = is_ugen.boolVal()
     var t_type : NimNode
+    
     if is_ugen_bool:
         t_type = nnkPtrTy.newTree(newIdentNode("UGen"))
+                
     else:
-        if t.kind != nnkIdent or t.kind != nnkSym:
+        if t.kind != nnkIdent and t.kind != nnkSym:
             error("Not a valid object type!")
         t_type = newIdentNode(t.strVal())
 
     var 
         proc_def = nnkProcDef.newTree(
-            newIdentNode("checkDatasAndStructsValidity"),
+            newIdentNode("checkValidity"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -44,6 +46,13 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                 nnkIdentDefs.newTree(
                     newIdentNode("obj"),
                     t_type,
+                    newEmptyNode()
+                ),
+                nnkIdentDefs.newTree(
+                    newIdentNode("ugen_auto_buffer"),
+                    nnkPtrTy.newTree(
+                        newIdentNode("OmniAutoMem")
+                    ),
                     newEmptyNode()
                 )
             ),
@@ -158,16 +167,29 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
             while(true):
                 var 
                     data_content = interim_type[1]
+                    data_content_kind = data_content.kind
                     type_name : NimNode
                     is_data = false
+                    is_struct = false
 
-                if data_content.kind == nnkBracketExpr:
+                
+                if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
-                    if type_name.strVal() == "Data" or type_name.strVal() == "Data_obj":
+                    let type_name_str = type_name.strVal()
+                    if type_name_str == "Data" or type_name_str == "Data_obj":
                         is_data = true
-                        interim_type = data_content        
+                        interim_type = data_content    
+                elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
+                    #Check for structs, otherwise, get out!
+                    if not isStruct(data_content):
+                        break
                 else:
                     break
+
+                let data_name = nnkDotExpr.newTree(
+                    newIdentNode("obj"),
+                    var_name
+                )
 
                 let 
                     index_ident = newIdentNode("i" & $counter)
@@ -176,11 +198,6 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                 #If it hits a Data, add "checkDataValidity"
                 if is_data:
                     if counter == 0:
-                        let data_name = nnkDotExpr.newTree(
-                            newIdentNode("obj"),
-                            var_name
-                        )
-
                         previous_body_stmt = nnkStmtList.newTree(
                             nnkLetSection.newTree(
                                 nnkIdentDefs.newTree(
@@ -283,9 +300,15 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
 
                     prev_index_ident = index_ident
                     prev_index_entry = index_entry
-                    
-                #If it hits a struct add "checkDatasAndStructsValidity" and exit the loop
+
+                #If it hits a struct add "checkValidity" and exit the loop
                 else:
+                    if previous_body_stmt == nil:
+                        prev_index_entry = data_name
+                        prev_index_ident = index_ident
+                        previous_body_stmt = nnkStmtList.newTree()
+                        previous_loop_stmt = nnkStmtList.newTree(previous_body_stmt)
+
                     previous_body_stmt.add(
                         nnkForStmt.newTree(
                             index_ident,
@@ -319,8 +342,9 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                                         nnkPrefix.newTree(
                                             newIdentNode("not"),
                                             nnkCall.newTree(
-                                                newIdentNode("checkDatasAndStructsValidity"),
-                                                index_entry
+                                                newIdentNode("checkValidity"),
+                                                index_entry,
+                                                newIdentNode("ugen_auto_buffer")
                                             )
                                         ),
                                         nnkStmtList.newTree(
@@ -354,11 +378,12 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                         nnkPrefix.newTree(
                             newIdentNode("not"),
                             nnkCall.newTree(
-                                newIdentNode("checkDatasAndStructsValidity"),
+                                newIdentNode("checkValidity"),
                                 nnkDotExpr.newTree(
                                     newIdentNode("obj"),
                                     var_name_ident
-                                )
+                                ),
+                                newIdentNode("ugen_auto_buffer")
                             )
                         ),
                         nnkStmtList.newTree(

@@ -23,7 +23,7 @@
 import ../alloc/omni_alloc
 import ../print/omni_print
 
-const OmniAutoMemSize = 100
+const OmniAutoMemSize = 50
 
 type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**
@@ -58,7 +58,7 @@ proc registerChild*(auto_mem : ptr OmniAutoMem, child : pointer) : void {.inline
         return
 
     #Increment after assignment (so it starts at 0, and realloc will happen when last allocation in the array is reached)
-    #omni_print_debug("OmniAutoMem: registering child: ", culong(cast[uint](child)))
+    omni_print_debug("OmniAutoMem: registering child: ", culong(cast[uint](child)))
     auto_mem.allocs[auto_mem.num_allocs] = child
     auto_mem.num_allocs += 1
 
@@ -81,7 +81,7 @@ proc removeChild*[T : SomeInteger](auto_mem : ptr OmniAutoMem, index : T) : void
     if isNil(child):
         return
 
-    #omni_print_debug("OmniAutoMem: deleting child: ", culong(cast[uint](child)))
+    omni_print_debug("OmniAutoMem: deleting child: ", culong(cast[uint](child)))
     omni_free(child)
     auto_mem.allocs[index] = cast[pointer](nil) #reset previus entry with nil ptr
     auto_mem.num_allocs -= 1
@@ -101,13 +101,15 @@ proc removeChildren*(auto_mem : ptr OmniAutoMem) : void {.inline.} =
     #Reset count
     auto_mem.num_allocs = 0
 
-proc freeOmniAutoMem*(auto_mem : ptr OmniAutoMem) : void {.inline.} =
+proc freeOmniAutoMem*(auto_mem : ptr OmniAutoMem, free_children : bool = true) : void {.inline.} =
     if isNil(auto_mem):
         return
 
     if isNil(auto_mem.allocs):
         return
 
-    auto_mem.removeChildren()
+    if free_children:
+        auto_mem.removeChildren()
+    
     omni_free(cast[pointer](auto_mem.allocs))
     omni_free(cast[pointer](auto_mem))
