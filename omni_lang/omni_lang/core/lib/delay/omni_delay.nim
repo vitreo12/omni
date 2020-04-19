@@ -58,7 +58,7 @@ proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = u
 template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
     struct_init_inner(Delay, size, dataType, ugen_auto_mem)
 
-proc checkValidity*(obj : Delay) : bool =
+proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
     return true
 
 #Read proc

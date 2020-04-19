@@ -29,8 +29,8 @@ type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**
 
     OmniAutoMem* = object
-        num_allocs : int
-        allocs     : C_void_ptr_ptr 
+        num_allocs* : int
+        allocs*     : C_void_ptr_ptr 
 
 proc allocInitOmniAutoMem*() : ptr OmniAutoMem {.inline.} =
     let auto_mem_ptr = omni_alloc0(culong(sizeof(OmniAutoMemSize))) 
