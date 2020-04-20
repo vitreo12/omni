@@ -26,7 +26,7 @@ import ../auto_mem/omni_auto_mem
 import ../math/omni_math
 
 type
-    Delay_obj[T] = object
+    Delay_obj*[T] = object
         mask  : int
         phase : int
         data  : Data[T]
