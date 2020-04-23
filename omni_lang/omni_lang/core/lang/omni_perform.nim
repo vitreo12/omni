@@ -153,7 +153,7 @@ template performInner*(code_block : untyped) {.dirty.} =
                 for i in (0..allocated_buffers123456789-1):
                     let buffer_to_get_123456789 = cast[Buffer](ugen_auto_buffer.allocs[i])
                     if not get_buffer(buffer_to_get_123456789, ins_Nim[buffer_to_get_123456789.input_num][0]):
-                        print("ERROR: Omni: failed to get_buffer.")
+                        #print("ERROR: Omni: failed to get_buffer.")
                         for audio_channel in (0..omni_outputs-1):
                             for audio_index in (0..bufsize-1):
                                 outs_Nim[audio_channel][audio_index] = 0.0

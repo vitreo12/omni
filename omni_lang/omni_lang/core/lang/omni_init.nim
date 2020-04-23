@@ -22,105 +22,6 @@
 
 import macros, tables
 
-#All the other things needed to create the proc destructor are passed in as untyped directly from the return statement of "struct"
-macro defineUGenDestructor*(obj : typed, var_names : untyped) =
-    var 
-        final_stmt    = nnkStmtList.newTree()
-        proc_def      : NimNode
-        proc_body     = nnkStmtList.newTree()
-
-    #Full proc definition for Omni_UGenFree. The result is: proc Omni_UGenFree*(ugen : ptr UGen) : void {.exportc: "Omni_UGenFree", dynlib.} 
-    proc_def = nnkProcDef.newTree(
-        nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("Omni_UGenFree")
-        ),
-        newEmptyNode(),
-        newEmptyNode(),
-        nnkFormalParams.newTree(
-            newIdentNode("void"),
-            nnkIdentDefs.newTree(
-                newIdentNode("ugen_ptr"),
-                newIdentNode("pointer"),
-                newEmptyNode()
-            )
-        ),
-        nnkPragma.newTree(
-            nnkExprColonExpr.newTree(
-                newIdentNode("exportc"),
-                newLit("Omni_UGenFree")
-            ),
-            newIdentNode("dynlib")
-        ),
-        newEmptyNode()
-    )
-
-    proc_body.add(
-        nnkCommand.newTree(
-            newIdentNode("print"),
-            newLit("\nCalling UGen\'s destructor")
-        ),
-        nnkLetSection.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("ugen"),
-                newEmptyNode(),
-                nnkCast.newTree(
-                    nnkPtrTy.newTree(
-                        newIdentNode("UGen")
-                    ),
-                    newIdentNode("ugen_ptr")
-                )
-            )
-        )  
-    )
-    
-    let is_initialized_if = nnkStmtList.newTree(
-        nnkCall.newTree(
-            newIdentNode("freeOmniAutoMem"),
-            nnkDotExpr.newTree(
-                newIdentNode("ugen"),
-                newIdentNode("ugen_auto_mem_let")
-            )
-        ),
-        nnkCall.newTree(
-            newIdentNode("freeOmniAutoMem"),
-            nnkDotExpr.newTree(
-                newIdentNode("ugen"),
-                newIdentNode("ugen_auto_buffer_let")
-            ),
-            newIdentNode("false")
-        )
-    )
-
-    proc_body.add(
-        nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-                nnkPrefix.newTree(
-                    newIdentNode("not"),
-                    nnkCall.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("ugen_ptr"),
-                            newIdentNode("isNil")
-                        )
-                    )
-                ),
-                nnkStmtList.newTree(
-                    is_initialized_if,
-                    nnkCall.newTree(
-                        newIdentNode("omni_free"),
-                        newIdentNode("ugen_ptr")
-                    )
-                )
-            )
-        )
-    )
-
-    proc_def.add(proc_body)
-
-    final_stmt.add(proc_def)
-
-    return final_stmt
-
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
     discard
@@ -445,12 +346,29 @@ macro init_inner*(code_block_stmt_list : untyped) =
             if isNil(ugen_ptr):
                 print("ERROR: Omni: could not allocate memory")
             
-            ugen.is_initialized_let = false
+            ugen.is_initialized_let   = false
+            ugen.ugen_auto_mem_let    = nil
+            ugen.ugen_auto_buffer_let = nil
 
             return ugen_ptr
         
         #Define Omni_UGenFree
-        defineUGenDestructor(UGen, `final_var_names`)
+        proc Omni_UGenFree(ugen_ptr : pointer) : void {.exportc: "Omni_UGenFree", dynlib.} =
+            if isNil(ugen_ptr):
+                print("ERROR: Omni: invalid ugen_ptr to free.")
+                return
+
+            print("Calling UGen's destructor")
+            
+            let ugen = cast[ptr UGen](ugen_ptr)
+            
+            if not isNil(ugen.ugen_auto_mem_let):
+                freeOmniAutoMem(ugen.ugen_auto_mem_let)
+            
+            if not isNil(ugen.ugen_auto_buffer_let):
+                freeOmniAutoMem(ugen.ugen_auto_buffer_let, false)
+
+            omni_free(ugen_ptr)
 
         #Generate the proc to find all datas and structs in UGen
         findDatasAndStructs(UGen, true)
@@ -561,7 +479,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     
                 #Successful init
                 ugen.is_initialized_let = true
-                
+
                 return 1
 
             proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
