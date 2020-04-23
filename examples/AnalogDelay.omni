@@ -9,7 +9,7 @@ outs 1
 
 init:
     delay_length = in2 * samplerate
-    delay = Delay.new(delay_length)
+    delay = Delay(delay_length)
     prev_value = 0.0
 
     build:
