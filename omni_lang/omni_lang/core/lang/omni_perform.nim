@@ -127,6 +127,13 @@ macro castInsOuts64*() =
             outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
 template performInner*(code_block : untyped) {.dirty.} =
+    #If ins / outs are not declared, declare them!
+    when not declared(declared_inputs):
+        ins 1
+
+    when not declared(declared_outputs):
+        outs 1
+
     #Create an empty init block if one wasn't defined by the user
     when not declared(init_block):
         init:

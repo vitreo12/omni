@@ -482,6 +482,13 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 
 macro init*(code_block : untyped) : untyped =
     return quote do:
+        #If ins / outs are not declared, declare them!
+        when not declared(declared_inputs):
+            ins 1
+
+        when not declared(declared_outputs):
+            outs 1
+            
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 

@@ -649,12 +649,15 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
     let defaults_mins_maxs = buildDefaultMinMaxArrays(num_of_inputs_VAL, default_vals, min_vals, max_vals)
 
-    return quote do: 
+    return quote do:
         const 
             omni_inputs            {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             omni_input_names_const {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
 
         let omni_input_names_let   {.inject.} = `param_names_node`
+
+        #compile time variable if ins are defined
+        let declared_inputs {.inject, compileTime.} = true
 
         #const statement for defaults / mins / maxs
         `defaults_mins_maxs`
@@ -749,6 +752,9 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
             omni_output_names_const {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
         
         let omni_output_names_let   {.inject.} = `param_names_node`
+
+        #compile time variable if outs are defined
+        let declared_outputs {.inject, compileTime.} = true
         
         #generate_outputs_templates(`num_of_outputs_VAL`)
         
