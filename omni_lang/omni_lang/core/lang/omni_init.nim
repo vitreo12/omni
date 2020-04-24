@@ -25,17 +25,6 @@ import macros, tables
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
     discard
-    
-    #let call_to_build_macro = code_block.last()
-
-    #code_block.astGenRepr.echo
-
-    #return quote do:
-    #    `call_to_build_macro`
-
-macro debug*() =
-    echo "To be added"
-
 
 #This has been correctly parsed!
 macro init_inner*(code_block_stmt_list : untyped) =
