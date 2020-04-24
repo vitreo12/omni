@@ -325,7 +325,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
         #This is just allocating memory, not running constructor
-        proc Omni_UGenAlloc() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
+        proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
             #allocation of "ugen" variable
             `alloc_ugen`
 
@@ -342,7 +342,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
             return ugen_ptr
         
         #Define Omni_UGenFree
-        proc Omni_UGenFree(ugen_ptr : pointer) : void {.exportc: "Omni_UGenFree", dynlib.} =
+        proc Omni_UGenFree*(ugen_ptr : pointer) : void {.exportc: "Omni_UGenFree", dynlib.} =
             if isNil(ugen_ptr):
                 print("ERROR: Omni: invalid ugen_ptr to free.")
                 return
@@ -363,7 +363,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         findDatasAndStructs(UGen, true)
         
         when defined(performBits32):
-            proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
+            proc Omni_UGenInit32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return 0
@@ -422,7 +422,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     return cast[pointer](nil)
 
         when defined(performBits64):
-            proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
+            proc Omni_UGenInit64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return 0
