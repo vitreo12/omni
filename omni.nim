@@ -30,7 +30,7 @@ const
 #Path to omni_lang
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
-#Extension for static lib
+#Extension for static lib (should be .lib for Windows)
 const static_lib_extension = ".a"
 
 #Extensions for shared lib
@@ -48,7 +48,6 @@ when defined(Windows):
     const 
         shared_lib_extension = ".dll"
         default_compiler     = "gcc(MinGW)"
-
 
 #Generic error proc
 proc printError(msg : string) : void =
@@ -188,6 +187,9 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     compile_command.add(" \"" & $fileFullPath & "\"")
 
     echo compile_command
+
+    #Set environmental variable for sample block checking. This is a very cheap solution...
+    putEnv("OMNISAMPLEBLOCK", "0")
     
     #Actually execute compilation
     when not defined(Windows):
@@ -198,6 +200,11 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
         printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt & ".")
+        return 1
+
+    #If sample block is present, this has been set to "1" at compile time.
+    if getEnv("OMNISAMPLEBLOCK") == "0":
+        printError("Could not retrieve either the \'perform\' or \'sample\' blocks.")
         return 1
 
     #Export omni.h too
@@ -261,7 +268,7 @@ dispatch(omni,
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
-        "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C compilers.",
+        "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C supported compilers.",
         "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
         "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are \"32\", \"64\" or \"32/64\".",

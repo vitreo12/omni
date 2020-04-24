@@ -195,10 +195,14 @@ template performInner*(code_block : untyped) {.dirty.} =
             when defined(multithreadBuffers):
                 unlock_buffers()
 
+    import os
+    
+    #static == compile time
+    static:
+        putEnv("OMNISAMPLEBLOCK", "1")
+
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
     when defined(writeIO):
-        import os
-        
         #static == compile time block
         static:
             var text = $omni_inputs & "\n" & $omni_input_names_const & "\n" 
