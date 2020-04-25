@@ -43,40 +43,45 @@ proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
 proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
     return nnkStmtList.newTree(
         nnkCall.newTree(
-          newIdentNode("generate_inputs_templates"),
-          newIdentNode("omni_inputs"),
-          newLit(1),
-          newLit(0)
+            newIdentNode("generate_inputs_templates"),
+            newIdentNode("omni_inputs"),
+            newLit(1),
+            newLit(0)
         ),
         nnkCall.newTree(
-          newIdentNode("generate_outputs_templates"),
-          newIdentNode("omni_outputs")
+            newIdentNode("generate_outputs_templates"),
+            newIdentNode("omni_outputs")
         ),
         nnkForStmt.newTree(
-          newIdentNode("audio_index_loop"),
-          nnkInfix.newTree(
-            newIdentNode(".."),
-            newLit(0),
-            nnkPar.newTree(
-              nnkInfix.newTree(
-                newIdentNode("-"),
-                newIdentNode("bufsize"),
-                newLit(1)
-              )
-            )
-          ),
-          sample_block
+            newIdentNode("audio_index_loop"),
+            nnkInfix.newTree(
+                newIdentNode(".."),
+                newLit(0),
+                nnkPar.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("-"),
+                        newIdentNode("bufsize"),
+                        newLit(1)
+                    )
+                )
+            ),
+            sample_block
         ),
         nnkLetSection.newTree(
-          nnkIdentDefs.newTree(
-            newIdentNode("audio_index_loop"),
-            newEmptyNode(),
-            newLit(0)
-          )
+            nnkIdentDefs.newTree(
+                newIdentNode("audio_index_loop"),
+                newEmptyNode(),
+                newLit(0)
+            )
         )
-      )
+    )
 
-#Find struct calls in a nnkCall and replace them with .new calls
+#Find struct calls in a nnkCall and replace them with .new calls.
+#To do so, pass a function call here. What is prduced is a when statement that checks
+#if the function name + "_obj" is declared, meaning it's a struct constructor the user is trying to call.
+#e.g.
+# Phasor(0.0) -> when declared(Phasor_obj): Phasor.new(0.0) else: Phasor(0.0)
+# myFunc(0.0) -> when declared(myFunc_obj): myFunc.new(0.0) else: myFunc(0.0)
 proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     if code_block.kind != nnkCall:
         return code_block
@@ -113,7 +118,7 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
         proc_new_call.add(arg_temp)
     
     #echo astGenRepr proc_new_call
-        
+
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
             nnkCall.newTree(
