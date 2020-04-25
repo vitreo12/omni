@@ -186,10 +186,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
 
-    echo compile_command
-
-    #Set environmental variable for sample block checking. This is a very cheap solution...
-    putEnv("OMNISAMPLEBLOCK", "0")
+    #echo compile_command
     
     #Actually execute compilation
     when not defined(Windows):
@@ -201,10 +198,18 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     if failedOmniCompilation > 0:
         printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt & ".")
         return 1
+    
+    let pathToCompiledLib = outDirFullPath & "/" & $output_name
+    
+    #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
+    when not defined(Windows):
+        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep Omni_UGenPerform")
+    else:
+        let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | grep Omni_UGenPerform")
 
-    #If sample block is present, this has been set to "1" at compile time.
-    if getEnv("OMNISAMPLEBLOCK") == "0":
-        printError("Could not retrieve either the \'perform\' or \'sample\' blocks.")
+    #grep returns 0 if it finds, 1 if it doesnt!
+    if failedOmniCheckPerform > 0:
+        printError("Undefiend \'perform\' or \'sample\' blocks.")
         return 1
 
     #Export omni.h too
