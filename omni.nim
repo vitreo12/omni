@@ -209,7 +209,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #grep/findstr return 0 if it finds the string, 1 if it doesnt!
     if failedOmniCheckPerform > 0:
-        printError("Undefiend \'perform\' or \'sample\' blocks.")
+        printError("Undefined \'perform\' or \'sample\' blocks.")
         removeFile(pathToCompiledLib)
         return 1
 
