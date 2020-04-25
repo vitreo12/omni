@@ -1,0 +1,105 @@
+import macros
+
+ins 1
+outs 1
+
+struct A:
+    buf Buffer
+    data Data[Data[Buffer]]
+
+struct B:
+    a A
+    buf Buffer
+    data Data[A]
+
+struct C:
+    b Data[B]
+    bb B
+
+proc checkObjDatasValidity(obj : A) : bool {.inline.} =
+    print("A")
+    if not obj.data.checkDataValidity():
+        return false
+    
+    #if Data[Data[Data[...]]]
+    for i1 in (0..(obj.data.size)-1):
+        let entry1 = obj.data[i1]
+        if not checkDataValidity(entry1):
+            return false
+
+    return true
+
+proc checkObjDatasValidity(obj : B) : bool {.inline.} =
+    print("B")
+    if not obj.a.checkObjDatasValidity():
+        return false
+    
+    if not obj.data.checkDataValidity():
+        return false
+
+    for i1 in (0..(obj.data.size)-1):
+        let entry1 = obj.data[i1]
+        if not checkObjDatasValidity(entry1):
+            return false
+
+    return true
+
+proc checkObjDatasValidity(obj : C) : bool {.inline.} =
+    print("C")
+    if not obj.b.checkDataValidity():
+        return false
+
+    for i1 in (0..obj.b.size-1):
+        let entry1 = obj.b[i1]
+        if not entry1.checkObjDatasValidity():
+            return false
+
+    if not obj.bb.checkObjDatasValidity():
+        return false
+
+    return true
+
+
+init:
+    dataB = Data.new(10, dataType=B)
+    a  = A.new(Buffer.new(1), Data.new(10, dataType=Data[Buffer]))
+    bb = B.new(a, Buffer.new(1), Data.new(10, dataType=A))
+    c  = C.new(dataB, bb)
+
+    #bb.a
+    for i in (0..9):
+        newDataBuf = Data.new(10, dataType=Buffer)
+        for y in (0..9):
+            newDataBuf[y] = Buffer.new(1)
+        a.data[i]  = newDataBuf
+    
+    #bb.data
+    for i in (0..9):
+        newA = A.new(Buffer.new(1), Data.new(10, dataType=Data[Buffer]))
+        for y in (0..9):
+            newDataBuf = Data.new(10, dataType=Buffer)
+            for z in (0..9):
+                newDataBuf[z] = Buffer.new(1)
+            newA.data[y] = newDataBuf
+        bb.data[i] = newA
+     
+    #b
+    for i in (0..9):
+        newB = B.new(a, Buffer.new(1), Data.new(10, dataType=A))
+        for y in (0..9):
+            newA = A.new(Buffer.new(1), Data.new(10, dataType=Data[Buffer]))
+            for z in (0..9):
+                newDataBuf = Data.new(10, dataType=Buffer)
+                for t in (0..9):
+                    newDataBuf[t] = Buffer.new(1)
+                newA.data[z] = newDataBuf
+            newB.data[y] = newA 
+        dataB[i] = newB
+
+    discard checkObjDatasValidity(c)
+
+    build:
+        c
+
+sample:
+    out1 = in1

@@ -25,7 +25,6 @@ import macros, strutils
 let 
     #These are all the types that a var declaration support
     varDeclTypes* {.compileTime.} = [
-        "array",
         "bool", 
         "enum",
         "float", "float32", "float64",

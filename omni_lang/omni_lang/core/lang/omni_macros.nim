@@ -33,6 +33,10 @@ export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
 import omni_type_checker
 export omni_type_checker
 
+#Needed for retrieval of Datas and structs in a struct
+import omni_finder
+export omni_finder
+
 #Utilities
 import omni_types
 export omni_types

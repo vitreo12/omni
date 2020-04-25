@@ -36,7 +36,7 @@ type
 proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Delay[dataType] {.inline.} =
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
-        {.fatal: "Delay's dataType must be SomeNumber".}
+        {.fatal: "Delay's dataType must be some number type".}
 
     #Allocate obj
     result = cast[Delay[dataType]](omni_alloc(culong(sizeof(Delay_obj[dataType]))))
@@ -57,6 +57,9 @@ proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = u
 
 template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
     struct_init_inner(Delay, size, dataType, ugen_auto_mem)
+
+proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
+    return true
 
 #Read proc
 proc read*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], delay_time : Y) : T {.inline.} =

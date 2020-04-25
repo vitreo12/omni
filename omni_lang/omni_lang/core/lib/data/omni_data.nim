@@ -18,7 +18,7 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+# SOFTWARE.codi
 
 import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
@@ -29,37 +29,30 @@ type
     ArrayPtr[T] = ptr UncheckedArray[T]
 
     Data_obj[T] = object
-        data  : ArrayPtr[T]
-        size  : int
-        chans : int
-        size_X_chans : int
+        data    : ArrayPtr[T]
+        length  : int
+        chans   : int
+        length_X_chans : int
 
     #Only export Data
     Data*[T] = ptr Data_obj[T]
-
-    #Should be more generic. Only accept numbers for now.
-    #SomeData* = Data[float] or Data[float32] or Data[float64] or Data[int] or Data[int8] or Data[int16] or Data[int32] or Data[int64] or Data[uint] or Data[uint8] or Data[uint16] or Data[uint32] or Data[uint64]
-        
+     
 #Having the strings as const as --gc:none is used
 const
-    size_error   = "WARNING: Data's size must be a positive number. Setting it to 1"
+    length_error = "WARNING: Data's length must be a positive number. Setting it to 1"
     chans_error  = "WARNING: Data's chans must be a positive number. Setting it to 1"
+
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc struct_init_inner*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
-    
-    #error out if trying to instantiate any dataType that is not a Number
-    when dataType isnot SomeNumber: 
-        {.fatal: "Data's dataType must be SomeNumber".}
-
+proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
     var 
-        real_size  = int(size)
+        real_length  = int(length)
         real_chans = int(chans)
     
-    if real_size < 1:
-        print(size_error)
-        real_size = 1
+    if real_length < 1:
+        print(length_error)
+        real_length = 1
 
     if real_chans < 1:
         print(chans_error)
@@ -72,24 +65,33 @@ proc struct_init_inner*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Dat
     
     #Data of the object (the array)
     let 
-        size_X_chans           = real_size * real_chans
-        size_X_chans_uint      = uint(size_X_chans)
-        size_data_type_uint    = uint(sizeof(dataType))
-        total_size_culong      = culong(size_data_type_uint * size_X_chans_uint)
-        data                   = cast[ArrayPtr[dataType]](omni_alloc0(total_size_culong))
+        length_X_chans      = real_length * real_chans
+        length_X_chans_uint = uint(length_X_chans)
+        size_data_type_uint = uint(sizeof(dataType))
+        total_size_culong   = culong(size_data_type_uint * length_X_chans_uint)
+        data                = cast[ArrayPtr[dataType]](omni_alloc0(total_size_culong))
 
     #Register both the Data object and its data to the automatic memory management
     ugen_auto_mem.registerChild(result)
     ugen_auto_mem.registerChild(data)
     
     #Fill the object layout
-    result.data         = data
-    result.chans        = real_chans
-    result.size         = real_size
-    result.size_X_chans = size_X_chans
+    result.data           = data
+    result.chans          = real_chans
+    result.length         = real_length
+    result.length_X_chans = length_X_chans
 
-template new*[S : SomeNumber, C : SomeInteger](obj_type : typedesc[Data], size : S = uint(1), chans : C = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    struct_init_inner(Data, size, chans, dataType, ugen_auto_mem)   
+template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    struct_init_inner(Data, length, chans, dataType, ugen_auto_mem)  
+
+proc checkDataValidity*[T](data : Data[T]) : bool =
+    when T isnot SomeNumber:
+        for i in 0..(data.length_X_chans-1):
+            let entry = cast[pointer](data[i])
+            if isNil(entry):
+                print("ERROR: Omni: Not all Data entries have been initialized in the \'init\' block. This can happen if using a Data containing structs, and not having allocated all of the Data entries in \'init\'!")
+                return false
+    return true
 
 ##########
 # GETTER #
@@ -105,10 +107,13 @@ proc getter[T](data : Data[T], channel : int = 0, index : int = 0) : T {.inline.
     else:
         actual_index = (index * chans) + channel
     
-    if actual_index >= 0 and actual_index < data.size_X_chans:
+    if actual_index >= 0 and actual_index < data.length_X_chans:
         return data.data[actual_index]
     
-    return T(0)
+    when T is SomeNumber:
+        return T(0)
+    else:
+        return nil
 
 #1 channel 
 proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
@@ -119,8 +124,8 @@ proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) :
     return a.getter(int(i1), int(i2))
 
 #linear interp read (1 channel)
-proc read*[I : SomeNumber; T](data : Data[T], index : I) : float {.inline.} =
-    let data_len = data.size
+proc read*[I : SomeNumber; T : SomeNumber](data : Data[T], index : I) : float {.inline.} =
+    let data_len = data.length
     
     if data_len <= 0:
         return 0.0
@@ -131,11 +136,11 @@ proc read*[I : SomeNumber; T](data : Data[T], index : I) : float {.inline.} =
         index2 : int = (index1 + 1) mod data_len
         frac : float = float(index) - float(index_int)
     
-    return linear_interp(frac, data.getter(0, index1), data.getter(0, index2))
+    return float(linear_interp(frac, data.getter(0, index1), data.getter(0, index2)))
 
 #linear interp read (more than 1 channel) (i1 == channel, i2 == index)
-proc read*[I1 : SomeNumber, I2 : SomeNumber; T](data : Data[T], chan : I1, index : I2) : float {.inline.} =
-    let data_len = data.size
+proc read*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T], chan : I1, index : I2) : float {.inline.} =
+    let data_len = data.length
     
     if data_len <= 0:
         return 0.0
@@ -147,7 +152,7 @@ proc read*[I1 : SomeNumber, I2 : SomeNumber; T](data : Data[T], chan : I1, index
         index2 : int = (index1 + 1) mod data_len
         frac : float = float(index) - float(index_int)
     
-    return linear_interp(frac, data.getter(chan_int, index1), data.getter(chan_int, index2))
+    return float(linear_interp(frac, data.getter(chan_int, index1), data.getter(chan_int, index2)))
 
 ##########
 # SETTER #
@@ -163,8 +168,13 @@ proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : 
     else:
         actual_index = (index * chans) + channel
     
-    if actual_index >= 0 and actual_index < data.size_X_chans:
-        data.data[actual_index] = T(x)
+    if actual_index >= 0 and actual_index < data.length_X_chans:
+        when T is SomeNumber and Y is SomeNumber:
+            data.data[actual_index] = T(x)
+        elif T is Y:
+            data.data[actual_index] = x
+        else:
+            {.fatal: "\'" & $T & "\': invalid dataType for Data's setter function".}
 
 #1 channel     
 proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
@@ -179,10 +189,10 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
 #########
 
 proc len*[T](data : Data[T]) : int =
-    return data.size
+    return data.length
 
 proc size*[T](data : Data[T]) : int =
-    return data.size_X_chans
+    return data.length_X_chans
 
 proc chans*[T](data : Data[T]) : int =
     return data.chans
