@@ -205,11 +205,12 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     when not defined(Windows):
         let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep Omni_UGenPerform")
     else:
-        let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | grep Omni_UGenPerform")
+        let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform")
 
-    #grep returns 0 if it finds, 1 if it doesnt!
+    #grep/findstr return 0 if it finds the string, 1 if it doesnt!
     if failedOmniCheckPerform > 0:
         printError("Undefiend \'perform\' or \'sample\' blocks.")
+        removeFile(pathToCompiledLib)
         return 1
 
     #Export omni.h too
