@@ -5,7 +5,7 @@ ins 2:
 outs 1
 
 init:
-    seqBuffer = Buffer.new(input_num = 2)
+    seqBuffer = Buffer(input_num = 2)
     bufPosition = -1
     outVal = 0.0
 

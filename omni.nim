@@ -30,7 +30,7 @@ const
 #Path to omni_lang
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
-#Extension for static lib
+#Extension for static lib (should be .lib for Windows)
 const static_lib_extension = ".a"
 
 #Extensions for shared lib
@@ -48,7 +48,6 @@ when defined(Windows):
     const 
         shared_lib_extension = ".dll"
         default_compiler     = "gcc(MinGW)"
-
 
 #Generic error proc
 proc printError(msg : string) : void =
@@ -187,7 +186,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
 
-    echo compile_command
+    #echo compile_command
     
     #Actually execute compilation
     when not defined(Windows):
@@ -198,6 +197,20 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
         printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt & ".")
+        return 1
+    
+    let pathToCompiledLib = outDirFullPath & "/" & $output_name
+    
+    #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
+    when not defined(Windows):
+        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q Omni_UGenPerform")               # -q == silent output
+    else:
+        let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
+
+    #grep/findstr return 0 if it finds the string, 1 if it doesnt!
+    if failedOmniCheckPerform > 0:
+        printError("Undefined \'perform\' or \'sample\' blocks.")
+        removeFile(pathToCompiledLib)
         return 1
 
     #Export omni.h too
@@ -261,7 +274,7 @@ dispatch(omni,
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
-        "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C compilers.",
+        "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C supported compilers.",
         "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
         "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are \"32\", \"64\" or \"32/64\".",

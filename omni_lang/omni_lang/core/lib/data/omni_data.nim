@@ -28,7 +28,7 @@ import ../math/omni_math
 type
     ArrayPtr[T] = ptr UncheckedArray[T]
 
-    Data_obj[T] = object
+    Data_obj*[T] = object
         data    : ArrayPtr[T]
         length  : int
         chans   : int

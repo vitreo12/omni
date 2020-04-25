@@ -76,6 +76,63 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         )
       )
 
+#Find struct calls in a nnkCall and replace them with .new calls
+proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
+    if code_block.kind != nnkCall:
+        return code_block
+
+    var 
+        proc_call_ident = code_block[0]
+        proc_call_ident_kind = proc_call_ident.kind
+
+    if proc_call_ident_kind == nnkDotExpr:
+        proc_call_ident = proc_call_ident[0]
+        proc_call_ident_kind = proc_call_ident.kind
+    
+    if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
+        return code_block
+
+    let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_obj")
+
+    var proc_new_call =  nnkCall.newTree(
+        newIdentNode("new"),
+        proc_call_ident
+    )
+
+    for index2, arg in code_block.pairs():
+        var arg_temp = arg
+        if index2 == 0:
+            continue
+        
+        #Find other constructors in the args of the call
+        if arg_temp.kind == nnkCall:
+            arg_temp = findStructConstructorCall(arg_temp)
+        elif arg_temp.kind == nnkExprEqExpr:
+            arg_temp[1] = findStructConstructorCall(arg_temp[1])
+        
+        proc_new_call.add(arg_temp)
+    
+    #echo astGenRepr proc_new_call
+        
+    let when_statement_struct_new = nnkWhenStmt.newTree(
+        nnkElifExpr.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                proc_call_ident_obj
+            ),
+            nnkStmtList.newTree(
+                proc_new_call
+            )
+        ),
+        nnkElseExpr.newTree(
+            nnkStmtList.newTree(
+                code_block
+            )
+        )
+    )
+
+    result = when_statement_struct_new
+
 #========================================================================================================================================================#
 # EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
 #========================================================================================================================================================#
@@ -176,7 +233,11 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                         
                         if var_misc[0].kind == nnkAsgn: 
                             let specified_type = var_misc[0][0]  # : float
-                            let default_value  = var_misc[0][1]  # = 0.0
+                            var default_value  = var_misc[0][1]  # = 0.0
+
+                            #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct
+                            if default_value.kind == nnkCall:
+                                default_value = findStructConstructorCall(default_value)
 
                             new_var_statement = nnkVarSection.newTree(
                                 nnkIdentDefs.newTree(
@@ -205,7 +266,6 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                             else:
                                 {.fatal.} ...
                         ]#
-                        #if is_perform_block:
                         new_var_statement = nnkStmtList.newTree(
                             nnkWhenStmt.newTree(
                                 nnkElifBranch.newTree(
@@ -236,7 +296,11 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 #a = 0.0
                 elif statement_kind == nnkAsgn:
                     
-                    let default_value = var_misc
+                    var default_value = var_misc
+
+                    #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct
+                    if default_value.kind == nnkCall:
+                        default_value = findStructConstructorCall(default_value)
 
                     #Prevent the user from defining out1, out2... etc...
                     var is_out_variable = false
@@ -453,6 +517,8 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
         )
 
     final_block.add(code_block)
+
+    #echo repr code_block
 
     #echo variable_names_table
 

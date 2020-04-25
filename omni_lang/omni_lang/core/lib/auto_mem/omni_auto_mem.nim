@@ -33,18 +33,18 @@ type
         allocs*     : C_void_ptr_ptr 
 
 proc allocInitOmniAutoMem*() : ptr OmniAutoMem {.inline.} =
-    let auto_mem_ptr = omni_alloc0(culong(sizeof(OmniAutoMemSize))) 
+    let 
+        auto_mem_ptr = omni_alloc(culong(sizeof(OmniAutoMem))) 
+        auto_mem = cast[ptr OmniAutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):
-        return
-
-    let auto_mem = cast[ptr OmniAutoMem](auto_mem_ptr)
+        return auto_mem     #This already is cast[ptr OmniAutoMem](nil)
 
     let auto_mem_allocs_ptr = omni_alloc0(culong(sizeof(pointer) * OmniAutoMemSize))
     
     if isNil(auto_mem_allocs_ptr):
-        auto_mem.allocs = nil
-        return
+        omni_free(auto_mem_ptr)
+        return cast[ptr OmniAutoMem](nil)
 
     auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
     auto_mem.num_allocs = 0

@@ -127,6 +127,13 @@ macro castInsOuts64*() =
             outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
 template performInner*(code_block : untyped) {.dirty.} =
+    #If ins / outs are not declared, declare them!
+    when not declared(declared_inputs):
+        ins 1
+
+    when not declared(declared_outputs):
+        outs 1
+
     #Create an empty init block if one wasn't defined by the user
     when not declared(init_block):
         init:
@@ -153,7 +160,7 @@ template performInner*(code_block : untyped) {.dirty.} =
                 for i in (0..allocated_buffers123456789-1):
                     let buffer_to_get_123456789 = cast[Buffer](ugen_auto_buffer.allocs[i])
                     if not get_buffer(buffer_to_get_123456789, ins_Nim[buffer_to_get_123456789.input_num][0]):
-                        print("ERROR: Omni: failed to get_buffer.")
+                        #print("ERROR: Omni: failed to get_buffer.")
                         for audio_channel in (0..omni_outputs-1):
                             for audio_index in (0..bufsize-1):
                                 outs_Nim[audio_channel][audio_index] = 0.0

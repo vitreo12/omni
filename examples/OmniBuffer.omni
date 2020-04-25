@@ -5,7 +5,7 @@ ins 2:
 outs 1
 
 init:
-    buffer = Buffer.new(input_num = 1)
+    buffer = Buffer(input_num = 1)
     phase = 0.0
 
 perform:
