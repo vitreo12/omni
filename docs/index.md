@@ -1,6 +1,6 @@
 <a name="logo"/>
 <div align="center">
-<img src="OMNI_LOGO_TRANSPARENT.png" alt="Omni logo" width="491" height="491">
+<img src="omni_logo_transparent.png" alt="Omni logo" width="491" height="491">
 </div>
 
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
