@@ -23,28 +23,28 @@
 import ../alloc/omni_alloc
 import ../print/omni_print
 
-const OmniAutoMemSize = 100
+const OmniAutoMemSize = 50
 
 type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**
 
     OmniAutoMem* = object
-        num_allocs : int
-        allocs     : C_void_ptr_ptr 
+        num_allocs* : int
+        allocs*     : C_void_ptr_ptr 
 
 proc allocInitOmniAutoMem*() : ptr OmniAutoMem {.inline.} =
-    let auto_mem_ptr = omni_alloc0(culong(sizeof(OmniAutoMemSize))) 
+    let 
+        auto_mem_ptr = omni_alloc(culong(sizeof(OmniAutoMem))) 
+        auto_mem = cast[ptr OmniAutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):
-        return
-
-    let auto_mem = cast[ptr OmniAutoMem](auto_mem_ptr)
+        return auto_mem     #This already is cast[ptr OmniAutoMem](nil)
 
     let auto_mem_allocs_ptr = omni_alloc0(culong(sizeof(pointer) * OmniAutoMemSize))
     
     if isNil(auto_mem_allocs_ptr):
-        auto_mem.allocs = nil
-        return
+        omni_free(auto_mem_ptr)
+        return cast[ptr OmniAutoMem](nil)
 
     auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
     auto_mem.num_allocs = 0
@@ -94,18 +94,22 @@ proc removeChildren*(auto_mem : ptr OmniAutoMem) : void {.inline.} =
         return
 
     let num_allocs = auto_mem.num_allocs
-    for i in 0..(num_allocs-1):
-        auto_mem.removeChild(i)
+    if num_allocs > 0:
+        for i in 0..(num_allocs-1):
+            auto_mem.removeChild(i)
     
+    #Reset count
     auto_mem.num_allocs = 0
 
-proc freeOmniAutoMem*(auto_mem : ptr OmniAutoMem) : void {.inline.} =
+proc freeOmniAutoMem*(auto_mem : ptr OmniAutoMem, free_children : bool = true) : void {.inline.} =
     if isNil(auto_mem):
         return
 
     if isNil(auto_mem.allocs):
         return
 
-    auto_mem.removeChildren()
+    if free_children:
+        auto_mem.removeChildren()
+    
     omni_free(cast[pointer](auto_mem.allocs))
     omni_free(cast[pointer](auto_mem))

@@ -96,22 +96,27 @@ extern "C" {
     /* Omni module functions */
     /*************************/
 
-    //I/O
+    //Inputs
     OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
     OMNI_DLL_EXPORT extern char*  Omni_UGenInputNames();
 
+    //Default values
     OMNI_DLL_EXPORT extern float* Omni_UGenDefaults();
 
+    //Outputs
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();
     OMNI_DLL_EXPORT extern char*  Omni_UGenOutputNames();
 
-    //Alloc/Init
+    //Alloc/Init. Returns NULL if fails to alloc/init
     OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
     OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit64(double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
     
+    //returns NULL if it fails
     OMNI_DLL_EXPORT extern void*  Omni_UGenAlloc();
-    OMNI_DLL_EXPORT extern void   Omni_UGenInit32(void* ugen_ptr, float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
-    OMNI_DLL_EXPORT extern void   Omni_UGenInit64(void* ugen_ptr, double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    
+    //Return 1 if it succeeds / 0 if it fails
+    OMNI_DLL_EXPORT extern int    Omni_UGenInit32(void* ugen_ptr, float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern int    Omni_UGenInit64(void* ugen_ptr, double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform
     OMNI_DLL_EXPORT extern void   Omni_UGenPerform32(void* ugen_ptr, float**  ins_ptr, float**  outs_ptr, int bufsize);

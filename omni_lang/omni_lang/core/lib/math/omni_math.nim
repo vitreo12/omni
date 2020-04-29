@@ -32,17 +32,23 @@ export math
 # Operators #
 # ========= #
 
-proc `+`[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+proc `+`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
     when Y is SomeFloat:
         return Y(a) + b
     else:
         return a + T(b)
 
-proc `-`[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+proc `-`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
     when Y is SomeFloat:
         return Y(a) - b
     else:
         return a - T(b)
+
+proc `*`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    when Y is SomeFloat:
+        return Y(a) * b
+    else:
+        return a * T(b)
 
 # ================= #
 # safemod / safediv #

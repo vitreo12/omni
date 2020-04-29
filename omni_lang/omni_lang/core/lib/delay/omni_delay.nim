@@ -26,17 +26,17 @@ import ../auto_mem/omni_auto_mem
 import ../math/omni_math
 
 type
-    Delay_obj[T] = object
+    Delay_obj*[T] = object
         mask  : int
         phase : int
         data  : Data[T]
 
     Delay*[T] = ptr Delay_obj[T]
 
-proc innerInit*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Delay[dataType] {.inline.} =
+proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Delay[dataType] {.inline.} =
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
-        {.fatal: "Delay's dataType must be SomeNumber".}
+        {.fatal: "Delay's dataType must be some number type".}
 
     #Allocate obj
     result = cast[Delay[dataType]](omni_alloc(culong(sizeof(Delay_obj[dataType]))))
@@ -44,10 +44,10 @@ proc innerInit*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), 
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(int(size)))
-        data  = Data.innerInit(delay_length, dataType=dataType, ugen_auto_mem=ugen_auto_mem)
+        data  = Data.struct_init_inner(delay_length, dataType=dataType, ugen_auto_mem=ugen_auto_mem)
         mask  = int(delay_length - 1)
 
-    #Register obj (data has already been registered in Data.innerInit)
+    #Register obj (data has already been registered in Data.struct_init_inner)
     ugen_auto_mem.registerChild(result)
 
     #Assign values
@@ -56,7 +56,10 @@ proc innerInit*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), 
     result.data = data
 
 template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    innerInit(Delay, size, dataType, ugen_auto_mem)
+    struct_init_inner(Delay, size, dataType, ugen_auto_mem)
+
+proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
+    return true
 
 #Read proc
 proc read*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], delay_time : Y) : T {.inline.} =

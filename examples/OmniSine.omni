@@ -9,8 +9,8 @@ init:
     phase = 0.0
 
 perform:
-    frequency Signal #aka float
-    sine_out  Signal
+    frequency sig #aka float
+    sine_out  sig
     
     sample:
         frequency = abs(in1)
