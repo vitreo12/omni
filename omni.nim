@@ -203,7 +203,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     
     #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
     when not defined(Windows):
-        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q Omni_UGenPerform")               # -q == silent output
+        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")               # -q == silent output
     else:
         let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
 
