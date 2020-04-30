@@ -1,6 +1,6 @@
 <a name="logo"/>
 <div align="center">
-<img src="docs/omni_logo_text_transparent.png" alt="Omni logo" width="388" height="485"></img>
+<img src="docs/omni_logo_text_transparent.png" alt="Omni logo" width="351" height="438"></img>
 </a>
 </div>
 
