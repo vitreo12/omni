@@ -6,7 +6,6 @@
 
 
 <br>
-<br>
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
 It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
 
