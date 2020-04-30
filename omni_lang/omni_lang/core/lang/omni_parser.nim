@@ -173,10 +173,29 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     )
                 )  
             ]#
-           
-            #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
-            if statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
 
+            #Return stmt kind
+            if statement_kind == nnkReturnStmt:
+                #empty return
+                if statement.len < 1:
+                    continue
+
+                var 
+                    return_content = statement[0]
+                    return_content_kind = return_content.kind
+
+                if return_content_kind == nnkCall:
+                    var 
+                        new_return_content = findStructConstructorCall(return_content)
+                        new_return_stmt = nnkReturnStmt.newTree(
+                            new_return_content
+                        )
+
+                    code_block[index] = new_return_stmt
+
+            #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
+            elif statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
+                
                 if statement.len < 2:
                     continue
 
@@ -229,6 +248,13 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                     #if assignment, a.b = 10, check type of a.b
                     if statement_kind == nnkAsgn:
+                        var default_value = var_misc
+
+                        #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct.
+                        #This is in fact an error, but it will be thrown at the later semantic typed check! 
+                        if default_value.kind == nnkCall:
+                            default_value = findStructConstructorCall(default_value)
+
                         new_var_statement = nnkStmtList.newTree(
                             nnkAsgn.newTree(
                                 var_ident,
@@ -237,7 +263,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                                         newIdentNode("typeof"),
                                         var_ident
                                     ),
-                                    var_misc
+                                    default_value
                                 )
                             )
                         )
@@ -644,30 +670,8 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         #Check validity of each argument to function
                         checkValidType(arg_type, $i, is_proc_call=true, proc_name=function_name)
 
-        #Look for / , div , % , mod and replace them with safediv and safemod
-        elif typed_statement_kind == nnkInfix:
-            assert typed_statement.len == 3
-
-            let 
-                infix_symbol = typed_statement[0]
-                infix_str    = infix_symbol.strVal()
-
-            if infix_str == "/" or infix_str == "div":
-                typed_code_block[index] = nnkCall.newTree(
-                    newIdentNode("safediv"),
-                    typed_statement[1],
-                    typed_statement[2]
-                )
-
-            elif infix_str == "%" or infix_str == "mod":
-                typed_code_block[index] = nnkCall.newTree(
-                    newIdentNode("safemod"),
-                    typed_statement[1],
-                    typed_statement[2]
-                )
-
         #Look for var sections
-        if typed_statement_kind == nnkVarSection:
+        elif typed_statement_kind == nnkVarSection:
             let var_symbol = typed_statement[0][0]
             let var_type   = var_symbol.getTypeInst().getTypeImpl()
             let var_name   = var_symbol.strVal()
@@ -723,7 +727,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         
                         #If not a symbol/ident or a dotexpr, it probably is a function call. Abort!
                         if equals_statement_kind != nnkSym and equals_statement_kind != nnkIdent and equals_statement_kind != nnkDotExpr:
-                            error "\'" & $var_symbol.strVal() & "\': structs cannot be allocated in the \'perform\' or \'sample\' blocks."
+                            error("\'" & $var_symbol.strVal() & "\': structs cannot be allocated in the \'perform\' or \'sample\' blocks.")
 
                     #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
@@ -732,6 +736,37 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
 
                     #Replace the entry in the untyped block, which has yet to be semantically evaluated.
                     typed_code_block[index] = new_let_statement
+
+        #Look for / , div , % , mod and replace them with safediv and safemod
+        elif typed_statement_kind == nnkInfix:
+            assert typed_statement.len == 3
+
+            let 
+                infix_symbol = typed_statement[0]
+                infix_str    = infix_symbol.strVal()
+
+            if infix_str == "/" or infix_str == "div":
+                typed_code_block[index] = nnkCall.newTree(
+                    newIdentNode("safediv"),
+                    typed_statement[1],
+                    typed_statement[2]
+                )
+
+            elif infix_str == "%" or infix_str == "mod":
+                typed_code_block[index] = nnkCall.newTree(
+                    newIdentNode("safemod"),
+                    typed_statement[1],
+                    typed_statement[2]
+                )
+
+        #Check validity of dot exprs
+        elif typed_statement_kind == nnkDotExpr:
+            let typed_code_block_kind = typed_code_block.kind
+            
+            #Spot if trying to assign something to a field of a struct which is a struct! This is an error
+            if typed_code_block_kind == nnkAsgn:
+                if isStruct(typed_statement):
+                    error("\'" & typed_statement.repr & "\': trying to re-assign an already allocated struct field.")
         
         #Run function recursively
         parse_block_recursively_for_consts_and_structs(typed_statement, templates_to_ignore, is_perform_block)
