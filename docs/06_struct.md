@@ -20,6 +20,8 @@ An alternative constructor syntax, is by using the `new` keyword.
 
 **_NOTE_:** For number types (`int`, `int32`, `int64`, `float` / `sig`, `float32` / `sig32`, `float64` / `sig64`) a default value of `0` is given to the constructor arguments.
 
+**_NOTE_:** If no type is defined for a field, it's defaulted to `float`.
+
 ```nim
 ins:  1
 outs: 1
@@ -51,8 +53,10 @@ def setValues[X, Y, Z](vec Vector, x X, y Y, z Z):
     vec.y = y
     vec.z = z
 
-#This def will act equivalently as the previous one. The types of vec, x, y, z will be inferred.
-#Of course, if this method gets call to a struct that doesn't have the x/y/z fields, this will throw an error.
+#This def will act equivalently as the previous one:
+#the types of vec, x, y, z will be inferred.
+#Of course, if this method is called on a struct that doesn't have
+#the x/y/z fields, this will throw an error.
 def setValuesAlternative(vec, x, y, z):
     vec.x = x
     vec.y = y
