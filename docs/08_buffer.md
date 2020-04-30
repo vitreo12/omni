@@ -22,8 +22,8 @@ ins 2:
 outs: 1
 
 init:
-    #One of the ins has to be used for omni to point at the specified external buffer.
-    buffer = Buffer.new(input_num = 1)
+    #One of the ins has to be used for omni to point at the specified external buffer. Here it's been set to the first input, "buffer".
+    buffer = Buffer(1)
     phase = 0.0
 
 perform:

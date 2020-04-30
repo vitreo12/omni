@@ -10,16 +10,16 @@ init:
     dataLength = 1000
 
     #Allocate an array of 1000 float (Data's default type) elements.
-    myData = Data.new(dataLength)
+    myData = Data(dataLength)
 
     #Allocate an array of 1000 int elements.
-    myDataInt = Data.new(dataLength, dataType=int)
+    myDataInt = Data(dataLength, dataType=int)
 
     #Allocate a 2 channels array of 1000 float elements.
-    myTwoChansData = Data.new(dataLength, 2)
+    myTwoChansData = Data(dataLength, 2)
 
     #Allocate a 2 channels array of 1000 int elements.
-    myTwoChansDataInt = Data.new(dataLength, 2, int)
+    myTwoChansDataInt = Data(dataLength, 2, int)
 
     readIndex = 0
 

@@ -4,7 +4,7 @@ The `ins` and `outs` blocks express the number of inputs and outputs channels of
 
 There are different ways to express them:
 
-1. `ins` and `outs` must be expressed with an integer literal value. The colon is optional.
+1. `ins` and `outs` must be expressed with an integer literal value. The colon is optional when not defining any input/output names.
    ```nim
    ins:  3
    outs: 2
@@ -41,3 +41,5 @@ There are different ways to express them:
        "firstOutput"
        "secondOutput"
    ```
+
+### _**NOTE:**_ If no `ins` or `outs` are defined, they are defaulted to `ins 1` and `outs 1`.
