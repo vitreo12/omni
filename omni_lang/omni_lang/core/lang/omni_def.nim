@@ -230,12 +230,25 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             proc_def.add(newEmptyNode())
 
         #Add ugen_auto_mem : ptr OmniAutoMem
-        proc_formal_params.add(nnkIdentDefs.newTree(
+        proc_formal_params.add(
+            nnkIdentDefs.newTree(
                 newIdentNode("ugen_auto_mem"),
                 nnkPtrTy.newTree(
                     newIdentNode("OmniAutoMem")
                 ),
                 newEmptyNode()
+            )
+        )
+
+        #Add ugen_call_type : CallType = InitCall
+        proc_formal_params.add(
+            nnkIdentDefs.newTree(
+                newIdentNode("ugen_call_type"),
+                nnkBracketExpr.newTree(
+                    newIdentNode("typedesc"),
+                    newIdentNode("CallType")
+                ),
+                newIdentNode("InitCall")
             )
         )
 
@@ -273,18 +286,22 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             template_def.add(newEmptyNode())
             template_def.add(newEmptyNode())
 
-        #Add formal args (Removing the last one, which is ugen_auto_mem : ptr OmniAutoMem, and substituting the first one (the return type) with "untyped")
+        #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are ugen_auto_mem and ugen_call_type
         let template_formal_params = proc_formal_params.copy
-        template_formal_params.del(template_formal_params.len - 1)
+        template_formal_params.del(template_formal_params.len - 1) #delete ugen_call_type
+        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
         template_formal_params[0] = newIdentNode("untyped")
         template_def.add(template_formal_params)
         template_def.add(newEmptyNode())
         template_def.add(newEmptyNode())
 
-        #Add ugen_auto_mem to template call
-        template_body_call.add(newIdentNode("ugen_auto_mem"))
+        #Add ugen_auto_mem / ugen_call_type to template call
+        template_body_call.add(
+            newIdentNode("ugen_auto_mem"),
+            newIdentNode("ugen_call_type")
+        )
         
-        #Add body (just call _inner proc, adding "ugen_auto_mem" at the end)
+        #Add body (just call _inner proc, adding "ugen_auto_mem" and "ugen_call_type" at the end)
         template_def.add(
             nnkStmtList.newTree(
                 template_body_call

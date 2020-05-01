@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.codi
 
+import ../../lang/omni_call_types
 import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
 import ../print/omni_print
@@ -45,7 +46,11 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem) : Data[dataType]  {.inline.} =
+proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[dataType]  {.inline.} =
+    #Trying to allocate in perform block! nonono
+    when ugen_call_type is PerformCall:
+        {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Data`".}
+    
     var 
         real_length  = int(length)
         real_chans = int(chans)
@@ -82,7 +87,7 @@ proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data
     result.length_X_chans = length_X_chans
 
 template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    struct_init_inner(Data, length, chans, dataType, ugen_auto_mem)  
+    struct_init_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
 
 proc checkDataValidity*[T](data : Data[T]) : bool =
     when T isnot SomeNumber:

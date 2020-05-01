@@ -391,6 +391,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
                     ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
 
+                #Needed to be passed to all defs
+                var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
+
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
@@ -449,6 +452,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 let 
                     ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
                     ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
+
+                #Needed to be passed to all defs
+                var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
         
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -492,11 +498,13 @@ macro init*(code_block : untyped) : untyped =
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 
-            bufsize          {.inject.} : int             = 0
-            samplerate       {.inject.} : float           = 0.0
-            buffer_interface {.inject.} : pointer         = nil
-            ugen_auto_mem    {.inject.} : ptr OmniAutoMem = nil
-            ugen_auto_buffer {.inject.} : ptr OmniAutoMem = nil
+            bufsize          {.inject.} : int                = 0
+            samplerate       {.inject.} : float              = 0.0
+            buffer_interface {.inject.} : pointer            = nil
+            ugen_auto_mem    {.inject.} : ptr OmniAutoMem    = nil
+            ugen_auto_buffer {.inject.} : ptr OmniAutoMem    = nil
+        
+        var ugen_call_type   {.inject, noinit.} : typedesc[CallType]
 
         #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
         let ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)

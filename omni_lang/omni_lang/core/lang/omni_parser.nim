@@ -205,11 +205,6 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                 let var_ident_kind = var_ident.kind
 
-                #If array syntax, skip. "a[i] = 10". This just sets the array entry, doesn't assign.
-                #No need to do the typeof() business just like a dot expr, as number types have already been dealt with in
-                if var_ident_kind == nnkBracketExpr:
-                    continue
-
                 #If an ambiguous openSym... Take the first symbol
                 if(var_ident_kind == nnkOpenSymChoice):
                     var_ident = var_ident[0]
@@ -243,8 +238,8 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     var_name : string
                     new_var_statement : NimNode
 
-                #If dot syntax.
-                if var_ident_kind == nnkDotExpr:
+                #If dot syntax ("a.b = Vector()") OR array syntax ("data[i] = Vector()").
+                if var_ident_kind == nnkDotExpr or var_ident_kind == nnkBracketExpr:
 
                     #if assignment, a.b = 10, check type of a.b
                     if statement_kind == nnkAsgn:
@@ -717,18 +712,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         if old_statement_body[2].kind == nnkEmpty:
                             let error_var_name = old_statement_body[0]
                             error("\'" & $error_var_name & "\': structs must be instantiated on declaration.")
-                            
-                    #In perform, allow assignment to already allocated ones, but not creation of new ones (or calling functions that return structs, generally)
-                    #This is allowed: a = data  (if data was already allocated in constructor)
-                    #This is allowed: a = b.data (if b was already allocated in constructor)
-                    #This is not allowed a = Data.new(100)
-                    if is_perform_block:
-                        let equals_statement_kind = typed_statement[0][2].kind
                         
-                        #If not a symbol/ident or a dotexpr, it probably is a function call. Abort!
-                        if equals_statement_kind != nnkSym and equals_statement_kind != nnkIdent and equals_statement_kind != nnkDotExpr:
-                            error("\'" & $var_symbol.strVal() & "\': structs cannot be allocated in the \'perform\' or \'sample\' blocks.")
-
                     #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
                         old_statement_body

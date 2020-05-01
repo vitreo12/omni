@@ -381,6 +381,31 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         )   
     )
 
+    let 
+        obj_name = obj_struct_name.strVal()
+        ptr_name = obj_name[0..obj_name.len-5] #remove_obj
+
+    #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
+    proc_body.add(
+        nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkInfix.newTree(
+                    newIdentNode("is"),
+                    newIdentNode("ugen_call_type"),
+                    newIdentNode("PerformCall")
+                ),
+                nnkStmtList.newTree(
+                    nnkPragma.newTree(
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("fatal"),
+                            newLit("attempting to allocate memory in the `perform` or `sample` blocks for `struct " & ptr_name & "`")
+                        )
+                    )
+                )
+            )
+        )
+    )
+
     #Add the allocation of the struct as first entry i n the body of the struct
     proc_body.add(
         nnkAsgn.newTree(
@@ -485,7 +510,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     # STRUCT_INIT_INNER PROC #
     # ====================== #
     
-    #Add ugen_auto_mem : ptr OmniAutoMem as last argument
+    #Add ugen_auto_mem : ptr OmniAutoMem argument
     proc_formal_params.add(
         nnkIdentDefs.newTree(
             newIdentNode("ugen_auto_mem"),
@@ -493,6 +518,18 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                 newIdentNode("OmniAutoMem")
             ),
             newEmptyNode()
+        )
+    )
+
+    #Add ugen_call_type as last argument
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("ugen_call_type"),
+            nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                newIdentNode("CallType")
+            ),
+            newIdentNode("InitCall")
         )
     )
 
@@ -516,20 +553,22 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     # NEW TEMPLATE #
     # ============ #
 
-    #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last entry, which is the ugen_auto_mem argument
+    #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are ugen_auto_mem and ugen_call_type
     template_formal_params = proc_formal_params.copy
-    template_formal_params.del(template_formal_params.len - 1)
+    template_formal_params.del(template_formal_params.len - 1) #delete ugen_call_type
+    template_formal_params.del(template_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
     template_formal_params[0] = newIdentNode("untyped")
     template_def.add(template_formal_params)
     template_def.add(newEmptyNode())
     template_def.add(newEmptyNode())
 
-    #echo repr template_formal_params
+    #Add function ugen_auto_mem / ugen_call_type to template call
+    template_body_call.add(
+        newIdentNode("ugen_auto_mem"),
+        newIdentNode("ugen_call_type")
+    )
 
-    #Add function ugen_auto_mem to template call (it's the last argument for the struct_init_inner proc)
-    template_body_call.add(newIdentNode("ugen_auto_mem"))
-
-    #Add body (just call _inner proc, adding "ugen_auto_mem" at the end)
+    #Add body (just call _inner proc, adding "ugen_auto_mem" and "ugen_call_type" at the end)
     template_def.add(
         template_body_call
     )
