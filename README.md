@@ -1,23 +1,6 @@
-
-<style>
-    * {
-        margin: 0;
-        padding: 0;
-    }
-    .imgbox {
-        display: grid;
-        height: 20%;
-    }
-    .center-fit {
-        max-width: 20%;
-        max-height: 100vh;
-        margin: auto;
-    }
-</style>
-
-<a name="logo" href="https://vitreo12.github.io/omni/">
-    <div class="imgbox">
-        <img class="center-fit" src="docs/omni_logo_text_transparent.png" alt="Omni Logo">
+<a name="logo" href = "https://vitreo12.github.io/omni/">
+    <div align="center">
+        <img src="docs/omni_logo_text_transparent.png" alt="Omni logo" width="20%" height="20%">
     </div>
 </a>
 
