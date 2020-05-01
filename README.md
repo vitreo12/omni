@@ -1,9 +1,29 @@
-<a name="logo"/>
-<div align="center">
-<img src="docs/omni_logo_text_transparent.png" alt="Omni logo" width="351" height="438"></img>
-</a>
-</div>
-
+<html>
+    <head>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+            }
+            .imgbox {
+                display: grid;
+                height: 20%;
+            }
+            .center-fit {
+                max-width: 20%;
+                max-height: 100vh;
+                margin: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <a name="logo" href="https://vitreo12.github.io/omni/">
+            <div class="imgbox">
+                <img class="center-fit" src="docs/omni_logo_text_transparent.png" alt="Omni Logo">
+            </div>
+        </a>
+    </body>
+</html>
 
 <br>
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
