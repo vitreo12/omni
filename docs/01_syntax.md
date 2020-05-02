@@ -1,5 +1,7 @@
 ## Code structure
 
+Omni files can have two different extensions: `.omni` or `.oi`.
+
 Omni files are divided into different block statements. A simple sinusoidal oscillator can be expressed as simply as this:
 
 ```nim

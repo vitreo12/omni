@@ -13,7 +13,24 @@ Also, a basic syntax highlighting [VSCode](https://code.visualstudio.com/) plugi
 
 Once you've installed omni, the `omni` executable will be placed in your `~/.nimble/bin` folder.
 
+The `omni` executable has one positional argument: the `.omni` or `.oi` file to compile. The argument can also be a list of multiple `omni` files, or a directory. In this latter case, all `.omni` or `.oi` files in the directory will be compiled.
+
 Run `omni -h` to get help on all the available flags.
+
+    Usage:
+        omni [optional-params] [omniFiles: string...]
+    Options(opt-arg sep :|=|spc):
+        -h, --help                               print this cligen-erated help
+        --help-syntax                            advanced: prepend,plurals,..
+        -n=, --outName=       string   ""        Name for the output library. Defaults to the name of the input file(s) with "lib"      prepended (e.g. "OmniSaw.omni" -> "libOmniSaw.so"). This flag doesn't work for multiple files or directories.
+        -o=, --outDir=        string   ""        Output folder. Defaults to the one in of the omni file(s).
+        -l=, --lib=           string   "shared"  Build a shared or static library.
+        -a=, --architecture=  string   "native"  Build architecture.
+        -c=, --compiler=      string   "gcc"     Specify a different C backend compiler to use. Omni supports all of nim's C supported compilers.
+        -d=, --define=        strings  {}        Define additional symbols for the intermediate nim compiler.
+        -i=, --importModule=  strings  {}        Import additional nim modules to be compiled with the omni file(s).
+        -b=, --performBits=   string   "32/64"   Specify precision for ins and outs in the init and perform blocks. Accepted values are "32", "64" or "32/64".
+        -e, --exportHeader    bool     true      Export the "omni.h" header file together with the compiled lib.
 
 When running the `omni` compiler, the output is either a static or shared library (depending on the `--lib` flag). Along with it, an `omni.h` file (depending on the `--exportHeader` flag) containing all the callable functions in the shared/static library will be exported.
 
