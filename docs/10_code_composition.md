@@ -30,4 +30,6 @@ sample:
     out1 = myVec.x * myVec.y * myVec.z
 ```
 
+<br>
+
 ## [Next: 11 - Writing wrappers](11_writing_wrappers.md)
