@@ -59,9 +59,10 @@ init:
     dataLength = 100
     data = Data(dataLength, dataType=Vector)
     
-    #Initialize the entries of the Data. If these are not initialized, a runtime error will be raised
-    #And the code will output silence.
-    for i in (0..dataLength-1):
+    #Initialize the entries of the Data. 
+    #If these are not initialized, a runtime error will be raised
+    #and the code will output silence.
+    for i in 0..dataLength-1:
         data[i] = Vector()
 
 ...

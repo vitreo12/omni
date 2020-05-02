@@ -22,7 +22,9 @@ ins 2:
 outs: 1
 
 init:
-    #One of the ins has to be used for omni to point at the specified external buffer. Here it's been set to the first input, "buffer".
+    #One of the ins has to be used in order for omni to point 
+    #at the specified external buffer.
+    #Here it's been set to the first input, "buffer".
     buffer = Buffer(1)
     phase = 0.0
 
@@ -35,7 +37,7 @@ perform:
         phase = phase % float(buffer.len)
 ```
 
-### SuperCollider
+## SuperCollider
 After compiling the omni code with
 
     omnicollider MyBuffer.omni
@@ -43,11 +45,14 @@ After compiling the omni code with
 the `Buffer` interface will work as a regular SuperCollider Buffer. For example:
 
 ```c++
-b = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav");
-{MyBuffer.ar(b, 1)}.play
+s.waitForBoot({
+    b = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav");
+    s.sync;
+    {MyBuffer.ar(b, 1)}.play
+})
 ```
 
-### Max
+## Max
 
 **Check omnimax's [readme](https://github.com/vitreo12/omnimax) for more information on the calling syntax of Max objects compiled with omni.**
 

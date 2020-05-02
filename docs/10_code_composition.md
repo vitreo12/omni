@@ -9,7 +9,7 @@ struct Vector[X, Y, Z]:
     y Y
     z Z
 
-def setValues[X, Y, Z](vec Vector, x X, y Y, z Z):
+def setValues(vec Vector, x, y, z):
     vec.x = x
     vec.y = y
     vec.z = z
@@ -23,7 +23,7 @@ ins:  3
 outs: 1
 
 init:
-    myVec = Vector.new(0.0, 0.0, 0.0)
+    myVec = Vector(0.0, 0.0, 0.0)
 
 sample:
     myVec.setValues(in1, in2, in3)

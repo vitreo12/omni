@@ -10,8 +10,8 @@ ins 2:
 outs 1
 
 init:
-    delayLength  = samplerate
-    myDelay = Delay.new(delayLength) #length is expressed in samples
+    delayLength = samplerate
+    myDelay = Delay(delayLength) #length is expressed in samples
 
 sample:
     input = in1
