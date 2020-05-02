@@ -65,6 +65,11 @@ init:
     for i in 0..dataLength-1:
         data[i] = Vector()
 
+    #Data entries can also be accessed with the iterator syntax
+    for entry in data:
+        print(entry.x)
+        print(entry.y)
+        print(entry.z)
 ...
 ```
 
