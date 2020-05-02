@@ -1,3 +1,5 @@
+# [Omni](index.md)
+
 ## Code structure
 
 Omni files can have two different extensions: `.omni` or `.oi`.
