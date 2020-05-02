@@ -29,3 +29,5 @@ sample:
     myVec.setValues(in1, in2, in3)
     out1 = myVec.x * myVec.y * myVec.z
 ```
+
+## [Next: 11 - Writing wrappers](11_writing_wrappers.md)

@@ -55,3 +55,7 @@ When running the `omni` compiler, the output is either a static or shared librar
 ### [09 - Stdlib: Delay](09_delay.md)
 
 ### [10 - Code composition](10_code_composition.md)
+
+### [11 - Writing wrappers](11_writing_wrappers.md)
+
+### [12 - Nim interoperability](12_nim_interop.md)
