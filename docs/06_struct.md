@@ -18,9 +18,9 @@ init:
 `structs` can only be created in the `init` block. To create a `struct`, simply call the name of the `struct`. It will take the elements of the struct as arguments and initialize the struct for you.
 An alternative constructor syntax, is by using the `new` keyword.
 
-**_NOTE_:** For number types (`int`, `int32`, `int64`, `float` / `sig`, `float32` / `sig32`, `float64` / `sig64`) a default value of `0` is given to the constructor arguments.
-
 **_NOTE_:** If no type is defined for a field, it's defaulted to `float`.
+
+**_NOTE_:** For number types (`int`, `int32`, `int64`, `float` / `sig`, `float32` / `sig32`, `float64` / `sig64`) a default value of `0` is given to the constructor arguments.
 
 ```nim
 ins:  1
@@ -39,7 +39,7 @@ init:
     myVec4 = Vector.new()
 ```
 
-`structs`, just like `defs`, support generics. Again, generics are here to be intended as only some kind of number.
+`structs`, just like `defs`, support generics. Generics, as of now, only support number types.
 
 ```nim
 struct Vector[X, Y, Z]:
@@ -81,4 +81,23 @@ init:
 
 sample:
     out1 = myVec1.x * myVec1.y * myVec1.z
+```
+
+`structs` can store other `structs`, allowing the creation of complex data structures.
+
+```nim
+ins  1
+outs 1
+
+struct FirstStruct:
+    data Data[float]
+
+struct SecondStruct:
+    x FirstStruct
+
+init:
+    firstStruct  = FirstStruct(Data(10))        #create a FirstStruct
+    secondStruct = SecondStruct(firstStruct)   #create a SecondStruct, using the previously declared firstStruct
+
+...
 ```
