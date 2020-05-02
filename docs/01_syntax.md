@@ -93,7 +93,9 @@ init:
 
 ```if, elif, else, case, for, while, mod, and, or, not, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, signal, signal32, signal64, sig, sig32, sig64```
 
-**_NOTES:_**: 
+**_NOTES:_** 
 
 1. `float` defaults to the bits of your machine. So, on a 64bit computer, `float` is equal to `float64`
 2. `signal` and `sig` are equal to `float` (and, conversely, `signal32` and `sig32` are equal `float32`, `signal64` / `sig64` to `float64`)
+
+## [Next: 02 - The ins and outs blocks](02_ins_outs.md)
