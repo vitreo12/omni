@@ -20,3 +20,7 @@ perform:
 ```
 
 ### _**NOTE:**_ The `perform` block is optional. `sample` can be defined on its own. However, if `perform` is defined, the `sample` block must be contained in it.
+
+<br>
+
+## [Next: 05 - Functions: def](05_def.md)

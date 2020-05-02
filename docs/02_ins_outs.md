@@ -43,3 +43,7 @@ There are different ways to express them:
    ```
 
 ### _**NOTE:**_ If no `ins` or `outs` are defined, they are defaulted to `ins 1` and `outs 1`.
+
+<br>
+
+## [Next: 03 - The init block](03_init.md)

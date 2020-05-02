@@ -65,3 +65,7 @@ the `Buffer` interface will look like so:
 <p align="left">
   <img width="559" height="444" src="max_buffer.png">
 </p>
+
+<br>
+
+## [Next: 09 - Stdlib: Delay](09_delay.md)

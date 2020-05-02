@@ -44,3 +44,7 @@ The `init` block is an optional block that takes care of initializing and storin
         #write input to the delay line
         myDelay.write(input)
     ```
+
+<br>
+
+## [Next: 04 - The perform and sample blocks](04_perform_sample.md)

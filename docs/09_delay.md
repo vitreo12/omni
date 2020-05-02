@@ -19,3 +19,7 @@ sample:
     out1 = input + delayVal
     myDelay.write(input)
 ```
+
+<br>
+
+## [Next: 10 - Code composition](10_code_composition.md)

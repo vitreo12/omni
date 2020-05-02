@@ -58,3 +58,7 @@ Return type can of course be a generic type:
 def mySum[T, Y](a T = 0, b Y = 0) T:
     return a + b
 ```
+
+<br>
+
+## [Next: 06 - Custom types: struct](06_struct.md)

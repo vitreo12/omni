@@ -98,4 +98,6 @@ init:
 1. `float` defaults to the bits of your machine. So, on a 64bit computer, `float` is equal to `float64`
 2. `signal` and `sig` are equal to `float` (and, conversely, `signal32` and `sig32` are equal `float32`, `signal64` / `sig64` to `float64`)
 
+<br>
+
 ## [Next: 02 - The ins and outs blocks](02_ins_outs.md)

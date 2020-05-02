@@ -79,3 +79,7 @@ struct StoreDataInvalid:
 struct StoreDataValid:
     data Data[float]
 ```
+
+<br>
+
+## [Next: 08 - External memory: Buffer](08_buffer.md)
