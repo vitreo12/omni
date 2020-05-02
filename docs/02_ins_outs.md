@@ -42,8 +42,7 @@ There are different ways to express them:
        "secondOutput"
    ```
 
-### _**NOTE:**_ 
-
+#### _**NOTE:**_ 
 If no `ins` or `outs` are defined, they are defaulted to `ins 1` and `outs 1`.
 
 <br>
