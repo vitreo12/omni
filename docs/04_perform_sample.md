@@ -19,7 +19,8 @@ perform:
         out1 = (in1 * (1.0 - mix)) + (in2 * mix)
 ```
 
-### _**NOTE:**_ The `perform` block is optional. `sample` can be defined on its own. However, if `perform` is defined, the `sample` block must be contained in it.
+### _**NOTE:**_ 
+The `perform` block is optional. `sample` can be defined on its own. However, if `perform` is defined, the `sample` block must be contained in it.
 
 <br>
 
