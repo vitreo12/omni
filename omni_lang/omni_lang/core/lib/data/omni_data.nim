@@ -98,6 +98,23 @@ proc checkDataValidity*[T](data : Data[T]) : bool =
                 return false
     return true
 
+############
+# ITERATOR #
+############
+
+#This allows to set the entry aswell!
+iterator items*[T](data : Data[T]) : T {.inline.} =
+    var i = 0
+    while i < data.length:
+        yield data[i]
+        inc(i)
+
+iterator pairs*[T](data: Data[T]): tuple[key: int, val : T] {.inline.} =
+    var i = 0
+    while i < data.length:
+        yield (i, data[i])
+        inc(i)
+
 ##########
 # GETTER #
 ##########
