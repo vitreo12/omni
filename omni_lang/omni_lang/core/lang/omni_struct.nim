@@ -272,14 +272,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
 #Declare the "proc struct_init_inner ..." and the "template new ...", doing all sorts of type checks
 macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
+    if ptr_struct_name.kind != nnkSym:
+        error("Invalid struct ptr symbol!")
+
     let 
         ptr_struct_type = ptr_struct_name.getType()
         obj_struct_name = ptr_struct_type[1][1]
         obj_struct_name_kind = obj_struct_name.kind
 
-    var 
-        obj_name : string
-        ptr_name : string
+    let ptr_name = ptr_struct_name.strVal()
 
     var 
         final_stmt_list = nnkStmtList.newTree()
@@ -353,9 +354,6 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
         #Add generics to template definition
         template_def.add(generics_proc_def)
-        
-        #Retrieve obj_name
-        obj_name = obj_struct_name_ident.strVal()
 
     #no generics
     else:
@@ -375,9 +373,6 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         obj_bracket_expr = obj_struct_name
         ptr_bracket_expr = ptr_struct_name
 
-        #Retrieve obj_name
-        obj_name = obj_struct_name.strVal()
-
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
@@ -392,10 +387,6 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             newEmptyNode()
         )   
     )
-
-    if obj_name.len < 4:
-        error("Cannot parse struct `" & $obj_struct_name & "`")
-    ptr_name = obj_name[0..obj_name.len-5] #remove_obj
 
     #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(
