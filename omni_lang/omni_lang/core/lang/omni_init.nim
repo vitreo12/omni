@@ -24,7 +24,6 @@ import macros, tables
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
-    echo repr code_block 
     discard
 
 #This has been correctly parsed!
