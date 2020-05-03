@@ -1,4 +1,4 @@
-<a name="logo" href = "https://vitreo12.github.io/omni/">
+<a name="logo" href = "https://vitreo12.github.io/">
     <div align="center">
         <img src="omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
     </div>
