@@ -171,6 +171,11 @@ macro init_inner*(code_block_stmt_list : untyped) =
             
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
+        else:
+            error("`build`: invalid syntax.")
+
+        #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
+        code_block.del(code_block.len() - 1)
     
     #No call to "build" provided. Build one from all the var and let declarations!
     else:
@@ -181,9 +186,6 @@ macro init_inner*(code_block_stmt_list : untyped) =
         
         for var_decl_ident in var_declarations:
             call_to_build_macro.add(var_decl_ident)
-
-        #Need to add it to code_block, as in the other case (when new is provided), call_to_new macro is modified in place.
-        code_block.add(call_to_build_macro)
 
     #Check the variables that are passed to call_to_build_macro
     for index, build_macro_var_name in call_to_build_macro:
@@ -304,15 +306,12 @@ macro init_inner*(code_block_stmt_list : untyped) =
             newIdentNode("samplerate")      
         )
     )
-
-    #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
-    code_block.del(code_block.len() - 1)
     
     #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "executeNewStatementAndBuildUGenObjectType" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "build" macro
     let code_block_with_var_let_templates_and_call_to_build_macro = nnkStmtList.newTree(
         templates_for_constructor_var_declarations,
         templates_for_constructor_let_declarations,
-        code_block.copy(),
+        code_block,
         call_to_build_macro
     )
 
