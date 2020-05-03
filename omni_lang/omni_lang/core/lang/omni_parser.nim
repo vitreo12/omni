@@ -202,12 +202,11 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 var 
                     var_ident = statement[0]
                     var_misc  = statement[1]
-
-                var var_ident_kind = var_ident.kind
+                    var_ident_kind = var_ident.kind
 
                 #If an ambiguous openSym... Take the first symbol. Also update var_ident_kind
                 if(var_ident_kind == nnkOpenSymChoice):
-                    var_ident = var_ident[0]
+                    var_ident      = var_ident[0]
                     var_ident_kind = var_ident.kind
                 
                 var is_no_colon_syntax = false
