@@ -87,4 +87,4 @@ sample:
 
 ## **Docs**
 
-Checkout omni's [documentation](https://vitreo12.github.io/omni-docs/).
+Checkout omni's [documentation](https://vitreo12.github.io/).
