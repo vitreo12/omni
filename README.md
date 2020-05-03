@@ -1,6 +1,6 @@
 <a name="logo" href = "https://vitreo12.github.io/omni/">
     <div align="center">
-        <img src="docs/omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
+        <img src="omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
     </div>
 </a>
 
@@ -87,4 +87,4 @@ sample:
 
 ## **Docs**
 
-Checkout omni's [documentation](https://vitreo12.github.io/omni/).
+Checkout omni's [documentation](https://vitreo12.github.io/omni-docs/).
