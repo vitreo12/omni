@@ -23,7 +23,8 @@
 import macros, tables
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
-macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
+macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
+    echo repr code_block 
     discard
 
 #This has been correctly parsed!
@@ -232,7 +233,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 call_to_build_macro[index] = new_let_declaration
 
     #echo repr code_block
-    #echo repr call_to_build_macro
+    #echo astGenRepr call_to_build_macro
 
     #echo astGenRepr templates_for_perform_var_declarations
 
@@ -304,16 +305,20 @@ macro init_inner*(code_block_stmt_list : untyped) =
             newIdentNode("samplerate")      
         )
     )
+
+    #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
+    code_block.del(code_block.len() - 1)
     
     #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "executeNewStatementAndBuildUGenObjectType" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "build" macro
     let code_block_with_var_let_templates_and_call_to_build_macro = nnkStmtList.newTree(
         templates_for_constructor_var_declarations,
         templates_for_constructor_let_declarations,
-        code_block.copy()
+        code_block.copy(),
+        call_to_build_macro
     )
-    
-    #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
-    code_block.del(code_block.len() - 1)
+
+    #echo astGenRepr call_to_build_macro
+    #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.

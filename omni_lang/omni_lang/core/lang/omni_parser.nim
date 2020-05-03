@@ -795,7 +795,6 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
         if build_statement != nil and build_statement.kind != nnkNilLit:
             result.add(build_statement)
 
-        
         #Run the whole block through the init_inner macro. This will build the actual
         #constructor function, and it will run the untyped version of the "build" macro.
         result = nnkCall.newTree(
