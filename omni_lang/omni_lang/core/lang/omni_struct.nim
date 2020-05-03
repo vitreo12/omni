@@ -275,6 +275,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     let 
         ptr_struct_type = ptr_struct_name.getType()
         obj_struct_name = ptr_struct_type[1][1]
+        obj_struct_name_kind = obj_struct_name.kind
 
     var 
         final_stmt_list = nnkStmtList.newTree()
@@ -316,7 +317,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     )
 
     #Generics
-    if obj_struct_name.kind == nnkBracketExpr:
+    if obj_struct_name_kind == nnkBracketExpr:
         obj_struct_type = (obj_struct_name[0]).getTypeImpl()
 
         #Initialize them to be bracket expressions and add the "Phasor_obj" and "Phasor" names to brackets
@@ -381,9 +382,22 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         )   
     )
 
-    let 
+    var 
+        obj_name : string
+        ptr_name : string
+    
+    #generics
+    if obj_struct_name_kind == nnkBracketExpr:
+        obj_name = obj_struct_name[0].strVal()
+    elif obj_struct_name_kind == nnkIdent or obj_struct_name_kind == nnkSym:
         obj_name = obj_struct_name.strVal()
-        ptr_name = obj_name[0..obj_name.len-5] #remove_obj
+    else:
+        error("Invalid struct name!")
+
+    if obj_name.len < 4:
+        error("Cannot parse struct `" & $obj_struct_name & "`")
+
+    ptr_name = obj_name[0..obj_name.len-5] #remove_obj
 
     #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(
