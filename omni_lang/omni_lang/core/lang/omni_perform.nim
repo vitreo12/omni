@@ -139,7 +139,7 @@ template performInner*(code_block : untyped) {.dirty.} =
         init:
             discard
     
-    template unlock_buffers*() : untyped {.dirty.} =
+    template unlock_buffers() : untyped {.dirty.} =
         when at_least_one_buffer:
             when not declared(Buffer):
                 error("No Buffer module declared! Buffers are only supported in wrappers around omni, like omnicollider and omnimax.")
@@ -150,7 +150,7 @@ template performInner*(code_block : untyped) {.dirty.} =
                         let buffer_to_unlock_123456789 = cast[Buffer](ugen_auto_buffer.allocs[i])
                         unlock_buffer(buffer_to_unlock_123456789)
 
-    template get_buffers*() : untyped {.dirty.} =
+    template get_buffers() : untyped {.dirty.} =
         when at_least_one_buffer:
             when not declared(Buffer):
                 error("No Buffer module declared! Buffers are only supported in wrappers around omni, like omnicollider and omnimax.")
@@ -168,7 +168,7 @@ template performInner*(code_block : untyped) {.dirty.} =
                         return
 
     when defined(performBits32):
-        proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib.} =    
+        proc Omni_UGenPerform32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.export_Omni_UGenPerform32.} =    
             #Needed to be passed to all defs
             var ugen_call_type {.inject, noinit.} : typedesc[PerformCall]
             
@@ -185,7 +185,7 @@ template performInner*(code_block : untyped) {.dirty.} =
                 unlock_buffers()
 
     when defined(performBits64):
-        proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
+        proc Omni_UGenPerform64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.export_Omni_UGenPerform64.} =    
             #Needed to be passed to all defs
             var ugen_call_type {.inject, noinit.} : typedesc[PerformCall]
 

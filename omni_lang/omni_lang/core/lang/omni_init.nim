@@ -328,7 +328,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
         #This is just allocating memory, not running constructor
-        proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
+        proc Omni_UGenAlloc() : pointer {.export_Omni_UGenAlloc.} =
             #allocation of "ugen" variable
             `alloc_ugen`
 
@@ -345,7 +345,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
             return ugen_ptr
         
         #Define Omni_UGenFree
-        proc Omni_UGenFree*(ugen_ptr : pointer) : void {.exportc: "Omni_UGenFree", dynlib.} =
+        proc Omni_UGenFree(ugen_ptr : pointer) : void {.export_Omni_UGenFree.} =
             if isNil(ugen_ptr):
                 print("ERROR: Omni: invalid ugen_ptr to free.")
                 return
@@ -366,7 +366,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         findDatasAndStructs(UGen, true)
         
         when defined(performBits32):
-            proc Omni_UGenInit32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
+            proc Omni_UGenInit32(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.export_Omni_UGenInit32.} =
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return 0
@@ -418,7 +418,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 
                 return 1
 
-            proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
+            proc Omni_UGenAllocInit32(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.export_Omni_UGenAllocInit32.} =
                 let ugen_ptr = Omni_UGenAlloc()
                 if Omni_UGenInit32(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
                     return ugen_ptr
@@ -428,7 +428,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     return cast[pointer](nil)
 
         when defined(performBits64):
-            proc Omni_UGenInit64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
+            proc Omni_UGenInit64(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.export_Omni_UGenInit64.} =
                 if isNil(ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return 0
@@ -480,7 +480,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 return 1
 
-            proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
+            proc Omni_UGenAllocInit64(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.export_Omni_UGenAllocInit64.} =
                 let ugen_ptr = Omni_UGenAlloc()
                 if Omni_UGenInit64(ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
                     return ugen_ptr
@@ -531,10 +531,24 @@ macro initialise*(code_block : untyped) : untyped =
 #This macro should in theory just work with the "build(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
 #a correct call to "build(a, b)" instead of "build: \n a \n b" or "build a b" by extracting the nnkIdents from the other calls and 
 #building a correct "build(a, b)" syntax out of them.
-macro build*(var_names : varargs[typed]) =    
-    var final_type = nnkTypeSection.newTree()
-    var final_typedef = nnkTypeDef.newTree().add(nnkPragmaExpr.newTree(newIdentNode("UGen")).add(nnkPragma.newTree(newIdentNode("inject")))).add(newEmptyNode())
-    var final_obj  = nnkObjectTy.newTree().add(newEmptyNode()).add(newEmptyNode())
+macro build*(var_names : varargs[typed]) =      
+    var 
+        final_type = nnkTypeSection.newTree()
+        
+        final_typedef = nnkTypeDef.newTree(
+            nnkPragmaExpr.newTree(
+                newIdentNode("UGen"),
+                nnkPragma.newTree(
+                    newIdentNode("inject")
+                )
+            ),
+            newEmptyNode()
+        )
+
+        final_obj  = nnkObjectTy.newTree(
+            newEmptyNode(),
+            newEmptyNode()
+        )
     
     final_typedef.add(final_obj)
     final_type.add(final_typedef)

@@ -74,7 +74,8 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Check file first charcter, must be a capital letter
     if not omniFileName[0].isUpperAscii:
-        omniFileName[0] = omniFileName[0].toUpperAscii()
+        printError("File name must start with a capital letter: " & $omniFileName & $omniFileExt)
+        #omniFileName[0] = omniFileName[0].toUpperAscii()
 
     #Check file extension
     if not(omniFileExt == ".omni") and not(omniFileExt == ".oi"):
@@ -172,6 +173,9 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         compile_command.add(" -d:performBits64")
     else:
         compile_command.add(" -d:performBits32 -d:performBits64")
+
+    #Set OmniTopLevelModule flag to the compiled omni file name
+    compile_command.add(" -d:OmniTopLevelModule=" & omniFileName)
 
     #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
     var import_omni_lang = true

@@ -665,16 +665,21 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         #Generate procs for min/max
         generate_inputs_templates(`num_of_inputs_VAL`, 0, 1)
 
+        #Generate args templates
         generate_args_templates(`num_of_inputs_VAL`)
         
+        #Define module at the top (ins is still called even if not provided!)
+        when not declared(declared_module):
+            defineCurrentModule()
+        
         #Export to C
-        proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
+        proc Omni_UGenInputs() : int32 {.export_Omni_UGenInputs.} =
             return int32(omni_inputs)
 
-        proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
+        proc Omni_UGenInputNames() : ptr cchar {.export_Omni_UGenInputNames.} =
             return cast[ptr cchar](omni_input_names_let.unsafeAddr)
 
-        proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
+        proc Omni_UGenDefaults() : ptr cfloat {.export_Omni_UGenDefaults.} =
             return cast[ptr cfloat](omni_defaults_let.unsafeAddr)
 
 
@@ -756,11 +761,13 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
         #compile time variable if outs are defined
         let declared_outputs {.inject, compileTime.} = true
         
-        #generate_outputs_templates(`num_of_outputs_VAL`)
+       #Define module at the top (if ins is not specified!)
+        when not declared(declared_module):
+            defineCurrentModule()
         
         #Export to C
-        proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
+        proc Omni_UGenOutputs() : int32 {.export_Omni_UGenOutputs.} =
             return int32(omni_outputs)
 
-        proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
+        proc Omni_UGenOutputNames() : ptr cchar {.export_Omni_UGenOutputNames.} =
             return cast[ptr cchar](omni_output_names_let.unsafeAddr)
