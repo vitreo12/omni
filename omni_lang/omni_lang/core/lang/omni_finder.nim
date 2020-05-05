@@ -41,7 +41,10 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
 
     var 
         proc_def = nnkProcDef.newTree(
-            newIdentNode("checkValidity"),
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("checkValidity")
+            ),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(

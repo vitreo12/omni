@@ -75,6 +75,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Check file first charcter, must be a capital letter
     if not omniFileName[0].isUpperAscii:
         printError("File name must start with a capital letter: " & $omniFileName & $omniFileExt)
+        return 1
         #omniFileName[0] = omniFileName[0].toUpperAscii()
 
     #Check file extension
