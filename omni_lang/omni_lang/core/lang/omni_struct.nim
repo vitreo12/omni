@@ -191,7 +191,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = code_stmt[1][0]
 
         new_decl.add(
-            var_name,
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                var_name
+            ),
             var_type,
             newEmptyNode()
         )
