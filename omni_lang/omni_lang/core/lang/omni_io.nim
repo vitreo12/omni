@@ -650,6 +650,10 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     let defaults_mins_maxs = buildDefaultMinMaxArrays(num_of_inputs_VAL, default_vals, min_vals, max_vals)
 
     return quote do:
+        #Define module at the top (ins is still called even if not provided!)
+        when not declared(declared_module):
+            defineOmniModule()
+            
         const 
             omni_inputs            {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             omni_input_names_const {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
@@ -667,10 +671,6 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
         #Generate args templates
         generate_args_templates(`num_of_inputs_VAL`)
-        
-        #Define module at the top (ins is still called even if not provided!)
-        when not declared(declared_module):
-            defineCurrentModule()
         
         #Export to C
         proc Omni_UGenInputs() : int32 {.export_Omni_UGenInputs.} =
@@ -752,6 +752,10 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     param_names_node = newLit(param_names_string)
 
     return quote do: 
+        #Define module at the top (if ins is not specified!)
+        when not declared(declared_module):
+            defineOmniModule()
+
         const 
             omni_outputs            {.inject.} = `num_of_outputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
             omni_output_names_const {.inject.} = `param_names_node`  #It's possible to outsert NimNodes directly in the code block 
@@ -760,10 +764,6 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
 
         #compile time variable if outs are defined
         let declared_outputs {.inject, compileTime.} = true
-        
-       #Define module at the top (if ins is not specified!)
-        when not declared(declared_module):
-            defineCurrentModule()
         
         #Export to C
         proc Omni_UGenOutputs() : int32 {.export_Omni_UGenOutputs.} =

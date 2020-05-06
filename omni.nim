@@ -136,6 +136,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
+    
+    #gcc / clang
+    else:
+        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
 
     #Append additional definitions
     for new_define in define:

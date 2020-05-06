@@ -327,6 +327,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
+        
+        defineUGenToOmniModule(OmniCurrentModule)
+
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc() : pointer {.export_Omni_UGenAlloc.} =
             #allocation of "ugen" variable

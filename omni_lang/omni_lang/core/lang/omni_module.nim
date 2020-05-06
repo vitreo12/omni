@@ -1,6 +1,7 @@
 from os import splitFile
+import macros
 
-template defineCurrentModule*() : untyped =
+template defineOmniModule*() : untyped =
     let declared_module {.inject, compileTime.} : bool = true
     
     const 
@@ -38,3 +39,29 @@ template defineCurrentModule*() : untyped =
         {.pragma: export_Omni_UGenAllocInit64.}
         {.pragma: export_Omni_UGenPerform32.}
         {.pragma: export_Omni_UGenPerform64.}
+
+#This actually define the exportable module
+macro defineUGenToOmniModule*(name : typed, num_inputs, input_names, num_outputs) : untyped =
+    let name_kind = name.kind
+    
+    if name_kind != nnkIdent and name_kind != nnkSym:
+        error("Invalid omni module name")
+
+    #This is the actual name of the module
+    let name_lit = newIdentNode(name.getImpl.strVal)
+    
+    return quote do:
+        type
+            `name_lit`* = ptr UGen
+
+        #Emulate .init
+        #[
+        
+        #Unpack inputs with proper names. Unpack them as float
+        proc init*(obj : typedesc[`name_lit`], in1 : float, in2 : float, ugen_auto_mem : ptr OmniAutoMem, ugen_auto_buffer : ptr OmniAutoMem) : `name_lit` =
+            
+        
+        #This can also return tuples of floats
+        proc perform*(obj : typedesc[`name_lit`], in1 : float, in2 : float) : float =
+
+        ]#
