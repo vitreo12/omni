@@ -315,8 +315,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         call_to_build_macro
     )
 
-    #echo astGenRepr call_to_build_macro
-    #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
+    #echo astGenRepr code_block
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
@@ -326,9 +325,6 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
-
-        
-        defineUGenToOmniModule(OmniCurrentModule)
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc() : pointer {.export_Omni_UGenAlloc.} =
@@ -491,8 +487,28 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     if not isNil(ugen_ptr):
                         Omni_UGenFree(ugen_ptr)
                     return cast[pointer](nil)
-                
+
+        #generate_module_init()
+        
 macro init*(code_block : untyped) : untyped =
+    let code_block_module_init = nnkStmtList.newTree(
+        nnkTemplateDef.newTree(
+            in_name,
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+                arg_name
+            )
+        )
+    )
+
     return quote do:
         #If ins / outs are not declared, declare them!
         when not declared(declared_inputs):
@@ -520,6 +536,11 @@ macro init*(code_block : untyped) : untyped =
         let init_block {.inject, compileTime.} = true
 
         parse_block_for_variables(`code_block`, true)
+        
+        parse_block_for_variables(`code_block`, true, is_init_module_block_typed = true)
+        
+        #Defines the name of the omni file as alias for ptr UGen, and init and perform functions for it
+        #defineOmniModuleInit(OmniCurrentModule, `code_block`, omni_inputs, omni_input_names_const, omni_defaults_const, omni_outputs)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =

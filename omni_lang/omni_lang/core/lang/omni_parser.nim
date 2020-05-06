@@ -458,7 +458,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
     #[ else:
         running_index_seq = @[0] ]#
 
-macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
+macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, bits_32_or_64_typed : typed = false, is_init_module_block_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree().add(newEmptyNode())
@@ -469,6 +469,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
         is_perform_block = is_perform_block_typed.boolVal()
         is_sample_block = is_sample_block_typed.boolVal()
         bits_32_or_64 = bits_32_or_64_typed.boolVal()
+        #is_init_module = is_init_module_block_typed.boolVal()
     
     #Using the global variable. Reset it at every call.
     var variable_names_table = newTable[string, string]()
@@ -586,7 +587,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_for_consts_and_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_for_consts_and_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_init_module_block_typed`)
 
 
 #========================================================================================================================================================#
@@ -756,7 +757,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
         parse_block_recursively_for_consts_and_structs(typed_statement, templates_to_ignore, is_perform_block)
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_init_module_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -770,6 +771,7 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
     let 
         is_constructor_block = is_constructor_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
+        is_init_module = is_init_module_block_typed.strVal() == "true"
 
     #echo astGenRepr inner_block
     #echo repr inner_block
@@ -795,14 +797,29 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
         if build_statement != nil and build_statement.kind != nnkNilLit:
             result.add(build_statement)
 
+        #echo astGenRepr result
+
         #Run the whole block through the init_inner macro. This will build the actual
         #constructor function, and it will run the untyped version of the "build" macro.
-        result = nnkCall.newTree(
-            newIdentNode("init_inner"),
-            nnkStmtList.newTree(
-                result
+        if not is_init_module:
+            result = nnkCall.newTree(
+                newIdentNode("init_inner"),
+                nnkStmtList.newTree(
+                    result
+                )
             )
-        )
+        
+        #initializing an omni module
+        else:
+            result = nnkCall.newTree(
+                newIdentNode("defineOmniModuleInit"),
+                newIdentNode("OmniCurrentModule"),
+                result,
+                newIdentNode("omni_inputs"),
+                newIdentNode("omni_input_names_const"),
+                newIdentNode("omni_defaults_const"),
+                newIdentNode("omni_outputs")
+            )
     
     #echo astGenRepr inner_block
     #echo repr result 
