@@ -108,7 +108,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         #Add template and proc names
         template_name = proc_name
         proc_name_without_inner = proc_name
-        proc_name = newIdentNode(proc_name.strVal() & "_inner")
+        proc_name = newIdentNode(proc_name.strVal() & "_def_inner")
         
         #Add proc name to template call
         template_body_call.add(proc_name)
@@ -160,7 +160,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 arg_type = newIdentNode("auto")
                 arg_value = newEmptyNode()
                 
-
             else:
                 error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
 
@@ -200,7 +199,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             new_arg = nnkIdentDefs.newTree(
                 arg_name,
                 arg_type,
-                newEmptyNode()
+                arg_value
             )
             
             #add to formal params
@@ -229,19 +228,28 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             proc_def.add(newEmptyNode())
             proc_def.add(newEmptyNode())
 
-        #Add ugen_auto_mem : ptr OmniAutoMem
+        #Add samplerate / bufsize / ugen_auto_mem : ptr OmniAutoMem / ugen_call_type : CallType = InitCall
         proc_formal_params.add(
+            nnkIdentDefs.newTree(
+                newIdentNode("samplerate"),
+                newIdentNode("float"),
+                newEmptyNode()
+            ),
+
+            nnkIdentDefs.newTree(
+                newIdentNode("bufsize"),
+                newIdentNode("int"),
+                newEmptyNode()
+            ),
+
             nnkIdentDefs.newTree(
                 newIdentNode("ugen_auto_mem"),
                 nnkPtrTy.newTree(
                     newIdentNode("OmniAutoMem")
                 ),
                 newEmptyNode()
-            )
-        )
+            ),
 
-        #Add ugen_call_type : CallType = InitCall
-        proc_formal_params.add(
             nnkIdentDefs.newTree(
                 newIdentNode("ugen_call_type"),
                 nnkBracketExpr.newTree(
@@ -290,13 +298,17 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         let template_formal_params = proc_formal_params.copy
         template_formal_params.del(template_formal_params.len - 1) #delete ugen_call_type
         template_formal_params.del(template_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
+        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete bufsize now
+        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete samplerate now
         template_formal_params[0] = newIdentNode("untyped")
         template_def.add(template_formal_params)
         template_def.add(newEmptyNode())
         template_def.add(newEmptyNode())
 
-        #Add ugen_auto_mem / ugen_call_type to template call
+        #Add samplerate / bufsize / ugen_auto_mem / ugen_call_type to template call
         template_body_call.add(
+            newIdentNode("samplerate"),
+            newIdentNode("bufsize"),
             newIdentNode("ugen_auto_mem"),
             newIdentNode("ugen_call_type")
         )
@@ -318,7 +330,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     proc_and_template.add(proc_def)
     proc_and_template.add(template_def)
 
-    #echo repr proc_and_template
+    echo repr proc_and_template
 
     #echo astGenRepr proc_formal_params
     #echo repr checkValidTypes
