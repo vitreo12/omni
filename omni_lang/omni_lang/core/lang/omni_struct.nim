@@ -127,16 +127,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
             error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
         
-        #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
-        obj_type_def.add(nnkPostfix.newTree(
+        #Add name to obj_type_def. Needs to be exported for proper working!
+        obj_type_def.add(
+            nnkPostfix.newTree(
                 newIdentNode("*"),
                 obj_name
             ),
             newEmptyNode()
         )
 
-        #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
-        ptr_type_def.add(nnkPostfix.newTree(
+        #Add name to ptr_type_def.
+        ptr_type_def.add(
+            nnkPostfix.newTree(
                 newIdentNode("*"),
                 ptr_name
             ),
@@ -191,7 +193,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = code_stmt[1][0]
 
         new_decl.add(
-            var_name,
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                var_name
+            ),
             var_type,
             newEmptyNode()
         )
