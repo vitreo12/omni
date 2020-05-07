@@ -119,6 +119,8 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     
     #echo astGenRepr proc_new_call
 
+    #Here it's essential for the when to check for "declared", not "declaredInScope"!
+    #declareInScope is useful in init / perform / def bodies for variable declarations
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
             nnkCall.newTree(
@@ -317,7 +319,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                         
                             #This is needed to avoid renaming stuff that already is templates, etc... in perform_block
                             #[
-                                when declared("phase").not:
+                                when declaredInScope("phase").not:
                                     phase : ...
                                 else:
                                     {.fatal.} ...
@@ -327,7 +329,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                                     nnkElifBranch.newTree(
                                         nnkDotExpr.newTree(
                                             nnkCall.newTree(
-                                                newIdentNode("declared"),
+                                                newIdentNode("declaredInScope"),
                                                 var_ident
                                             ),
                                             newIdentNode("not")
@@ -386,7 +388,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                             #This is needed to avoid renaming stuff that already had been defined in a previous variable, templates, etc...
                             #[
-                                when declared("phase").not:
+                                when declaredInScope("phase").not:
                                     var phase = ...
                                 else:
                                     phase = typeof(phase)(...)
@@ -397,7 +399,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                                     nnkElifBranch.newTree(
                                         nnkDotExpr.newTree(
                                             nnkCall.newTree(
-                                                newIdentNode("declared"),
+                                                newIdentNode("declaredInScope"),
                                                 var_ident
                                             ),
                                             newIdentNode("not")

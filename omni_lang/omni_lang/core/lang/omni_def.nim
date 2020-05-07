@@ -330,8 +330,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     proc_and_template.add(proc_def)
     proc_and_template.add(template_def)
 
-    echo repr proc_and_template
-
+    #echo repr proc_and_template
     #echo astGenRepr proc_formal_params
     #echo repr checkValidTypes
 
