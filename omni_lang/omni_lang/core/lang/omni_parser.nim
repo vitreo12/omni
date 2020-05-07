@@ -144,7 +144,7 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
 # EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
 #========================================================================================================================================================#
 
-proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_constructor_block : bool = false, is_perform_block : bool = false) : void {.compileTime.} =
+proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : void {.compileTime.} =
     if code_block.len > 0:
         
         for index, statement in code_block.pairs():
@@ -194,6 +194,89 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                         )
 
                     code_block[index] = new_return_stmt
+
+            #Look for ins[i]
+            elif statement_kind == nnkBracketExpr:
+                if is_perform_block:
+                    let 
+                        bracket_ident = statement[0]
+                        bracket_val   = statement[1]
+                    
+                    if bracket_ident.kind == nnkIdent:
+                        let bracket_ident_str = bracket_ident.strVal()
+                        
+                        if bracket_ident_str == "ins":
+                            var audio_index_loop = newLit(0)
+                            
+                            if is_sample_block:
+                                audio_index_loop = newIdentNode("audio_index_loop")
+                            
+                            let new_statement = nnkCall.newTree(
+                                newIdentNode("get_dynamic_input"),
+                                newIdentNode("ins_Nim"),
+                                bracket_val,
+                                audio_index_loop
+                            )
+                            
+                            code_block[index] = new_statement
+            
+            #Look for outs[i] = (nnkAsgn is also checked later for all the other kinds of assignment...)
+            elif statement_kind == nnkAsgn:
+                if is_perform_block:
+                    let 
+                        assgn_left  = statement[0]
+                        assgn_right = statement[1]
+                    
+                    if assgn_left.kind == nnkBracketExpr:
+                        let
+                            bracket_ident = assgn_left[0]
+                            bracket_index = assgn_left[1]
+
+                        if bracket_ident.kind == nnkIdent:
+                            if bracket_ident.strVal() == "outs":
+                                var audio_index_loop_bracket : NimNode
+
+                                if is_sample_block:
+                                    audio_index_loop_bracket = nnkBracketExpr.newTree(
+                                        nnkBracketExpr.newTree(
+                                            newIdentNode("outs_Nim"),
+                                            bracket_index
+                                        ),
+                                        newIdentNode("audio_index_loop")
+                                    )
+                                else:
+                                    audio_index_loop_bracket = nnkBracketExpr.newTree(
+                                        newIdentNode("outs_Nim"),
+                                        bracket_index
+                                    )
+
+                                #echo repr audio_index_loop_bracket
+
+                                var new_statement = nnkStmtList.newTree(
+                                    nnkIfStmt.newTree(
+                                        nnkElifBranch.newTree(
+                                            nnkInfix.newTree(
+                                                newIdentNode("<"),
+                                                bracket_index,
+                                                newIdentNode("omni_outputs")
+                                            ),
+                                            nnkStmtList.newTree(
+                                                nnkAsgn.newTree(
+                                                    audio_index_loop_bracket,
+                                                    assgn_right
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+
+                                #Run the parsing on the new statement too, if there are weird assignments / calls / etc...
+                                #parse_block_recursively_for_variables(new_statement, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
+
+                                #echo repr new_statement
+
+                                code_block[index] = new_statement
+                    
 
             #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
             elif statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
@@ -454,7 +537,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             #echo repr code_block
 
             #Run the function recursively
-            parse_block_recursively_for_variables(statement, variable_names_table, is_constructor_block, is_perform_block)
+            parse_block_recursively_for_variables(statement, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
     
     #Reset at end of chain
     #[ else:
@@ -522,7 +605,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                     code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
     #Look for var  declarations recursively in all blocks
-    parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block)
+    parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
     
     #Add all stuff relative to initialization for perform function:
     #[
@@ -583,7 +666,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #echo astGenRepr code_block
     #echo astGenRepr final_block
 
-    #echo repr final_block
+    echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -654,9 +737,9 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         typed_code_block[index] = new_array_assignment
 
                 #Check type of all arguments for other function calls (not array access related) 
-                #Ignore function ending in _min_max (the one used for input min/max conditional)
+                #Ignore function ending in _min_max (the one used for input min/max conditional) OR is not get_dynamic_input
                 #THIS IS NOT SAFE! min_max could be assigned by user to another def
-                elif typed_statement.len > 1 and not(function_name.endsWith("_min_max")):
+                elif typed_statement.len > 1 and not(function_name.endsWith("_min_max")) and not(function_name == "get_dynamic_input"):
                     for i, arg in typed_statement.pairs():
                         #ignore i == 0 (the function_name)
                         if i == 0:
@@ -669,9 +752,10 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
 
         #Look for var sections
         elif typed_statement_kind == nnkVarSection:
-            let var_symbol = typed_statement[0][0]
-            let var_type   = var_symbol.getTypeInst().getTypeImpl()
-            let var_name   = var_symbol.strVal()
+            let 
+                var_symbol = typed_statement[0][0]
+                var_type   = var_symbol.getTypeInst().getTypeImpl()
+                var_name   = var_symbol.strVal()
 
             #Look for templates to ignore
             #[ 

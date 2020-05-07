@@ -666,6 +666,12 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         generate_inputs_templates(`num_of_inputs_VAL`, 0, 1)
 
         generate_args_templates(`num_of_inputs_VAL`)
+
+        proc get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, audio_index_loop : int = 0) : float =
+            if int(chan) < omni_inputs:
+                return float(ins_Nim[chan][audio_index_loop])
+            else:
+                return 0.0
         
         #Export to C
         proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
