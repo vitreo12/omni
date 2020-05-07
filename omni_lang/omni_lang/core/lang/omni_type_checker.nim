@@ -129,8 +129,8 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
         #If arg to a proc call, it should accept strings/cstrings too! 
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
             var proc_name_real : string
-            if proc_name.endsWith("_inner"):
-                proc_name_real = proc_name[0..(proc_name.len - 7)] #remove _inner
+            if proc_name.endsWith("_def_inner"):
+                proc_name_real = proc_name[0..(proc_name.len - 11)] #remove _def_inner
             else:
                 proc_name_real = proc_name
             error("Call to \'" & $proc_name_real & "\' : argument number " & $var_name & " is of unknown type: \'" & $var_type & "\'.")

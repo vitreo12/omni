@@ -134,6 +134,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
+    
+    #gcc / clang. add flto instruction to compiler and linker
+    else:
+        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
 
     #Append additional definitions
     for new_define in define:
@@ -203,7 +207,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     
     #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
     when not defined(Windows):
-        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q Omni_UGenPerform")               # -q == silent output
+        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")               # -q == silent output
     else:
         let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
 

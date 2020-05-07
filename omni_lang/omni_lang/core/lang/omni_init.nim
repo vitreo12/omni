@@ -23,7 +23,7 @@
 import macros, tables
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
-macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =    
+macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
     discard
 
 #This has been correctly parsed!
@@ -171,6 +171,11 @@ macro init_inner*(code_block_stmt_list : untyped) =
             
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
+        else:
+            error("`build`: invalid syntax.")
+
+        #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
+        code_block.del(code_block.len() - 1)
     
     #No call to "build" provided. Build one from all the var and let declarations!
     else:
@@ -181,9 +186,6 @@ macro init_inner*(code_block_stmt_list : untyped) =
         
         for var_decl_ident in var_declarations:
             call_to_build_macro.add(var_decl_ident)
-
-        #Need to add it to code_block, as in the other case (when new is provided), call_to_new macro is modified in place.
-        code_block.add(call_to_build_macro)
 
     #Check the variables that are passed to call_to_build_macro
     for index, build_macro_var_name in call_to_build_macro:
@@ -232,7 +234,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 call_to_build_macro[index] = new_let_declaration
 
     #echo repr code_block
-    #echo repr call_to_build_macro
+    #echo astGenRepr call_to_build_macro
 
     #echo astGenRepr templates_for_perform_var_declarations
 
@@ -309,11 +311,12 @@ macro init_inner*(code_block_stmt_list : untyped) =
     let code_block_with_var_let_templates_and_call_to_build_macro = nnkStmtList.newTree(
         templates_for_constructor_var_declarations,
         templates_for_constructor_let_declarations,
-        code_block.copy()
+        code_block,
+        call_to_build_macro
     )
-    
-    #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
-    code_block.del(code_block.len() - 1)
+
+    #echo astGenRepr call_to_build_macro
+    #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
@@ -391,6 +394,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
                     ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
 
+                #Needed to be passed to all defs
+                var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
+
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
@@ -449,6 +455,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 let 
                     ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
                     ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
+
+                #Needed to be passed to all defs
+                var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
         
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -492,11 +501,13 @@ macro init*(code_block : untyped) : untyped =
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 
-            bufsize          {.inject.} : int             = 0
-            samplerate       {.inject.} : float           = 0.0
-            buffer_interface {.inject.} : pointer         = nil
-            ugen_auto_mem    {.inject.} : ptr OmniAutoMem = nil
-            ugen_auto_buffer {.inject.} : ptr OmniAutoMem = nil
+            bufsize          {.inject.} : int                = 0
+            samplerate       {.inject.} : float              = 0.0
+            buffer_interface {.inject.} : pointer            = nil
+            ugen_auto_mem    {.inject.} : ptr OmniAutoMem    = nil
+            ugen_auto_buffer {.inject.} : ptr OmniAutoMem    = nil
+        
+        var ugen_call_type   {.inject, noinit.} : typedesc[CallType]
 
         #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
         let ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)

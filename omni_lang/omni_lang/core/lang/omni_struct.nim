@@ -127,16 +127,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
             error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
         
-        #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
-        obj_type_def.add(nnkPostfix.newTree(
+        #Add name to obj_type_def. Needs to be exported for proper working!
+        obj_type_def.add(
+            nnkPostfix.newTree(
                 newIdentNode("*"),
                 obj_name
             ),
             newEmptyNode()
         )
 
-        #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
-        ptr_type_def.add(nnkPostfix.newTree(
+        #Add name to ptr_type_def.
+        ptr_type_def.add(
+            nnkPostfix.newTree(
                 newIdentNode("*"),
                 ptr_name
             ),
@@ -191,7 +193,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = code_stmt[1][0]
 
         new_decl.add(
-            var_name,
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                var_name
+            ),
             var_type,
             newEmptyNode()
         )
@@ -272,9 +277,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
 #Declare the "proc struct_init_inner ..." and the "template new ...", doing all sorts of type checks
 macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
+    if ptr_struct_name.kind != nnkSym:
+        error("Invalid struct ptr symbol!")
+
     let 
         ptr_struct_type = ptr_struct_name.getType()
         obj_struct_name = ptr_struct_type[1][1]
+        obj_struct_name_kind = obj_struct_name.kind
+
+    let ptr_name = ptr_struct_name.strVal()
 
     var 
         final_stmt_list = nnkStmtList.newTree()
@@ -316,8 +327,9 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     )
 
     #Generics
-    if obj_struct_name.kind == nnkBracketExpr:
-        obj_struct_type = (obj_struct_name[0]).getTypeImpl()
+    if obj_struct_name_kind == nnkBracketExpr:
+        let obj_struct_name_ident = obj_struct_name[0]
+        obj_struct_type = (obj_struct_name_ident).getTypeImpl()
 
         #Initialize them to be bracket expressions and add the "Phasor_obj" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(obj_struct_name[0])
@@ -379,6 +391,27 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             ),
             newEmptyNode()
         )   
+    )
+
+    #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
+    proc_body.add(
+        nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkInfix.newTree(
+                    newIdentNode("is"),
+                    newIdentNode("ugen_call_type"),
+                    newIdentNode("PerformCall")
+                ),
+                nnkStmtList.newTree(
+                    nnkPragma.newTree(
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("fatal"),
+                            newLit("attempting to allocate memory in the `perform` or `sample` blocks for `struct " & ptr_name & "`")
+                        )
+                    )
+                )
+            )
+        )
     )
 
     #Add the allocation of the struct as first entry i n the body of the struct
@@ -485,7 +518,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     # STRUCT_INIT_INNER PROC #
     # ====================== #
     
-    #Add ugen_auto_mem : ptr OmniAutoMem as last argument
+    #Add ugen_auto_mem : ptr OmniAutoMem argument
     proc_formal_params.add(
         nnkIdentDefs.newTree(
             newIdentNode("ugen_auto_mem"),
@@ -493,6 +526,18 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                 newIdentNode("OmniAutoMem")
             ),
             newEmptyNode()
+        )
+    )
+
+    #Add ugen_call_type as last argument
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("ugen_call_type"),
+            nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                newIdentNode("CallType")
+            ),
+            newIdentNode("InitCall")
         )
     )
 
@@ -516,20 +561,22 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     # NEW TEMPLATE #
     # ============ #
 
-    #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last entry, which is the ugen_auto_mem argument
+    #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are ugen_auto_mem and ugen_call_type
     template_formal_params = proc_formal_params.copy
-    template_formal_params.del(template_formal_params.len - 1)
+    template_formal_params.del(template_formal_params.len - 1) #delete ugen_call_type
+    template_formal_params.del(template_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
     template_formal_params[0] = newIdentNode("untyped")
     template_def.add(template_formal_params)
     template_def.add(newEmptyNode())
     template_def.add(newEmptyNode())
 
-    #echo repr template_formal_params
+    #Add function ugen_auto_mem / ugen_call_type to template call
+    template_body_call.add(
+        newIdentNode("ugen_auto_mem"),
+        newIdentNode("ugen_call_type")
+    )
 
-    #Add function ugen_auto_mem to template call (it's the last argument for the struct_init_inner proc)
-    template_body_call.add(newIdentNode("ugen_auto_mem"))
-
-    #Add body (just call _inner proc, adding "ugen_auto_mem" at the end)
+    #Add body (just call _inner proc, adding "ugen_auto_mem" and "ugen_call_type" at the end)
     template_def.add(
         template_body_call
     )

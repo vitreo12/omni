@@ -169,6 +169,9 @@ template performInner*(code_block : untyped) {.dirty.} =
 
     when defined(performBits32):
         proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib.} =    
+            #Needed to be passed to all defs
+            var ugen_call_type {.inject, noinit.} : typedesc[PerformCall]
+            
             #standard perform block
             when declared(perform_block):
                 parse_block_for_variables(code_block, false, true, bits_32_or_64_typed = false)
@@ -183,6 +186,9 @@ template performInner*(code_block : untyped) {.dirty.} =
 
     when defined(performBits64):
         proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
+            #Needed to be passed to all defs
+            var ugen_call_type {.inject, noinit.} : typedesc[PerformCall]
+
             #standard perform block
             when declared(perform_block):
                 parse_block_for_variables(code_block, false, true, bits_32_or_64_typed = true)

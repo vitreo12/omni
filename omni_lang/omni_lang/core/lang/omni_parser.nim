@@ -119,6 +119,8 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     
     #echo astGenRepr proc_new_call
 
+    #Here it's essential for the when to check for "declared", not "declaredInScope"!
+    #declareInScope is useful in init / perform / def bodies for variable declarations
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
             nnkCall.newTree(
@@ -173,30 +175,41 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                     )
                 )  
             ]#
-           
-            #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
-            if statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
 
+            #Return stmt kind
+            if statement_kind == nnkReturnStmt:
+                #empty return
+                if statement.len < 1:
+                    continue
+
+                var 
+                    return_content = statement[0]
+                    return_content_kind = return_content.kind
+
+                if return_content_kind == nnkCall:
+                    var 
+                        new_return_content = findStructConstructorCall(return_content)
+                        new_return_stmt = nnkReturnStmt.newTree(
+                            new_return_content
+                        )
+
+                    code_block[index] = new_return_stmt
+
+            #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
+            elif statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
+                
                 if statement.len < 2:
                     continue
 
                 var 
                     var_ident = statement[0]
                     var_misc  = statement[1]
+                    var_ident_kind = var_ident.kind
 
-                let var_ident_kind = var_ident.kind
-
-                #If dot syntax, skip. "a.b = 10". This just sets fields, doesn't assign.
-                if var_ident_kind == nnkDotExpr:
-                    continue
-                
-                #If array syntax, skip. "a[i] = 10". This just sets the array entry, doesn't assign.
-                if var_ident_kind == nnkBracketExpr:
-                    continue
-
-                #If an ambiguous openSym... Take the first symbol
+                #If an ambiguous openSym... Take the first symbol. Also update var_ident_kind
                 if(var_ident_kind == nnkOpenSymChoice):
-                    var_ident = var_ident[0]
+                    var_ident      = var_ident[0]
+                    var_ident_kind = var_ident.kind
                 
                 var is_no_colon_syntax = false
 
@@ -221,172 +234,211 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                     is_no_colon_syntax = true
 
-                let var_name = var_ident.strVal
+                #var_name (used only when var_ident is a nnkIdent type)
+                #new_var_statement is the actually code replacement
+                var 
+                    var_name : string
+                    new_var_statement : NimNode
 
-                #If already there is an entry, skip. Keep the first found one.
-                #if variable_names_table.hasKey(var_name):
-                #    continue
-                
-                #And modify source code with the ident node
-                var new_var_statement : NimNode
+                #If dot syntax ("a.b = Vector()") OR array syntax ("data[i] = Vector()").
+                if var_ident_kind == nnkDotExpr or var_ident_kind == nnkBracketExpr:
 
-                #a : float or a : float = 0.0
-                if statement_kind == nnkCall or is_no_colon_syntax:
-                    
-                    #This is for a : float = 0.0 AND a : float
-                    if var_misc.kind == nnkStmtList:
-                        
-                        if var_misc[0].kind == nnkAsgn: 
-                            let specified_type = var_misc[0][0]  # : float
-                            var default_value  = var_misc[0][1]  # = 0.0
+                    #if assignment, a.b = 10, check type of a.b
+                    if statement_kind == nnkAsgn:
+                        var default_value = var_misc
 
-                            #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct
-                            if default_value.kind == nnkCall:
-                                default_value = findStructConstructorCall(default_value)
+                        #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct.
+                        #This is in fact an error, but it will be thrown at the later semantic typed check! 
+                        if default_value.kind == nnkCall:
+                            default_value = findStructConstructorCall(default_value)
 
-                            new_var_statement = nnkVarSection.newTree(
-                                nnkIdentDefs.newTree(
-                                    var_ident,
-                                    specified_type,
-                                    default_value
-                                )
-                            )        
-
-                        else:
-                            let specified_type = var_misc[0]  # : float
-
-                            #var a : float
-                            new_var_statement = nnkVarSection.newTree(
-                                nnkIdentDefs.newTree(
-                                    var_ident,
-                                    specified_type,
-                                    newEmptyNode()
-                                )
-                            )
-                    
-                        #This is needed to avoid renaming stuff that already is templates, etc... in perform_block
-                        #[
-                            when declared("phase").not:
-                                phase : ...
-                            else:
-                                {.fatal.} ...
-                        ]#
                         new_var_statement = nnkStmtList.newTree(
-                            nnkWhenStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    nnkDotExpr.newTree(
-                                        nnkCall.newTree(
-                                            newIdentNode("declared"),
-                                            var_ident
-                                        ),
-                                        newIdentNode("not")
-                                    ),
-                                    nnkStmtList.newTree(
-                                        new_var_statement
-                                    )
-                                ),
-                                nnkElse.newTree(
-                                    nnkStmtList.newTree(
-                                        nnkPragma.newTree(
-                                            nnkExprColonExpr.newTree(
-                                                newIdentNode("fatal"),
-                                                newLit("can't re-define variable \'" & $var_name & "\'. It's already been defined.")
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-            
-                #a = 0.0
-                elif statement_kind == nnkAsgn:
-                    
-                    var default_value = var_misc
-
-                    #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct
-                    if default_value.kind == nnkCall:
-                        default_value = findStructConstructorCall(default_value)
-
-                    #Prevent the user from defining out1, out2... etc...
-                    var is_out_variable = false
-                    if(var_name.startsWith("out")):
-                        #out1 / out10
-                        if var_name.len == 4:
-                            if var_name[3].isDigit:
-                                is_out_variable = true
-                        elif var_name.len == 5:
-                            if var_name[3].isDigit and var_name[4].isDigit:
-                                is_out_variable = true
-                    
-                    #not an out1, out2..etc..
-                    if not is_out_variable:
-                        #var a = 0.0
-                        new_var_statement = nnkVarSection.newTree(
-                            nnkIdentDefs.newTree(
+                            nnkAsgn.newTree(
                                 var_ident,
-                                newEmptyNode(),
-                                default_value,
-                            )
-                        )
-
-                        let
-                            var_name_assignment = new_var_statement[0][0]
-                            var_assign = new_var_statement[0][2]
-
-                        #This is needed to avoid renaming stuff that already had been defined in a previous variable, templates, etc...
-                        #[
-                            when declared("phase").not:
-                                var phase = ...
-                            else:
-                                phase = typeof(phase)(...)
-                        ]#
-                    
-                        new_var_statement = nnkStmtList.newTree(
-                            nnkWhenStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    nnkDotExpr.newTree(
-                                        nnkCall.newTree(
-                                            newIdentNode("declared"),
-                                            var_ident
-                                        ),
-                                        newIdentNode("not")
-                                    ),
-                                    nnkStmtList.newTree(
-                                        new_var_statement
-                                    )
-                                ),
-                                nnkElse.newTree(
-                                    nnkStmtList.newTree(
-                                        nnkAsgn.newTree(
-                                            var_name_assignment,
-                                            nnkCall.newTree(
-                                                nnkCall.newTree(
-                                                    newIdentNode("typeof"),
-                                                    var_name_assignment
-                                                ),
-                                                var_assign
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-
-                    #out1 = ... (ONLY in perform / sample blocks)
-                    else:
-                        if is_perform_block:
-                            let out_var = newIdentNode(var_name)
-                            new_var_statement = nnkAsgn.newTree(
-                                out_var,
                                 nnkCall.newTree(
                                     nnkCall.newTree(
                                         newIdentNode("typeof"),
-                                        out_var
+                                        var_ident
                                     ),
                                     default_value
                                 )
                             )
+                        )
 
+                    #Other kinds of dot expr, like function calls (myVec.set(0.1)). Just continue
+                    else:
+                        continue
+
+                #Everything else, normal assignments / calls
+                else:
+                    
+                    #Faulty variable definition
+                    if var_ident_kind != nnkIdent and var_ident_kind != nnkSym:
+                        error("Invalid variable declaration")
+
+                    #var_name, only to be used when no nnkDotExpr is used. This here will always be a nnkIdent
+                    var_name = var_ident.strVal()
+                    
+                    #If already there is an entry, skip. Keep the first found one.
+                    #if variable_names_table.hasKey(var_name):
+                    #    continue
+
+                    #a : float or a : float = 0.0
+                    if statement_kind == nnkCall or is_no_colon_syntax:
+                        
+                        #This is for a : float = 0.0 AND a : float
+                        if var_misc.kind == nnkStmtList:
+                            
+                            if var_misc[0].kind == nnkAsgn: 
+                                let specified_type = var_misc[0][0]  # : float
+                                var default_value  = var_misc[0][1]  # = 0.0
+
+                                #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct
+                                if default_value.kind == nnkCall:
+                                    default_value = findStructConstructorCall(default_value)
+
+                                new_var_statement = nnkVarSection.newTree(
+                                    nnkIdentDefs.newTree(
+                                        var_ident,
+                                        specified_type,
+                                        default_value
+                                    )
+                                )        
+
+                            else:
+                                let specified_type = var_misc[0]  # : float
+
+                                #var a : float
+                                new_var_statement = nnkVarSection.newTree(
+                                    nnkIdentDefs.newTree(
+                                        var_ident,
+                                        specified_type,
+                                        newEmptyNode()
+                                    )
+                                )
+                        
+                            #This is needed to avoid renaming stuff that already is templates, etc... in perform_block
+                            #[
+                                when declaredInScope("phase").not:
+                                    phase : ...
+                                else:
+                                    {.fatal.} ...
+                            ]#
+                            new_var_statement = nnkStmtList.newTree(
+                                nnkWhenStmt.newTree(
+                                    nnkElifBranch.newTree(
+                                        nnkDotExpr.newTree(
+                                            nnkCall.newTree(
+                                                newIdentNode("declaredInScope"),
+                                                var_ident
+                                            ),
+                                            newIdentNode("not")
+                                        ),
+                                        nnkStmtList.newTree(
+                                            new_var_statement
+                                        )
+                                    ),
+                                    nnkElse.newTree(
+                                        nnkStmtList.newTree(
+                                            nnkPragma.newTree(
+                                                nnkExprColonExpr.newTree(
+                                                    newIdentNode("fatal"),
+                                                    newLit("can't re-define variable \'" & $var_name & "\'. It's already been defined.")
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                
+                    #a = 0.0
+                    elif statement_kind == nnkAsgn:
+                        
+                        var default_value = var_misc
+
+                        #Find if the = is a nnkCall, if it's so: check if it's a constructor call to a struct
+                        if default_value.kind == nnkCall:
+                            default_value = findStructConstructorCall(default_value)
+
+                        #Prevent the user from defining out1, out2... etc...
+                        var is_out_variable = false
+                        if(var_name.startsWith("out")):
+                            #out1 / out10
+                            if var_name.len == 4:
+                                if var_name[3].isDigit:
+                                    is_out_variable = true
+                            elif var_name.len == 5:
+                                if var_name[3].isDigit and var_name[4].isDigit:
+                                    is_out_variable = true
+                        
+                        #not an out1, out2..etc..
+                        if not is_out_variable:
+                            #var a = 0.0
+                            new_var_statement = nnkVarSection.newTree(
+                                nnkIdentDefs.newTree(
+                                    var_ident,
+                                    newEmptyNode(),
+                                    default_value,
+                                )
+                            )
+
+                            let
+                                var_name_assignment = new_var_statement[0][0]
+                                var_assign = new_var_statement[0][2]
+
+                            #This is needed to avoid renaming stuff that already had been defined in a previous variable, templates, etc...
+                            #[
+                                when declaredInScope("phase").not:
+                                    var phase = ...
+                                else:
+                                    phase = typeof(phase)(...)
+                            ]#
+                        
+                            new_var_statement = nnkStmtList.newTree(
+                                nnkWhenStmt.newTree(
+                                    nnkElifBranch.newTree(
+                                        nnkDotExpr.newTree(
+                                            nnkCall.newTree(
+                                                newIdentNode("declaredInScope"),
+                                                var_ident
+                                            ),
+                                            newIdentNode("not")
+                                        ),
+                                        nnkStmtList.newTree(
+                                            new_var_statement
+                                        )
+                                    ),
+                                    nnkElse.newTree(
+                                        nnkStmtList.newTree(
+                                            nnkAsgn.newTree(
+                                                var_name_assignment,
+                                                nnkCall.newTree(
+                                                    nnkCall.newTree(
+                                                        newIdentNode("typeof"),
+                                                        var_name_assignment
+                                                    ),
+                                                    var_assign
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+
+                        #out1 = ... (ONLY in perform / sample blocks)
+                        else:
+                            if is_perform_block:
+                                let out_var = newIdentNode(var_name)
+                                new_var_statement = nnkAsgn.newTree(
+                                    out_var,
+                                    nnkCall.newTree(
+                                        nnkCall.newTree(
+                                            newIdentNode("typeof"),
+                                            out_var
+                                        ),
+                                        default_value
+                                    )
+                                )
 
                 #Add var decl to code_block only if something actually has been assigned to it
                 #If using a template (like out1 in sample), new_var_statement would be nil here
@@ -615,30 +667,8 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         #Check validity of each argument to function
                         checkValidType(arg_type, $i, is_proc_call=true, proc_name=function_name)
 
-        #Look for / , div , % , mod and replace them with safediv and safemod
-        elif typed_statement_kind == nnkInfix:
-            assert typed_statement.len == 3
-
-            let 
-                infix_symbol = typed_statement[0]
-                infix_str    = infix_symbol.strVal()
-
-            if infix_str == "/" or infix_str == "div":
-                typed_code_block[index] = nnkCall.newTree(
-                    newIdentNode("safediv"),
-                    typed_statement[1],
-                    typed_statement[2]
-                )
-
-            elif infix_str == "%" or infix_str == "mod":
-                typed_code_block[index] = nnkCall.newTree(
-                    newIdentNode("safemod"),
-                    typed_statement[1],
-                    typed_statement[2]
-                )
-
         #Look for var sections
-        if typed_statement_kind == nnkVarSection:
+        elif typed_statement_kind == nnkVarSection:
             let var_symbol = typed_statement[0][0]
             let var_type   = var_symbol.getTypeInst().getTypeImpl()
             let var_name   = var_symbol.strVal()
@@ -684,18 +714,7 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         if old_statement_body[2].kind == nnkEmpty:
                             let error_var_name = old_statement_body[0]
                             error("\'" & $error_var_name & "\': structs must be instantiated on declaration.")
-                            
-                    #In perform, allow assignment to already allocated ones, but not creation of new ones (or calling functions that return structs, generally)
-                    #This is allowed: a = data  (if data was already allocated in constructor)
-                    #This is allowed: a = b.data (if b was already allocated in constructor)
-                    #This is not allowed a = Data.new(100)
-                    if is_perform_block:
-                        let equals_statement_kind = typed_statement[0][2].kind
                         
-                        #If not a symbol/ident or a dotexpr, it probably is a function call. Abort!
-                        if equals_statement_kind != nnkSym and equals_statement_kind != nnkIdent and equals_statement_kind != nnkDotExpr:
-                            error "\'" & $var_symbol.strVal() & "\': structs cannot be allocated in the \'perform\' or \'sample\' blocks."
-
                     #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
                         old_statement_body
@@ -703,6 +722,37 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
 
                     #Replace the entry in the untyped block, which has yet to be semantically evaluated.
                     typed_code_block[index] = new_let_statement
+
+        #Look for / , div , % , mod and replace them with safediv and safemod
+        elif typed_statement_kind == nnkInfix:
+            assert typed_statement.len == 3
+
+            let 
+                infix_symbol = typed_statement[0]
+                infix_str    = infix_symbol.strVal()
+
+            if infix_str == "/" or infix_str == "div":
+                typed_code_block[index] = nnkCall.newTree(
+                    newIdentNode("safediv"),
+                    typed_statement[1],
+                    typed_statement[2]
+                )
+
+            elif infix_str == "%" or infix_str == "mod":
+                typed_code_block[index] = nnkCall.newTree(
+                    newIdentNode("safemod"),
+                    typed_statement[1],
+                    typed_statement[2]
+                )
+
+        #Check validity of dot exprs
+        elif typed_statement_kind == nnkDotExpr:
+            let typed_code_block_kind = typed_code_block.kind
+            
+            #Spot if trying to assign something to a field of a struct which is a struct! This is an error
+            if typed_code_block_kind == nnkAsgn:
+                if isStruct(typed_statement):
+                    error("\'" & typed_statement.repr & "\': trying to re-assign an already allocated struct field.")
         
         #Run function recursively
         parse_block_recursively_for_consts_and_structs(typed_statement, templates_to_ignore, is_perform_block)
@@ -747,7 +797,6 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
         if build_statement != nil and build_statement.kind != nnkNilLit:
             result.add(build_statement)
 
-        
         #Run the whole block through the init_inner macro. This will build the actual
         #constructor function, and it will run the untyped version of the "build" macro.
         result = nnkCall.newTree(

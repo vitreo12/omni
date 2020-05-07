@@ -1,5 +1,10 @@
-# **omni**
+<a name="logo" href = "https://vitreo12.github.io/omni">
+    <div align="center">
+        <img src="omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
+    </div>
+</a>
 
+<br>
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
 It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
 
@@ -80,6 +85,6 @@ sample:
     phase = (phase + freq_incr) % 1.0
 ```
 
-## **Docs**
+## **Website / Docs**
 
-Checkout omni's [documentation](https://vitreo12.github.io/omni/).
+Check omni's [website](https://vitreo12.github.io/omni).
