@@ -3,7 +3,7 @@ layout: page
 ---
 
 <div align="center">
-    <img src="https://github.com/vitreo12/omni/blob/gh-pages/images/omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
+    <img src="{{ site.baseurl }}/images/omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
 </div>
 
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
