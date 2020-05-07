@@ -57,15 +57,20 @@ proc registerChild*(auto_mem : ptr OmniAutoMem, child : pointer) : void {.inline
     if isNil(auto_mem.allocs):
         return
 
+    when defined(omni_debug):
+        omni_print_debug("OmniAutoMem: registering child: ", culong(cast[uint](child)))
+    
     #Increment after assignment (so it starts at 0, and realloc will happen when last allocation in the array is reached)
-    omni_print_debug("OmniAutoMem: registering child: ", culong(cast[uint](child)))
     auto_mem.allocs[auto_mem.num_allocs] = child
     auto_mem.num_allocs += 1
 
     #Increment total size and realloc when reaching limit
     if (auto_mem.num_allocs mod OmniAutoMemSize) == 0:
         let new_length = int(auto_mem.num_allocs + OmniAutoMemSize)
-        omni_print_debug("OmniAutoMem: reached allocs limit, reallocating memory with new length: ", culong(new_length))
+        
+        when defined(omni_debug):
+            omni_print_debug("OmniAutoMem: reached allocs limit, reallocating memory with new length: ", culong(new_length))
+        
         let auto_mem_allocs_ptr = omni_realloc(cast[pointer](auto_mem.allocs), culong(sizeof(pointer) * new_length))
         auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
 
@@ -81,7 +86,9 @@ proc removeChild*[T : SomeInteger](auto_mem : ptr OmniAutoMem, index : T) : void
     if isNil(child):
         return
 
-    omni_print_debug("OmniAutoMem: deleting child: ", culong(cast[uint](child)))
+    when defined(omni_debug):
+        omni_print_debug("OmniAutoMem: deleting child: ", culong(cast[uint](child)))
+    
     omni_free(child)
     auto_mem.allocs[index] = cast[pointer](nil) #reset previus entry with nil ptr
     auto_mem.num_allocs -= 1
