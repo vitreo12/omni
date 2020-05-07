@@ -1,4 +1,4 @@
-<a name="logo" href = "https://vitreo12.github.io/">
+<a name="logo" href = "https://vitreo12.github.io/omni">
     <div align="center">
         <img src="omni_logo_text_transparent.png" alt="Omni logo" width="30%" height="30%">
     </div>
@@ -85,6 +85,6 @@ sample:
     phase = (phase + freq_incr) % 1.0
 ```
 
-## **Docs**
+## **Website / Docs**
 
-Checkout omni's [documentation](https://vitreo12.github.io/).
+Check omni's [website](https://vitreo12.github.io/omni).
