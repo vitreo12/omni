@@ -9,7 +9,7 @@ name: omni
 description: DSL for low-level audio programming
 
 # URL of your avatar or profile pic (you could use your GitHub profile pic)
-avatar: baseurl/images/omni_logo_text_transparent.png
+avatar: /images/omni_logo_text_transparent.png
 
 #
 # Flags below are optional #
