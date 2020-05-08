@@ -60,6 +60,9 @@ proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = u
     result.phase = 0
     result.data = data
 
+template new_struct*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    struct_init_inner(Delay, size, dataType, ugen_auto_mem, ugen_call_type)
+
 template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
     struct_init_inner(Delay, size, dataType, ugen_auto_mem, ugen_call_type)
 

@@ -107,7 +107,7 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     let var_type_kind = var_type.kind
 
     #Bracket expr (seq / array), pointer (structs / ptr ...), extract the actual name
-    if var_type_kind == nnkBracketExpr or var_type_kind == nnkPtrTy:
+    if var_type_kind == nnkBracketExpr or var_type_kind == nnkPtrTy or var_type_kind == nnkRefTy:
         let var_type_inner = var_type[0]
         
         #struct with generics
@@ -119,6 +119,7 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     
     #standard types
     else:
+        echo astGenRepr var_type
         var_type_str = var_type.strVal()
 
     #echo "checkValidType"

@@ -268,6 +268,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         newIdentNode("findDatasAndStructs"),
         ptr_name
     )
+
+    #echo repr final_stmt_list
     
     return quote do:
         `checkValidTypes`
@@ -317,11 +319,11 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     )
 
     #Add name with * for export
-    #template new
+    #template new_struct
     template_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("new")
+            newIdentNode("new_struct")
         ),
         newEmptyNode()
     )
@@ -580,9 +582,16 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     template_def.add(
         template_body_call
     )
+
+    #Also create a .new template that's identical to new_struct
+    let new_template_def = template_def.copy()
+    new_template_def[0][1] = newIdentNode("new")
     
-    #Add template to result
-    final_stmt_list.add(template_def)
+    #Add templates to result
+    final_stmt_list.add(
+        template_def,
+        new_template_def
+    )
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typedToUntyped(final_stmt_list)

@@ -86,6 +86,9 @@ proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data
     result.length         = real_length
     result.length_X_chans = length_X_chans
 
+template new_struct*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    struct_init_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
+
 template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
     struct_init_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
 

@@ -23,6 +23,16 @@
 #remove tables here and move isStrUpperAscii (and strutils) to another module
 import macros, tables, strutils, omni_type_checker, omni_macros_utilities
 
+let non_valid_variable_names {.compileTime.} = [
+    "ins", "inputs",
+    "outs", "outputs",
+    "init", "initialize", "initialise", "build",
+    "perform", "sample",
+    "sig", "sig32", "sig64",
+    "signal", "signal32", "signal64",
+    "Data", "Buffer", "Delay"
+]
+
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
     var hasAtleastOneAlphaChar = false
@@ -79,9 +89,11 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
 #if the function name + "_obj" is declared, meaning it's a struct constructor the user is trying to call.
+#This also covers the Phasor.new() syntax, as the name of the class' only callable function is new_struct anyway.
 #e.g.
-# Phasor(0.0) -> when declared(Phasor_obj): Phasor.new(0.0) else: Phasor(0.0)
-# myFunc(0.0) -> when declared(myFunc_obj): myFunc.new(0.0) else: myFunc(0.0)
+# Phasor(0.0)  -> when declared(Phasor_obj): Phasor.new_struct(0.0) else: Phasor(0.0)
+# myFunc(0.0)  -> when declared(myFunc_obj): myFunc.new_struct(0.0) else: myFunc(0.0)
+# Phasor.new() -> when declared(Phasor_obj): Phasor.new_struct() else: Phasor.new()
 proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     if code_block.kind != nnkCall:
         return code_block
@@ -100,7 +112,7 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_obj")
 
     var proc_new_call =  nnkCall.newTree(
-        newIdentNode("new"),
+        newIdentNode("new_struct"),
         proc_call_ident
     )
 
@@ -144,7 +156,7 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
 # EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
 #========================================================================================================================================================#
 
-proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_constructor_block : bool = false, is_perform_block : bool = false) : void {.compileTime.} =
+proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : void {.compileTime.} =
     if code_block.len > 0:
         
         for index, statement in code_block.pairs():
@@ -176,6 +188,10 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 )  
             ]#
 
+            var is_statement_first_field_bracket : bool
+            if statement.len > 0:
+                is_statement_first_field_bracket = statement[0].kind == nnkBracketExpr
+
             #Return stmt kind
             if statement_kind == nnkReturnStmt:
                 #empty return
@@ -195,6 +211,101 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
 
                     code_block[index] = new_return_stmt
 
+            #Look for ins[i]
+            elif statement_kind == nnkBracketExpr:
+                if is_perform_block:
+                    let 
+                        bracket_ident = statement[0]
+                        bracket_val   = statement[1]
+                    
+                    if bracket_ident.kind == nnkIdent:
+                        let bracket_ident_str = bracket_ident.strVal()
+                        
+                        if bracket_ident_str == "ins":
+                            var audio_index_loop = newLit(0)
+                            
+                            if is_sample_block:
+                                audio_index_loop = newIdentNode("audio_index_loop")
+                            
+                            let new_statement = nnkCall.newTree(
+                                newIdentNode("get_dynamic_input"),
+                                newIdentNode("ins_Nim"),
+                                bracket_val,
+                                audio_index_loop
+                            )
+                            
+                            code_block[index] = new_statement
+            
+            #Look for outs[i] = ... . It needs to be an assignment, and first entry must be a bracket expr!
+            elif statement_kind == nnkAsgn and is_statement_first_field_bracket:
+                if is_perform_block and statement.len > 1:
+                    let 
+                        assgn_left  = statement[0]
+                        assgn_right = statement[1]
+                        bracket_ident = assgn_left[0]
+                        bracket_index = assgn_left[1]
+                    
+                    if bracket_ident.kind == nnkIdent:
+                        
+                        #Found it
+                        if bracket_ident.strVal() == "outs":
+                            var audio_index_loop_bracket : NimNode
+
+                            if is_sample_block:
+                                audio_index_loop_bracket = nnkBracketExpr.newTree(
+                                    nnkBracketExpr.newTree(
+                                        newIdentNode("outs_Nim"),
+                                        nnkCall.newTree(
+                                            newIdentNode("int"),
+                                            bracket_index
+                                        )  
+                                    ),
+                                    newIdentNode("audio_index_loop")
+                                )
+                            else:
+                                audio_index_loop_bracket = nnkBracketExpr.newTree(
+                                    newIdentNode("outs_Nim"),
+                                    nnkCall.newTree(
+                                        newIdentNode("int"),
+                                        bracket_index
+                                    )
+                                )
+
+                            #echo repr audio_index_loop_bracket
+
+                            var new_statement = nnkStmtList.newTree(
+                                nnkIfStmt.newTree(
+                                    nnkElifBranch.newTree(
+                                        nnkInfix.newTree(
+                                            newIdentNode("<"),
+                                            bracket_index,
+                                            newIdentNode("omni_outputs")
+                                        ),
+                                        nnkStmtList.newTree(
+                                            nnkAsgn.newTree(
+                                                audio_index_loop_bracket,
+                                                nnkCall.newTree(
+                                                    nnkCall.newTree(
+                                                        newIdentNode("typeof"),
+                                                        audio_index_loop_bracket
+                                                ),
+                                                assgn_right
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                            
+                            #echo repr new_statement
+
+                            #Run the parsing on the new statement too, if there are weird assignments / calls / etc...
+                            parse_block_recursively_for_variables(new_statement, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
+
+                            echo repr new_statement
+
+                            code_block[index] = new_statement
+                    
             #a : float OR a = 0.5 OR a float = 0.5 OR a : float = 0.5 OR a float
             elif statement_kind == nnkCall or statement_kind == nnkAsgn or statement_kind == nnkCommand:
                 
@@ -216,6 +327,8 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 #a float = 0.5
                 if var_ident_kind == nnkCommand:
                     var_ident = var_ident[0]
+
+                    var_ident_kind = var_ident.kind
                     
                     var_misc = nnkStmtList.newTree(
                         nnkAsgn.newTree(
@@ -272,9 +385,9 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
                 #Everything else, normal assignments / calls
                 else:
                     
-                    #Faulty variable definition
+                    #Faulty variable definition, continue
                     if var_ident_kind != nnkIdent and var_ident_kind != nnkSym:
-                        error("Invalid variable declaration")
+                        continue
 
                     #var_name, only to be used when no nnkDotExpr is used. This here will always be a nnkIdent
                     var_name = var_ident.strVal()
@@ -454,7 +567,7 @@ proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_
             #echo repr code_block
 
             #Run the function recursively
-            parse_block_recursively_for_variables(statement, variable_names_table, is_constructor_block, is_perform_block)
+            parse_block_recursively_for_variables(statement, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
     
     #Reset at end of chain
     #[ else:
@@ -522,7 +635,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                     code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
     #Look for var  declarations recursively in all blocks
-    parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block)
+    parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
     
     #Add all stuff relative to initialization for perform function:
     #[
@@ -583,7 +696,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #echo astGenRepr code_block
     #echo astGenRepr final_block
 
-    #echo repr final_block
+    echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -654,9 +767,9 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                         typed_code_block[index] = new_array_assignment
 
                 #Check type of all arguments for other function calls (not array access related) 
-                #Ignore function ending in _min_max (the one used for input min/max conditional)
+                #Ignore function ending in _min_max (the one used for input min/max conditional) OR is not get_dynamic_input
                 #THIS IS NOT SAFE! min_max could be assigned by user to another def
-                elif typed_statement.len > 1 and not(function_name.endsWith("_min_max")):
+                elif typed_statement.len > 1 and not(function_name.endsWith("_min_max")) and not(function_name == "get_dynamic_input"):
                     for i, arg in typed_statement.pairs():
                         #ignore i == 0 (the function_name)
                         if i == 0:
@@ -669,9 +782,10 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
 
         #Look for var sections
         elif typed_statement_kind == nnkVarSection:
-            let var_symbol = typed_statement[0][0]
-            let var_type   = var_symbol.getTypeInst().getTypeImpl()
-            let var_name   = var_symbol.strVal()
+            let 
+                var_symbol = typed_statement[0][0]
+                var_type   = var_symbol.getTypeInst().getTypeImpl()
+                var_name   = var_symbol.strVal()
 
             #Look for templates to ignore
             #[ 
@@ -688,9 +802,12 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
                 ) 
             ]#
 
+            if var_name in non_valid_variable_names:
+                error("`" & $var_name & "` is an invalid variable name: it's the name of an in-built type.")
+
             #Check if it's a valid type
             checkValidType(var_type, var_name)
-                
+
             #Look for consts: capital letters.
             if var_name.isStrUpperAscii(true):
                 let old_statement_body = typed_code_block[index][0]
