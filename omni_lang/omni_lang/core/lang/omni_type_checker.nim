@@ -119,7 +119,6 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     
     #standard types
     else:
-        echo astGenRepr var_type
         var_type_str = var_type.strVal()
 
     #echo "checkValidType"
