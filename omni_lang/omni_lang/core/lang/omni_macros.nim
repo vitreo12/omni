@@ -43,3 +43,6 @@ export omni_types
 
 import omni_call_types
 export omni_call_types
+
+import omni_require
+export omni_require

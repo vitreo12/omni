@@ -694,7 +694,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #echo astGenRepr code_block
     #echo astGenRepr final_block
 
-    #echo repr final_block
+    echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:

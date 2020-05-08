@@ -268,6 +268,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         newIdentNode("findDatasAndStructs"),
         ptr_name
     )
+
+    echo repr final_stmt_list
     
     return quote do:
         `checkValidTypes`
