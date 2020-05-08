@@ -6,7 +6,3 @@
 *.exe
 
 omni
-
-omni_lang/omni_lang/tests
-!omni_lang/omni_lang/tests/*.nim
-!omni_lang/omni_lang/tests/*.omni
