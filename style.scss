@@ -18,15 +18,12 @@ html {
   font-size: 107%;
 }
 
-justify {
-  text-align: justify;
-}
-
 body {
 	background: $white;
   font-family: $helveticaNeue;
   font-size: 18px/1.4;
   color: $darkGray;
+  text-align: justify
 }
 
 .container {
