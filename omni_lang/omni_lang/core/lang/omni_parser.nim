@@ -89,9 +89,11 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
 #if the function name + "_obj" is declared, meaning it's a struct constructor the user is trying to call.
+#This also covers the Phasor.new() syntax, as the name of the class' only callable function is new_struct anyway.
 #e.g.
-# Phasor(0.0) -> when declared(Phasor_obj): Phasor.new(0.0) else: Phasor(0.0)
-# myFunc(0.0) -> when declared(myFunc_obj): myFunc.new(0.0) else: myFunc(0.0)
+# Phasor(0.0)  -> when declared(Phasor_obj): Phasor.new_struct(0.0) else: Phasor(0.0)
+# myFunc(0.0)  -> when declared(myFunc_obj): myFunc.new_struct(0.0) else: myFunc(0.0)
+# Phasor.new() -> when declared(Phasor_obj): Phasor.new_struct() else: Phasor.new()
 proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     if code_block.kind != nnkCall:
         return code_block
@@ -110,7 +112,7 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
     let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_obj")
 
     var proc_new_call =  nnkCall.newTree(
-        newIdentNode("new"),
+        newIdentNode("new_struct"),
         proc_call_ident
     )
 
