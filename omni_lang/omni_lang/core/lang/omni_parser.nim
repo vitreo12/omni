@@ -156,6 +156,110 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
 # EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
 #========================================================================================================================================================#
 
+# ================================ #
+# Stage 1: Untyped code generation #
+# ================================ #
+
+#Forward declaration
+proc parser_dispatcher(statement : NimNode, level : var int) : NimNode {.compileTime.}
+
+#Utility print
+proc print_parser_stage(statement : NimNode, level : int) : void {.compileTime.} =
+    var val_spaces : string
+    for i in 0..level-1:
+        val_spaces.add(" ")
+    if level == 0:
+        echo ""
+    echo $val_spaces & $level & ": " & $statement.kind & " -> " & repr(statement)
+
+#Loop around statement and trigger dispatch
+proc parser_loop(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    if statement.len > 0:
+        for statement_inner in statement:
+            var parsed_statement = parser_dispatcher(statement_inner, level)
+    return statement
+
+#Parse the call syntax: function(arg)
+proc parser_call(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    print_parser_stage(statement, level)
+    level += 1
+    return parser_loop(statement, level)
+
+#Parse the command syntax: a float
+proc parser_command(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    print_parser_stage(statement, level)
+    level += 1
+    return parser_loop(statement, level)
+
+#Parse the assign syntax: =
+proc parse_assign(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    print_parser_stage(statement, level)
+    level += 1
+    return parser_loop(statement, level)
+
+#Parse the dot syntax: .
+proc parse_dot(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    print_parser_stage(statement, level)
+    level += 1
+    return parser_loop(statement, level)
+
+#Parse the square bracket syntax: []
+proc parse_brackets(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    print_parser_stage(statement, level)
+    level += 1
+    return parser_loop(statement, level)
+
+#Dispatcher logic
+proc parser_dispatcher(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    let statement_kind = statement.kind
+    
+    var parsed_statement : NimNode
+
+    if statement_kind   == nnkCall:
+        parsed_statement = parser_call(statement, level)
+    elif statement_kind == nnkCommand:
+        parsed_statement = parser_command(statement, level)
+    elif statement_kind == nnkAsgn:
+        parsed_statement = parse_assign(statement, level)
+    elif statement_kind == nnkDotExpr:
+        parsed_statement = parse_dot(statement, level)
+    elif statement_kind == nnkBracketExpr:
+        parsed_statement = parse_brackets(statement, level)
+    else:
+        parsed_statement = parser_loop(statement, level)
+
+    return parsed_statement
+    
+#Entry point: Parse entire block
+proc parse_block(code_block : NimNode, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : void {.compileTime.} =
+    if code_block.len > 0:
+        for index, statement in code_block.pairs():
+            let statement_kind = statement.kind
+
+            #Look for "build:" statement. If there are any, it's an error. Only at last position there should be one.
+            if is_constructor_block:
+                if statement_kind == nnkCall or statement_kind == nnkCommand:
+                    let statement_first = statement[0]
+                    if statement_first.kind == nnkIdent or statement_first.kind == nnkSym:
+                        if statement_first.strVal() == "build":
+                           error "init: the \'build\' call, if used, must only be one and at the last position of the \'init\' block."
+            
+            #Initial level, 0
+            var level : int = 0
+            let max_level : int = statement.len #useless?
+            let parsed_statement = parser_dispatcher(statement, level)
+
+            #Replaced the parsed_statement
+            if parsed_statement != nil:
+                code_block[index] = parsed_statement
+
+
+
+
+
+
+
+
 proc parse_block_recursively_for_variables(code_block : NimNode, variable_names_table : TableRef[string, string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, recursive_outs : bool = false) : void {.compileTime.} =
     if code_block.len > 0:
         for index, statement in code_block.pairs():
@@ -659,6 +763,11 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                     build_statement = code_block_last
                     code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
+    #Begin parsing
+    parse_block(code_block, is_constructor_block, is_perform_block, is_sample_block)
+
+    error("yeah")
+
     #Look for var  declarations recursively in all blocks
     parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
     
@@ -727,6 +836,14 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
         parse_block_for_consts_and_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+
+
+
+
+
+
+
+
 
 
 #========================================================================================================================================================#
