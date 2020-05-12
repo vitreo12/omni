@@ -172,12 +172,13 @@ proc print_parser_stage(statement : NimNode, level : int) : void {.compileTime.}
         echo ""
     echo $val_spaces & $level & ": " & $statement.kind & " -> " & repr(statement)
 
-#Loop around statement and trigger dispatch
+#Loop around statement and trigger dispatch, performing code substitution
 proc parser_loop(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    var parsed_statement = statement
     if statement.len > 0:
-        for statement_inner in statement:
-            var parsed_statement = parser_dispatcher(statement_inner, level)
-    return statement
+        for index, statement_inner in statement.pairs():
+            parsed_statement[index] = parser_dispatcher(statement_inner, level)
+    return parsed_statement
 
 #Parse the call syntax: function(arg)
 proc parser_call(statement : NimNode, level : var int) : NimNode {.compileTime.} =
@@ -189,24 +190,134 @@ proc parser_call(statement : NimNode, level : var int) : NimNode {.compileTime.}
 proc parser_command(statement : NimNode, level : var int) : NimNode {.compileTime.} =
     print_parser_stage(statement, level)
     level += 1
-    return parser_loop(statement, level)
 
-#Parse the assign syntax: =
+    var parsed_statement = statement
+
+    #If top level, it's a declaration. 
+    #level == 1 equals to top level here, as the increment is done before parsing.
+    if level == 1:
+        parsed_statement = nnkVarSection.newTree(
+            nnkIdentDefs.newTree(
+                parsed_statement[0],
+                parsed_statement[1],
+                newEmptyNode()
+            )
+        )
+    
+    return parsed_statement
+
+#Parse the assign syntax: a float = 10 OR a = 10
 proc parse_assign(statement : NimNode, level : var int) : NimNode {.compileTime.} =
     print_parser_stage(statement, level)
     level += 1
-    return parser_loop(statement, level)
+
+    if statement.len > 3:
+        error("Invalid variable assignment.")
+
+    var 
+        parsed_statement = parser_loop(statement, level)
+        parsed_statement_entry : NimNode
+        var_val : NimNode
+        is_command_or_ident = false
+
+    if parsed_statement.len > 1:
+        parsed_statement_entry = parsed_statement[0]
+        var_val = parsed_statement[1]
+
+        let parsed_statement_entry_kind = parsed_statement_entry.kind
+        
+        #Command assignment: a float = 0.0
+        if parsed_statement_entry_kind == nnkCommand:
+
+            if parsed_statement_entry.len != 2:
+                error("Invalid variable type declaration.")
+
+            parsed_statement_entry = nnkIdentDefs.newTree(
+                parsed_statement_entry[0],
+                parsed_statement_entry[1],
+                var_val
+            )
+
+            is_command_or_ident = true
+        
+        #All other cases: normal ident (a = 10), bracket (a[i] = 10), dot (a.b = 10)
+        else:
+            parsed_statement_entry = nnkIdentDefs.newTree(
+                parsed_statement_entry,
+                newEmptyNode(),
+                var_val
+            )
+
+            #Normal assignment: a = 0.0
+            if parsed_statement_entry_kind == nnkIdent:
+                is_command_or_ident = true
+
+    if parsed_statement_entry != nil:
+        let var_name = parsed_statement_entry[0]
+        
+        if is_command_or_ident:
+            parsed_statement = nnkStmtList.newTree(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkDotExpr.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("declaredInScope"),
+                                var_name
+                            ),
+                            newIdentNode("not")
+                        ),
+                        nnkStmtList.newTree(
+                            nnkVarSection.newTree(
+                                parsed_statement_entry
+                            )
+                        )
+                    ),
+                    nnkElse.newTree(
+                        nnkStmtList.newTree(
+                            nnkAsgn.newTree(
+                                var_name,
+                                nnkCall.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("typeof"),
+                                        var_name
+                                    ),
+                                    var_val
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+
+        #Don't to declaredInScope checking if it's not ident or command
+        else:
+            parsed_statement = nnkStmtList.newTree(
+                nnkAsgn.newTree(
+                    var_name,
+                    nnkCall.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("typeof"),
+                            var_name
+                        ),
+                        var_val
+                    )
+                )
+            )
+
+    return parsed_statement
 
 #Parse the dot syntax: .
 proc parse_dot(statement : NimNode, level : var int) : NimNode {.compileTime.} =
     print_parser_stage(statement, level)
     level += 1
+    
     return parser_loop(statement, level)
 
 #Parse the square bracket syntax: []
 proc parse_brackets(statement : NimNode, level : var int) : NimNode {.compileTime.} =
     print_parser_stage(statement, level)
     level += 1
+
     return parser_loop(statement, level)
 
 #Dispatcher logic
@@ -248,6 +359,8 @@ proc parse_block(code_block : NimNode, is_constructor_block : bool = false, is_p
             var level : int = 0
             let max_level : int = statement.len #useless?
             let parsed_statement = parser_dispatcher(statement, level)
+            
+            echo repr parsed_statement
 
             #Replaced the parsed_statement
             if parsed_statement != nil:
