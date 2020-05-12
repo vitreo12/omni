@@ -1,4 +1,4 @@
-import ../../../omni_lang
+import ../../../omni_lang, macros
 
 ins 1
 outs 1
@@ -13,17 +13,18 @@ def operate(bubu Bubu, bubu2 Bubu):
     print(bubu.x)
     print(bubu2.x)
 
-init:
-    data = Data(10, dataType=Bubu)
+expandMacros:
+    init:
+        data = Data(10, dataType=Bubu)
 
-    for i in 0..9:
-        data[i] = Bubu(i)
+        for i in 0..9:
+            data[i] = Bubu(i)
 
-    for entry in data:
-        print(entry.x)
+        for entry in data:
+            print(entry.x)
 
-    k = newBubu()
+        k = newBubu()
 
-    print(Bubu().x)
-    operate(k, Bubu())
-    k.operate(Bubu())
+        print(Bubu().x)
+        operate(k, Bubu())
+        k.operate(Bubu())

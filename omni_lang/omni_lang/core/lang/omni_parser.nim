@@ -94,12 +94,14 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 # Phasor(0.0)  -> when declared(Phasor_obj): Phasor.new_struct(0.0) else: Phasor(0.0)
 # myFunc(0.0)  -> when declared(myFunc_obj): myFunc.new_struct(0.0) else: myFunc(0.0)
 # Phasor.new() -> when declared(Phasor_obj): Phasor.new_struct() else: Phasor.new()
-proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
-    if code_block.kind != nnkCall:
-        return code_block
+proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
+    if statement.kind != nnkCall:
+        return statement
+
+    var parsed_statement = statement
 
     var 
-        proc_call_ident = code_block[0]
+        proc_call_ident = parsed_statement[0]
         proc_call_ident_kind = proc_call_ident.kind
 
     if proc_call_ident_kind == nnkDotExpr:
@@ -107,7 +109,7 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
         proc_call_ident_kind = proc_call_ident.kind
     
     if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
-        return code_block
+        return statement
 
     let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_obj")
 
@@ -116,9 +118,9 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
         proc_call_ident
     )
 
-    for index2, arg in code_block.pairs():
+    for index, arg in statement.pairs():
         var arg_temp = arg
-        if index2 == 0:
+        if index == 0:
             continue
         
         #Find other constructors in the args of the call
@@ -145,16 +147,12 @@ proc findStructConstructorCall(code_block : NimNode) : NimNode {.compileTime.} =
         ),
         nnkElseExpr.newTree(
             nnkStmtList.newTree(
-                code_block
+                statement
             )
         )
     )
 
     result = when_statement_struct_new
-
-#========================================================================================================================================================#
-# EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
-#========================================================================================================================================================#
 
 # ================================ #
 # Stage 1: Untyped code generation #
@@ -177,6 +175,7 @@ proc parser_loop(statement : NimNode, level : var int) : NimNode {.compileTime.}
     var parsed_statement = statement
     if statement.len > 0:
         for index, statement_inner in statement.pairs():
+            #Substitute old content with the parsed one
             parsed_statement[index] = parser_dispatcher(statement_inner, level)
     return parsed_statement
 
@@ -184,7 +183,20 @@ proc parser_loop(statement : NimNode, level : var int) : NimNode {.compileTime.}
 proc parser_call(statement : NimNode, level : var int) : NimNode {.compileTime.} =
     print_parser_stage(statement, level)
     level += 1
-    return parser_loop(statement, level)
+
+    #Detect constructor calls
+    var parsed_statement = findStructConstructorCall(parser_loop(statement, level))
+
+    return parsed_statement
+
+#Parse the eq expr syntax, Test(data=Data())
+proc parse_expr_eq_expr(statement : NimNode, level : var int) : NimNode {.compileTime.} =
+    print_parser_stage(statement, level)
+    level += 1
+
+    var parsed_statement = parser_loop(statement, level)
+
+    return parsed_statement
 
 #Parse the command syntax: a float
 proc parser_command(statement : NimNode, level : var int) : NimNode {.compileTime.} =
@@ -203,6 +215,10 @@ proc parser_command(statement : NimNode, level : var int) : NimNode {.compileTim
                 newEmptyNode()
             )
         )
+    
+    #HERE I CAN ADD NORMAL COMMAND STUFF SO THAT IT'S PERHAPS POSSIBLE TO ENABLE: print "hello"
+    else:
+        discard
     
     return parsed_statement
 
@@ -336,6 +352,8 @@ proc parser_dispatcher(statement : NimNode, level : var int) : NimNode {.compile
         parsed_statement = parse_dot(statement, level)
     elif statement_kind == nnkBracketExpr:
         parsed_statement = parse_brackets(statement, level)
+    elif statement_kind == nnkExprEqExpr:
+        parsed_statement = parse_expr_eq_expr(statement, level)
     else:
         parsed_statement = parser_loop(statement, level)
 
@@ -357,10 +375,7 @@ proc parse_block(code_block : NimNode, is_constructor_block : bool = false, is_p
             
             #Initial level, 0
             var level : int = 0
-            let max_level : int = statement.len #useless?
             let parsed_statement = parser_dispatcher(statement, level)
-            
-            echo repr parsed_statement
 
             #Replaced the parsed_statement
             if parsed_statement != nil:
@@ -879,10 +894,12 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
     #Begin parsing
     parse_block(code_block, is_constructor_block, is_perform_block, is_sample_block)
 
-    error("yeah")
+    echo repr code_block
+
+    error("slow down, cowboy")
 
     #Look for var  declarations recursively in all blocks
-    parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
+    #parse_block_recursively_for_variables(code_block, variable_names_table, is_constructor_block, is_perform_block, is_sample_block)
     
     #Add all stuff relative to initialization for perform function:
     #[
