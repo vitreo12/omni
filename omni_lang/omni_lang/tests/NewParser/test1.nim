@@ -21,4 +21,4 @@ expandMacros:
         test.data[0] = 0.5
 
         bah = Bah(tst=Test(0.5, Data(10))) ]#
-        print(Test(data=Data(10)).a)
+        print(Test(Test(data=Data(10)).a, data=Data(10)).a)
