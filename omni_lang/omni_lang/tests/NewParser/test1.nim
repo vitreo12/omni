@@ -10,15 +10,28 @@ struct Test:
 struct Bah:
     tst Test
 
+
 expandMacros:
-    init:
-        #[ a = 10
-        b float = 0.5
-        c float
+    def something():
+        return Test(Test(data=Data(10)).a, data=Data(10)).a
 
-        test = Test(data=Data(10))
-        test.a = 0.5
-        test.data[0] = 0.5
 
-        bah = Bah(tst=Test(0.5, Data(10))) ]#
-        print(Test(Test(data=Data(10)).a, data=Data(10)).a)
+init:
+    #[ a = 10
+    b float = 0.5
+    c float
+
+    test = Test(data=Data(10))
+    test.a = 0.5
+    test.data[0] = 0.5
+
+    bah = Bah(tst=Test(0.5, Data(10))) ]#
+    print(Test(Test(data=Data(10)).a, data=Data(10)).a)
+
+    a = ins[0]
+
+    c = something()
+
+expandMacros:
+    sample:
+        outs[0] = ins[a]
