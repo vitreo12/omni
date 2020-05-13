@@ -516,7 +516,7 @@ macro init*(code_block : untyped) : untyped =
         #Or, if perform is defining one, define init_block here so that it will still only be defined once
         let init_block {.inject, compileTime.} = true
 
-        parse_block_for_variables(`code_block`, true)
+        parse_block_untyped(`code_block`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
@@ -532,9 +532,23 @@ macro initialise*(code_block : untyped) : untyped =
 #a correct call to "build(a, b)" instead of "build: \n a \n b" or "build a b" by extracting the nnkIdents from the other calls and 
 #building a correct "build(a, b)" syntax out of them.
 macro build*(var_names : varargs[typed]) =    
-    var final_type = nnkTypeSection.newTree()
-    var final_typedef = nnkTypeDef.newTree().add(nnkPragmaExpr.newTree(newIdentNode("UGen")).add(nnkPragma.newTree(newIdentNode("inject")))).add(newEmptyNode())
-    var final_obj  = nnkObjectTy.newTree().add(newEmptyNode()).add(newEmptyNode())
+    var 
+        final_type = nnkTypeSection.newTree()
+        
+        final_typedef = nnkTypeDef.newTree(
+            nnkPragmaExpr.newTree(
+                newIdentNode("UGen"),
+                nnkPragma.newTree(
+                    newIdentNode("inject")
+                )
+            ),
+            newEmptyNode()
+        )
+
+        final_obj  = nnkObjectTy.newTree(
+            newEmptyNode(),
+            newEmptyNode()
+        )
     
     final_typedef.add(final_obj)
     final_type.add(final_typedef)

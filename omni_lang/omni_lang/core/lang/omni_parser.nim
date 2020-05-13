@@ -88,12 +88,12 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
-#if the function name + "_obj" is declared, meaning it's a struct constructor the user is trying to call.
-#This also covers the Phasor.new() syntax, as the name of the class' only callable function is new_struct anyway.
+#if the function name + "_struct_inner" is declared, meaning it's a struct constructor the user is trying to call.
+#This also covers the Phasor.new() syntax, as the name of the class' only callable function is struct_new anyway.
 #e.g.
-# Phasor(0.0)  -> when declared(Phasor_obj): Phasor.new_struct(0.0) else: Phasor(0.0)
-# myFunc(0.0)  -> when declared(myFunc_obj): myFunc.new_struct(0.0) else: myFunc(0.0)
-# Phasor.new() -> when declared(Phasor_obj): Phasor.new_struct() else: Phasor.new()
+# Phasor(0.0)  -> when declared(Phasor_struct_inner): Phasor.struct_new(0.0) else: Phasor(0.0)
+# myFunc(0.0)  -> when declared(myFunc_struct_inner): myFunc.struct_new(0.0) else: myFunc(0.0)
+# Phasor.new() -> when declared(Phasor_struct_inner): Phasor.struct_new() else: Phasor.new()
 proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     if statement.kind != nnkCall:
         return statement
@@ -111,10 +111,10 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
         return statement
 
-    let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_obj")
+    let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_struct_inner")
 
     var proc_new_call =  nnkCall.newTree(
-        newIdentNode("new_struct"),
+        newIdentNode("struct_new"),
         proc_call_ident
     )
 
@@ -489,7 +489,7 @@ proc parser_dispatcher(statement : NimNode, level : var int, is_constructor_bloc
     return parsed_statement
     
 #Entry point: Parse entire block
-proc parse_block(code_block : NimNode, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : void {.compileTime.} =
+proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : void {.compileTime.} =
     for index, statement in code_block.pairs():
         let statement_kind = statement.kind
 
@@ -509,7 +509,7 @@ proc parse_block(code_block : NimNode, is_constructor_block : bool = false, is_p
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
+macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -573,7 +573,7 @@ macro parse_block_for_variables*(code_block_in : untyped, is_constructor_block_t
                     code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
     #Begin parsing
-    parse_block(code_block, is_constructor_block, is_perform_block, is_sample_block)
+    parse_block_untyped_inner(code_block, is_constructor_block, is_perform_block, is_sample_block)
 
     echo repr code_block
 

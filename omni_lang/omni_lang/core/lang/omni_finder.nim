@@ -129,7 +129,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
         let var_name_ident = newIdentNode(var_name.strVal())
 
         #Found a data
-        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_obj":
+        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_struct_inner":
             if var_type.kind != nnkBracketExpr:
                 continue
 
@@ -181,11 +181,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
                     let type_name_str = type_name.strVal()
-                    if type_name_str == "Data" or type_name_str == "Data_obj":
+                    if type_name_str == "Data" or type_name_str == "Data_struct_inner":
                         is_data = true
                         interim_type = data_content   
                     
-                    elif type_name_str == "Buffer" or type_name_str == "Buffer_obj": 
+                    elif type_name_str == "Buffer" or type_name_str == "Buffer_struct_inner": 
                         at_least_one_buffer = true
                 
                 elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
@@ -380,10 +380,10 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                 proc_body.add(previous_loop_stmt)
 
         #Found a struct
-        elif type_to_inspect_string.endsWith("_obj") or type_to_inspect.isStruct():
+        elif type_to_inspect_string.endsWith("_struct_inner") or type_to_inspect.isStruct():
             
             #Compile time setting of variable
-            if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_obj":
+            if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_struct_inner":
                 at_least_one_buffer = true
 
             proc_body.add(

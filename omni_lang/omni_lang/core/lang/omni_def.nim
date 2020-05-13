@@ -40,10 +40,10 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         generics : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()
 
-    #Pass the proc body to the parse_block_for_variables macro to avoid var/let declarations!!!
+    #Pass the proc body to the parse_block_untyped macro to avoid var/let declarations!!!
     var proc_body = nnkStmtList.newTree(
             nnkCall.newTree(
-                newIdentNode("parse_block_for_variables"),
+                newIdentNode("parse_block_untyped"),
                 code_block
             )
         )   

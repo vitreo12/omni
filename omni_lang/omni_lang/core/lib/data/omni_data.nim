@@ -29,14 +29,13 @@ import ../math/omni_math
 type
     ArrayPtr[T] = ptr UncheckedArray[T]
 
-    Data_obj*[T] = object
+    Data_struct_inner*[T] = object
         data    : ArrayPtr[T]
         length  : int
         chans   : int
         length_X_chans : int
 
-    #Only export Data
-    Data*[T] = ptr Data_obj[T]
+    Data*[T] = ptr Data_struct_inner[T]
      
 #Having the strings as const as --gc:none is used
 const
@@ -46,7 +45,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[dataType]  {.inline.} =
+proc struct_new_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[dataType]  {.inline.} =
     #Trying to allocate in perform block! nonono
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Data`".}
@@ -63,7 +62,7 @@ proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data
         print(chans_error)
         real_chans = 1
 
-    let size_data_obj = sizeof(Data_obj[dataType])
+    let size_data_obj = sizeof(Data_struct_inner[dataType])
 
     #Actual object, assigned to result
     result = cast[Data[dataType]](omni_alloc(culong(size_data_obj)))
@@ -86,11 +85,13 @@ proc struct_init_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data
     result.length         = real_length
     result.length_X_chans = length_X_chans
 
-template new_struct*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    struct_init_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
+#This is called by the omni parser
+template struct_new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    struct_new_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
 
+#This can be used by the user
 template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    struct_init_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
+    struct_new_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
 
 proc checkDataValidity*[T](data : Data[T]) : bool =
     when T isnot SomeNumber:
