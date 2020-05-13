@@ -179,7 +179,7 @@ proc parser_loop(statement : NimNode, level : var int, is_constructor_block : bo
 
 #Parse the call syntax: function(arg)
 proc parse_call(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
-    print_parser_stage(statement, level)
+    #print_parser_stage(statement, level)
     level += 1
 
     #Detect constructor calls
@@ -189,7 +189,7 @@ proc parse_call(statement : NimNode, level : var int, is_constructor_block : boo
 
 #Parse the eq expr syntax, Test(data=Data())
 proc parse_expr_eq_expr(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
-    print_parser_stage(statement, level)
+    #print_parser_stage(statement, level)
     level += 1
 
     var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block)
@@ -198,7 +198,7 @@ proc parse_expr_eq_expr(statement : NimNode, level : var int, is_constructor_blo
 
 #Parse the command syntax: a float
 proc parse_command(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
-    print_parser_stage(statement, level)
+    #print_parser_stage(statement, level)
     level += 1
 
     var parsed_statement = statement
@@ -222,7 +222,7 @@ proc parse_command(statement : NimNode, level : var int, is_constructor_block : 
 
 #Parse the assign syntax: a float = 10 OR a = 10
 proc parse_assign(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
-    print_parser_stage(statement, level)
+    #print_parser_stage(statement, level)
     level += 1
 
     if statement.len > 3:
@@ -448,7 +448,7 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
 
 #Parse the dot syntax: .
 proc parse_dot(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
-    print_parser_stage(statement, level)
+    #print_parser_stage(statement, level)
     level += 1
     
     var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block)
@@ -457,7 +457,7 @@ proc parse_dot(statement : NimNode, level : var int, is_constructor_block : bool
 
 #Parse the square bracket syntax: []
 proc parse_brackets(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
-    print_parser_stage(statement, level)
+    #print_parser_stage(statement, level)
     level += 1
 
     #Parse the whole statement first
