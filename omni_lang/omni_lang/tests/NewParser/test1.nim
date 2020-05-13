@@ -35,6 +35,8 @@ init:
 
     c.a = 0.23
 
+    Bah = 10
+
 #expandMacros:
 perform:
     a = 10
