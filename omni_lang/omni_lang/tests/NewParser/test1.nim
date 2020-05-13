@@ -13,7 +13,7 @@ struct Bah:
 
 expandMacros:
     def something():
-        return Test(Test(data=Data(10)).a, data=Data(10)).a
+        return Test(Test(data=Data(10)).a, data=Data(10))
 
 
 init:
@@ -31,7 +31,12 @@ init:
     a = ins[0]
 
     c = something()
+    d = something()
+
+    c.a = 0.23
 
 expandMacros:
     sample:
         outs[0] = ins[a]
+        c.a = 0.3
+        c = d

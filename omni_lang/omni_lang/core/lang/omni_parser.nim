@@ -505,6 +505,8 @@ proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool
         var level : int = 0
         let parsed_statement = parser_dispatcher(statement, level, is_constructor_block, is_perform_block, is_sample_block)
 
+        echo repr statement
+
         #Replaced the parsed_statement
         if parsed_statement != nil:
             code_block[index] = parsed_statement
@@ -758,8 +760,11 @@ proc parse_block_typed_inner(typed_code_block : NimNode, templates_to_ignore : T
                     if old_statement_body.len == 3:
                         if old_statement_body[2].kind == nnkEmpty:
                             let error_var_name = old_statement_body[0]
-                            error("\'" & $error_var_name & "\': structs must be instantiated on declaration.")
-                        
+                            error("`" & $error_var_name & "`: structs must be instantiated on declaration.")
+                    
+                    if is_perform_block:
+                        error("`" & "`: structs must be instantiated on declaration.")
+
                     #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
                         old_statement_body
