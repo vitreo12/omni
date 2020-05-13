@@ -133,8 +133,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     
     #echo astGenRepr proc_new_call
 
-    #Here it's essential for the when to check for "declared", not "declaredInScope"!
-    #declareInScope is useful in init / perform / def bodies for variable declarations
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
             nnkCall.newTree(
@@ -311,15 +309,33 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
         
         if is_command_or_ident:
             if not is_out_variable:
+                #The check for Omni_UGenInputs allow to name variables to the same name of the currently compiled omni module, which defines Omni_UGenInputs.
+                #The when declared(phase).not would return false if phase was a module!
+                #when declared(phase).not or declared(phase.Omni_UGenInputs):
+                #   var phase = ...
+                #else:
+                #   phase = ...
                 parsed_statement = nnkStmtList.newTree(
                     nnkWhenStmt.newTree(
                         nnkElifBranch.newTree(
-                            nnkDotExpr.newTree(
-                                nnkCall.newTree(
-                                    newIdentNode("declaredInScope"),
-                                    var_name
+                            nnkInfix.newTree(
+                                newIdentNode("or"),
+                                nnkDotExpr.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("declared"),
+                                        var_name
+                                    ),
+                                    newIdentNode("not")
                                 ),
-                                newIdentNode("not")
+
+                                #If var_name.Omni_UGenInputs is defined, it means it's a module! go through with it
+                                nnkCall.newTree(
+                                    newIdentNode("declared"),
+                                    nnkDotExpr.newTree(
+                                        var_name,
+                                        newIdentNode("Omni_UGenInputs")
+                                    )
+                                ),
                             ),
                             nnkStmtList.newTree(
                                 nnkVarSection.newTree(
@@ -525,7 +541,7 @@ proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool
         var level : int = 0
         let parsed_statement = parser_dispatcher(statement, level, is_constructor_block, is_perform_block, is_sample_block)
 
-        echo repr statement
+        #echo repr statement
 
         #Replaced the parsed_statement
         if parsed_statement != nil:
@@ -650,7 +666,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    echo repr final_block
+    #echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -782,9 +798,9 @@ proc parse_block_typed_inner(typed_code_block : NimNode, templates_to_ignore : T
                             let error_var_name = old_statement_body[0]
                             error("`" & $error_var_name & "`: structs must be instantiated on declaration.")
                     
-                    #If trying to assign a ptr type to any variable
-                    if is_perform_block:
-                        error("`" & $var_name & "`: cannot declare new structs in the `perform` or `sample` blocks.")
+                    #If trying to assign a ptr type to any variable.. this won't probably be caught as it's been already parsed from untyped to typed...
+                    #if is_perform_block:
+                    #    error("`" & $var_name & "`: cannot declare new structs in the `perform` or `sample` blocks.")
 
                     #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
@@ -852,7 +868,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     #return an untyped block
     result = typedToUntyped(inner_block)
 
-    echo repr result
+    #echo repr result
 
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:

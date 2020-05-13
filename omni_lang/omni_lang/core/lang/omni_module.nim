@@ -20,32 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#DSL macros
-import omni_io
-import omni_init
-import omni_struct
-import omni_parser
-import omni_def
-import omni_perform
-export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
+import os,macros
 
-#Needed for def's arg parsing
-import omni_type_checker
-export omni_type_checker
-
-#Needed for retrieval of Datas and structs in a struct
-import omni_finder
-export omni_finder
-
-#Utilities
-import omni_types
-export omni_types
-
-import omni_call_types
-export omni_call_types
-
-import omni_require
-export omni_require
-
-import omni_module
-export omni_module
+#Detect module name
+proc isModuleName*(name : string) : bool {.compileTime.} =
+    let module_name = (splitFile(instantiationInfo(0)[0])).name
+    echo instantiationInfo()
+    error("module_name")
+    return name == module_name
