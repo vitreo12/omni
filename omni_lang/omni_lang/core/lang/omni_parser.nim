@@ -359,28 +359,36 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
 
         #outs[i] in perform block (already been checked)
         elif is_outs_brackets:
-            var audio_index_loop_bracket : NimNode
-            
-            if is_sample_block:
-                audio_index_loop_bracket = nnkBracketExpr.newTree(
+            let audio_index_loop_bracket = nnkWhenStmt.newTree(
+                nnkElifExpr.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        newIdentNode("audio_index_loop")
+                    ),
+                    nnkStmtList.newTree(
+                        nnkBracketExpr.newTree(
+                            nnkBracketExpr.newTree(
+                                newIdentNode("outs_Nim"),
+                                nnkCall.newTree(
+                                    newIdentNode("int"),
+                                    bracket_index
+                                )  
+                            ),
+                            newIdentNode("audio_index_loop")
+                        )
+                    )
+                ),
+                nnkElseExpr.newTree(
                     nnkBracketExpr.newTree(
                         newIdentNode("outs_Nim"),
                         nnkCall.newTree(
                             newIdentNode("int"),
                             bracket_index
-                        )  
-                    ),
-                    newIdentNode("audio_index_loop")
-                )
-            else:
-                audio_index_loop_bracket = nnkBracketExpr.newTree(
-                    newIdentNode("outs_Nim"),
-                    nnkCall.newTree(
-                        newIdentNode("int"),
-                        bracket_index
+                        )
                     )
                 )
-
+            )
+          
             parsed_statement = nnkStmtList.newTree(
                 nnkIfStmt.newTree(
                     nnkElifBranch.newTree(
@@ -448,10 +456,22 @@ proc parse_brackets(statement : NimNode, level : var int, is_constructor_block :
         
         #Look for ins[i]
         if bracket_ident_str == "ins":
-            var audio_index_loop = newLit(0)
-            
-            if is_sample_block:
-                audio_index_loop = newIdentNode("audio_index_loop")
+            let audio_index_loop =  nnkWhenStmt.newTree(
+                nnkElifExpr.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        newIdentNode("audio_index_loop")
+                    ),
+                    nnkStmtList.newTree(
+                        newIdentNode("audio_index_loop")
+                    )
+                ),
+                nnkElseExpr.newTree(
+                    nnkStmtList.newTree(
+                        newLit(0)
+                    )
+                )
+            )
             
             parsed_statement = nnkCall.newTree(
                 newIdentNode("get_dynamic_input"),
@@ -630,7 +650,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    #echo repr final_block
+    echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -832,7 +852,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     #return an untyped block
     result = typedToUntyped(inner_block)
 
-    #echo repr result
+    echo repr result
 
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:

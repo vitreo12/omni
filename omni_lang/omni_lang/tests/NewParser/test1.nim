@@ -35,8 +35,10 @@ init:
 
     c.a = 0.23
 
-expandMacros:
+#expandMacros:
+perform:
+    a = 10
     sample:
         outs[0] = ins[a]
         c.a = 0.3
-        c = d
+        #c = d
