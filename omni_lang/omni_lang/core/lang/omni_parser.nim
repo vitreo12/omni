@@ -762,8 +762,9 @@ proc parse_block_typed_inner(typed_code_block : NimNode, templates_to_ignore : T
                             let error_var_name = old_statement_body[0]
                             error("`" & $error_var_name & "`: structs must be instantiated on declaration.")
                     
+                    #If trying to assign a ptr type to any variable
                     if is_perform_block:
-                        error("`" & "`: structs must be instantiated on declaration.")
+                        error("`" & $var_name & "`: cannot declare new structs in the `perform` or `sample` blocks.")
 
                     #All good, create new let statement
                     let new_let_statement = nnkLetSection.newTree(
