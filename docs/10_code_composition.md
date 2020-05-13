@@ -3,7 +3,7 @@ layout: page
 title: Code composition
 ---
 
-Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `import` statement.
+Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `require` statement.
 
 ### *Vector.omni*:
 ```nim
@@ -20,7 +20,7 @@ def setValues(vec Vector, x, y, z):
 
 ### *VecTest.omni*:
 ```nim
-import "Vector.omni"
+require "Vector.omni"
 
 ins:  3
 outs: 1
@@ -83,7 +83,7 @@ def perform(saw Saw, freq_in = 440.0):
 ### *Oscillator.omni*
 
 ```nim
-import "Saw.omni", "Sine.omni"
+require "Saw.omni", "Sine.omni"
 
 ins 1:
     "sineOrSaw" {0, 0, 1}
