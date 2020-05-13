@@ -551,7 +551,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
                     break
             
         #couldn't find sample block IN perform block
-        if found_sample_block.not:
+        if not found_sample_block:
             error "`perform`: no `sample` block provided, or not at top level."
         
     
@@ -575,9 +575,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #Begin parsing
     parse_block_untyped_inner(code_block, is_constructor_block, is_perform_block, is_sample_block)
 
-    echo repr code_block
-
-    #error("wo, roach")
+    #echo repr code_block
 
     #Add all stuff relative to initialization for perform function:
     #[
@@ -630,35 +628,15 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    #echo repr code_block
-
-    #echo variable_names_table
-
-    #echo "CODE BLOCK"
-    #echo astGenRepr code_block
-    #echo astGenRepr final_block
-
     #echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_for_consts_and_structs(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
 
 
-
-
-
-
-
-
-
-
-#========================================================================================================================================================#
-# EVERYTHING HERE SHOULD BE REWRITTEN, I SHOULDN'T BE LOOPING OVER EVERY SINGLE THING RECURSIVELY, BUT ONLY CONSTRUCTS THAT COULD CONTAIN VAR ASSIGNMENTS
-#========================================================================================================================================================#
-
-proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, templates_to_ignore : TableRef[string, string], is_perform_block : bool = false) : void {.compileTime.} =  
+proc parse_block_typed_inner(typed_code_block : NimNode, templates_to_ignore : TableRef[string, string], is_perform_block : bool = false) : void {.compileTime.} =  
     #Look inside the typed block, which contains info about types, etc...
     for index, typed_statement in typed_code_block.pairs():
         #kind of current inspected block
@@ -816,16 +794,16 @@ proc parse_block_recursively_for_consts_and_structs(typed_code_block : NimNode, 
         elif typed_statement_kind == nnkDotExpr:
             let typed_code_block_kind = typed_code_block.kind
             
-            #Spot if trying to assign something to a field of a struct which is a struct! This is an error
+            #Spot if trying to assign something to a field of a struct which is already a struct! This is an error
             if typed_code_block_kind == nnkAsgn:
                 if isStruct(typed_statement):
                     error("\'" & typed_statement.repr & "\': trying to re-assign an already allocated struct field.")
         
         #Run function recursively
-        parse_block_recursively_for_consts_and_structs(typed_statement, templates_to_ignore, is_perform_block)
+        parse_block_typed_inner(typed_statement, templates_to_ignore, is_perform_block)
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -843,12 +821,9 @@ macro parse_block_for_consts_and_structs*(typed_code_block : typed, build_statem
     #echo astGenRepr inner_block
     #echo repr inner_block
 
-    parse_block_recursively_for_consts_and_structs(inner_block, templates_to_ignore, is_perform_block)
+    parse_block_typed_inner(inner_block, templates_to_ignore, is_perform_block)
     
-    #Dirty way of turning a typed block of code into an untyped:
-    #Basically, what's needed is to turn all newSymNode into newIdentNode.
-    #Sym are already semantically checked, Idents are not...
-    #Maybe just replace Syms with Idents instead? It would be much safer than this...
+    #return an untyped block
     result = typedToUntyped(inner_block)
 
     #echo repr result

@@ -22,5 +22,9 @@
 
 import macros
 
+#Dirty way of turning a typed block of code into an untyped:
+#Basically, what's needed is to turn all newSymNode into newIdentNode.
+#Sym are already semantically checked, Idents are not...
+#Maybe just replace Syms with Idents instead? It would be much safer than this...
 proc typedToUntyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
     return parseStmt(code_block.repr())
