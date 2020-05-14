@@ -157,7 +157,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 # ================================ #
 
 #Forward declaration
-proc parser_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.}
+proc parser_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.}
 
 #Utility print
 proc print_parser_stage(statement : NimNode, level : int) : void {.compileTime.} =
@@ -169,35 +169,35 @@ proc print_parser_stage(statement : NimNode, level : int) : void {.compileTime.}
     echo $val_spaces & $level & ": " & $statement.kind & " -> " & repr(statement)
 
 #Loop around statement and trigger dispatch, performing code substitution
-proc parser_loop(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parser_loop(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     var parsed_statement = statement
     if statement.len > 0:
         for index, statement_inner in statement.pairs():
             #Substitute old content with the parsed one
-            parsed_statement[index] = parser_dispatcher(statement_inner, level, is_constructor_block, is_perform_block, is_sample_block)
+            parsed_statement[index] = parser_dispatcher(statement_inner, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     return parsed_statement
 
 #Parse the call syntax: function(arg)
-proc parse_call(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parse_call(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
     level += 1
 
     #Detect constructor calls
-    var parsed_statement = findStructConstructorCall(parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block))
+    var parsed_statement = findStructConstructorCall(parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block))
 
     return parsed_statement
 
 #Parse the eq expr syntax, Test(data=Data())
-proc parse_expr_eq_expr(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parse_expr_eq_expr(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
     level += 1
 
-    var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+    var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
     return parsed_statement
 
 #Parse the command syntax: a float
-proc parse_command(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parse_command(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
     level += 1
 
@@ -221,7 +221,7 @@ proc parse_command(statement : NimNode, level : var int, is_constructor_block : 
     return parsed_statement
 
 #Parse the assign syntax: a float = 10 OR a = 10
-proc parse_assign(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parse_assign(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
     level += 1
 
@@ -229,7 +229,7 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
         error("Invalid variable assignment.")
 
     var 
-        parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
         assgn_left : NimNode
         assgn_right : NimNode
         is_command_or_ident = false
@@ -309,12 +309,22 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
         
         if is_command_or_ident:
             if not is_out_variable:
+
+                #The def block is better with declaredInScope!
+                var declared_stmt : NimNode
+                if not is_def_block:
+                    declared_stmt = newIdentNode("declared")
+                else:
+                    echo "ye"
+                    declared_stmt = newIdentNode("declaredInScope")
+                    
                 #The check for Omni_UGenInputs allow to name variables to the same name of the currently compiled omni module, which defines Omni_UGenInputs.
                 #The when declared(phase).not would return false if phase was a module!
                 #when declared(phase).not or declared(phase.Omni_UGenInputs):
                 #   var phase = ...
                 #else:
                 #   phase = ...
+                
                 parsed_statement = nnkStmtList.newTree(
                     nnkWhenStmt.newTree(
                         nnkElifBranch.newTree(
@@ -322,7 +332,7 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
                                 newIdentNode("or"),
                                 nnkDotExpr.newTree(
                                     nnkCall.newTree(
-                                        newIdentNode("declared"),
+                                        declared_stmt,
                                         var_name
                                     ),
                                     newIdentNode("not")
@@ -447,21 +457,21 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
     return parsed_statement
 
 #Parse the dot syntax: .
-proc parse_dot(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parse_dot(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
     level += 1
     
-    var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+    var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
     return parsed_statement
 
 #Parse the square bracket syntax: []
-proc parse_brackets(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parse_brackets(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
     level += 1
 
     #Parse the whole statement first
-    var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block) #keep parsing the entry of the bracket expr
+    var parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block) #keep parsing the entry of the bracket expr
 
     let 
         bracket_ident = parsed_statement[0]
@@ -469,7 +479,10 @@ proc parse_brackets(statement : NimNode, level : var int, is_constructor_block :
 
     if bracket_ident.kind == nnkIdent:
         let bracket_ident_str = bracket_ident.strVal()
-        
+
+        #Allow the Data[float](10) behaviour. Check if ident is a struct
+        #error astGenRepr bracket_val
+
         #Look for ins[i]
         if bracket_ident_str == "ins":
             let audio_index_loop =  nnkWhenStmt.newTree(
@@ -500,32 +513,32 @@ proc parse_brackets(statement : NimNode, level : var int, is_constructor_block :
 
 
 #Dispatcher logic
-proc parser_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : NimNode {.compileTime.} =
+proc parser_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     let statement_kind = statement.kind
     
     var parsed_statement : NimNode
 
     if statement_kind   == nnkCall:
-        parsed_statement = parse_call(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_call(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     elif statement_kind == nnkCommand:
-        parsed_statement = parse_command(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_command(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     elif statement_kind == nnkAsgn:
-        parsed_statement = parse_assign(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_assign(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     elif statement_kind == nnkDotExpr:
-        parsed_statement = parse_dot(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_dot(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     elif statement_kind == nnkBracketExpr:
-        parsed_statement = parse_brackets(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_brackets(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     elif statement_kind == nnkExprEqExpr:
-        parsed_statement = parse_expr_eq_expr(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_expr_eq_expr(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     elif statement_kind == nnkReturnStmt: #parse return statement just like calls, to detect constructors!
-        parsed_statement = parse_call(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parse_call(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
     else:
-        parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
     return parsed_statement
     
 #Entry point: Parse entire block
-proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false) : void {.compileTime.} =
+proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : void {.compileTime.} =
     for index, statement in code_block.pairs():
         let statement_kind = statement.kind
 
@@ -539,7 +552,7 @@ proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool
         
         #Initial level, 0
         var level : int = 0
-        let parsed_statement = parser_dispatcher(statement, level, is_constructor_block, is_perform_block, is_sample_block)
+        let parsed_statement = parser_dispatcher(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
         #echo repr statement
 
@@ -547,7 +560,7 @@ proc parse_block_untyped_inner(code_block : NimNode, is_constructor_block : bool
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
+macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : bool = false, bits_32_or_64_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -560,6 +573,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
         is_constructor_block = is_constructor_block_typed.boolVal()
         is_perform_block = is_perform_block_typed.boolVal()
         is_sample_block = is_sample_block_typed.boolVal()
+        is_def_block = is_def_block_typed.boolVal()
         bits_32_or_64 = bits_32_or_64_typed.boolVal()
 
     #Sample block without perform
@@ -611,9 +625,9 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
                     code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
     
     #Begin parsing
-    parse_block_untyped_inner(code_block, is_constructor_block, is_perform_block, is_sample_block)
+    parse_block_untyped_inner(code_block, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
-    #echo repr code_block
+    echo repr code_block
 
     #Add all stuff relative to initialization for perform function:
     #[
