@@ -137,26 +137,20 @@ macro init_inner*(code_block_stmt_list : untyped) =
     if new_call_provided:
         call_to_build_macro = code_block.last()
 
-        #First element of the call_to_build_macro ([0]) is the name of the calling function (Ident("build"))
-        #Second element - unpacked here - is the kind of syntax used to call the macro. It can either be just
-        #a list of idents - which is the case for the normal "new(a, b)" syntax - or either a nnkStmtList - for the
-        #"new : \n a \n b" syntax - or a nnkCommand list - for the "new a b" syntax.
-        let type_of_syntax = call_to_build_macro[1]
-
-        var temp_call_to_build_macro = nnkCall.newTree(newIdentNode("build"))
+        var temp_call_to_build_macro = nnkCall.newTree()
 
         #[
-            nnkStmtList is:
-            new:
+            nnkCall is:
+            build:
                 a
                 b
 
             nnkCommand is:
-            new a b
+            build a b
 
-            Format them both to be the same way as the normal new(a, b) nnkCall.
+            Format them both to be the same way as the normal build(a, b) nnkCall.
         ]#
-        if type_of_syntax.kind == nnkStmtList or type_of_syntax.kind == nnkCommand:
+        if call_to_build_macro.kind == nnkCall or call_to_build_macro.kind == nnkCommand:
             
             #nnkCommand can recursively represent elements in nnkCommand trees. Unpack all the nnkIdents and append them to the temp_call_to_build_macro variable.
             proc recursive_unpack_of_commands(input : NimNode) : void =    
@@ -167,7 +161,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                         temp_call_to_build_macro.add(input_children)
 
             #Unpack the elements and add them to temp_call_to_build_macro, which is a nnkCall tree.
-            recursive_unpack_of_commands(type_of_syntax)
+            recursive_unpack_of_commands(call_to_build_macro)
             
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro

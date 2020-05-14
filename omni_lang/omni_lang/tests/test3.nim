@@ -1,5 +1,5 @@
 import macros
-#import ../../omni_lang
+import ../../omni_lang
 
 ins 1:
     "freq"
