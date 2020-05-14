@@ -72,8 +72,9 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
                     return true
             
             #normal struct
-            elif inner_type_tree[1].strVal().endsWith("_struct_inner"):
-                return true
+            elif inner_inner_type_tree.kind == nnkIdent or inner_inner_type_tree.kind == nnkSym or inner_inner_type_tree.kind == nnkStrLit:
+                if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
+                    return true
     
         elif inner_type_tree_kind == nnkSym:
             if inner_type_tree.strVal().endsWith("_struct_inner"):
