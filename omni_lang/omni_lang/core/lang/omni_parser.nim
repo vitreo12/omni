@@ -94,6 +94,10 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 # Phasor(0.0)  -> when declared(Phasor_struct_inner): Phasor.struct_new(0.0) else: Phasor(0.0)
 # myFunc(0.0)  -> when declared(myFunc_struct_inner): myFunc.struct_new(0.0) else: myFunc(0.0)
 # Phasor.new() -> when declared(Phasor_struct_inner): Phasor.struct_new() else: Phasor.new()
+
+# ALSO GENERICS: (Data has a different behaviour)
+# Phasor[float]() -> when declared(Phasor_struct_inner) : Phasor[float].struct_new() else: Phasor[float]()
+# Data[int](10) -> when declared(Data_struct_inner) : Data.struct_new(10, dataType=int) else: Data[int](10)
 proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     if statement.kind != nnkCall:
         return statement
@@ -104,34 +108,90 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         proc_call_ident = parsed_statement[0]
         proc_call_ident_kind = proc_call_ident.kind
 
-    if proc_call_ident_kind == nnkDotExpr:
+    #Dot expr would be Data.new() or something.perform()
+    if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
         proc_call_ident = proc_call_ident[0]
         proc_call_ident_kind = proc_call_ident.kind
+        
+        #This happens for Data[float].new
+        if proc_call_ident_kind == nnkBracketExpr:
+            proc_call_ident = proc_call_ident[0]
+            proc_call_ident_kind = proc_call_ident.kind
     
     if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
         return statement
 
-    let proc_call_ident_obj = newIdentNode(proc_call_ident.strVal() & "_struct_inner")
+    var proc_call_ident_str = proc_call_ident.strVal()
+
+    let proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
 
     var proc_new_call =  nnkCall.newTree(
         newIdentNode("struct_new"),
         proc_call_ident
     )
 
+    var data_bracket_expr = false
     for index, arg in statement.pairs():
         var arg_temp = arg
+        
         if index == 0:
+            #This happens for Data[float].new() or Phasor[float].new()
+            if arg_temp.kind == nnkDotExpr:
+                arg_temp = arg_temp[0]
+
+            #Look for Data[int](10) OR Phasor[int]() syntax
+            if arg_temp.kind == nnkBracketExpr:
+                #Data case
+                if proc_call_ident_str == "Data":
+                    data_bracket_expr = true
+                
+                #Other struct case, use the bracket expr instead of just the ident Phasor[int].struct_new instead of Phasor.struct_new
+                else:
+                    proc_new_call[1] = arg_temp
+
+            #Continue in any case: the ident name it's already been added
             continue
         
-        #Find other constructors in the args of the call
+        #Find other constructors in the args of the call, including the one expressed like: arg=value (nnkExprEqExpr)
         if arg_temp.kind == nnkCall:
             arg_temp = findStructConstructorCall(arg_temp)
         elif arg_temp.kind == nnkExprEqExpr:
             arg_temp[1] = findStructConstructorCall(arg_temp[1])
-        
+
+        #Add the new parsed struct call
         proc_new_call.add(arg_temp)
     
-    #echo astGenRepr proc_new_call
+    #Need to prepend after all the dataType=int call
+    if data_bracket_expr:
+        var 
+            parsed_statement_bracket = parsed_statement[0] #This is Data[int]
+            data_generics = parsed_statement_bracket[1]    #This is just int
+
+        #If new statement with dot expr, retrieve the data_generics from the statement
+        if data_generics.kind == nnkIdent:
+            if data_generics.strVal() == "new":
+                #Go one level down from the dot expr
+                parsed_statement_bracket = parsed_statement_bracket[0]
+                
+                #Not a generics call,perhaps doing some weird stuff.
+                if parsed_statement_bracket.kind != nnkBracketExpr:
+                    error("Invalid generics call for `" & $proc_call_ident_str & "`")
+                
+                #Updata data_generics with first bracket entry (index 0 is Data)
+                data_generics = parsed_statement_bracket[1]
+        
+        #If more than 2 (meaning: Data[int, float], as Data is index 0) error out!
+        if parsed_statement_bracket.len > 2:
+            error astGenRepr parsed_statement_bracket
+            error("Cannot instantiate `Data`: got more than one type.")
+            
+        proc_new_call.add(nnkExprEqExpr.newTree(
+                newIdentNode("dataType"),
+                data_generics
+            )
+        )
+
+    #error repr proc_new_call
 
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
@@ -182,8 +242,15 @@ proc parse_call(statement : NimNode, level : var int, is_constructor_block : boo
     #print_parser_stage(statement, level)
     level += 1
 
+    #Parse the call
+    var 
+        parsed_statement = parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
+        parsed_statement_call = parsed_statement[0]
+
     #Detect constructor calls
-    var parsed_statement = findStructConstructorCall(parser_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block))
+    parsed_statement = findStructConstructorCall(parsed_statement)
+
+    #error repr parsed_statement
 
     return parsed_statement
 
@@ -311,11 +378,12 @@ proc parse_assign(statement : NimNode, level : var int, is_constructor_block : b
             if not is_out_variable:
 
                 #The def block is better with declaredInScope!
+                #This is due to the fact that it will allow to name variables inside def with the same
+                #name as others that were like defined in init (and were both to global scope with the block: behaviour!)
                 var declared_stmt : NimNode
                 if not is_def_block:
                     declared_stmt = newIdentNode("declared")
                 else:
-                    echo "ye"
                     declared_stmt = newIdentNode("declaredInScope")
                     
                 #The check for Omni_UGenInputs allow to name variables to the same name of the currently compiled omni module, which defines Omni_UGenInputs.
@@ -479,9 +547,6 @@ proc parse_brackets(statement : NimNode, level : var int, is_constructor_block :
 
     if bracket_ident.kind == nnkIdent:
         let bracket_ident_str = bracket_ident.strVal()
-
-        #Allow the Data[float](10) behaviour. Check if ident is a struct
-        #error astGenRepr bracket_val
 
         #Look for ins[i]
         if bracket_ident_str == "ins":
