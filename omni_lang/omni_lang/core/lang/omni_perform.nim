@@ -179,7 +179,7 @@ template performInner*(code_block : untyped) {.dirty.} =
             
             #sample block without perform
             else:
-                parse_block_untyped(code_block, false, true, true, false)
+                parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = false)
 
             #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):
@@ -196,7 +196,7 @@ template performInner*(code_block : untyped) {.dirty.} =
             
             #sample block without perform
             else:
-                parse_block_untyped(code_block, false, true, true, true)
+                parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = true)
 
             #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):

@@ -39,6 +39,10 @@ macro init_inner*(code_block_stmt_list : untyped) =
         templates_for_perform_var_declarations     = nnkStmtList.newTree()
         templates_for_constructor_var_declarations = nnkStmtList.newTree()
         templates_for_constructor_let_declarations = nnkStmtList.newTree()
+        perform_build_names_table_static_stmt      = nnkStmtList.newTree()
+        perform_build_names_table_static           = nnkStaticStmt.newTree(
+            perform_build_names_table_static_stmt
+        )
 
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
@@ -187,7 +191,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
         for var_declaration in var_declarations:
             if var_declaration == build_macro_var_name:
                 #Replace the input to the "build" macro to be "variableName_var"
-                let new_var_declaration = newIdentNode($(var_declaration.strVal()) & "_var")
+                let 
+                    var_name_str = var_declaration.strVal()
+                    new_var_declaration = newIdentNode(var_name_str & "_var")
                 
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_var_declaration
@@ -215,9 +221,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                         )
                     )
                 )
+                
+                templates_for_perform_var_declarations.add(perform_var_template)     
 
-                templates_for_perform_var_declarations.add(perform_var_template)
-        
         #Check if any of the let_declarations are inputs to the "build" macro. If so, just append their variable name with "_let"
         for let_declaration in let_declarations:
             if let_declaration == build_macro_var_name:
@@ -231,6 +237,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
     #echo astGenRepr call_to_build_macro
 
     #echo astGenRepr templates_for_perform_var_declarations
+
+    #error repr templates_for_perform_var_declarations
 
     #First statement of the constructor is the allocation of the "ugen" variable. 
     #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
@@ -284,7 +292,21 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
             assign_ugen_fields.add(ugen_asgn_stmt)
 
-            final_var_names.add(newIdentNode(var_name_str))
+            final_var_names.add(
+                newIdentNode(var_name_str)
+            )
+
+            perform_build_names_table_static_stmt.add(
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("perform_build_names_table"),
+                            newIdentNode("add")
+                        ),
+                        newLit(var_name_str[0..(var_name_str.len)-5]) #remove _var / _let
+                    )
+                )
+            )   
 
         #First ident == "build"
         else: 
@@ -309,6 +331,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
         call_to_build_macro
     )
 
+    #error repr perform_build_names_table_static
+
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
@@ -317,6 +341,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
         template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
+
+        #These are variables declared in build, they won't be renamed in perform
+        `perform_build_names_table_static`
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
@@ -491,6 +518,9 @@ macro init*(code_block : untyped) : untyped =
 
         when not declared(declared_outputs):
             outs 1
+
+        #Use to check variable names in perform block, to check if they are the same as declared vars from init
+        var perform_build_names_table {.inject, compileTime.} : seq[string]
             
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.

@@ -374,67 +374,96 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
         
         if is_command_or_ident:
             if not is_out_variable:
-
-                #The def block is better with declaredInScope!
-                #This is due to the fact that it will allow to name variables inside def with the same
-                #name as others that were like defined in init (and were both to global scope with the block: behaviour!)
-                var declared_stmt : NimNode
-                if not is_def_block:
-                    declared_stmt = newIdentNode("declared")
-                else:
-                    declared_stmt = newIdentNode("declaredInScope")
-                    
-                #The check for Omni_UGenInputs allow to name variables to the same name of the currently compiled omni module, which defines Omni_UGenInputs.
-                #The when declared(phase).not would return false if phase was a module!
-                #when declared(phase).not or declared(phase.Omni_UGenInputs):
-                #   var phase = ...
-                #else:
-                #   phase = ...
                 
-                parsed_statement = nnkStmtList.newTree(
-                    nnkWhenStmt.newTree(
-                        nnkElifBranch.newTree(
-                            nnkInfix.newTree(
-                                newIdentNode("or"),
-                                nnkDotExpr.newTree(
+                #When in init or in a def, declaredInScope is better
+                if is_constructor_block or is_def_block:
+                    parsed_statement = nnkStmtList.newTree(
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkCall.newTree(
+                                    newIdentNode("not"),
                                     nnkCall.newTree(
-                                        declared_stmt,
+                                        newIdentNode("declaredInScope"),
                                         var_name
                                     ),
-                                    newIdentNode("not")
                                 ),
-
-                                #If var_name.Omni_UGenInputs is defined, it means it's a module! go through with it
-                                nnkCall.newTree(
-                                    newIdentNode("declared"),
-                                    nnkDotExpr.newTree(
-                                        var_name,
-                                        newIdentNode("Omni_UGenInputs")
+                                nnkStmtList.newTree(
+                                    nnkVarSection.newTree(
+                                        assgn_left
                                     )
-                                ),
-                            ),
-                            nnkStmtList.newTree(
-                                nnkVarSection.newTree(
-                                    assgn_left
                                 )
-                            )
-                        ),
-                        nnkElse.newTree(
-                            nnkStmtList.newTree(
-                                nnkAsgn.newTree(
-                                    var_name,
-                                    nnkCall.newTree(
+                            ),
+                            nnkElse.newTree(
+                                nnkStmtList.newTree(
+                                    nnkAsgn.newTree(
+                                        var_name,
                                         nnkCall.newTree(
-                                            newIdentNode("typeof"),
-                                            var_name
-                                        ),
-                                        assgn_right
+                                            nnkCall.newTree(
+                                                newIdentNode("typeof"),
+                                                var_name
+                                            ),
+                                            assgn_right
+                                        )
                                     )
                                 )
                             )
                         )
                     )
-                )
+
+                #perform / sample blocks
+                else:
+                    let 
+                        names_table = newIdentNode("perform_build_names_table")
+                        var_name_lit = newLit(var_name.strVal())
+
+                    parsed_statement = nnkStmtList.newTree(
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode("and"),
+                                    nnkCall.newTree(
+                                        newIdentNode("not"),
+                                        nnkPar.newTree(
+                                            nnkInfix.newTree(
+                                                newIdentNode("in"),
+                                                var_name_lit,
+                                                names_table
+                                            )
+                                        )
+                                    ),
+                                    nnkCall.newTree(
+                                        newIdentNode("not"),
+                                        nnkCall.newTree(
+                                            newIdentNode("declaredInScope"),
+                                            var_name
+                                        ),
+                                    )
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkVarSection.newTree(
+                                        assgn_left
+                                    )
+                                )
+                            ),
+                            nnkElse.newTree(
+                                nnkStmtList.newTree(
+                                    nnkAsgn.newTree(
+                                        var_name,
+                                        nnkCall.newTree(
+                                            nnkCall.newTree(
+                                                newIdentNode("typeof"),
+                                                var_name
+                                            ),
+                                            assgn_right
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+
+                    #error repr parsed_statement
+
             #out1 = ... (ONLY in perform / sample blocks)
             else:
                 if is_perform_block:
@@ -686,11 +715,14 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
                 if code_block_last_first.strVal() == "build":
                     build_statement = code_block_last
                     code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
-    
+
+    #if is_perform_block:
+    #    error repr code_block
+
     #Begin parsing
     parse_untyped_block_inner(code_block, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
-    #echo repr code_block
+    #error repr code_block
 
     #Add all stuff relative to initialization for perform function:
     #[
@@ -774,9 +806,12 @@ proc parse_typed_call(statement : NimNode, level : var int, is_perform_block : b
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block)
 
     let function_call = parsed_statement[0]
-    if function_call.kind == nnkSym:
+
+    if function_call.kind == nnkSym or function_call.kind == nnkIdent:
         
         let function_name = function_call.strVal()
+
+        #echo function_name
 
         #Fix Data/Buffer access: from [] = (delay_data, phase, write_value) to delay_data[phase] = write_value
         if function_name == "[]=":                
@@ -845,18 +880,20 @@ proc parse_typed_call(statement : NimNode, level : var int, is_perform_block : b
                     parsed_statement = new_struct_new_inner
 
         #Check type of all arguments for other function calls (not array access related) 
-        #Ignore function ending in _min_max (the one used for input min/max conditional) OR is not get_dynamic_input
+        #Ignore function ending in _min_max (the one used for input min/max conditional) OR get_dynamic_input
         #THIS IS NOT SAFE! min_max could be assigned by user to another def
         elif parsed_statement.len > 1 and not(function_name.endsWith("_min_max")) and not(function_name == "get_dynamic_input"):
             for i, arg in parsed_statement.pairs():
                 #ignore i == 0 (the function_name)
                 if i == 0:
                     continue
-                
-                let arg_type  = arg.getTypeInst().getTypeImpl()
-                
-                #Check validity of each argument to function
-                checkValidType(arg_type, $i, is_proc_call=true, proc_name=function_name)
+
+                #Only check if actually it's possible to get the type (it's a sym). Something like safediv would be ident
+                if arg.kind == nnkSym:
+                    let arg_type = arg.getTypeInst().getTypeImpl()
+
+                    #Check validity of each argument to function
+                    checkValidType(arg_type, $i, is_proc_call=true, proc_name=function_name)
 
     return parsed_statement
 
