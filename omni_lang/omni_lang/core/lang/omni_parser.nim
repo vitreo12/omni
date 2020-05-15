@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 #remove tables here and move isStrUpperAscii (and strutils) to another module
-import macros, tables, strutils, omni_type_checker, omni_macros_utilities
+import macros, strutils, omni_type_checker, omni_macros_utilities
 
 let non_valid_variable_names {.compileTime.} = [
     "ins", "inputs",
