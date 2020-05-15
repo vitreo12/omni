@@ -166,7 +166,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
         else:
-            error("`build`: invalid syntax.")
+            error("'build': invalid syntax.")
 
         #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
         code_block.del(code_block.len() - 1)

@@ -408,7 +408,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("attempting to allocate memory in the `perform` or `sample` blocks for `struct " & ptr_name & "`")
+                            newLit("attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct " & ptr_name & "'")
                         )
                     )
                 )

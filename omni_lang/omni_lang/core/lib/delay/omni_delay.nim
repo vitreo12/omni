@@ -37,7 +37,7 @@ type
 proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay[dataType] {.inline.} =
     #Trying to allocate in perform block! nonono
     when ugen_call_type is PerformCall:
-        {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Delay`".}
+        {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
 
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 

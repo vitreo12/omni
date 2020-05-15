@@ -35,17 +35,17 @@ macro require*(path_list : untyped, paths : varargs[typed]) : untyped =
 
     if path_list.len == 0:
         if path_list.kind != nnkStrLit:
-            error("`require` only accepts strings to set the paths.")
+            error("'require' only accepts strings to set the paths.")
         unified_path_list.add(path_list)
     else:
         for path in path_list:
             if path.kind != nnkStrLit:
-                error("`require` only accepts strings to set the paths.")
+                error("'require' only accepts strings to set the paths.")
             unified_path_list.add(path)
 
     for path in paths:
         if path.kind != nnkStrLit:
-            error("`require` only accepts strings to set the paths.")
+            error("'require' only accepts strings to set the paths.")
         unified_path_list.add(path)
 
     result = nnkStmtList.newTree()

@@ -175,7 +175,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 
                 #Not a generics call,perhaps doing some weird stuff.
                 if parsed_statement_bracket.kind != nnkBracketExpr:
-                    error("Invalid generics call for `" & $proc_call_ident_str & "`")
+                    error("Invalid generics call for '" & $proc_call_ident_str & "'")
                 
                 #Updata data_generics with first bracket entry (index 0 is Data)
                 data_generics = parsed_statement_bracket[1]
@@ -367,10 +367,10 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
             #in1.. / in10..
             if var_name_str.len == 3:
                 if var_name_str[2].isDigit:
-                    error("Trying to redefine input variable: `" & $var_name_str & "`")
+                    error("Trying to redefine input variable: '" & $var_name_str & "'")
             elif var_name_str.len == 4:
                 if var_name_str[2].isDigit and var_name_str[3].isDigit:
-                    error("Trying to redefine input variable: `" & $var_name_str & "`")
+                    error("Trying to redefine input variable: '" & $var_name_str & "'")
         
         if is_command_or_ident:
             if not is_out_variable:
@@ -667,7 +667,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
             
         #couldn't find sample block IN perform block
         if not found_sample_block:
-            error "`perform`: no `sample` block provided, or not at top level."
+            error "'perform': no 'sample' block provided, or not at top level."
         
     
     #Remove new statement from the block before all syntactic analysis.
@@ -874,7 +874,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_perform_bl
         var_name   = var_symbol.strVal()
 
     if var_name in non_valid_variable_names:
-        error("`" & $var_name & "` is an invalid variable name: it's the name of an in-built type.")
+        error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.")
 
     #Check if it's a valid type
     checkValidType(var_type, var_name)
@@ -901,7 +901,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_perform_bl
             if old_statement_body.len == 3:
                 if old_statement_body[2].kind == nnkEmpty:
                     let error_var_name = old_statement_body[0]
-                    error("`" & $error_var_name & "`: structs must be instantiated on declaration.")
+                    error("'" & $error_var_name & "': structs must be instantiated on declaration.")
             
             #If trying to assign a ptr type to any variable.. this won't probably be caught as it's been already parsed from untyped to typed...
             #if is_perform_block:
@@ -953,9 +953,9 @@ proc parse_typed_assgn(statement : NimNode, level : var int, is_perform_block : 
 
     if isStruct(assgn_right):
         if assgn_right.kind == nnkDotExpr:
-            error("\'" & assgn_right.repr & "\': trying to re-assign an already allocated struct field.")
+            error("'" & assgn_right.repr & "': trying to re-assign an already allocated struct field.")
         else:
-            error("\'" & assgn_right.repr & "\': trying to re-assign an already allocated struct.")
+            error("'" & assgn_right.repr & "': trying to re-assign an already allocated struct.")
 
     return parsed_statement
 
