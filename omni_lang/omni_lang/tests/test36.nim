@@ -40,9 +40,3 @@ expandMacros:
     sample:
         a = 12
         out1 = a
-
-        for i in 0..10:
-            a = i
-
-        static:
-            echo(perform_build_names_table)
