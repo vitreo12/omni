@@ -82,8 +82,11 @@ init:
     print(myVec2.y)
     print(myVec2.z)
 
-sample:
-    out1 = myVec1.x * myVec1.y * myVec1.z
+    myVec3.setValuesAlternative(1, 2.0, 3)
+
+    print(myVec3.x)
+    print(myVec3.y)
+    print(myVec3.z)
 ```
 
 `structs` can store other `structs`, allowing the creation of complex data structures.
