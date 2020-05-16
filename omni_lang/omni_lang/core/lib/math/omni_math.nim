@@ -20,9 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#import / export all maths functions.. Should export be at the bottom?
 import math
-export math
+#export math
 
 # ========= #
 # Operators #
@@ -261,3 +260,6 @@ proc log2*(x: float32): float32
 proc degToRad*[T: float32|float64](d: T): T 
 proc radToDeg*[T: float32|float64](d: T): T
 proc sgn*[T: SomeNumber](x: T): int ]#
+
+
+
