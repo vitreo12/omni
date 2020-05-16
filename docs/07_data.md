@@ -75,7 +75,6 @@ init:
     #One other way to use loops around Data is by using the standard for-loop counting syntax:
     for i in 0..data.len-1:
         data[i] = Vector()
-...
 ```
 
 If using a `Data` as a field in another `struct`, its parametrization must always been specified:
