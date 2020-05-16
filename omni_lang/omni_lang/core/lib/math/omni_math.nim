@@ -208,58 +208,104 @@ proc spline_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumb
 # Wrappers for math.nim operators #
 # =============================== #
 
-#[ proc sqrt*(x: float32): float32
-proc cbrt*(x: float32): float32
-proc ln*(x: float32): float32
-proc log*[T: SomeFloat](x, base: T): T # can return nan / inf
-proc log10*(x: float32): float32       # can return nan / inf
-proc exp*(x: float32): float32
-proc sin*(x: float32): float32
-proc cos*(x: float32): float32 
-proc tan*(x: float32): float32
-proc sinh*(x: float32): float32
-proc cosh*(x: float32): float32
-proc tanh*(x: float32): float32
-proc arccos*(x: float32): float32
-proc arcsin*(x: float32): float32
-proc arctan*(x: float32): float32
-proc arctan2*(y, x: float32)
-proc arcsinh*(x: float32): float32
-proc arccosh*(x: float32): float32 
-proc arctanh*(x: float32): float32
+#Turn any one input math function into a generic one thatalso supports integers
+template omniMathFunction(func_name : untyped) : untyped {.dirty.} =
+    proc `func_name`*[T : SomeNumber](x : T) : float {.inline.} =
+        when T isnot SomeFloat:
+            return math.`func_name`(float(x))
+        else:
+            return math.`func_name`(x)
 
-proc cot*[T: float32|float64](x: T): T = 1.0 / tan(x)
-proc sec*[T: float32|float64](x: T): T = 1.0 / cos(x)
-proc csc*[T: float32|float64](x: T): T = 1.0 / sin(x)
+template omniMathFunctionCheckInf(func_name : untyped) : untyped {.dirty.} =
+    proc `func_name`*[T : SomeNumber](x : T) : float {.inline.} =
+        when T isnot SomeFloat:
+            result = math.`func_name`(float(x))
+        else:
+            result = math.`func_name`(x)
+        #Don't know why but result != result checks for nans (it's in the classify function in math modules)
+        #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+        if result == Inf or result == NegInf or result != result:
+            result = 0.0
 
-proc coth*[T: float32|float64](x: T): T = 1.0 / tanh(x)
-proc sech*[T: float32|float64](x: T): T = 1.0 / cosh(x)
-proc csch*[T: float32|float64](x: T): T = 1.0 / sinh(x)
+#log is the only one with 2 inputs
+proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
+    when T isnot SomeFloat:
+        result = math.log(float(x), float(base))
+    else:
+         result = math.log(x, base)
+    #Don't know why but result != result checks for nans (it's in the classify function in math modules)
+    #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+    if result == Inf or result == NegInf or result != result:
+        result = 0.0
 
-proc arccot*[T: float32|float64](x: T): T = arctan(1.0 / x)
-proc arcsec*[T: float32|float64](x: T): T = arccos(1.0 / x)
-proc arccsc*[T: float32|float64](x: T): T = arcsin(1.0 / x)
+omniMathFunctionCheckInf(ln)
+omniMathFunctionCheckInf(log2)
+omniMathFunctionCheckInf(log10)
+omniMathFunctionCheckInf(gamma)
+omniMathFunctionCheckInf(lgamma)
+omniMathFunction(sqrt)
+omniMathFunction(cbrt)
+omniMathFunction(exp)
+omniMathFunction(hypot)
+omniMathFunction(pow)
+omniMathFunction(erf)
+omniMathFunction(erfc)
+omniMathFunction(floor)
+omniMathFunction(ceil)
+omniMathFunction(round)
+omniMathFunction(trunc)
+omniMathFunction(degToRad)
+omniMathFunction(radToDeg)
+omniMathFunction(sgn)
+omniMathFunction(sin)
+omniMathFunction(cos)
+omniMathFunction(tan)
+omniMathFunction(sinh)
+omniMathFunction(cosh)
+omniMathFunction(tanh)
+omniMathFunction(arccos)
+omniMathFunction(arcsin)
+omniMathFunction(arctan)
+omniMathFunction(arctan2)
+omniMathFunction(arcsinh)
+omniMathFunction(arccosh)
+omniMathFunction(arctanh)
+omniMathFunction(cot)
+omniMathFunction(sec)
+omniMathFunction(csc)
+omniMathFunction(coth)
+omniMathFunction(sech)
+omniMathFunction(csch)
+omniMathFunction(arccot)
+omniMathFunction(arcsec)
+omniMathFunction(arccsc)
+omniMathFunc287tion(arccoth)
+omniMathFunction(arcsech)
+omniMathFunction(arccsch)
 
-proc arccoth*[T: float32|float64](x: T): T = arctanh(1.0 / x)
-proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
-proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
 
+#[
+inline double atodb(double in) {
+    return double((in <= 0.) ? -999. : (20. * log10(in)));
+}
 
+inline double dbtoa(double in) {
+    return double(pow(10., in * 0.05));
+}
 
-proc hypot*(x, y: float32): float32
-proc pow*(x, y: float32): float32
-proc erf*(x: float32): float32
-proc erfc*(x: float32): float32
-proc gamma*(x: float32): float32
-proc lgamma*(x: float32): float32
-proc floor*(x: float32): float32
-proc ceil*(x: float32): float32
-proc round*(x: float32): float32
-proc trunc*(x: float32): float32
-proc log2*(x: float32): float32
-proc degToRad*[T: float32|float64](d: T): T 
-proc radToDeg*[T: float32|float64](d: T): T
-proc sgn*[T: SomeNumber](x: T): int ]#
+inline double ftom(double in, double tuning=440.) {
+    return double(69. + 17.31234050465299 * log(safediv(in, tuning)));
+}
 
+inline double mtof(double in, double tuning=440.) {
+    return double(tuning * exp(.057762265 * (in - 69.0)));
+}
 
+inline double mstosamps(double ms, double samplerate=44100.) {
+    return double(samplerate * ms * double(0.001));
+}
 
+inline double sampstoms(double s, double samplerate=44100.) {
+    return double(double(1000.) * s / samplerate);
+}
+]#
