@@ -27,10 +27,13 @@ expandMacros:
         h = Bb()
 
         amma = Gamma(h) ]#
-        bubbu = Bubbu(Bb())
+       #[  bubbu = Bubbu(Bb())
         sin = Bb()
         f = Buh[int, float]()
-        l = Buh()
+        l = Buh() ]#
+
+        baba = Buh.new()
+
         #gamma = Gamma(h)
 
         for index in 0..10:
