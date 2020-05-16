@@ -69,7 +69,7 @@ template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), da
 proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
     return true
 
-#Read proc
+#Read proc (uses cubic interp)
 proc read*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], delay_time : Y) : T {.inline.} =
     let 
         float_delay_time = float(delay_time)
@@ -77,8 +77,10 @@ proc read*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], delay_time : Y) : T
         index  = (delay.phase - int(delay_time))
         index1 = index and delay.mask
         index2 = (index + 1) and delay.mask
+        index3 = (index + 2) and delay.mask
+        index4 = (index + 3) and delay.mask
 
-    return linear_interp(frac, delay.data[index1], delay.data[index2])
+    return cubic_interp(frac, delay.data[index1], delay.data[index2], delay.data[index3], delay_data[index4])
 
 #Write proc
 proc write*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], val : Y) : void {.inline.} =
