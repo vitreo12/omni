@@ -279,7 +279,7 @@ omniMathFunction(csch)
 omniMathFunction(arccot)
 omniMathFunction(arcsec)
 omniMathFunction(arccsc)
-omniMathFunc287tion(arccoth)
+omniMathFunction(arccoth)
 omniMathFunction(arcsech)
 omniMathFunction(arccsch)
 
