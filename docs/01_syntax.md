@@ -70,7 +70,7 @@ There are two options for loops in omni, using either the `for` or `while` state
 
 ```nim
 init:
-    for i in (0..9):
+    for i in 0..9:
         print(i)
 
     i = 0
