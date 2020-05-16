@@ -14,17 +14,22 @@ expandMacros:
 
         for bubu in data:
             bubu = Bubu()
-        
-        #[ for i in 0..data.len-1:
-            print(i) ]#
+
+        for i in 0..data.len-1:
+            data[i] = Bubu()
+
+        for i, entry in data:
+            entry = Bubu(i)
+
         #for i, bubu in data:
         #    bubu = Bubu()
             
     sample:
         a = data[0]
         for bubu in data:
-            for baba in data:
+            for hah in data:
                 bubu = a
+                hah = a
 
         for num in l:
             num = 0.23

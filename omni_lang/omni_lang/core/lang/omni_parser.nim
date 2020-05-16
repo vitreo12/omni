@@ -1017,23 +1017,24 @@ proc for_loop_substitute(code_block : NimNode, entry : NimNode, substitution : N
                     code_block[index] = substitution
             for_loop_substitute(statement, entry, substitution)
 
-#This parses for loops, only in constructor blocK!
+#This parses for loops.
+#It's used to do so:
+#a = Data[Something](10)
+#for entry in a:
+#   entry = Something()
+#OR
+#for i, entry in a:
+#   entry = Something(i)
 proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     level += 1
 
     var parsed_statement = statement
     
-    #if is_constructor_block:
     parsed_statement = parser_typed_loop(statement, level, is_constructor_block, is_perform_block)
     
-    echo level
-
     var 
         index1 = parsed_statement[0]
         index2 = parsed_statement[1]
-
-    if is_perform_block:
-        echo repr parsed_statement
 
     #for i, entry in data:
     if index2.kind == nnkSym:
@@ -1048,13 +1049,35 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                 )
 
             let check_data = data_name.getTypeInst()
+            var is_data = false
             if check_data.kind == nnkBracketExpr:
                 if check_data[0].kind == nnkSym:
                     if check_data[0].strVal() == "Data":
-                        var for_loop_body = parsed_statement[3]
-                        for_loop_substitute(for_loop_body, entry, bracket_expr)
+                        is_data = true
+            elif check_data.kind == nnkPtrTy:
+                if check_data[0].kind == nnkBracketExpr:
+                    if check_data[0][0].kind == nnkSym:
+                        if check_data[0][0].strVal() == "Data_struct_inner":
+                            is_data = true
 
-        #error astGenRepr parsed_statement
+            if is_data:
+                var for_loop_body = parsed_statement[3]
+                if for_loop_body.kind == nnkLetSection or for_loop_body.kind == nnkVarSection:
+                    let 
+                        ident_defs = for_loop_body[0]
+                        let_variable = ident_defs[0]
+                        asgnment = ident_defs[2] #1 is empty node
+                    if let_variable.kind == nnkSym or let_variable.kind == nnkIdent:
+                        if let_variable.strVal() == entry.strVal():
+                            let asgn_stmt = nnkAsgn.newTree(
+                                bracket_expr,
+                                asgnment
+                            )
+                            for_loop_body = asgn_stmt
+
+                for_loop_substitute(for_loop_body, entry, bracket_expr)
+
+                parsed_statement[3] = for_loop_body
         
     #for entry in data:
     else:
@@ -1062,7 +1085,7 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
             let 
                 entry = index1
                 data_name = parsed_statement[1][1]
-                index = newIdentNode("data_index_" & $level)
+                index = genSym(ident="data_index") #unique symbol generation
                 bracket_expr = nnkBracketExpr.newTree(
                     data_name,
                     index
@@ -1127,7 +1150,7 @@ proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructo
     
     var parsed_statement : NimNode
 
-    level += 1
+    #level += 1
 
     if statement_kind   == nnkCall:
         parsed_statement = parse_typed_call(statement, level, is_constructor_block, is_perform_block)
