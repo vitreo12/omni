@@ -66,9 +66,9 @@ def setValuesAlternative(vec, x, y, z):
     vec.z = z
 
 init:
-    myVec1 = Vector(0.0, 0.0, 0.0) #Vector[float, float, float]
-    myVec2 = Vector(0, 0, 0)       #Vector[int, int, int]
-    myVec3 = Vector(0.0, 0, 0.0)   #Vector[float, int, float]
+    myVec1 = Vector(0.0, 0.0, 0.0) #Equivalent to Vector[float, float, float]() OR Vector()
+    myVec2 = Vector(0, 0, 0)       #Equivalent to Vector[int, int, int]()
+    myVec3 = Vector(0.0, 0, 0.0)   #Equivalent to Vector[float, int, float]()
 
     myVec1.setValues(1.0, 2.0, 3.0)
 
@@ -99,10 +99,8 @@ struct SecondStruct:
     x FirstStruct
 
 init:
-    firstStruct  = FirstStruct(Data(10))        #create a FirstStruct
+    firstStruct  = FirstStruct(Data(10))       #create a FirstStruct
     secondStruct = SecondStruct(firstStruct)   #create a SecondStruct, using the previously declared firstStruct
-
-...
 ```
 
 <br>
