@@ -16,13 +16,13 @@ init:
     myData = Data(dataLength)
 
     #Allocate an array of 1000 int elements.
-    myDataInt = Data(dataLength, dataType=int)
+    myDataInt = Data[int](dataLength)
 
     #Allocate a 2 channels array of 1000 float elements.
     myTwoChansData = Data(dataLength, 2)
 
     #Allocate a 2 channels array of 1000 int elements.
-    myTwoChansDataInt = Data(dataLength, 2, int)
+    myTwoChansDataInt = Data[int](dataLength, 2)
 
     readIndex = 0
 
@@ -60,19 +60,21 @@ struct Vector:
 
 init:
     dataLength = 100
-    data = Data(dataLength, dataType=Vector)
+    data = Data[Vector](dataLength)
     
     #Initialize the entries of the Data. 
     #If these are not initialized, a runtime error will be raised
     #and the code will output silence.
-    for i in 0..dataLength-1:
-        data[i] = Vector()
+    for vector in data:
+        vector = Vector()
 
-    #Data entries can also be accessed with the iterator syntax
-    for entry in data:
-        print(entry.x)
-        print(entry.y)
-        print(entry.z)
+    #Alternatively, one can defined an index for the for-loop in Datas like this:
+    for i, vector in data:
+        vector = Vector(i, i+1, i+2)
+
+    #One other way to use loops around Data is by using the standard for-loop counting syntax:
+    for i in 0..data.len-1:
+        data[i] = Vector()
 ...
 ```
 
