@@ -27,9 +27,11 @@ expandMacros:
     sample:
         a = data[0]
         for bubu in data:
-            for hah in data:
-                bubu = a
-                hah = a
+            bubu.a = bubu.a * bubu.a
+
+        for i in 0..data.len-1:
+            bubu = data[i]
+            bubu.a = bubu.a * bubu.a
 
         for num in l:
             num = 0.23
