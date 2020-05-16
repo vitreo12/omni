@@ -845,39 +845,42 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
 
         #If a struct_new_inner call without generics (and the struct has generics), use floats! (Otherwise it will default to ints due to the struct_new template)
         elif function_name == "struct_new_inner":
-            let struct_type = parsed_statement[1]
-            #Data has been parsed correctly already
-            if struct_type.strVal() != "Data":
-                let 
-                    struct_impl = struct_type.getImpl()
-                    generic_params = struct_impl[1]
+            var struct_type = parsed_statement[1]
 
-                if generic_params.kind == nnkGenericParams:
-                    var 
-                        new_struct_new_inner = nnkCall.newTree(
-                            newIdentNode("struct_new_inner"),
-                        )
+            #If struct_type is a bracketexpr, it means it already has generics mapping laid out. no need to run these.
+            if struct_type.kind == nnkSym or struct_type.kind == nnkIdent:
+                #Data has been parsed correctly already
+                if struct_type.strVal() != "Data":
+                    let 
+                        struct_impl = struct_type.getImpl()
+                        generic_params = struct_impl[1]
 
-                        new_struct_expl_type = nnkBracketExpr.newTree(
-                            struct_type
-                        )
-                    
-                    #instantiate float for all generic params
-                    for generic_param in generic_params:
-                        new_struct_expl_type.add(
-                            newIdentNode("float")
-                        )
+                    if generic_params.kind == nnkGenericParams:
+                        var 
+                            new_struct_new_inner = nnkCall.newTree(
+                                newIdentNode("struct_new_inner"),
+                            )
 
-                    new_struct_new_inner.add(new_struct_expl_type)
+                            new_struct_expl_type = nnkBracketExpr.newTree(
+                                struct_type
+                            )
+                        
+                        #instantiate float for all generic params
+                        for generic_param in generic_params:
+                            new_struct_expl_type.add(
+                                newIdentNode("float")
+                            )
 
-                    #Re-attach all the args
-                    for index,arg in parsed_statement.pairs():
-                        if index <= 1:
-                            continue
-                        new_struct_new_inner.add(arg)
+                        new_struct_new_inner.add(new_struct_expl_type)
 
-                    #Add to code_block
-                    parsed_statement = new_struct_new_inner
+                        #Re-attach all the args
+                        for index,arg in parsed_statement.pairs():
+                            if index <= 1:
+                                continue
+                            new_struct_new_inner.add(arg)
+
+                        #Add to code_block
+                        parsed_statement = new_struct_new_inner
 
         #Check type of all arguments for other function calls (not array access related) 
         #Ignore function ending in _min_max (the one used for input min/max conditional) OR get_dynamic_input
