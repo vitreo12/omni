@@ -110,5 +110,24 @@ proc `~`*[T : SomeInteger, Y : SomeInteger](a : T) : auto {.inline.} =
 # Interpolation functions #
 # ======================= #
 
-proc linear_interp*[T : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : T, x1 : Y, x2 : Z) : auto =
-    return x1 + (a * (x2 - x1))
+proc linear_interp*[A : SomeNumber, X : SomeNumber, Y : SomeNumber](a : A, x : X, y : Y) : auto =
+    return x + (a * (y - x))
+
+proc cubic_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : A, w : W, x : X, y : Y, z : Z) : auto =
+    let
+        a2 : float = a * a
+        f0 : float = z - y - w + x
+        f1 : float = w - x - f0
+        f2 : float = y - w
+        f3 : float = x
+
+    return (f0 * a * a2) + (f1 * a2) + (f2 * a) + f3
+
+proc spline_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : A, w : W, x : X, y : Y, z : Z) : auto =
+    let
+        a2 : float = a * a
+        f0 : float = (-0.5 * w) + (1.5 * x) - (1.5 * y) + (0.5 * z)
+        f1 : float = w - (2.5 * x) + (2.0 * y) - (0.5 * z)
+        f2 : float = (-0.5 * w) + (0.5 * y)
+    
+    return (f0 * a * a2) + (f1 * a2) + (f2 * a) + x
