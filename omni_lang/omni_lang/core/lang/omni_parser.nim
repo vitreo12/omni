@@ -787,19 +787,19 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 # ============================== #
 
 #Forward declaration
-proc parser_typed_dispatcher(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.}
+proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.}
 
 #Loop around statement and trigger dispatch, performing code substitution
-proc parser_typed_loop(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.} =
+proc parser_typed_loop(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     var parsed_statement = statement
     if statement.len > 0:
         for index, statement_inner in statement.pairs():
             #Substitute old content with the parsed one
-            parsed_statement[index] = parser_typed_dispatcher(statement_inner, level, is_perform_block)
+            parsed_statement[index] = parser_typed_dispatcher(statement_inner, level, is_constructor_block, is_perform_block)
     return parsed_statement
 
 #Parse the call syntax: function(arg)
-proc parse_typed_call(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.} =
+proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     #print_parse_typed_stage(statement, level)
     level += 1
 
@@ -899,7 +899,7 @@ proc parse_typed_call(statement : NimNode, level : var int, is_perform_block : b
 
 
 #Parse the var section
-proc parse_typed_var_section(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.} =
+proc parse_typed_var_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     #print_parse_typed_stage(statement, level)
     level += 1
 
@@ -954,7 +954,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_perform_bl
 
     return parsed_statement
 
-proc parse_typed_infix(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.} =
+proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     level += 1
 
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block)
@@ -981,7 +981,7 @@ proc parse_typed_infix(statement : NimNode, level : var int, is_perform_block : 
 
     return parsed_statement
 
-proc parse_typed_assgn(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.} =
+proc parse_typed_assgn(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     level += 1
 
     var 
@@ -996,31 +996,160 @@ proc parse_typed_assgn(statement : NimNode, level : var int, is_perform_block : 
 
     return parsed_statement
 
+#Substitute the entry name with data[i], and the let section with assignment
+proc for_loop_substitute(code_block : NimNode, entry : NimNode, substitution : NimNode) : void =
+    if code_block.len > 0:
+        for index, statement in code_block:
+            if statement.kind == nnkLetSection or statement.kind == nnkVarSection:
+                let 
+                    ident_defs = statement[0]
+                    let_variable = ident_defs[0]
+                    asgnment = ident_defs[2] #1 is empty node
+                if let_variable.kind == nnkSym or let_variable.kind == nnkIdent:
+                    if let_variable.strVal() == entry.strVal():
+                        let asgn_stmt = nnkAsgn.newTree(
+                            substitution,
+                            asgnment
+                        )
+                        code_block[index] = asgn_stmt
+            if statement.kind == nnkSym or statement.kind == nnkIdent:
+                if statement.strVal() == entry.strVal():
+                    code_block[index] = substitution
+            for_loop_substitute(statement, entry, substitution)
+
+#This parses for loops, only in constructor blocK!
+proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
+    level += 1
+
+    var parsed_statement = statement
+    
+    #if is_constructor_block:
+    parsed_statement = parser_typed_loop(statement, level, is_constructor_block, is_perform_block)
+    
+    echo level
+
+    var 
+        index1 = parsed_statement[0]
+        index2 = parsed_statement[1]
+
+    if is_perform_block:
+        echo repr parsed_statement
+
+    #for i, entry in data:
+    if index2.kind == nnkSym:
+        if parsed_statement[2].kind != nnkInfix:
+            let 
+                index = index1
+                entry = index2
+                data_name = parsed_statement[2][1]
+                bracket_expr = nnkBracketExpr.newTree(
+                    data_name,
+                    index
+                )
+
+            let check_data = data_name.getTypeInst()
+            if check_data.kind == nnkBracketExpr:
+                if check_data[0].kind == nnkSym:
+                    if check_data[0].strVal() == "Data":
+                        var for_loop_body = parsed_statement[3]
+                        for_loop_substitute(for_loop_body, entry, bracket_expr)
+
+        #error astGenRepr parsed_statement
+        
+    #for entry in data:
+    else:
+        if parsed_statement[1].kind != nnkInfix:
+            let 
+                entry = index1
+                data_name = parsed_statement[1][1]
+                index = newIdentNode("data_index_" & $level)
+                bracket_expr = nnkBracketExpr.newTree(
+                    data_name,
+                    index
+                )
+            
+            let check_data = data_name.getTypeInst()
+
+            var is_data = false
+            if check_data.kind == nnkBracketExpr:
+                if check_data[0].kind == nnkSym:
+                    if check_data[0].strVal() == "Data":
+                        is_data = true
+            elif check_data.kind == nnkPtrTy:
+                if check_data[0].kind == nnkBracketExpr:
+                    if check_data[0][0].kind == nnkSym:
+                        if check_data[0][0].strVal() == "Data_struct_inner":
+                            is_data = true
+            
+            if is_data:
+                var for_loop_body = parsed_statement[2]
+                if for_loop_body.kind == nnkLetSection or for_loop_body.kind == nnkVarSection:
+                    let 
+                        ident_defs = for_loop_body[0]
+                        let_variable = ident_defs[0]
+                        asgnment = ident_defs[2] #1 is empty node
+                    if let_variable.kind == nnkSym or let_variable.kind == nnkIdent:
+                        if let_variable.strVal() == entry.strVal():
+                            let asgn_stmt = nnkAsgn.newTree(
+                                bracket_expr,
+                                asgnment
+                            )
+                            for_loop_body = asgn_stmt
+
+                for_loop_substitute(for_loop_body, entry, bracket_expr)
+
+                parsed_statement = nnkForStmt.newTree(
+                    index,
+                    nnkInfix.newTree(
+                        newIdentNode(".."),
+                        newLit(0),
+                        nnkInfix.newTree(
+                            newIdentNode("-"),
+                            nnkCall.newTree(
+                                newIdentNode("len"),
+                                data_name
+                            ),
+                            newLit(1)
+                        )
+                    ),
+                    for_loop_body
+                )
+
+        #error astGenRepr parsed_statement
+
+    #echo repr parsed_statement
+
+    return parsed_statement
+
 #Dispatcher logic
-proc parser_typed_dispatcher(statement : NimNode, level : var int, is_perform_block : bool = false) : NimNode {.compileTime.} =
+proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     let statement_kind = statement.kind
     
     var parsed_statement : NimNode
 
+    level += 1
+
     if statement_kind   == nnkCall:
-        parsed_statement = parse_typed_call(statement, level,is_perform_block)
+        parsed_statement = parse_typed_call(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkVarSection:
-        parsed_statement = parse_typed_var_section(statement, level, is_perform_block)
+        parsed_statement = parse_typed_var_section(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkInfix:
-        parsed_statement = parse_typed_infix(statement, level, is_perform_block)
+        parsed_statement = parse_typed_infix(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkAsgn:
-        parsed_statement = parse_typed_assgn(statement, level, is_perform_block)
+        parsed_statement = parse_typed_assgn(statement, level, is_constructor_block, is_perform_block)
+    elif statement_kind == nnkForStmt:
+        parsed_statement = parse_typed_for(statement, level, is_constructor_block, is_perform_block)
     else:
-        parsed_statement = parser_typed_loop(statement, level, is_perform_block)
+        parsed_statement = parser_typed_loop(statement, level, is_constructor_block, is_perform_block)
 
     return parsed_statement
     
 #Entry point: Parse entire block
-proc parse_typed_block_inner(code_block : NimNode, is_perform_block : bool = false) : void {.compileTime.} =
+proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool = false, is_perform_block : bool = false) : void {.compileTime.} =
     for index, statement in code_block.pairs():
         #Initial level, 0
         var level : int = 0
-        let parsed_statement = parser_typed_dispatcher(statement, level, is_perform_block)
+        let parsed_statement = parser_typed_dispatcher(statement, level, is_constructor_block, is_perform_block)
 
         #Replaced the parsed_statement
         if parsed_statement != nil:
@@ -1040,12 +1169,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
         is_constructor_block = is_constructor_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
 
-    #echo astGenRepr inner_block
-    #echo repr inner_block
-
-    #parse_block_typed_inner(inner_block, templates_to_ignore, is_perform_block)
-
-    parse_typed_block_inner(inner_block, is_perform_block)
+    parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block)
 
     #Will return an untyped code block!
     result = typedToUntyped(inner_block)
