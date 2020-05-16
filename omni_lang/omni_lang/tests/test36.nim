@@ -27,12 +27,13 @@ expandMacros:
         h = Bb()
 
         amma = Gamma(h) ]#
-       #[  bubbu = Bubbu(Bb())
+        bubbu = Bubbu(Bb())
         sin = Bb()
-        f = Buh[int, float]()
-        l = Buh() ]#
+        f = Buh[int, float](3, 4)
+        l = Buh()
 
-        baba = Buh.new()
+        baba = Buh[float, int].new(1, 2)
+        mm = new(Buh[float, int], 23, 2131312)
 
         #gamma = Gamma(h)
 

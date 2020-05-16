@@ -583,7 +583,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         template_body_call
     )
 
-    #Also create a .new template that's identical to struct_new
+    #Also create a "new" template that's identical to struct_new,
+    #to support the new(Phasor) syntax, which eventually can support nnkCommands in the future to do: new Phasor
     let new_template_def = template_def.copy()
     new_template_def[0][1] = newIdentNode("new")
     
