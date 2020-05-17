@@ -185,27 +185,82 @@ proc linear_interp*[A : SomeNumber, X : SomeNumber, Y : SomeNumber](a : A, x : X
     return x + (a * (y - x))
 
 proc cubic_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : A, w : W, x : X, y : Y, z : Z) : auto {.inline.} =
-    let
-        a2 : float = a * a
-        f0 : float = z - y - w + x
-        f1 : float = w - x - f0
-        f2 : float = y - w
-        f3 : float = x
+    when A isnot SomeFloat:
+        let float_a = float(a)
+    else:
+        let float_a = a
 
-    return (f0 * a * a2) + (f1 * a2) + (f2 * a) + f3
+    when W isnot SomeFloat:
+        let float_w = float(w)
+    else:
+        let float_w = w
+
+    when X isnot SomeFloat:
+        let float_x = float(x)
+    else:
+        let float_x = x
+
+    when Y isnot SomeFloat:
+        let float_y = float(y)
+    else:
+        let float_y = y
+
+    when Z isnot SomeFloat:
+        let float_z = float(z)
+    else:
+        let float_z = z
+
+    let
+        a2 : float = float_a * float_a
+        f0 : float = float_z - float_y - float_w + float_x
+        f1 : float = float_w - float_x - f0
+        f2 : float = float_y - float_w
+        f3 : float = float_x
+
+    return (f0 * float_a * a2) + (f1 * a2) + (f2 * float_a) + f3
 
 proc spline_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : A, w : W, x : X, y : Y, z : Z) : auto {.inline.} =
+    when A isnot SomeFloat:
+        let float_a = float(a)
+    else:
+        let float_a = a
+
+    when W isnot SomeFloat:
+        let float_w = float(w)
+    else:
+        let float_w = w
+
+    when X isnot SomeFloat:
+        let float_x = float(x)
+    else:
+        let float_x = x
+
+    when Y isnot SomeFloat:
+        let float_y = float(y)
+    else:
+        let float_y = y
+
+    when Z isnot SomeFloat:
+        let float_z = float(z)
+    else:
+        let float_z = z
+
     let
-        a2 : float = a * a
-        f0 : float = (-0.5 * w) + (1.5 * x) - (1.5 * y) + (0.5 * z)
-        f1 : float = w - (2.5 * x) + (2.0 * y) - (0.5 * z)
-        f2 : float = (-0.5 * w) + (0.5 * y)
+        a2 : float = float_a * float_a
+        f0 : float = (-0.5 * float_w) + (1.5 * float_x) - (1.5 * float_y) + (0.5 * float_z)
+        f1 : float = w - (2.5 * float_x) + (2.0 * float_y) - (0.5 * float_z)
+        f2 : float = (-0.5 * float_w) + (0.5 * float_y)
     
-    return (f0 * a * a2) + (f1 * a2) + (f2 * a) + x
+    return (f0 * float_a * a2) + (f1 * a2) + (f2 * float_a) + float_x
 
 # =============================== #
 # Wrappers for math.nim operators #
 # =============================== #
+
+proc fixdenorm*[T : SomeNumber](x : T) : auto {.inline.} =
+    if x == Inf or x == NegInf or x != x:
+        return T(0.0)
+    return x
 
 #Turn any one input math function into a generic one thatalso supports integers
 template omniMathFunction(func_name : untyped) : untyped {.dirty.} =
