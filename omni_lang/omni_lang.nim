@@ -62,3 +62,6 @@ export omni_init_global
 #math
 import omni_lang/core/lib/math/omni_math
 export omni_math
+
+import omni_lang/core/lib/math/omni_tables
+export omni_tables
