@@ -294,15 +294,18 @@ omniMathFunction(arccsch)
 # Various utilities #
 # ================= #
 
-import ../auto_mem/omni_auto_mem
-import ../../lang/omni_macros
+#Emulate omni's def behaviour in order to be able to use samplerate
+proc mstosamps_inner*[T](ms : T, samplerate : float) : auto {.inline.} =
+    return samplerate * ms * 0.001
 
-#Import omni code so that I can use def's samplerate
-def mstosamps[T](ms T):
-    return samplerate * (ms) * 0.001
+template mstosamps*[T](ms : T) : untyped {.dirty.} =
+    mstosamps_inner(ms, samplerate)
 
-def sampstoms[T](s T):
-    return 1000.0 * (s) / samplerate
+proc sampstoms_inner*[T](s : T, samplerate : float) : auto {.inline.} =
+    return 1000.0 * s / samplerate
+
+template sampstoms*[T](s : T) : untyped {.dirty.} =
+    sampstoms_inner(s, samplerate)
 
 #[
 inline double atodb(double in) {
