@@ -258,7 +258,11 @@ proc spline_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumb
 # =============================== #
 
 proc fixdenorm*[T : SomeNumber](x : T) : auto {.inline.} =
-    if x == Inf or x == NegInf or x != x:
+    when T isnot SomeFloat:
+        let float_x = float(x)
+    else:
+        let float_x = x
+    if float_x == Inf or float_x == NegInf or float_x != float_x:
         return T(0.0)
     return x
 
