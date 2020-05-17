@@ -101,6 +101,15 @@ proc `>>`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
 proc `~`*[T : SomeInteger, Y : SomeInteger](a : T) : auto {.inline.} =
     return not a
 
+# ================= #
+# Simple noise func #
+# ================= #
+
+from random import rand
+
+proc noise*() : float {.inline.} =
+    return rand(2.0) - 1.0
+
 # ================== #
 # WRAPPING / FOLDING #
 # ================== #
