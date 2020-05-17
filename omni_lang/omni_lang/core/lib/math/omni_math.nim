@@ -297,7 +297,7 @@ proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
     when T isnot SomeFloat:
         result = math.log(float(x), float(base))
     else:
-         result = math.log(x, base)
+        result = math.log(x, base)
     #Don't know why but result != result checks for nans (it's in the classify function in math modules)
     #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
     if result == Inf or result == NegInf or result != result:
