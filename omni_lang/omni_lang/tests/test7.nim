@@ -6,12 +6,12 @@ expandMacros:
     ins 1
     outs 1
 
-
-    def someAlloc():
+    def someAlloc(a=0):
         a = Data.new(10)
         return 0.5
 
     def someMoreAlloc(data):
+        data = data
         return 0.5
 
     def someSine[T](a T) T:
@@ -22,7 +22,8 @@ expandMacros:
         b = Data.new(10)
         c = someMoreAlloc(Data.new(10))
 
-        build c
+        build a, c
 
     sample:
         out1 = in1
+        #a = 0.213

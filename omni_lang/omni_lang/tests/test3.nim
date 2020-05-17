@@ -1,5 +1,5 @@
 import macros
-#import ../../omni_lang
+import ../../omni_lang
 
 ins 1:
     "freq"
@@ -14,8 +14,8 @@ expandMacros:
 
         data = Data.new(3000)
 
-        buf = Buffer.new(1)
-        buf2 = Buffer.new(2)
+        #buf  = Buffer.new(1)
+        #buf2 = Buffer.new(2)
         
         print("hello")
 

@@ -68,15 +68,16 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
 
             #struct with generics
             if inner_inner_type_tree.kind == nnkBracketExpr:
-                if inner_inner_type_tree[0].strVal().endsWith("_obj"):
+                if inner_inner_type_tree[0].strVal().endsWith("_struct_inner"):
                     return true
             
             #normal struct
-            elif inner_type_tree[1].strVal().endsWith("_obj"):
-                return true
+            elif inner_inner_type_tree.kind == nnkIdent or inner_inner_type_tree.kind == nnkSym or inner_inner_type_tree.kind == nnkStrLit:
+                if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
+                    return true
     
         elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_obj"):
+            if inner_type_tree.strVal().endsWith("_struct_inner"):
                 return true
 
     else:
@@ -90,11 +91,11 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
         if inner_type_tree_kind == nnkBracketExpr:
             let inner_inner_type_tree = inner_type_tree[0]
 
-            if inner_inner_type_tree.strVal().endsWith("_obj"):
+            if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
                 return true
             
         elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_obj"):
+            if inner_type_tree.strVal().endsWith("_struct_inner"):
                 return true
         
     return false

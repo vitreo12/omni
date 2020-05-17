@@ -25,16 +25,16 @@ import macros, omni_type_checker, omni_macros_utilities
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
-        type_section    = nnkTypeSection.newTree()       #the whole type section (both _obj and ptr)
-        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_obj block
-        obj_ty          = nnkObjectTy.newTree(           #the body of the Phasor_obj 
+        type_section    = nnkTypeSection.newTree()       #the whole type section (both struct_inner and ptr)
+        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_struct_inner block
+        obj_ty          = nnkObjectTy.newTree(           #the body of the Phasor_struct_inner
             newEmptyNode(),  
             newEmptyNode()
         )      
-        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_obj
+        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
         
-        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_obj block
-        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_obj
+        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_struct_inner block
+        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_struct_inner
 
         generics_seq : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()        #Check that types fed to struct are correct omni types
@@ -50,7 +50,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #Using generics
     if struct_name.kind == nnkBracketExpr:
-        obj_name = newIdentNode($(struct_name[0].strVal()) & "_obj")  #Phasor_obj
+        obj_name = newIdentNode($(struct_name[0].strVal()) & "_struct_inner")  #Phasor_struct_inner
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -73,7 +73,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
         )
 
-        #Initialize them to be bracket expressions and add the "Phasor_obj" and "Phasor" names to brackets
+        #Initialize them to be bracket expressions and add the "Phasor_struct_inner" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(
             obj_name
         )
@@ -89,7 +89,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     
                 #If singular [T]
                 if child.len() == 0:
-                    ##Also add the name of the generic to the Phasor_obj[T, Y...]
+                    ##Also add the name of the generic to the Phasor_struct_inner[T, Y...]
                     obj_bracket_expr.add(child)
 
                     #Also add the name of the generic to the Phasor[T, Y...]
@@ -115,12 +115,12 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #Add generics to ptr type
         ptr_type_def.add(generics)
 
-        #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
+        #Add the Phasor_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_bracket_expr)
 
     #No generics, just name of struct
     elif struct_name.kind == nnkIdent:
-        obj_name = newIdentNode($(struct_name) & "_obj")              #Phasor_obj
+        obj_name = newIdentNode($(struct_name) & "_struct_inner")              #Phasor_struct_inner
         ptr_name = struct_name                                        #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -145,7 +145,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        #Add the Phasor_obj[T, Y] to ptr_ty, for object that the pointer points at.
+        #Add the Phasor_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_name)
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
@@ -242,7 +242,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the obj declaration (the nnkObjectTy) to the type declaration
     obj_type_def.add(obj_ty)
     
-    #Add the type declaration of Phasor_obj to the type section
+    #Add the type declaration of Phasor_struct_inner to the type section
     type_section.add(obj_type_def)
     
     # ================================= #
@@ -258,7 +258,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the whole type section to result
     final_stmt_list.add(type_section)
 
-    #The init_struct macro, which will declare the "proc struct_init_inner ..." and the "template new ..."
+    #The init_struct macro, which will declare the "proc struct_new_inner ..." and the "template new ..."
     let struct_create_init_proc_and_template = nnkCall.newTree(
         newIdentNode("struct_create_init_proc_and_template"),
         ptr_name
@@ -277,7 +277,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         `struct_create_init_proc_and_template`
         `findDatasAndStructs`
 
-#Declare the "proc struct_init_inner ..." and the "template new ...", doing all sorts of type checks
+#Declare the "proc struct_new_inner ..." and the "template new ...", doing all sorts of type checks
 macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     if ptr_struct_name.kind != nnkSym:
         error("Invalid struct ptr symbol!")
@@ -300,7 +300,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
         generics_proc_def    = nnkGenericParams.newTree() #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
-        proc_def             = nnkProcDef.newTree()      #the struct_init_inner* proc
+        proc_def             = nnkProcDef.newTree()      #the struct_new_inner* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
         
@@ -309,21 +309,21 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         template_body_call = nnkCall.newTree()
 
     #The name of the function with the asterisk, in case of supporting modules in the future
-    #proc struct_init_inner
+    #proc struct_new_inner
     proc_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("struct_init_inner")
+            newIdentNode("struct_new_inner")
         ),
         newEmptyNode()
     )
 
     #Add name with * for export
-    #template new_struct
+    #template struct_new
     template_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("new_struct")
+            newIdentNode("struct_new")
         ),
         newEmptyNode()
     )
@@ -333,7 +333,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         let obj_struct_name_ident = obj_struct_name[0]
         obj_struct_type = (obj_struct_name_ident).getTypeImpl()
 
-        #Initialize them to be bracket expressions and add the "Phasor_obj" and "Phasor" names to brackets
+        #Initialize them to be bracket expressions and add the "Phasor_struct_inner" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(obj_struct_name[0])
         ptr_bracket_expr = nnkBracketExpr.newTree(ptr_struct_name)
 
@@ -342,7 +342,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             if index == 0:
                 continue
 
-            ##Also add the name of the generic to the Phasor_obj[T, Y...]
+            ##Also add the name of the generic to the Phasor_struct_inner[T, Y...]
             obj_bracket_expr.add(generic_val)
 
             #Also add the name of the generic to the Phasor[T, Y...]
@@ -408,7 +408,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("attempting to allocate memory in the `perform` or `sample` blocks for `struct " & ptr_name & "`")
+                            newLit("attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct " & ptr_name & "'")
                         )
                     )
                 )
@@ -445,8 +445,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         )
     )
 
-    #add struct_init_inner func and ptr name to template's call statement (calling struct_init_inner) using "obj_type"
-    template_body_call.add(newIdentNode("struct_init_inner"))
+    #add struct_new_inner func and ptr name to template's call statement (calling struct_new_inner) using "obj_type"
+    template_body_call.add(newIdentNode("struct_new_inner"))
     template_body_call.add(newIdentNode("obj_type"))
 
     let struct_fields = obj_struct_type[2]
@@ -477,7 +477,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         if not(field_is_struct):
             arg_field_value = newIntLitNode(0)
 
-        #Add to arg list for struct_init_inner proc
+        #Add to arg list for struct_new_inner proc
         proc_formal_params.add(
             nnkIdentDefs.newTree(
                 field_name,
@@ -513,11 +513,11 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                 )
             )
 
-        #Add the list of var names to the template's struct_init_inner function call
+        #Add the list of var names to the template's struct_new_inner function call
         template_body_call.add(field_name)
 
     # ====================== #
-    # STRUCT_INIT_INNER PROC #
+    # STRUCT_NEW_INNER PROC #
     # ====================== #
     
     #Add ugen_auto_mem : ptr OmniAutoMem argument
@@ -583,7 +583,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         template_body_call
     )
 
-    #Also create a .new template that's identical to new_struct
+    #Also create a "new" template that's identical to struct_new,
+    #to support the new(Phasor) syntax, which eventually can support nnkCommands in the future to do: new Phasor
     let new_template_def = template_def.copy()
     new_template_def[0][1] = newIdentNode("new")
     

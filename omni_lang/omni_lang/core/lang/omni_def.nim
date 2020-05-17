@@ -40,11 +40,15 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         generics : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()
 
-    #Pass the proc body to the parse_block_for_variables macro to avoid var/let declarations!!!
+    #Pass the proc body to the parse_block_untyped macro to parse it
     var proc_body = nnkStmtList.newTree(
             nnkCall.newTree(
-                newIdentNode("parse_block_for_variables"),
-                code_block
+                newIdentNode("parse_block_untyped"),
+                code_block,
+                newLit(false),
+                newLit(false),
+                newLit(false),
+                newLit(true)
             )
         )   
     
@@ -264,7 +268,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         proc_def.add(proc_formal_params)
         
         #Add inline pragma
-        proc_def.add(nnkPragma.newTree(
+        proc_def.add(
+            nnkPragma.newTree(
                 newIdentNode("inline")
             )
         )   

@@ -27,32 +27,32 @@ import ../auto_mem/omni_auto_mem
 import ../math/omni_math
 
 type
-    Delay_obj*[T] = object
+    Delay_struct_inner*[T] = object
         mask  : int
         phase : int
         data  : Data[T]
 
-    Delay*[T] = ptr Delay_obj[T]
+    Delay*[T] = ptr Delay_struct_inner[T]
 
-proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay[dataType] {.inline.} =
+proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay[dataType] {.inline.} =
     #Trying to allocate in perform block! nonono
     when ugen_call_type is PerformCall:
-        {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Delay`".}
+        {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
 
     #error out if trying to instantiate any dataType that is not a Number
     when dataType isnot SomeNumber: 
         {.fatal: "Delay's dataType must be some number type".}
 
     #Allocate obj
-    result = cast[Delay[dataType]](omni_alloc(culong(sizeof(Delay_obj[dataType]))))
+    result = cast[Delay[dataType]](omni_alloc(culong(sizeof(Delay_struct_inner[dataType]))))
 
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(int(size)))
-        data  = Data.struct_init_inner(delay_length, dataType=dataType, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
+        data  = Data.struct_new_inner(delay_length, dataType=dataType, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
         mask  = int(delay_length - 1)
 
-    #Register obj (data has already been registered in Data.struct_init_inner)
+    #Register obj (data has already been registered in Data.struct_new_inner)
     ugen_auto_mem.registerChild(result)
 
     #Assign values
@@ -60,11 +60,11 @@ proc struct_init_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = u
     result.phase = 0
     result.data = data
 
-template new_struct*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    struct_init_inner(Delay, size, dataType, ugen_auto_mem, ugen_call_type)
+template struct_new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+    struct_new_inner(Delay, size, dataType, ugen_auto_mem, ugen_call_type)
 
 template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
-    struct_init_inner(Delay, size, dataType, ugen_auto_mem, ugen_call_type)
+    struct_new_inner(Delay, size, dataType, ugen_auto_mem, ugen_call_type)
 
 proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
     return true

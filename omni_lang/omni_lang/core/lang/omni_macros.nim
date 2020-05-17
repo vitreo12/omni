@@ -46,3 +46,6 @@ export omni_call_types
 
 import omni_require
 export omni_require
+
+import omni_module
+export omni_module

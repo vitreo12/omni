@@ -29,7 +29,8 @@ expandMacros:
         a = Something.new(1, Data.new(10), SomethingElse.new(1.34, 14.2))
         bah = Bah.new(10.32)
 
-        build a
+        build a bah
+            
 
     sample:
         out1 = something()

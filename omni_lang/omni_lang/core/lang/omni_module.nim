@@ -20,11 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import os,macros
 
-#Dirty way of turning a typed block of code into an untyped:
-#Basically, what's needed is to turn all newSymNode into newIdentNode.
-#Sym are already semantically checked, Idents are not...
-#Maybe just replace Syms with Idents instead? It would be much safer than this...
-proc typedToUntyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
-    return parseStmt(code_block.repr())
+#Detect module name
+proc isModuleName*(name : string) : bool {.compileTime.} =
+    let module_name = (splitFile(instantiationInfo(0)[0])).name
+    echo instantiationInfo()
+    error("module_name")
+    return name == module_name

@@ -59,8 +59,8 @@ expandMacros:
 
 expandMacros:
     perform:
-        frequency Signal 
-        sine_out  Signal  
+        frequency signal 
+        sine_out  signal  
 
         sample:
             frequency = in1
