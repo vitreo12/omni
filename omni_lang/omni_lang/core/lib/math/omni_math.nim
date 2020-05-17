@@ -227,6 +227,13 @@ template omniMathFunctionCheckInf(func_name : untyped) : untyped {.dirty.} =
         if result == Inf or result == NegInf or result != result:
             result = 0.0
 
+#nextPowerOfTwo is the only one with ints
+proc nextPowerOfTwo*[T : SomeNumber](x : T) : T =
+    when T isnot SomeInteger:
+        return T(nextPowerOfTwo(int(x)))
+    else:
+        return nextPowerOfTwo(x)
+
 #log is the only one with 2 inputs
 proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
     when T isnot SomeFloat:
@@ -283,6 +290,19 @@ omniMathFunction(arccoth)
 omniMathFunction(arcsech)
 omniMathFunction(arccsch)
 
+# ================= #
+# Various utilities #
+# ================= #
+
+import ../auto_mem/omni_auto_mem
+import ../../lang/omni_macros
+
+#Import omni code so that I can use def's samplerate
+def mstosamps[T](ms T):
+    return samplerate * (ms) * 0.001
+
+def sampstoms[T](s T):
+    return 1000.0 * (s) / samplerate
 
 #[
 inline double atodb(double in) {
