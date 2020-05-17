@@ -36,6 +36,10 @@ type
         length_X_chans : int
 
     Data*[T] = ptr Data_struct_inner[T]
+
+#Used in structs to declare Data as a Data[float] implicitly
+template Data_float_generics* : untyped {.dirty.} =
+    Data[float]
      
 #Having the strings as const as --gc:none is used
 const

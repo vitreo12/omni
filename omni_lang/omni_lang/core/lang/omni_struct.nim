@@ -192,17 +192,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_name = code_stmt[0]
             var_type = code_stmt[1][0]
 
-        new_decl.add(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                var_name
-            ),
-            var_type,
-            newEmptyNode()
-        )
-
-        rec_list.add(new_decl)
-
         var var_type_is_generic = false
 
         #Check if any of the argument is a generic (e.g, phase T, freq Y)
@@ -210,12 +199,16 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             if var_type in generics_seq:
                 var_type_is_generic = true
 
+        var
+            var_has_generics = false
+            var_type_without_generics : NimNode
+
         #only add check for current type if is not a generic one
         if not var_type_is_generic: 
             #This is a struct that has generics in it (e.g, Phasor[T])
-            var var_type_without_generics : NimNode
             if var_type.kind == nnkBracketExpr:
                 var_type_without_generics = var_type[0]
+                var_has_generics = true
             else:
                 var_type_without_generics = var_type
 
@@ -231,6 +224,54 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     newLit(ptr_name.strVal())
                 )
             )
+
+        if not var_type_is_generic and not var_has_generics:
+            let type_to_check_float_generics = newIdentNode(var_type_without_generics.strVal() & "_float_generics")
+            new_decl = nnkRecWhen.newTree(
+                nnkElifBranch.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        type_to_check_float_generics
+                    ),
+                    nnkRecList.newTree(
+                        nnkIdentDefs.newTree(
+                            nnkPostfix.newTree(
+                                newIdentNode("*"),
+                                var_name
+                            ),
+                            nnkCall.newTree(
+                                type_to_check_float_generics
+                            ),
+                            newEmptyNode()
+                        )
+                    )
+                ),
+                nnkElse.newTree(
+                    nnkRecList.newTree(
+                        nnkIdentDefs.newTree(
+                            nnkPostfix.newTree(
+                                newIdentNode("*"),
+                                var_name
+                            ),
+                            var_type,
+                            newEmptyNode()
+                        )
+                    )
+                )
+            )
+        else:
+            new_decl.add(
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    var_name
+                ),
+                var_type,
+                newEmptyNode()
+            )
+
+        echo repr new_decl
+
+        rec_list.add(new_decl)
     
     # ================================ #
     # Add all things related to object #
@@ -452,6 +493,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     let struct_fields = obj_struct_type[2]
 
     for index, field in struct_fields:
+        echo astGenRepr field
         assert field.len == 3
         
         var 
