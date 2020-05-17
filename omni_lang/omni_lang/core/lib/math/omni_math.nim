@@ -262,6 +262,10 @@ proc fixdenorm*[T : SomeNumber](x : T) : auto {.inline.} =
         let float_x = float(x)
     else:
         let float_x = x
+    
+    #Don't know why but result != result checks for nans (it's in the classify function in math modules)
+    #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+    #Comparison should be done with the IEEE represenation of inf / neginf / nan    
     if float_x == Inf or float_x == NegInf or float_x != float_x:
         return T(0.0)
     return x
@@ -282,6 +286,7 @@ template omniMathFunctionCheckInf(func_name : untyped) : untyped {.dirty.} =
             result = math.`func_name`(x)
         #Don't know why but result != result checks for nans (it's in the classify function in math modules)
         #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+        #Comparison should be done with the IEEE represenation of inf / neginf / nan
         if result == Inf or result == NegInf or result != result:
             result = 0.0
 
@@ -295,11 +300,18 @@ proc nextPowerOfTwo*[T : SomeNumber](x : T) : T =
 #log is the only one with 2 inputs
 proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
     when T isnot SomeFloat:
-        result = math.log(float(x), float(base))
+        when Y isnot SomeFloat:
+            result = math.log(float(x), float(base))
+        else:
+            result = math.log(float(x), base)
     else:
-        result = math.log(x, base)
+        when Y isnot SomeFloat:
+            result = math.log(x, float(base))
+        else:
+            result = math.log(x, base)
     #Don't know why but result != result checks for nans (it's in the classify function in math modules)
     #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+    #Comparison should be done with the IEEE represenation of inf / neginf / nan
     if result == Inf or result == NegInf or result != result:
         result = 0.0
 
