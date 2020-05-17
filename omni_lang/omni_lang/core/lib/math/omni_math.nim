@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 import math
-#export math
 
 # ========= #
 # Operators #
@@ -295,40 +294,26 @@ omniMathFunction(arccsch)
 # ================= #
 
 #Emulate omni's def behaviour in order to be able to use samplerate
-proc mstosamps_inner*[T](ms : T, samplerate : float) : auto {.inline.} =
+proc mstosamps_inner*[T : SomeNumber](ms : T, samplerate : float) : float {.inline.} =
     return samplerate * ms * 0.001
 
-template mstosamps*[T](ms : T) : untyped {.dirty.} =
+template mstosamps*[T : SomeNumber](ms : T) : untyped {.dirty.} =
     mstosamps_inner(ms, samplerate)
 
-proc sampstoms_inner*[T](s : T, samplerate : float) : auto {.inline.} =
+proc sampstoms_inner*[T : SomeNumber](s : T, samplerate : float) : float {.inline.} =
     return 1000.0 * s / samplerate
 
-template sampstoms*[T](s : T) : untyped {.dirty.} =
+template sampstoms*[T : SomeNumber](s : T) : untyped {.dirty.} =
     sampstoms_inner(s, samplerate)
 
-#[
-inline double atodb(double in) {
-    return double((in <= 0.) ? -999. : (20. * log10(in)));
-}
+proc atodb*[T : SomeNumber](x : T) : float {.inline.} =
+    return if x <= 0.0: return -999.0 else: return 20.0 * log10(x)
 
-inline double dbtoa(double in) {
-    return double(pow(10., in * 0.05));
-}
+proc dbtoa*[T : SomeNumber](x : T) : float {.inline.} =
+    return pow(10.0, x * 0.05)
 
-inline double ftom(double in, double tuning=440.) {
-    return double(69. + 17.31234050465299 * log(safediv(in, tuning)));
-}
+proc ftom*[T: SomeNumber , Y : SomeNumber](x : T, tuning : Y = 440.0) : float {.inline.} =
+    return 69.0 + (17.31234050465299 * log(safediv(x, tuning)))
 
-inline double mtof(double in, double tuning=440.) {
-    return double(tuning * exp(.057762265 * (in - 69.0)));
-}
-
-inline double mstosamps(double ms, double samplerate=44100.) {
-    return double(samplerate * ms * double(0.001));
-}
-
-inline double sampstoms(double s, double samplerate=44100.) {
-    return double(double(1000.) * s / samplerate);
-}
-]#
+proc mtof*[T: SomeNumber , Y : SomeNumber](x : T, tuning : Y = 440.0) : float {.inline.} =
+    return tuning * exp(0.057762265) * (x - 69.0)
