@@ -1,4 +1,4 @@
 import ../../omni_lang
 
 sample:
-    out1 = sampstoms(in1)
+    out1 = sampstoms(0.0)
