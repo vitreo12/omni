@@ -317,6 +317,12 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
 
         let assgn_left_kind = assgn_left.kind
         
+        #Tryin to declare a variable named "tuple" or "type"
+        if assgn_left_kind == nnkTupleClassTy:
+            error("Can't declare a variable named 'tuple'. It's a keyword for internal use.")
+        elif assgn_left_kind == nnkTypeClassTy:
+            error("Can't declare a variable named 'type'. It's a keyword for internal use.")
+        
         #Command assignment: a float = 0.0
         if assgn_left_kind == nnkCommand:
 
