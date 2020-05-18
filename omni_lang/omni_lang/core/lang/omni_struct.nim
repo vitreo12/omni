@@ -55,7 +55,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
+            error("'struct " & $ptr_name & $ "' must start with a capital letter")
 
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
@@ -161,10 +161,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type : NimNode
             new_decl = nnkIdentDefs.newTree()
 
-        #NO type defined, default it to float
+        #NO type defined, default it to sig
         if code_stmt_kind == nnkIdent:
             var_name = code_stmt
-            var_type = newIdentNode("float")
+            var_type = newIdentNode("signal")
 
         #phase float
         if code_stmt_kind == nnkCommand:
@@ -226,12 +226,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
 
         if not var_type_is_generic and not var_has_generics:
-            let type_to_check_float_generics = newIdentNode(var_type_without_generics.strVal() & "_float_generics")
+            let 
+                type_to_check_signal_generics = newIdentNode(var_type_without_generics.strVal() & "_signal_generics")
+                type_to_check_signal_generics_template = newIdentNode(type_to_check_signal_generics.strVal() & "_template")
+            
             new_decl = nnkRecWhen.newTree(
                 nnkElifBranch.newTree(
                     nnkCall.newTree(
                         newIdentNode("declared"),
-                        type_to_check_float_generics
+                        type_to_check_signal_generics
                     ),
                     nnkRecList.newTree(
                         nnkIdentDefs.newTree(
@@ -240,7 +243,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                                 var_name
                             ),
                             nnkCall.newTree(
-                                type_to_check_float_generics
+                                type_to_check_signal_generics_template
                             ),
                             newEmptyNode()
                         )
@@ -493,12 +496,22 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     let struct_fields = obj_struct_type[2]
 
     for index, field in struct_fields:
-        echo astGenRepr field
-        assert field.len == 3
+        var actual_field : NimNode
+        
+        if field.kind == nnkIdentDefs:
+            actual_field = field
+        #The case of forced float generics.. This, however, will use Data, not Data[float]
+        elif field.kind == nnkRecWhen:
+            actual_field = field[1][0]
+            #error repr actual_field
+        else:
+            error("'" & $ptr_name & "': invalid struct body")
+
+        #echo astGenRepr actual_field
         
         var 
-            field_name = field[0]
-            field_type = field[1]
+            field_name = actual_field[0]
+            field_type = actual_field[1]
 
         var field_type_without_generics = field_type
         
@@ -638,6 +651,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typedToUntyped(final_stmt_list)
+
+    #echo repr final_stmt_list_untyped
     
     return quote do:
         `final_stmt_list_untyped`

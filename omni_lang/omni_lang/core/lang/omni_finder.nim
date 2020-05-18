@@ -85,7 +85,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
     
     var actual_type_def : NimNode
 
-    #If it's a pointer, exctract
+    #If it's a pointer, extract
     if type_def.kind == nnkPtrTy:   
         #if generic
         if type_def[0].kind == nnkBracketExpr:
@@ -102,11 +102,23 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
 
     let rec_list = actual_type_def[2]
 
-    for ident_defs in rec_list:
+    for ident_defs_stmt in rec_list:
+        var ident_defs = ident_defs_stmt
+
+        #if implicit generic
+        if ident_defs.kind == nnkRecWhen:
+            ident_defs = ident_defs[1][0]
+            #Add implicit Data[signal]
+            if ident_defs[1].strVal() == "Data":
+                ident_defs[1] = nnkBracketExpr.newTree(
+                    ident_defs[1],
+                    newIdentNode("signal")
+                )
+
         var
             var_name = ident_defs[0]
             var_type = ident_defs[1]
-        
+         
         var type_to_inspect : NimNode
 
         #if ptr

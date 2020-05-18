@@ -21,6 +21,7 @@
 # SOFTWARE.codi
 
 import ../../lang/omni_call_types
+import ../../lang/omni_types
 import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
 import ../print/omni_print
@@ -37,19 +38,21 @@ type
 
     Data*[T] = ptr Data_struct_inner[T]
 
-#Used in structs to declare Data as a Data[float] implicitly
-template Data_float_generics* : untyped {.dirty.} =
-    Data[float]
+    #Used in structs to declare Data as a Data[signal] implicitly
+    Data_signal_generics* = Data[signal]
+
+#This is also needed to trick the nim parser into compiling :)
+template Data_signal_generics_template* : untyped {.dirty.} =
+    Data_signal_generics
      
 #Having the strings as const as --gc:none is used
 const
     length_error = "WARNING: Data's length must be a positive number. Setting it to 1"
     chans_error  = "WARNING: Data's chans must be a positive number. Setting it to 1"
-
-    #bounds_error = "WARNING: Trying to access out of bounds Data."
+    #bounds_error= "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc struct_new_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[dataType]  {.inline.} =
+proc struct_new_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[signal], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[dataType]  {.inline.} =
     #Trying to allocate in perform block! nonono
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Data`".}
@@ -90,11 +93,11 @@ proc struct_new_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data]
     result.length_X_chans = length_X_chans
 
 #This is called by the omni parser
-template struct_new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+template struct_new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[signal]) : untyped {.dirty.} =
     struct_new_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
 
 #This can be used by the user
-template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float]) : untyped {.dirty.} =
+template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[signal]) : untyped {.dirty.} =
     struct_new_inner(Data, length, chans, dataType, ugen_auto_mem, ugen_call_type)
 
 proc checkDataValidity*[T](data : Data[T]) : bool =

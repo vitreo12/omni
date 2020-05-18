@@ -790,7 +790,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    #echo repr final_block
+    echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -880,10 +880,10 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                                 struct_type
                             )
                         
-                        #instantiate float for all generic params
+                        #instantiate signal for all generic params
                         for generic_param in generic_params:
                             new_struct_expl_type.add(
-                                newIdentNode("float")
+                                newIdentNode("signal")
                             )
 
                         new_struct_new_inner.add(new_struct_expl_type)
@@ -1238,4 +1238,4 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
         )
     
     #echo astGenRepr inner_block
-    #error repr result 
+    echo repr result 
