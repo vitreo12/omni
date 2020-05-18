@@ -22,6 +22,74 @@
 
 import macros, omni_type_checker, omni_macros_utilities
 
+#Run a when statement on a struct to check
+macro checkSignalGenerics*(obj : untyped) : untyped =
+    if obj.kind != nnkIdent:
+        error("Invalid signal generics check for '" & (repr(obj)) & "'" )
+
+    let signal_generics = newIdentNode(obj.strVal() & "_signal_generics")
+    return quote do:
+        when declared(`signal_generics`):
+            `signal_generics`
+        else:
+            `obj`
+
+proc var_type_substitution(code_block : NimNode, what : NimNode, with : NimNode) : void {.compileTime.} =
+    if code_block.len > 0:
+        for index, statement in code_block:
+            if statement == what:
+                code_block[index] = with
+                return
+            else:
+                var_type_substitution(statement, what, with)
+
+#Data -> checkSignalGenerics(Data)
+#Data[Something] -> Data[checkSignalGenerics(Something)]
+#Data[Data[Something]] -> Data[Data[checkSignalGenerics(Something)]]
+
+#Data[Data[Something[T]]] -> Data[Data[Something[T]]]
+#T -> T
+#Something[T] -> Something[T]
+#Something -> checkSignalGenerics(Something)
+
+#More than 1 generic cannot happen, as Data would be the only type that
+#stores other structs (for now)
+proc check_signal_generics(var_type : NimNode, original_var_type : NimNode, how_many_datas : var int, generics_seq : seq[NimNode]) : NimNode {.compileTime.} =
+    if var_type.kind == nnkBracketExpr:
+        if var_type[0].kind == nnkIdent:
+            #Data, keep searching
+            if var_type[0].strVal() == "Data":
+                how_many_datas += 1
+                discard check_signal_generics(var_type[1], original_var_type, how_many_datas, generics_seq)
+    
+    #Bottom of the search
+    elif var_type.kind == nnkIdent:
+        #If found a generic at the bottom, return the original statement
+        if var_type in generics_seq:
+            return original_var_type    
+
+        #Found something that needs to be checked with checkSignalGenerics
+        else:
+            var final_type = original_var_type
+            
+            if how_many_datas == 0:
+                final_type = nnkCall.newTree(
+                    newIdentNode("checkSignalGenerics"),
+                    var_type
+                )
+            else:
+                let checkSignalGenerics = nnkCall.newTree(
+                    newIdentNode("checkSignalGenerics"),
+                    var_type
+                )
+
+                var_type_substitution(final_type, var_type, checkSignalGenerics)
+                
+            return final_type
+    
+    #If all fails, just return original
+    return original_var_type 
+
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
@@ -225,54 +293,21 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 )
             )
 
-        if not var_type_is_generic and not var_has_generics:
-            let 
-                type_to_check_signal_generics = newIdentNode(var_type_without_generics.strVal() & "_signal_generics")
-                type_to_check_signal_generics_template = newIdentNode(type_to_check_signal_generics.strVal() & "_template")
-            
-            new_decl = nnkRecWhen.newTree(
-                nnkElifBranch.newTree(
-                    nnkCall.newTree(
-                        newIdentNode("declared"),
-                        type_to_check_signal_generics
-                    ),
-                    nnkRecList.newTree(
-                        nnkIdentDefs.newTree(
-                            nnkPostfix.newTree(
-                                newIdentNode("*"),
-                                var_name
-                            ),
-                            nnkCall.newTree(
-                                type_to_check_signal_generics_template
-                            ),
-                            newEmptyNode()
-                        )
-                    )
-                ),
-                nnkElse.newTree(
-                    nnkRecList.newTree(
-                        nnkIdentDefs.newTree(
-                            nnkPostfix.newTree(
-                                newIdentNode("*"),
-                                var_name
-                            ),
-                            var_type,
-                            newEmptyNode()
-                        )
-                    )
-                )
-            )
-        else:
-            new_decl.add(
-                nnkPostfix.newTree(
-                    newIdentNode("*"),
-                    var_name
-                ),
-                var_type,
-                newEmptyNode()
-            )
+        var how_many_datas = 0
+        var_type = check_signal_generics(var_type, var_type, how_many_datas, generics_seq)
 
-        echo repr new_decl
+        #echo repr var_type
+        
+        new_decl.add(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                var_name
+            ),
+            var_type,
+            newEmptyNode()
+        )
+
+        #echo repr new_decl
 
         rec_list.add(new_decl)
     
@@ -517,6 +552,10 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         
         if field_type.kind == nnkBracketExpr:
             field_type_without_generics = field_type[0]
+        
+        #Happens for checkSignalGenerics
+        elif field_type.kind == nnkCall:
+            field_type_without_generics = field_type[1]
     
         let 
             field_is_struct  = field_type_without_generics.isStruct(true)

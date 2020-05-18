@@ -83,6 +83,8 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
                 return true
 
     else:
+        if var_type.kind == nnkIdent:
+            return false
         type_tree = var_type.getTypeImpl()
         if type_tree.kind != nnkPtrTy:
             return false

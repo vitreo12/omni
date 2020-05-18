@@ -40,10 +40,6 @@ type
 
     #Used in structs to declare Data as a Data[signal] implicitly
     Data_signal_generics* = Data[signal]
-
-#This is also needed to trick the nim parser into compiling :)
-template Data_signal_generics_template* : untyped {.dirty.} =
-    Data_signal_generics
      
 #Having the strings as const as --gc:none is used
 const

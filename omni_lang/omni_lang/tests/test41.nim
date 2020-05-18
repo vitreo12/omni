@@ -1,14 +1,18 @@
 import ../../omni_lang, macros
-
+#[ 
 struct Ciccio[T, Y]:
     a T
-    b Y
+    b Y ]#
 
+#expandMacros:
 struct Ah[T]:
-    data Data[Ciccio[sig,sig]]
+    data1 Data
+    #data2 Data[T]
+    #data3 Data[Data[Ciccio]]
+    
     a T
     b
 
 init:
-    ci = Ciccio()
+    #ci = Ciccio()
     ah = Ah(Data(10))

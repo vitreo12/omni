@@ -105,16 +105,6 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
     for ident_defs_stmt in rec_list:
         var ident_defs = ident_defs_stmt
 
-        #if implicit generic
-        if ident_defs.kind == nnkRecWhen:
-            ident_defs = ident_defs[1][0]
-            #Add implicit Data[signal]
-            if ident_defs[1].strVal() == "Data":
-                ident_defs[1] = nnkBracketExpr.newTree(
-                    ident_defs[1],
-                    newIdentNode("signal")
-                )
-
         var
             var_name = ident_defs[0]
             var_type = ident_defs[1]
@@ -128,8 +118,13 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
         #if generic
         if var_type.kind == nnkBracketExpr:
             type_to_inspect = var_type[0]
+        #if checkSignalGenerics
+        elif var_type.kind == nnkCall:
+            type_to_inspect = var_type[1]
         else:
             type_to_inspect = var_type
+
+        echo astGenRepr var_name.getType
         
         let var_name_kind = var_name.kind
 

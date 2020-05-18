@@ -790,7 +790,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    echo repr final_block
+    #echo repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
