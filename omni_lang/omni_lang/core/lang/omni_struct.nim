@@ -22,6 +22,31 @@
 
 import macros, omni_type_checker, omni_macros_utilities
 
+#var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
+#fields_untyped are all the fields that have generics in them
+#fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
+macro declare_struct*(ptr_name : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+    var
+        untyped_counter = 0
+        typed_counter   = 0
+
+    echo astGenRepr fields_typed
+
+#Check if a struct field contains generics
+proc contains_generics(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
+    if var_type.kind == nnkBracketExpr:
+        if var_type[0].kind == nnkIdent:
+            #Data, keep searching
+            if var_type[0].strVal() == "Data":
+                return contains_generics(var_type[1], generics_seq)
+    
+    #Bottom of the search
+    elif var_type.kind == nnkIdent:
+        if var_type in generics_seq:
+            return true  
+
+    return false 
+
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
@@ -47,6 +72,11 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         obj_bracket_expr : NimNode
         #ptr_bracket_expr : NimNode
+
+    var
+        var_names      = nnkStmtList.newTree()
+        fields_untyped = nnkStmtList.newTree()
+        fields_typed   : seq[NimNode]
 
     #Using generics
     if struct_name.kind == nnkBracketExpr:
@@ -192,18 +222,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_name = code_stmt[0]
             var_type = code_stmt[1][0]
 
-        new_decl.add(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                var_name
-            ),
-            var_type,
-            newEmptyNode()
-        )
-
-        rec_list.add(new_decl)
-
-        var var_type_is_generic = false
+        var 
+            var_type_contains_generics = false
+            var_type_is_generic = false
 
         #Check if any of the argument is a generic (e.g, phase T, freq Y)
         if generics_seq.len > 0:
@@ -231,7 +252,39 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     newLit(ptr_name.strVal())
                 )
             )
-    
+
+        var_type_contains_generics = contains_generics(var_type, generics_seq)
+
+        if var_type_contains_generics:
+            var_names.add(
+                nnkBracketExpr.newTree(
+                    var_name,
+                    newLit(true)
+                )
+            )
+                
+            fields_untyped.add(var_type)
+        else:
+            var_names.add(
+                nnkBracketExpr.newTree(
+                    var_name,
+                    newLit(false)
+                )
+            )
+
+            fields_typed.add(var_type)
+        
+        new_decl.add(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                var_name
+            ),
+            var_type,
+            newEmptyNode()
+        )
+
+        rec_list.add(new_decl)
+
     # ================================ #
     # Add all things related to object #
     # ================================ #
@@ -269,9 +322,20 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_name
     )
 
+    var declare_struct = nnkCall.newTree(
+        newIdentNode("declare_struct"),
+        ptr_name,
+        var_names,
+        fields_untyped
+    )
+
+    for field_typed in fields_typed:
+        declare_struct.add(field_typed)
+
     #echo repr final_stmt_list
     
     return quote do:
+        `declare_struct`
         `checkValidTypes`
         `final_stmt_list`
         `struct_create_init_proc_and_template`
