@@ -1237,4 +1237,4 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
             )
         )
 
-    error repr result 
+    #error repr result 
