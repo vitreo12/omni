@@ -36,7 +36,7 @@ struct Vector:
 
 init:
     #Four different ways of constructing a Vector
-    myVec  = Vector(0.0, 0.0, 0.0)
+    myVec1 = Vector(0.0, 0.0, 0.0)
     myVec2 = Vector()
     myVec3 = Vector.new(0.0, 0.0, 0.0)
     myVec4 = Vector.new()
@@ -66,9 +66,11 @@ def setValuesAlternative(vec, x, y, z):
     vec.z = z
 
 init:
-    myVec1 = Vector(0.0, 0.0, 0.0) #Equivalent to Vector[float, float, float]() OR Vector()
-    myVec2 = Vector(0, 0, 0)       #Equivalent to Vector[int, int, int]()
-    myVec3 = Vector(0.0, 0, 0.0)   #Equivalent to Vector[float, int, float]()
+    #If generics are not specified, they are 
+    #defaulted to 'signal' (which is identical to 'float')
+    myVec1 = Vector() # == Vector[signal, signal, signal]
+    myVec2 = Vector[int, int, int]()
+    myVec3 = Vector[float, int, float]()
 
     myVec1.setValues(1.0, 2.0, 3.0)
 
