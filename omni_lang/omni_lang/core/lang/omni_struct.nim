@@ -22,15 +22,116 @@
 
 import macros, omni_type_checker, omni_macros_utilities
 
+proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
+    if statement.kind == nnkBracketExpr:
+        #Data, keep searching
+        if statement[0].strVal() == "Data":
+            how_many_datas += 1
+            return find_data_bracket_bottom(statement[1], how_many_datas)
+        else:
+            error("Invalid type: '" & repr(statement) & "'")
+    elif statement.kind == nnkSym:
+        let 
+            type_impl = statement.getImpl()
+            type_name = type_impl[0]
+            type_generics = type_impl[1]
+
+        var final_stmt = nnkBracketExpr.newTree(
+            type_name
+        )
+
+        #Add signal instead of generic
+        if type_generics.kind == nnkGenericParams:
+            for type_generic in type_generics:
+                final_stmt.add(
+                    newIdentNode("signal")
+                )
+
+        #Add the Data count back
+        if how_many_datas > 0:
+            for i in 0..how_many_datas-1:
+                final_stmt = nnkBracketExpr.newTree(
+                    newIdentNode("Data"),
+                    final_stmt
+                )
+
+        return final_stmt
+    
+    return statement
+        
+
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
-macro declare_struct*(ptr_name : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+    var 
+        final_stmt_list = nnkStmtList.newTree()          #return statement
+        type_section    = nnkTypeSection.newTree()       #the whole type section (both struct_inner and ptr)
+        obj_ty          = nnkObjectTy.newTree(
+            newEmptyNode(),
+            newEmptyNode()
+        )
+        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
+
     var
         untyped_counter = 0
         typed_counter   = 0
 
-    echo astGenRepr fields_typed
+    var fields_typed_to_signal_generics : seq[NimNode]
+
+    for field_typed in fields_typed:
+        var 
+            how_many_datas = 0
+            field_typed_to_signal_generics = find_data_bracket_bottom(field_typed, how_many_datas)
+
+        fields_typed_to_signal_generics.add(field_typed_to_signal_generics)
+    
+    #Get untyped / typed variables and add them to obj_ty
+    for var_name_bool in var_names:
+        let 
+            var_name = var_name_bool[0]
+            var_bool = var_name_bool[1].boolVal()
+
+        var var_type : NimNode
+        
+        #Untyped
+        if var_bool:
+            var_type = fields_untyped[untyped_counter]
+            untyped_counter += 1
+        
+        #Typed
+        else:
+            var_type = fields_typed_to_signal_generics[typed_counter]
+            typed_counter += 1
+
+        var new_decl = nnkIdentDefs.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                var_name
+            ),
+            var_type,
+            newEmptyNode()
+        )
+
+        rec_list.add(new_decl)
+
+    #Add var : type declarations to obj declaration
+    obj_ty.add(rec_list)
+    
+    #Add the obj declaration (the nnkObjectTy) to the type declaration
+    obj_type_def.add(obj_ty)
+    
+    #Add the type declaration of Phasor_struct_inner to the type section
+    type_section.add(obj_type_def)
+    
+    #Add the type declaration of Phasor to type section
+    type_section.add(ptr_type_def)
+
+    #Add the whole type section to result
+    final_stmt_list.add(type_section)
+
+    return quote do:
+        `final_stmt_list`
 
 #Check if a struct field contains generics
 proc contains_generics(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
@@ -49,15 +150,8 @@ proc contains_generics(var_type : NimNode, generics_seq : seq[NimNode]) : bool {
 
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
-        final_stmt_list = nnkStmtList.newTree()          #return statement
-        type_section    = nnkTypeSection.newTree()       #the whole type section (both struct_inner and ptr)
         obj_type_def    = nnkTypeDef.newTree()           #the Phasor_struct_inner block
-        obj_ty          = nnkObjectTy.newTree(           #the body of the Phasor_struct_inner
-            newEmptyNode(),  
-            newEmptyNode()
-        )      
-        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
-        
+
         ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_struct_inner block
         ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_struct_inner
 
@@ -71,7 +165,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         generics = nnkGenericParams.newTree()          #If generics are present in struct definition
 
         obj_bracket_expr : NimNode
-        #ptr_bracket_expr : NimNode
 
     var
         var_names      = nnkStmtList.newTree()
@@ -189,7 +282,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var 
             var_name : NimNode
             var_type : NimNode
-            new_decl = nnkIdentDefs.newTree()
 
         #NO type defined, default it to float
         if code_stmt_kind == nnkIdent:
@@ -273,43 +365,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
 
             fields_typed.add(var_type)
-        
-        new_decl.add(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                var_name
-            ),
-            var_type,
-            newEmptyNode()
-        )
 
-        rec_list.add(new_decl)
-
-    # ================================ #
-    # Add all things related to object #
-    # ================================ #
-
-    #Add var : type declarations to obj declaration
-    obj_ty.add(rec_list)
-    
-    #Add the obj declaration (the nnkObjectTy) to the type declaration
-    obj_type_def.add(obj_ty)
-    
-    #Add the type declaration of Phasor_struct_inner to the type section
-    type_section.add(obj_type_def)
-    
-    # ================================= #
-    # Add all things related to pointer #
-    # ================================= #
-    
-    #Add the ptr_ty inners to ptr_type_def
+    #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to declare_struct
     ptr_type_def.add(ptr_ty)
-    
-    #Add the type declaration of Phasor to type section
-    type_section.add(ptr_type_def)
-
-    #Add the whole type section to result
-    final_stmt_list.add(type_section)
 
     #The init_struct macro, which will declare the "proc struct_new_inner ..." and the "template new ..."
     let struct_create_init_proc_and_template = nnkCall.newTree(
@@ -324,20 +382,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     var declare_struct = nnkCall.newTree(
         newIdentNode("declare_struct"),
-        ptr_name,
+        obj_type_def,
+        ptr_type_def,
         var_names,
         fields_untyped
     )
 
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
-
-    #echo repr final_stmt_list
     
     return quote do:
         `declare_struct`
         `checkValidTypes`
-        `final_stmt_list`
         `struct_create_init_proc_and_template`
         `findDatasAndStructs`
 
