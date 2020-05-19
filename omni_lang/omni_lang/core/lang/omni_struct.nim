@@ -30,6 +30,7 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
             return find_data_bracket_bottom(statement[1], how_many_datas)
         else:
             error("Invalid type: '" & repr(statement) & "'")
+    
     elif statement.kind == nnkSym:
         let 
             type_impl = statement.getImpl()
@@ -46,6 +47,10 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
                 final_stmt.add(
                     newIdentNode("signal")
                 )
+        
+        #Ok, nothing to do here. use the original one
+        else:
+            return nil
 
         #Add the Data count back
         if how_many_datas > 0:
@@ -84,6 +89,10 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
             how_many_datas = 0
             field_typed_to_signal_generics = find_data_bracket_bottom(field_typed, how_many_datas)
 
+        #Keep the normal one if nil returned 
+        if field_typed_to_signal_generics == nil:
+            field_typed_to_signal_generics = field_typed
+        
         fields_typed_to_signal_generics.add(field_typed_to_signal_generics)
     
     #Get untyped / typed variables and add them to obj_ty
@@ -134,12 +143,16 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
         `final_stmt_list`
 
 #Check if a struct field contains generics
-proc contains_generics(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
+proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
     if var_type.kind == nnkBracketExpr:
         if var_type[0].kind == nnkIdent:
             #Data, keep searching
             if var_type[0].strVal() == "Data":
-                return contains_generics(var_type[1], generics_seq)
+                return untyped_or_typed(var_type[1], generics_seq)
+            
+            #Normal bracket expr like Phasor[T] or Phasor[int]
+            else:
+                return true
     
     #Bottom of the search
     elif var_type.kind == nnkIdent:
@@ -225,7 +238,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     )
 
                     generics.add(generic_proc)
-                    
+
                     generics_seq.add(child)
 
                 #If [T : Something etc...]
@@ -315,7 +328,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = code_stmt[1][0]
 
         var 
-            var_type_contains_generics = false
+            var_type_untyped_or_typed = false
             var_type_is_generic = false
 
         #Check if any of the argument is a generic (e.g, phase T, freq Y)
@@ -345,9 +358,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 )
             )
 
-        var_type_contains_generics = contains_generics(var_type, generics_seq)
+        var_type_untyped_or_typed = untyped_or_typed(var_type, generics_seq)
 
-        if var_type_contains_generics:
+        if var_type_untyped_or_typed:
             var_names.add(
                 nnkBracketExpr.newTree(
                     var_name,
@@ -391,8 +404,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
 
-    echo repr declare_struct
-    
     return quote do:
         `declare_struct`
         `checkValidTypes`

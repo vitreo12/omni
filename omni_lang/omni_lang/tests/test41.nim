@@ -12,4 +12,7 @@ expandMacros:
         a T
         buh Buh
         k Data[Data[Data[Buh]]]
+        h Data[Data[Data[sig]]]
         g Buh[T, T]
+        l Buh[float, seq[int]]
+        j Data[array[3, float]]
