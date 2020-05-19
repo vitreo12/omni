@@ -63,6 +63,10 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
         return final_stmt
     
     return statement
+
+#Also check that stuff sent to structs is just SomeNumber!
+proc add_all_types_to_checkValidTypes() : void {.compileTime.} =
+    discard
         
 
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
@@ -403,7 +407,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
-
+        
     return quote do:
         `declare_struct`
         `checkValidTypes`

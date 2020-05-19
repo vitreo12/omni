@@ -15,4 +15,5 @@ expandMacros:
         h Data[Data[Data[sig]]]
         g Buh[T, T]
         l Buh[float, seq[int]]
+        p Buh[Buh[T, T], Buh[Data[float], sig]]
         j Data[array[3, float]]

@@ -1,4 +1,11 @@
-import ../../omni_lang
+import ../../omni_lang, macros
 
-sample:
-    out1 = sampstoms(0.0)
+struct Ah[T]:
+    a T
+
+struct Bh[T]:
+    a Ah[T]
+
+expandMacros:
+    init:
+        bh = Bh(Ah[int]())
