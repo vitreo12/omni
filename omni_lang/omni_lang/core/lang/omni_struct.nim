@@ -390,6 +390,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
+
+    echo repr declare_struct
     
     return quote do:
         `declare_struct`
