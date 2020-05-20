@@ -174,7 +174,7 @@ proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.
 
     return false 
 
-proc add_all_types_to_checkValidTypes_macro(statement : NimNode, var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
+proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : NimNode, var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
     if statement.kind == nnkBracketExpr:
         let 
             var_name_str = var_name.strVal()
@@ -402,7 +402,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         var_type_untyped_or_typed = untyped_or_typed(var_type, generics_seq)
 
-        add_all_types_to_checkValidTypes_macro(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
+        add_to_checkValidTypes_macro_and_check_struct_fields_generics(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
 
         if var_type_untyped_or_typed:
             var_names.add(
