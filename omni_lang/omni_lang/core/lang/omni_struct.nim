@@ -22,6 +22,13 @@
 
 import macros, omni_type_checker, omni_macros_utilities
 
+const valid_struct_generics = [
+    "int", "int32", "int64",
+    "float", "float32", "float64",
+    "signal", "signal32", "signal64",
+    "sig", "sig32", "sig64"
+]
+
 proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
     if statement.kind == nnkBracketExpr:
         #Data, keep searching
@@ -34,6 +41,12 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
     elif statement.kind == nnkSym:
         let 
             type_impl = statement.getImpl()
+
+        #in-built types
+        if type_impl.kind == nnkNilLit:
+            return statement
+            
+        let
             type_name = type_impl[0]
             type_generics = type_impl[1]
 
@@ -64,10 +77,6 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
     
     return statement
 
-#Check that generics for structs are only SomeNumber!
-proc check_structs_generics(statement : NimNode) : void {.compileTime.} =
-    echo astGenRepr statement
-
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
@@ -81,7 +90,7 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
         )
 
         rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
-    
+
     var
         untyped_counter = 0
         typed_counter   = 0
@@ -116,8 +125,6 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
         else:
             var_type = fields_typed_to_signal_generics[typed_counter]
             typed_counter += 1
-
-        check_structs_generics(var_type)
 
         var new_decl = nnkIdentDefs.newTree(
             nnkPostfix.newTree(
@@ -167,25 +174,60 @@ proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.
 
     return false 
 
-proc add_all_types_to_checkValidTypes_macro(statement : NimNode,var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
+proc add_all_types_to_checkValidTypes_macro(statement : NimNode, var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
     if statement.kind == nnkBracketExpr:
-        for entry in statement:
-            add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
-            
-            if entry.kind == nnkIdent or entry.kind == nnkSym:
+        let 
+            var_name_str = var_name.strVal()
+            ptr_name_str = ptr_name.strVal()
+
+        var already_looped = false
+
+        #Check validity of structs that are not Datas
+        if statement[0].strVal() != "Data":
+            already_looped = true
+            for index, entry in statement:
+                if index == 0:
+                    continue
+                
+                if entry.kind != nnkIdent and entry.kind != nnkSym:
+                    error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
+                
+                let entry_str = entry.strVal()
+                if (not (entry_str in valid_struct_generics)) and (not(entry in generics_seq)):
+                    error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
+                
+                add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+                
                 if not(entry in generics_seq):
-                    #Add validity type checks to output.
                     checkValidTypes.add(
                         nnkCall.newTree(
                             newIdentNode("checkValidType_macro"),
                             entry,
-                            newLit(var_name.strVal()), 
+                            newLit(var_name_str), 
                             newLit(false),
                             newLit(false),
                             newLit(true),
-                            newLit(ptr_name.strVal())
+                            newLit(ptr_name_str)
                         )
                     )
+
+        if not already_looped:
+            for entry in statement:
+                add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+                
+                if entry.kind == nnkIdent or entry.kind == nnkSym:
+                    if not(entry in generics_seq):
+                        checkValidTypes.add(
+                            nnkCall.newTree(
+                                newIdentNode("checkValidType_macro"),
+                                entry,
+                                newLit(var_name_str), 
+                                newLit(false),
+                                newLit(false),
+                                newLit(true),
+                                newLit(ptr_name_str)
+                            )
+                        )
 
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
@@ -222,7 +264,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
-        obj_type_def.add(nnkPostfix.newTree(
+        obj_type_def.add(
+            nnkPostfix.newTree(
                 newIdentNode("*"),
                 obj_name
             )
@@ -230,7 +273,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #NOTE THE DIFFERENCE BETWEEN ptr_type_def here with generics and without, different number of newEmptyNode()
         #Add name to ptr_type_def (with asterisk, in case of supporting modules in the future)
-        ptr_type_def.add(nnkPostfix.newTree(
+        ptr_type_def.add(
+            nnkPostfix.newTree(
                 newIdentNode("*"),
                 ptr_name
             )
@@ -404,9 +448,11 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
 
+    echo repr checkValidTypes
+
     return quote do:
-        `declare_struct`
         `checkValidTypes`
+        `declare_struct`
         `struct_create_init_proc_and_template`
         `findDatasAndStructs`
 

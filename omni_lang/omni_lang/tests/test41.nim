@@ -14,6 +14,8 @@ struct Ah[T]:
     k Data[Data[Data[Buh]]]
     h Data[Data[Data[sig]]]
     g Buh[T, T]
-    l Buh[float, seq[int]]                  #should error out
-    p Buh[Buh[T, T], Buh[Data[float], sig]] #should error out
-    j Data[array[3, float]]                 #should error out
+    #l Buh[float, seq[int]]                  #should error out
+    #p Buh[Buh[T, T], Buh[Data[float], sig]]  #should error out
+    #j Data[array[3, float]]                 #should error out
+    #m Buh[Buh, Buh]
+    #i Data[Data[Data[seq]]]
