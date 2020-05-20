@@ -18,7 +18,7 @@ init:
 
 sample:
     freq_incr = in1 / samplerate
-    out1 = sin(phase * 2 * PI)
+    out1 = sin(phase * TWOPI)
     phase = (phase + freq_incr) % 1.0
 ```
 
