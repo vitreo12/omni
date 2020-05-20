@@ -113,13 +113,16 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         proc_call_ident = proc_call_ident[0]
 
         #Only allow .new() methods to be run on structs, no other one is supported.
+        #This doesn't work as of now, as it also would not allow to run functions with dot (like, buffer.read())
+        #[
         if proc_call_ident_kind == nnkDotExpr:
             var dot_expr_function = parsed_statement[0][1]
             if dot_expr_function.kind == nnkSym or dot_expr_function.kind == nnkIdent:
                 let dot_expr_function_str = dot_expr_function.strVal()
                 if dot_expr_function_str != "new":
                     error("Undefined function '" & $dot_expr_function_str & "' for '" & (repr(proc_call_ident)) & "'")
-        
+        ]#
+
         proc_call_ident_kind = proc_call_ident.kind
         
         #This happens for Data[float].new
