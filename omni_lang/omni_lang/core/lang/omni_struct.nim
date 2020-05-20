@@ -65,27 +65,8 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
     return statement
 
 #Check that generics for structs are only SomeNumber!
-
-
-proc add_all_types_to_checkValidTypes_macro(statement : NimNode,var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
-    if statement.kind == nnkBracketExpr:
-        for entry in statement:
-            add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
-            
-            if entry.kind == nnkIdent or entry.kind == nnkSym:
-                if not(entry in generics_seq):
-                    #Add validity type checks to output.
-                    checkValidTypes.add(
-                        nnkCall.newTree(
-                            newIdentNode("checkValidType_macro"),
-                            entry,
-                            newLit(var_name.strVal()), 
-                            newLit(false),
-                            newLit(false),
-                            newLit(true),
-                            newLit(ptr_name.strVal())
-                        )
-                    )
+proc check_structs_generics(statement : NimNode) : void {.compileTime.} =
+    echo astGenRepr statement
 
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
@@ -136,6 +117,8 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
             var_type = fields_typed_to_signal_generics[typed_counter]
             typed_counter += 1
 
+        check_structs_generics(var_type)
+
         var new_decl = nnkIdentDefs.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
@@ -184,6 +167,27 @@ proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.
 
     return false 
 
+proc add_all_types_to_checkValidTypes_macro(statement : NimNode,var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
+    if statement.kind == nnkBracketExpr:
+        for entry in statement:
+            add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+            
+            if entry.kind == nnkIdent or entry.kind == nnkSym:
+                if not(entry in generics_seq):
+                    #Add validity type checks to output.
+                    checkValidTypes.add(
+                        nnkCall.newTree(
+                            newIdentNode("checkValidType_macro"),
+                            entry,
+                            newLit(var_name.strVal()), 
+                            newLit(false),
+                            newLit(false),
+                            newLit(true),
+                            newLit(ptr_name.strVal())
+                        )
+                    )
+
+#Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
         obj_type_def    = nnkTypeDef.newTree()           #the Phasor_struct_inner block
@@ -399,7 +403,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
-        
+
     return quote do:
         `declare_struct`
         `checkValidTypes`
