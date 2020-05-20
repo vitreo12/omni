@@ -64,10 +64,28 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
     
     return statement
 
-#Also check that stuff sent to structs is just SomeNumber!
-proc add_all_types_to_checkValidTypes() : void {.compileTime.} =
-    discard
-        
+#Check that generics for structs are only SomeNumber!
+
+
+proc add_all_types_to_checkValidTypes_macro(statement : NimNode,var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
+    if statement.kind == nnkBracketExpr:
+        for entry in statement:
+            add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+            
+            if entry.kind == nnkIdent or entry.kind == nnkSym:
+                if not(entry in generics_seq):
+                    #Add validity type checks to output.
+                    checkValidTypes.add(
+                        nnkCall.newTree(
+                            newIdentNode("checkValidType_macro"),
+                            entry,
+                            newLit(var_name.strVal()), 
+                            newLit(false),
+                            newLit(false),
+                            newLit(true),
+                            newLit(ptr_name.strVal())
+                        )
+                    )
 
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
@@ -80,8 +98,9 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
             newEmptyNode(),
             newEmptyNode()
         )
-        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
 
+        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
+    
     var
         untyped_counter = 0
         typed_counter   = 0
@@ -331,38 +350,11 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_name = code_stmt[0]
             var_type = code_stmt[1][0]
 
-        var 
-            var_type_untyped_or_typed = false
-            var_type_is_generic = false
-
-        #Check if any of the argument is a generic (e.g, phase T, freq Y)
-        if generics_seq.len > 0:
-            if var_type in generics_seq:
-                var_type_is_generic = true
-
-        #only add check for current type if is not a generic one
-        if not var_type_is_generic: 
-            #This is a struct that has generics in it (e.g, Phasor[T])
-            var var_type_without_generics : NimNode
-            if var_type.kind == nnkBracketExpr:
-                var_type_without_generics = var_type[0]
-            else:
-                var_type_without_generics = var_type
-
-            #Add validity type checks to output.
-            checkValidTypes.add(
-                nnkCall.newTree(
-                    newIdentNode("checkValidType_macro"),
-                    var_type_without_generics,
-                    newLit(var_name.strVal()), 
-                    newLit(false),
-                    newLit(false),
-                    newLit(true),
-                    newLit(ptr_name.strVal())
-                )
-            )
+        var var_type_untyped_or_typed = false
 
         var_type_untyped_or_typed = untyped_or_typed(var_type, generics_seq)
+
+        add_all_types_to_checkValidTypes_macro(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
 
         if var_type_untyped_or_typed:
             var_names.add(

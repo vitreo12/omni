@@ -17,7 +17,7 @@ proc struct_new_inner[T](obj : typedesc[Type2[T]], t1 : auto) : Type2[T] =
 template struct_new[T](obj : typedesc[Type2[T]], t1 : Type1[T]) : untyped =
     struct_new_inner(Type2[T], t1)
 
-let t1 = Type1.struct_new()
+let t1 = Type1[int].struct_new()
 let t2 = Type2.struct_new(t1)
 
 echo typeof t1
