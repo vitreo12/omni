@@ -80,7 +80,7 @@ proc read*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], delay_time : Y) : T
         index3 = (index + 2) and delay.mask
         index4 = (index + 3) and delay.mask
 
-    return cubic_interp(frac, delay.data[index1], delay.data[index2], delay.data[index3], delay_data[index4])
+    return cubic_interp(frac, delay.data[index1], delay.data[index2], delay.data[index3], delay.data[index4])
 
 #Write proc
 proc write*[T : SomeNumber, Y : SomeNumber](delay : Delay[T], val : Y) : void {.inline.} =
