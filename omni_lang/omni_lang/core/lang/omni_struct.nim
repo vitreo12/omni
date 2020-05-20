@@ -196,7 +196,7 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
                 if (not (entry_str in valid_struct_generics)) and (not(entry in generics_seq)):
                     error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
                 
-                add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+                add_to_checkValidTypes_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
                 if not(entry in generics_seq):
                     checkValidTypes.add(
@@ -213,7 +213,7 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
 
         if not already_looped:
             for entry in statement:
-                add_all_types_to_checkValidTypes_macro(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+                add_to_checkValidTypes_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
                 if entry.kind == nnkIdent or entry.kind == nnkSym:
                     if not(entry in generics_seq):
