@@ -134,6 +134,7 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
             var_type,
             newEmptyNode()
         )
+        
 
         rec_list.add(new_decl)
 
@@ -169,7 +170,7 @@ proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.
     
     #Bottom of the search
     elif var_type.kind == nnkIdent:
-        if var_type in generics_seq:
+        if (var_type.strVal() in valid_struct_generics) or (var_type in generics_seq):
             return true  
 
     return false 
@@ -448,7 +449,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
 
-    echo repr checkValidTypes
+    #echo repr checkValidTypes
 
     return quote do:
         `checkValidTypes`
