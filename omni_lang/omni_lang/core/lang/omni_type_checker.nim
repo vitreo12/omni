@@ -144,7 +144,7 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     #struct field
     elif is_struct_field:
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
-            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' is of unknown type: \'" & $var_type_str & "\'.")
+            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
 
     #variable declaration
     else:
