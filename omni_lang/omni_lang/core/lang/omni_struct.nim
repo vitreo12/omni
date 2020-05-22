@@ -54,11 +54,11 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
             type_name
         )
 
-        #Add signal instead of generic
+        #Add float instead of generic. Should it be sig/signal instead?
         if type_generics.kind == nnkGenericParams:
             for type_generic in type_generics:
                 final_stmt.add(
-                    newIdentNode("signal")
+                    newIdentNode("float")
                 )
         
         #Ok, nothing to do here. use the original one
