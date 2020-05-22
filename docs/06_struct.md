@@ -108,6 +108,17 @@ init:
     secondStruct = SecondStruct(firstStruct)   #create a SecondStruct, using the previously declared firstStruct
 ```
 
+When not otherwise specified, `structs` with generics will default to `float`:
+
+```nim
+struct MyStruct:
+    data Data      #defaulted to Data[float]
+
+init:
+    data = Data(10) #Data(10) defaults to Data[float](10)
+    myStruct = MyStruct(data)  
+```
+
 <br>
 
 ## [Next: 07 - Memory allocation: Data](07_data.md)

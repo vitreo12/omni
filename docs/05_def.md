@@ -62,6 +62,25 @@ def mySum[T, Y](a T = 0, b Y = 0) T:
     return a + b
 ```
 
+When passing `structs` (more on them in the next section) to a `def`, they are passed by reference, meaning that they can be accessed and their values can be modified.
+
+```nim
+struct Vector:
+    x; y; z
+
+def updateVec(vec Vector, x, y, z):
+    vec.x = x
+    vec.y = y
+    vec.z = z
+
+init:
+    vec = Vector()
+    vec.updateVec(10, 20, 30)
+    print(vec.x)
+    print(vec.y)
+    print(vec.z)
+```
+
 <br>
 
 ## [Next: 06 - Custom types: struct](06_struct.md)

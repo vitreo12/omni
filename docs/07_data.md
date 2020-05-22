@@ -77,18 +77,6 @@ init:
         data[i] = Vector()
 ```
 
-If using a `Data` as a field in another `struct`, its parametrization must always been specified:
-
-```nim
-#Invalid: no concrete instantiation of Data
-struct StoreDataInvalid:
-    data Data
-
-#Valid: Data[float] (or any other type) is specified
-struct StoreDataValid:
-    data Data[float]
-```
-
 <br>
 
 ## [Next: 08 - External memory: Buffer](08_buffer.md)
