@@ -38,8 +38,8 @@ init:
     #Four different ways of constructing a Vector
     myVec1 = Vector(0.0, 0.0, 0.0)
     myVec2 = Vector()
-    myVec3 = Vector.new(0.0, 0.0, 0.0)
-    myVec4 = Vector.new()
+    myVec3 = Vector(0.0, 0.0, 0.0)
+    myVec4 = Vector()
 ```
 
 `structs`, just like `defs`, support generics. Generics, as of now, only support number types.

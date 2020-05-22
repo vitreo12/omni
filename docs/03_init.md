@@ -30,7 +30,7 @@ The `init` block is an optional block that takes care of initializing and storin
 
     init:
         delayLength  = samplerate
-        myDelay = Delay.new(delayLength)
+        myDelay = Delay(delayLength)
 
         #the build block only passes specific variables to perform/sample
         build:
