@@ -370,8 +370,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
             if isNil(ugen_ptr):
                 print("ERROR: Omni: invalid ugen_ptr to free.")
                 return
-
-            print("Calling UGen's destructor")
+            
+            when defined(omni_debug):
+                print("Calling UGen's destructor")
             
             let ugen = cast[ptr UGen](ugen_ptr)
             
