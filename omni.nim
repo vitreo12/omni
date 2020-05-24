@@ -135,9 +135,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
     
-    #gcc / clang. add flto instruction to compiler and linker
+    #gcc / clang. add flto instruction to compiler and linker (only for non-windows builds)
     else:
-        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
+        when not defined(Windows):
+            compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
 
     #Append additional definitions
     for new_define in define:
