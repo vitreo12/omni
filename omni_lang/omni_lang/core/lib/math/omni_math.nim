@@ -87,6 +87,10 @@ proc safediv*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
 proc `%`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
     return safemod(a, b)
 
+#To make untyped parser correctly pass through
+proc `mod`*[T : SomeFloat, Y : SomeFloat](a : T, b : Y) : auto {.inline.} =
+    return safemod(a, b)
+
 # ================== #
 # Bitwise operations #
 # ================== #
@@ -315,7 +319,20 @@ proc nextPowerOfTwo*[T : SomeNumber](x : T) : T =
     else:
         return nextPowerOfTwo(x)
 
-#log is the only one with 2 inputs
+#pow is the only one with 2 inputs
+proc pow*[T : SomeNumber, Y : SomeNumber](x : T, y : Y) : float {.inline.} =
+    when T isnot SomeFloat:
+        when Y isnot SomeFloat:
+            return math.pow(float(x), float(y))
+        else:
+            return math.pow(float(x), y)
+    else:
+        when Y isnot SomeFloat:
+            return math.pow(x, float(y))
+        else:
+            return math.pow(x, y)
+
+#log is the only one with 2 inputs and check for inf/neginf/nan
 proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
     when T isnot SomeFloat:
         when Y isnot SomeFloat:
@@ -342,7 +359,6 @@ omniMathFunction(sqrt)
 omniMathFunction(cbrt)
 omniMathFunction(exp)
 omniMathFunction(hypot)
-omniMathFunction(pow)
 omniMathFunction(erf)
 omniMathFunction(erfc)
 omniMathFunction(floor)
