@@ -211,10 +211,12 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")               # -q == silent output
     else:
         let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
+        if fileExists("$null"):
+            removeFile("$null")
 
     #grep/findstr return 0 if it finds the string, 1 if it doesnt!
     if failedOmniCheckPerform > 0:
-        printError("Undefined \'perform\' or \'sample\' blocks.")
+        printError("Undefined 'perform' or 'sample' blocks.")
         removeFile(pathToCompiledLib)
         return 1
 
