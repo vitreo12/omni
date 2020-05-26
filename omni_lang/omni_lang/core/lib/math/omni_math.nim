@@ -102,8 +102,8 @@ proc `|`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
     return a or b
 
 #This collides with the pow operation ^
-proc `^`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
-    return a xor b
+#proc `^`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
+#    return a xor b
 
 proc `<<`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
     return a shl b
@@ -331,6 +331,10 @@ proc pow*[T : SomeNumber, Y : SomeNumber](x : T, y : Y) : float {.inline.} =
             return math.pow(x, float(y))
         else:
             return math.pow(x, y)
+
+#alternative syntax for pow
+proc `^`*[T : SomeNumber, Y: SomeNumber](x : T, y : Y) : float {.inline.} =
+    return omni_math.pow(x, y)
 
 #log is the only one with 2 inputs and check for inf/neginf/nan
 proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
