@@ -112,7 +112,7 @@ When not otherwise specified, `structs` with generics will default to `float`:
 
 ```nim
 struct MyStruct:
-    data Data      #defaulted to Data[float]
+    data Data       #defaulted to Data[float]
 
 init:
     data = Data(10) #Data(10) defaults to Data[float](10)
