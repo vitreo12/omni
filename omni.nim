@@ -71,6 +71,8 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         omniFileDir  = omniFile.dir
         omniFileName = omniFile.name
         omniFileExt  = omniFile.ext
+    
+    let originalOmniFileName = omniFileName
 
     #Check file first charcter, must be a capital letter
     if not omniFileName[0].isUpperAscii:
@@ -135,9 +137,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
     
-    #gcc / clang. add flto instruction to compiler and linker
+    #gcc / clang. add flto instruction to compiler and linker (only for non-windows builds)
     else:
-        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
+        when not defined(Windows):
+            compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
 
     #Append additional definitions
     for new_define in define:
@@ -200,7 +203,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
-        printError("Unsuccessful compilation of " & $omniFileName & $omniFileExt & ".")
+        printError("Unsuccessful compilation of " & $originalOmniFileName & $omniFileExt & ".")
         return 1
     
     let pathToCompiledLib = outDirFullPath & "/" & $output_name
@@ -210,10 +213,12 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")               # -q == silent output
     else:
         let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
+        if fileExists("$null"):
+            removeFile("$null")
 
     #grep/findstr return 0 if it finds the string, 1 if it doesnt!
     if failedOmniCheckPerform > 0:
-        printError("Undefined \'perform\' or \'sample\' blocks.")
+        printError("Undefined 'perform' or 'sample' blocks.")
         removeFile(pathToCompiledLib)
         return 1
 

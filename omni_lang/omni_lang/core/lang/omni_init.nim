@@ -39,6 +39,10 @@ macro init_inner*(code_block_stmt_list : untyped) =
         templates_for_perform_var_declarations     = nnkStmtList.newTree()
         templates_for_constructor_var_declarations = nnkStmtList.newTree()
         templates_for_constructor_let_declarations = nnkStmtList.newTree()
+        perform_build_names_table_static_stmt      = nnkStmtList.newTree()
+        perform_build_names_table_static           = nnkStaticStmt.newTree(
+            perform_build_names_table_static_stmt
+        )
 
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
@@ -137,26 +141,20 @@ macro init_inner*(code_block_stmt_list : untyped) =
     if new_call_provided:
         call_to_build_macro = code_block.last()
 
-        #First element of the call_to_build_macro ([0]) is the name of the calling function (Ident("build"))
-        #Second element - unpacked here - is the kind of syntax used to call the macro. It can either be just
-        #a list of idents - which is the case for the normal "new(a, b)" syntax - or either a nnkStmtList - for the
-        #"new : \n a \n b" syntax - or a nnkCommand list - for the "new a b" syntax.
-        let type_of_syntax = call_to_build_macro[1]
-
-        var temp_call_to_build_macro = nnkCall.newTree(newIdentNode("build"))
+        var temp_call_to_build_macro = nnkCall.newTree()
 
         #[
-            nnkStmtList is:
-            new:
+            nnkCall is:
+            build:
                 a
                 b
 
             nnkCommand is:
-            new a b
+            build a b
 
-            Format them both to be the same way as the normal new(a, b) nnkCall.
+            Format them both to be the same way as the normal build(a, b) nnkCall.
         ]#
-        if type_of_syntax.kind == nnkStmtList or type_of_syntax.kind == nnkCommand:
+        if call_to_build_macro.kind == nnkCall or call_to_build_macro.kind == nnkCommand:
             
             #nnkCommand can recursively represent elements in nnkCommand trees. Unpack all the nnkIdents and append them to the temp_call_to_build_macro variable.
             proc recursive_unpack_of_commands(input : NimNode) : void =    
@@ -167,12 +165,12 @@ macro init_inner*(code_block_stmt_list : untyped) =
                         temp_call_to_build_macro.add(input_children)
 
             #Unpack the elements and add them to temp_call_to_build_macro, which is a nnkCall tree.
-            recursive_unpack_of_commands(type_of_syntax)
+            recursive_unpack_of_commands(call_to_build_macro)
             
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
         else:
-            error("`build`: invalid syntax.")
+            error("'build': invalid syntax.")
 
         #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
         code_block.del(code_block.len() - 1)
@@ -193,7 +191,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
         for var_declaration in var_declarations:
             if var_declaration == build_macro_var_name:
                 #Replace the input to the "build" macro to be "variableName_var"
-                let new_var_declaration = newIdentNode($(var_declaration.strVal()) & "_var")
+                let 
+                    var_name_str = var_declaration.strVal()
+                    new_var_declaration = newIdentNode(var_name_str & "_var")
                 
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_var_declaration
@@ -221,9 +221,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                         )
                     )
                 )
+                
+                templates_for_perform_var_declarations.add(perform_var_template)     
 
-                templates_for_perform_var_declarations.add(perform_var_template)
-        
         #Check if any of the let_declarations are inputs to the "build" macro. If so, just append their variable name with "_let"
         for let_declaration in let_declarations:
             if let_declaration == build_macro_var_name:
@@ -237,6 +237,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
     #echo astGenRepr call_to_build_macro
 
     #echo astGenRepr templates_for_perform_var_declarations
+
+    #error repr templates_for_perform_var_declarations
 
     #First statement of the constructor is the allocation of the "ugen" variable. 
     #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
@@ -290,7 +292,21 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
             assign_ugen_fields.add(ugen_asgn_stmt)
 
-            final_var_names.add(newIdentNode(var_name_str))
+            final_var_names.add(
+                newIdentNode(var_name_str)
+            )
+
+            perform_build_names_table_static_stmt.add(
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("perform_build_names_table"),
+                            newIdentNode("add")
+                        ),
+                        newLit(var_name_str[0..(var_name_str.len)-5]) #remove _var / _let
+                    )
+                )
+            )   
 
         #First ident == "build"
         else: 
@@ -315,6 +331,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
         call_to_build_macro
     )
 
+    #error repr perform_build_names_table_static
+
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
@@ -323,6 +341,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
         template generateTemplatesForPerformVarDeclarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
+
+        #These are variables declared in build, they won't be renamed in perform
+        `perform_build_names_table_static`
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
         executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
@@ -349,8 +370,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
             if isNil(ugen_ptr):
                 print("ERROR: Omni: invalid ugen_ptr to free.")
                 return
-
-            print("Calling UGen's destructor")
+            
+            when defined(omni_debug):
+                print("Calling UGen's destructor")
             
             let ugen = cast[ptr UGen](ugen_ptr)
             
@@ -497,6 +519,9 @@ macro init*(code_block : untyped) : untyped =
 
         when not declared(declared_outputs):
             outs 1
+
+        #Use to check variable names in perform block, to check if they are the same as declared vars from init
+        var perform_build_names_table {.inject, compileTime.} : seq[string]
             
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
@@ -516,7 +541,7 @@ macro init*(code_block : untyped) : untyped =
         #Or, if perform is defining one, define init_block here so that it will still only be defined once
         let init_block {.inject, compileTime.} = true
 
-        parse_block_for_variables(`code_block`, true)
+        parse_block_untyped(`code_block`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
@@ -532,9 +557,23 @@ macro initialise*(code_block : untyped) : untyped =
 #a correct call to "build(a, b)" instead of "build: \n a \n b" or "build a b" by extracting the nnkIdents from the other calls and 
 #building a correct "build(a, b)" syntax out of them.
 macro build*(var_names : varargs[typed]) =    
-    var final_type = nnkTypeSection.newTree()
-    var final_typedef = nnkTypeDef.newTree().add(nnkPragmaExpr.newTree(newIdentNode("UGen")).add(nnkPragma.newTree(newIdentNode("inject")))).add(newEmptyNode())
-    var final_obj  = nnkObjectTy.newTree().add(newEmptyNode()).add(newEmptyNode())
+    var 
+        final_type = nnkTypeSection.newTree()
+        
+        final_typedef = nnkTypeDef.newTree(
+            nnkPragmaExpr.newTree(
+                newIdentNode("UGen"),
+                nnkPragma.newTree(
+                    newIdentNode("inject")
+                )
+            ),
+            newEmptyNode()
+        )
+
+        final_obj  = nnkObjectTy.newTree(
+            newEmptyNode(),
+            newEmptyNode()
+        )
     
     final_typedef.add(final_obj)
     final_type.add(final_typedef)

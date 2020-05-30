@@ -50,13 +50,9 @@ After `scoop` has been installed, run the following command in `PowerShell` to i
 
 ## **Installation**
 
-To install `omni` run these commands:
+To install `omni`, simply use the `nimble` package manager (it comes bundled with the `nim` installation):
 
-    git clone https://github.com/vitreo12/omni
-    
-    cd omni
-
-    nimble installOmni
+    nimble install omni
 
 ## **Usage**
 
@@ -81,7 +77,7 @@ init:
 
 sample:
     freq_incr = in1 / samplerate
-    out1 = sin(phase * 2 * PI)
+    out1 = sin(phase * TWOPI)
     phase = (phase + freq_incr) % 1.0
 ```
 

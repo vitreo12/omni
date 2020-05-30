@@ -666,6 +666,13 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         generate_inputs_templates(`num_of_inputs_VAL`, 0, 1)
 
         generate_args_templates(`num_of_inputs_VAL`)
+
+        proc get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, audio_index_loop : int = 0) : float =
+            let chan_int = int(chan)
+            if chan_int < omni_inputs:
+                return float(ins_Nim[chan_int][audio_index_loop])
+            else:
+                return 0.0
         
         #Export to C
         proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
@@ -677,6 +684,9 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
             return cast[ptr cfloat](omni_defaults_let.unsafeAddr)
 
+macro inputs*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
+    return quote do:
+        ins(`num_of_inputs`, `param_names`)
 
 macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     
@@ -764,3 +774,7 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
 
         proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
             return cast[ptr cchar](omni_output_names_let.unsafeAddr)
+
+macro outputs*(num_of_outputs : typed, param_names : untyped = nil) : untyped  =
+    return quote do:
+        outs(`num_of_outputs`, `param_names`)

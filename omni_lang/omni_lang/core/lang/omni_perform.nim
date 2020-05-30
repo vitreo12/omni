@@ -167,6 +167,7 @@ template performInner*(code_block : untyped) {.dirty.} =
                         unlock_buffers()
                         return
 
+    #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(performBits32):
         proc Omni_UGenPerform32*(ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib.} =    
             #Needed to be passed to all defs
@@ -174,11 +175,11 @@ template performInner*(code_block : untyped) {.dirty.} =
             
             #standard perform block
             when declared(perform_block):
-                parse_block_for_variables(code_block, false, true, bits_32_or_64_typed = false)
+                parse_block_untyped(code_block, false, true, bits_32_or_64_typed = false)
             
             #sample block without perform
             else:
-                parse_block_for_variables(code_block, false, true, true, false)
+                parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = false)
 
             #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):
@@ -191,11 +192,11 @@ template performInner*(code_block : untyped) {.dirty.} =
 
             #standard perform block
             when declared(perform_block):
-                parse_block_for_variables(code_block, false, true, bits_32_or_64_typed = true)
+                parse_block_untyped(code_block, false, true, bits_32_or_64_typed = true)
             
             #sample block without perform
             else:
-                parse_block_for_variables(code_block, false, true, true, true)
+                parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = true)
 
             #UNLOCK buffers when multithread buffers are used
             when defined(multithreadBuffers):

@@ -68,15 +68,16 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
 
             #struct with generics
             if inner_inner_type_tree.kind == nnkBracketExpr:
-                if inner_inner_type_tree[0].strVal().endsWith("_obj"):
+                if inner_inner_type_tree[0].strVal().endsWith("_struct_inner"):
                     return true
             
             #normal struct
-            elif inner_type_tree[1].strVal().endsWith("_obj"):
-                return true
+            elif inner_inner_type_tree.kind == nnkIdent or inner_inner_type_tree.kind == nnkSym or inner_inner_type_tree.kind == nnkStrLit:
+                if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
+                    return true
     
         elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_obj"):
+            if inner_type_tree.strVal().endsWith("_struct_inner"):
                 return true
 
     else:
@@ -90,11 +91,11 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
         if inner_type_tree_kind == nnkBracketExpr:
             let inner_inner_type_tree = inner_type_tree[0]
 
-            if inner_inner_type_tree.strVal().endsWith("_obj"):
+            if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
                 return true
             
         elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_obj"):
+            if inner_type_tree.strVal().endsWith("_struct_inner"):
                 return true
         
     return false
@@ -107,7 +108,7 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     let var_type_kind = var_type.kind
 
     #Bracket expr (seq / array), pointer (structs / ptr ...), extract the actual name
-    if var_type_kind == nnkBracketExpr or var_type_kind == nnkPtrTy:
+    if var_type_kind == nnkBracketExpr or var_type_kind == nnkPtrTy or var_type_kind == nnkRefTy:
         let var_type_inner = var_type[0]
         
         #struct with generics
@@ -143,7 +144,7 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     #struct field
     elif is_struct_field:
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
-            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' is of unknown type: \'" & $var_type_str & "\'.")
+            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
 
     #variable declaration
     else:
