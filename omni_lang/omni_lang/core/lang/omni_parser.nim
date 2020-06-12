@@ -1009,6 +1009,11 @@ proc parse_typed_assgn(statement : NimNode, level : var int, is_constructor_bloc
         parsed_statement = parser_typed_loop(statement, level, is_perform_block)
         assgn_right = parsed_statement[0]
 
+    #Ignore 'result' (which is used in return stmt)
+    if assgn_right.kind == nnkSym:
+        if assgn_right.strVal() == "result":
+            return parsed_statement
+
     if isStruct(assgn_right):
         if assgn_right.kind == nnkDotExpr:
             error("'" & assgn_right.repr & "': trying to re-assign an already allocated struct field.")
