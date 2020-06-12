@@ -1,6 +1,6 @@
 ins 2:
     "buffer"
-    "speed"  {1 0 10}
+    "speed"  {1, 0, 10}
 
 outs 1
 

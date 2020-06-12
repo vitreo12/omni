@@ -1,9 +1,9 @@
 ins 5:
     "input"
-    "delay_length" {1 0 2}
-    "delay_time"   {0.5 0 2}
-    "feedback"     {0.5 0 0.9}
-    "damping"      {0.5 0 0.9}
+    "delay_length" {1, 0, 2}
+    "delay_time"   {0.5, 0, 2}
+    "feedback"     {0.5, 0, 0.9}
+    "damping"      {0.5, 0, 0.9}
 
 outs 1
 

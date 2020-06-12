@@ -347,12 +347,23 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
         let value_kind = value.kind
 
         #{0, 0, 1} / {0, 1} / {0}
-        if value_kind == nnkIntLit or value_kind == nnkFloatLit:
+        if value_kind == nnkIntLit or value_kind == nnkFloatLit or value_kind == nnkPrefix: #negative number
             var value_num : float
             if value_kind == nnkIntLit:
                 value_num = float(value.intVal()) 
-            else:
+            elif value_kind == nnkFloatLit:
                 value_num = value.floatVal()
+            else:
+                #negative number
+                if value[0].strVal() != "-":
+                    error("Invalid prefix for input " & $repr(value))
+                let number = value[1]
+                if number.kind == nnkIntLit:
+                    value_num = float(-1 * number.intVal())
+                elif number.kind == nnkFloatLit:
+                    value_num = (-1 * number.floatVal())
+                else:
+                    error("Invalid input:" & $repr(value))
 
             if default_min_max_len == 3:
                 case index:
@@ -375,7 +386,8 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
             elif default_min_max_len == 1:
                 default_num = float32(value_num)
 
-        #{0 0 1} / {0 1}
+        #{0 0 1} / {0 1} ... This doesn't work with negative numbers yet!
+        #[
         elif value_kind == nnkCommand:
             assert value.len == 2
             
@@ -389,6 +401,9 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
                 min_stmt_kind : NimNodeKind
                 max_stmt : NimNode
                 max_stmt_kind : NimNodeKind
+
+            #echo astGenRepr value
+            #echo astGenRepr value[1]
 
             #{0 0 1}
             if second_stmt_kind == nnkCommand:
@@ -422,6 +437,17 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
                 min_num = float(min_stmt.intVal())
             elif min_stmt_kind == nnkFloatLit:
                 min_num = min_stmt.floatVal()
+            elif min_stmt_kind == nnkPrefix:
+                #negative number
+                if min_stmt[0].strVal() != "-":
+                    error("Invalid prefix for input " & $repr(value))
+                let number = min_stmt[1]
+                if number.kind == nnkIntLit:
+                    min_num = float(-1 * number.intVal())
+                elif number.kind == nnkFloatLit:
+                    min_num = (-1 * number.floatVal())
+                else:
+                    error("Invalid input:" & $repr(value))
             else:
                 error("Invalid syntax for min value of input \"" & $param_name & "\"")
 
@@ -429,9 +455,21 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
                 max_num = float(max_stmt.intVal())
             elif max_stmt_kind == nnkFloatLit:
                 max_num = max_stmt.floatVal()
+            elif max_stmt_kind == nnkPrefix:
+                #negative number
+                if max_stmt[0].strVal() != "-":
+                    error("Invalid prefix for input " & $repr(value))
+                let number = max_stmt[1]
+                if number.kind == nnkIntLit:
+                    max_num = float(-1 * number.intVal())
+                elif number.kind == nnkFloatLit:
+                    max_num = (-1 * number.floatVal())
+                else:
+                    error("Invalid input:" & $repr(value))
             else:
                 error("Invalid syntax for max value of input \"" & $param_name & "\"")
-            
+        ]#
+
         else:
             error("Invalid syntax for input \"" & $param_name & "\"")
 
