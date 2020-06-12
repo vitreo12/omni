@@ -392,8 +392,6 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
         
         if is_command_or_ident:
             if not is_out_variable:
-                
-                #When in init or in a def, declaredInScope is better
                 if is_constructor_block or is_def_block:
                     parsed_statement = nnkStmtList.newTree(
                         nnkWhenStmt.newTree(
@@ -428,7 +426,7 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
                         )
                     )
 
-                #perform / sample blocks
+                #perform / sample blocks. Also check names in the perform_build_names_table!
                 else:
                     let 
                         names_table = newIdentNode("perform_build_names_table")
