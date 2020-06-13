@@ -1,0 +1,35 @@
+ins 4:
+    "input"
+    "filter_type" {0, 0, 2}
+    "cutoff" {2000, 10, 20000}
+    "resonance" {0.5, 0.005, 1}
+
+outs 1
+
+init:
+    s1 = 0.0
+    s2 = 0.0
+    inverse_samplerate = 1.0 / samplerate
+    div2_inverse_samplerate = 2.0 / inverse_samplerate
+    inverse_samplerate_div2 = inverse_samplerate / 2.0
+
+sample:
+    filter_type = int(in2)
+    g = in3
+    r = in4
+
+    g = (div2_inverse_samplerate * tan((g * TWOPI) * inverse_samplerate_div2) * inverse_samplerate_div2)
+    hp = (in1 - 2.0 * r * s1 - g * s1 - s2) / (1.0 + 2.0 * r * g + g * g)
+    
+    bp = g * hp + s1
+    s1 = g * hp + bp
+
+    lp = g * bp + s2
+    s2 = g * bp + lp
+
+    if filter_type == 0:
+        out1 = lp
+    elif filter_type == 1:
+        out1 = hp
+    else:
+        out1 = bp
