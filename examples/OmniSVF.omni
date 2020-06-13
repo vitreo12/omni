@@ -16,7 +16,7 @@ init:
 sample:
     filter_type = int(in2)
     g = in3
-    r = in4
+    r = 1.0 - in4
 
     g = (div2_inverse_samplerate * tan((g * TWOPI) * inverse_samplerate_div2) * inverse_samplerate_div2)
     hp = (in1 - 2.0 * r * s1 - g * s1 - s2) / (1.0 + 2.0 * r * g + g * g)
