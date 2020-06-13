@@ -143,6 +143,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     )
 
     var data_bracket_expr = false
+
     for index, arg in statement.pairs():
         var arg_temp = arg
         
@@ -257,6 +258,13 @@ proc parse_untyped_call(statement : NimNode, level : var int, is_constructor_blo
     #Parse the call
     var parsed_statement = parser_untyped_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
+    #Something weird happened with Data[Something]() in a def.. It returned a call to a
+    #nnkOpenSymChoice with symbols.. Re-interpret it and re-run parser (NEEDS MORE TESTING!)
+    if parsed_statement[0].kind == nnkCall:
+        if parsed_statement[0][0].kind == nnkOpenSymChoice:
+            var new_statement = typedToUntyped(parsed_statement)
+            parsed_statement = parser_untyped_loop(new_statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
+            
     #Detect constructor calls
     parsed_statement = findStructConstructorCall(parsed_statement)
 
