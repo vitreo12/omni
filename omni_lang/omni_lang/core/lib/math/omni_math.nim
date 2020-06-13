@@ -83,6 +83,13 @@ proc safediv*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
         else:
             return 0.0
 
+#/ identifier (going to be replaced with safediv after parsing). Keeping safemod so that nim's parser it's happy with return type
+proc `/`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    return safediv(a, b)
+
+proc `div`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    return safediv(a, b)
+
 #% identifier (going to be replaced with safemod after parsing). Keeping safemod so that nim's parser it's happy with return type
 proc `%`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
     return safemod(a, b)
