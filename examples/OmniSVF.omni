@@ -9,16 +9,16 @@ outs 1
 init:
     s1 = 0.0
     s2 = 0.0
-    inverse_samplerate = 1.0 / samplerate
-    div2_inverse_samplerate = 2.0 / inverse_samplerate
-    inverse_samplerate_div2 = inverse_samplerate / 2.0
+    INVERSE_SAMPLERATE = 1.0 / samplerate
+    DIV2_INVERSE_SAMPLERATE = 2.0 / INVERSE_SAMPLERATE
+    INVERSE_SAMPLERATE_DIV2 = INVERSE_SAMPLERATE / 2.0
 
 sample:
     filter_type = int(in2)
     g = in3
     r = 1.0 - in4
 
-    g = (div2_inverse_samplerate * tan((g * TWOPI) * inverse_samplerate_div2) * inverse_samplerate_div2)
+    g = (DIV2_INVERSE_SAMPLERATE * tan((g * TWOPI) * INVERSE_SAMPLERATE_DIV2) * INVERSE_SAMPLERATE_DIV2)
     hp = (in1 - 2.0 * r * s1 - g * s1 - s2) / (1.0 + 2.0 * r * g + g * g)
     
     bp = g * hp + s1
