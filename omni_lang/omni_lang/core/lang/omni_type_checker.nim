@@ -120,6 +120,9 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     
     #standard types
     else:
+        #FOR NOW, error out with tuples (they will supported in the future)
+        if var_type_kind == nnkTupleConstr:
+            error("'" & $var_name & "': tuples are not yet supported!")
         var_type_str = var_type.strVal()
 
     #echo "checkValidType"

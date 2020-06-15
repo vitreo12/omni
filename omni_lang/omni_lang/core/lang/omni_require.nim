@@ -60,5 +60,11 @@ macro require*(path_list : untyped, paths : varargs[typed]) : untyped =
                     path,
                     newIdentNode(path_without_extension & "_module")
                 )
+            ),
+
+            #Exporting the module is needed in order to access the entries
+            #in the struct declared here...
+            nnkExportStmt.newTree(
+                newIdentNode(path_without_extension & "_module")
             )
         )

@@ -143,6 +143,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     )
 
     var data_bracket_expr = false
+
     for index, arg in statement.pairs():
         var arg_temp = arg
         
@@ -257,6 +258,13 @@ proc parse_untyped_call(statement : NimNode, level : var int, is_constructor_blo
     #Parse the call
     var parsed_statement = parser_untyped_loop(statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
+    #Something weird happened with Data[Something]() in a def.. It returned a call to a
+    #nnkOpenSymChoice with symbols.. Re-interpret it and re-run parser (NEEDS MORE TESTING!)
+    if parsed_statement[0].kind == nnkCall:
+        if parsed_statement[0][0].kind == nnkOpenSymChoice:
+            var new_statement = typedToUntyped(parsed_statement)
+            parsed_statement = parser_untyped_loop(new_statement, level, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
+            
     #Detect constructor calls
     parsed_statement = findStructConstructorCall(parsed_statement)
 
@@ -392,8 +400,6 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
         
         if is_command_or_ident:
             if not is_out_variable:
-                
-                #When in init or in a def, declaredInScope is better
                 if is_constructor_block or is_def_block:
                     parsed_statement = nnkStmtList.newTree(
                         nnkWhenStmt.newTree(
@@ -428,7 +434,7 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
                         )
                     )
 
-                #perform / sample blocks
+                #perform / sample blocks. Also check names in the perform_build_names_table!
                 else:
                     let 
                         names_table = newIdentNode("perform_build_names_table")
@@ -1008,6 +1014,11 @@ proc parse_typed_assgn(statement : NimNode, level : var int, is_constructor_bloc
     var 
         parsed_statement = parser_typed_loop(statement, level, is_perform_block)
         assgn_right = parsed_statement[0]
+
+    #Ignore 'result' (which is used in return stmt)
+    if assgn_right.kind == nnkSym:
+        if assgn_right.strVal() == "result":
+            return parsed_statement
 
     if isStruct(assgn_right):
         if assgn_right.kind == nnkDotExpr:

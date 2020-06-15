@@ -1,15 +1,12 @@
 ins 1:
-    "freq" {440 1 22000}
+    "freq" {440, 1, 22000}
 
 outs 1
  
 init:
-    samplerate_minus_one = samplerate - 1.0
     phase = 0.0
 
 sample:
-    frequency = abs(in1)
-    increment = frequency / samplerate_minus_one
-    sine_out = cos(phase * TWOPI)
-    out1 = sine_out
-    phase = (phase + increment) % 1.0
+    freq_incr = in1 / samplerate
+    out1 = sin(phase * TWOPI)
+    phase = (phase + freq_incr) % 1.0

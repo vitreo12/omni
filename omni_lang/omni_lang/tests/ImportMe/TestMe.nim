@@ -1,12 +1,13 @@
 import ../../../omni_lang, macros
 
-require "ImportMe.nim", "ImportMeToo.nim"
+expandMacros:
+    require "ImportMe.nim", "ImportMeToo.nim"
 
-init:
-    a = ImportMe()
-    b = ImportMeToo(c = a)
+    init:
+        a = ImportMe()
+        b = ImportMeToo(c = a)
 
-    c = ImportMeToo.new()
+        c = ImportMeToo.new(c = a)
 
-sample:
-    out1 = in1
+    sample:
+        out1 = in1

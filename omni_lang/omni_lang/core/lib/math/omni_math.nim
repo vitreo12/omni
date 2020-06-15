@@ -28,7 +28,9 @@ import math
 
 const
     PI*    = 3.1415926535897932384626433
+    pi*    = PI
     TWOPI* = 2.0 * PI
+    twopi* = TWOPI
     E*     = 2.71828182845904523536028747
 
 # ========= #
@@ -82,6 +84,13 @@ proc safediv*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
             return a / T(b)
         else:
             return 0.0
+
+#/ identifier (going to be replaced with safediv after parsing). Keeping safemod so that nim's parser it's happy with return type
+proc `/`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    return safediv(a, b)
+
+proc `div`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+    return safediv(a, b)
 
 #% identifier (going to be replaced with safemod after parsing). Keeping safemod so that nim's parser it's happy with return type
 proc `%`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
