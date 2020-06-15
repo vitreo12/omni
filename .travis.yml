@@ -33,7 +33,7 @@ install:
 
 script:
     - nimble refresh
-    - nimble test
+    - nimble testTravis #testTravis also installs the omni compiler executable
 
 branches:
   except:
