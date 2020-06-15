@@ -4,7 +4,8 @@
     </div>
 </a>
 
-<br>
+[![Build Status](https://travis-ci.com/vitreo12/omni.svg?branch=master)](https://travis-ci.com/vitreo12/omni)
+
 Omni is a cross-platform DSL (Domain Specific Language) for low level audio programming. 
 It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
 
