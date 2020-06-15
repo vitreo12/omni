@@ -11,17 +11,35 @@ matrix:
       env: CHANNEL=stable
       compiler: gcc
 
+    - os: linux
+      env: CHANNEL=devel
+      compiler: gcc
+    
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
       env: CHANNEL=stable
       compiler: clang
 
-    fast_finish: true
+  allow_failures:
+    # Ignore failures when building against the devel Nim branch
+    # Also ignore OSX, due to very long build queue
+    - env: CHANNEL=devel
+    - os: osx
+  
+  fast_finish: true
 
-before_install:
-  # If you want to install an OSX Homebrew dependency
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libyourdependency; fi
+#External dependencies!#
+#Linux:
+#addons: # This will only be executed on Linux
+#  apt:
+#    packages:
+#      - libyourdependency
+
+#MacOS
+#before_install:
+# If you want to install an OSX Homebrew dependency
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libyourdependency; fi
 
 install:
   - export CHOOSENIM_NO_ANALYTICS=1
