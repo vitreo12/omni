@@ -36,15 +36,21 @@ suite "ins_number":
     check (declared(get_dynamic_input))
     check (get_dynamic_input(ins_Nim, 0, 0) == 0.75)
     check (get_dynamic_input(ins_Nim, 1, 0) == 0.75)
+    check (get_dynamic_input(ins_Nim, 2, 0) == 0.75)
+    check (get_dynamic_input(ins_Nim, 3, 0) == 0.75)
+    check (get_dynamic_input(ins_Nim, 4, 0) == 0.75)
   
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenInputs() == int32(5))
-
-    var t = cast[ptr UncheckedArray[cchar]](Omni_UGenInputNames)
-    for i in 0..10:
-      echo t[i]
-      
-    #check (cast[string](Omni_UGenInputNames()) == "__NO_PARAM_NAMES__")
+    check (cast[cstring](Omni_UGenInputNames()) == "__NO_PARAM_NAMES__")
+    
+    let defaultsArray = cast[ptr UncheckedArray[cfloat]](Omni_UGenDefaults())
+    check (defaultsArray != nil)
+    check (defaultsArray[0] == 0.0'f32)
+    check (defaultsArray[1] == 0.0'f32)
+    check (defaultsArray[2] == 0.0'f32)
+    check (defaultsArray[3] == 0.0'f32)
+    check (defaultsArray[4] == 0.0'f32)
 
   dealloc_ins_Nim(5)
