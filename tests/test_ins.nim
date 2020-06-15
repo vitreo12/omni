@@ -1,10 +1,11 @@
 import unittest
 import ../omni_lang/omni_lang
 import testutils_ins
-import macros
+#import macros
 
 suite "ins_number":
-  expandMacros(ins 5)
+  #expandMacros:
+  ins 5
   alloc_ins_Nim(5)
 
   #Check num of inputs
