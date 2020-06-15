@@ -717,7 +717,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
             return int32(omni_inputs)
 
         proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-            return cast[ptr cchar](omni_input_names_let.unsafeAddr)
+            return cast[ptr cchar](unsafeAddr(omni_input_names_let[0]))
 
         proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
             return cast[ptr cfloat](omni_defaults_let.unsafeAddr)
@@ -811,7 +811,7 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
             return int32(omni_outputs)
 
         proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-            return cast[ptr cchar](omni_output_names_let.unsafeAddr)
+            return cast[ptr cchar](unsafeAddr(omni_output_names_let[0]))
 
 macro outputs*(num_of_outputs : typed, param_names : untyped = nil) : untyped  =
     return quote do:
