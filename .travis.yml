@@ -51,7 +51,7 @@ install:
 
 script:
     - nimble refresh
-    - nimble testTravis #testTravis also installs the omni compiler executable
+    - nimble testCI #testCI also installs the omni compiler executable
 
 branches:
   except:
