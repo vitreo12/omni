@@ -47,14 +47,14 @@ after install:
     discard
     
 #Install the omni compiler executable before running the tests on Travis
-before testTravis:
+before testCI:
    exec "nimble install" 
 
-task testTravis, "Run tests on travis":
+task testCI, "Run tests on CI: it installs omni / omni_lang first":
   exec "nimble test"
 
 #before/after are BOTH needed for any of the two to work
-after testTravis:
+after testCI:
   discard
 
 #As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
