@@ -1,0 +1,40 @@
+language: c
+
+cache: ccache
+cache:
+  directories:
+  - .cache
+
+matrix:
+  include:
+    - os: linux
+      env: CHANNEL=stable
+      compiler: gcc
+
+    # On OSX we only test against clang (gcc is mapped to clang by default)
+    - os: osx
+      env: CHANNEL=stable
+      compiler: clang
+
+    fast_finish: true
+
+before_install:
+  # If you want to install an OSX Homebrew dependency
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libyourdependency; fi
+
+install:
+  - export CHOOSENIM_NO_ANALYTICS=1
+  - curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
+  - sh init.sh -y
+  - export PATH=~/.nimble/bin:$PATH
+  - echo "export PATH=~/.nimble/bin:$PATH" >> ~/.profile
+  - choosenim $CHANNEL
+
+script:
+    - nimble refresh
+    - nimble test
+
+branches:
+  except:
+    - gh-pages
