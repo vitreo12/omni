@@ -32,7 +32,7 @@ ins 5:
   "mul"
   "add"
 
-suite "ins_number":
+suite "ins_names":
   alloc_ins_Nim(5)
 
   #Check num of inputs

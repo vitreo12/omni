@@ -32,7 +32,7 @@ ins 5:
   "mul"   {0.3, 0.5, 2.35}
   "add"   {0.4, -0.1, 10000}
 
-suite "ins_number":
+suite "ins_defaults_min_max_names":
   alloc_ins_Nim(5)
 
   #Check num of inputs

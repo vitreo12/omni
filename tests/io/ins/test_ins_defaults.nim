@@ -32,7 +32,7 @@ ins 5:
   {0.3}
   {0.4}
 
-suite "ins_number":
+suite "ins_defaults":
   alloc_ins_Nim(5)
 
   #Check num of inputs
