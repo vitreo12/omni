@@ -21,8 +21,8 @@
 # SOFTWARE.
 
 import unittest
-import ../omni_lang/omni_lang
-import testutils_ins
+import ../../omni_lang/omni_lang
+import ../utils/ins_utils
 #import macros
 
 suite "ins_number":

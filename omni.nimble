@@ -39,16 +39,40 @@ bin = @["omni"]
 
 #If using "nimble install" instead of "nimble installOmni", make sure omni-lang is still getting installed
 before install:
-    withDir(getPkgDir() & "/omni_lang"):
-        exec "nimble install"
+  withDir(getPkgDir() & "/omni_lang"):
+    exec "nimble install"
 
 #before/after are BOTH needed for any of the two to work
 after install:
-    discard
+  discard
     
-#Install the omni compiler executable before running the tests on Travis
+#As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
+task installOmni, "Install the omni-lang package and the omni compiler":
+  #Build and install the omni compiler executable. This will also trigger the "before install" to install omni_lang
+  exec "nimble install --passNim:-d:release --passNim:-d:danger --passNim:--opt:speed"
+
+#Needed for the walkDir function
+import os
+
+proc runTestsInFolder(path : string, count : var int) : void =
+  for kind, file in walkDir(path):
+    let splitFile = file.splitFile
+    if kind == pcFile:
+      if splitFile.ext == ".nim":
+        exec ("nim c -r " & file)
+    elif kind == pcDir:
+      if count == 0 and splitFile.name == "utils": #skip top level "utils" folder
+        continue
+      runTestsInFolder(file, count)
+
+task test, "Execute all tests":
+  let testsDir = getPkgDir() & "/tests"
+  var count = 0
+  runTestsInFolder(testsDir, count)
+
+#Install the omni compiler executable before running the tests on CI 
 before testCI:
-   exec "nimble install" 
+  exec "nimble install" 
 
 task testCI, "Run tests on CI: it installs omni / omni_lang first":
   exec "nimble test"
@@ -56,9 +80,3 @@ task testCI, "Run tests on CI: it installs omni / omni_lang first":
 #before/after are BOTH needed for any of the two to work
 after testCI:
   discard
-
-#As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
-task installOmni, "Install the omni-lang package and the omni compiler":
-    #Build and install the omni compiler executable. This will also trigger the "before install" to install omni_lang
-    exec "nimble install --passNim:-d:release --passNim:-d:danger --passNim:--opt:speed"
-

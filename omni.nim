@@ -30,7 +30,7 @@ const
 #Path to omni_lang
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
-#Extension for static lib (should be .lib for Windows)
+#Extension for static lib (should be .lib for Windows, but .a works aswell)
 const static_lib_extension = ".a"
 
 #Extensions for shared lib
