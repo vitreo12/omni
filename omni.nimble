@@ -63,6 +63,7 @@ proc runTestsInFolder(path : string, count : var int) : void =
     elif kind == pcDir:
       if count == 0 and splitFile.name == "utils": #skip top level "utils" folder
         continue
+      count += 1
       runTestsInFolder(file, count)
 
 task test, "Execute all tests":
