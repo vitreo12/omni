@@ -23,9 +23,19 @@
 import unittest
 import ../../omni_lang/omni_lang
 import ../utils/parser_utils
+#import macros
+
+#Need to be here as "def" exports
+let def_test1 = macroToNimCodeString:
+  def test1():
+    a = 10
+    b = 0.0
+
+let test_parser = omniToNim:
+  a = 10
+  b = 0.0
 
 suite "parser":
-  test "test parser":
-    let testCode = macroToNimCodeString:
-      let a = 10
-    check (testCode == "let a = 10")
+  test "variable declarations":    
+    #echo def_test1 
+    echo test_parser
