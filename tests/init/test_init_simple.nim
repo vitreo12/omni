@@ -34,7 +34,7 @@ init:
   CONST1 = 4.0
   CONST2 = 5
 
-suite "Functions and Templates exist":
+suite "init: functions and templates exist":
   test "perform_build_names_table":
     check (declared(perform_build_names_table))
 
@@ -74,7 +74,7 @@ suite "Functions and Templates exist":
   test "Omni_UGenAllocInit64 exists":
     check (declared(Omni_UGenAllocInit64))
 
-suite "Omni_UGenAlloc + Omni_UGenInit64":
+suite "init: Omni_UGenAlloc + Omni_UGenInit64":
   #After check of Omni_UGenAlloc, allocate one dummy ugen
   let 
     ugen_ptr_64 = Omni_UGenAlloc()
@@ -119,7 +119,7 @@ suite "Omni_UGenAlloc + Omni_UGenInit64":
   #How to test Omni_UGenFree ?
   Omni_UGenFree(ugen_ptr_64)
 
-suite "Omni_UGenAlloc + Omni_UGenInit32":
+suite "init: Omni_UGenAlloc + Omni_UGenInit32":
   #After check of Omni_UGenAlloc, allocate one dummy ugen
   let 
     ugen_ptr_32 = Omni_UGenAlloc()
@@ -164,7 +164,7 @@ suite "Omni_UGenAlloc + Omni_UGenInit32":
   #How to test Omni_UGenFree ?
   Omni_UGenFree(ugen_ptr_32)
 
-suite "Omni_UGenAllocInit64":
+suite "init: Omni_UGenAllocInit64":
   
   alloc_ins_Nim(1)
   
@@ -197,7 +197,7 @@ suite "Omni_UGenAllocInit64":
   #How to test Omni_UGenFree ?
   Omni_UGenFree(ugen_ptr_64)
 
-suite "Omni_UGenAllocInit32":
+suite "init: Omni_UGenAllocInit32":
   
   alloc_ins_Nim(1)
   

@@ -31,7 +31,7 @@ outs 5:
   "mul"
   "add"
 
-suite "outs_names":
+suite "outs: names":
   #Check num of inputs
   test "number of outputs":
     check (omni_outputs == 5)

@@ -54,22 +54,20 @@ task installOmni, "Install the omni-lang package and the omni compiler":
 #Needed for the walkDir function
 import os
 
-proc runTestsInFolder(path : string, count : var int) : void =
+proc runTestsInFolder(path : string, top_level : bool = false) : void =
   for kind, file in walkDir(path):
     let splitFile = file.splitFile
     if kind == pcFile:
       if splitFile.ext == ".nim":
         exec ("nim c -r " & file)
     elif kind == pcDir:
-      if count == 0 and splitFile.name == "utils": #skip top level "utils" folder
+      if top_level and splitFile.name == "utils": #skip top level "utils" folder
         continue
-      count += 1
-      runTestsInFolder(file, count)
+      runTestsInFolder(file, false)
 
 task test, "Execute all tests":
   let testsDir = getPkgDir() & "/tests"
-  var count = 0
-  runTestsInFolder(testsDir, count)
+  runTestsInFolder(testsDir, true)
 
 #Install the omni compiler executable before running the tests on CI 
 before testCI:
