@@ -400,7 +400,9 @@ proc parse_untyped_assign(statement : NimNode, level : var int, is_constructor_b
         
         if is_command_or_ident:
             if not is_out_variable:
-                if is_constructor_block or is_def_block:
+                #constructor / def
+                if is_perform_block.not and is_sample_block.not:
+                #if is_constructor_block or is_def_block:
                     parsed_statement = nnkStmtList.newTree(
                         nnkWhenStmt.newTree(
                             nnkElifBranch.newTree(

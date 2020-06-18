@@ -29,7 +29,7 @@ template alloc_ins_Nim*(n : int) : untyped =
     ins_Nim_64 {.inject.} = cast[CDoublePtrPtr](ins_ptr_64_void)
     ins_Nim_32 {.inject.} = cast[CFloatPtrPtr](ins_ptr_32_void)
 
-    test_bufsize {.inject.} = 512
+    test_bufsize {.inject.} = 1 
     test_samplerate {.inject.} = 48000.0
 
   for i in 0..(n-1):

@@ -20,8 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import ../../omni_lang/omni_lang
 import macros
 
 #like expandMacros, but just return the string instead of printing
-macro macroToNimCodeString*(body: typed): untyped =
+macro macroToNimCodeString*(body: typed) : untyped =
   result = body.toStrLit
+
+template omniToNim*(body : untyped) : string =
+  macroToNimCodeString:
+    parse_block_untyped(body) 
