@@ -26,7 +26,7 @@ import ../../../omni_lang/omni_lang
 #Have the call here because it can export stuff, needs to be top level
 outs 5
 
-suite "outs_number":
+suite "outs: number":
   #Check num of inputs
   test "number of outputs":
     check (omni_outputs == 5)

@@ -20,8 +20,43 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import ../../omni_lang/omni_lang
 import macros
 
 #like expandMacros, but just return the string instead of printing
-macro macroToNimCodeString*(body: typed): untyped =
+macro macroToNimCodeString*(body: typed) : untyped =
   result = body.toStrLit
+
+#return a block of nim code as a parsed nim string
+template omniToNimString*(body : untyped) : string =
+  macroToNimCodeString:
+    parse_block_untyped(body) 
+
+macro compareOmniNim_inner*(omni_parsed_code : typed, nim_code_block : typed) : untyped =
+  let 
+    omni_parsed_code_repr = astGenRepr(omni_parsed_code)
+    nim_code = nim_code_block[1]
+    nim_code_repr = astGenRepr(nim_code) #extract block
+  
+  echo repr omni_parsed_code
+  echo repr nim_code
+  echo ""
+
+  if omni_parsed_code_repr == nim_code_repr:
+    result = newLit(true)
+  else:
+    result = newLit(false)
+
+#compare omni and nim code for equality
+macro compareOmniNim*(code : untyped) : untyped =
+  var 
+    omni_code = code[0][1]
+    
+    #put nim_code in block (in order not repeat declarations)
+    nim_code = nnkBlockStmt.newTree(
+      newEmptyNode(),
+      code[1][1]
+    )
+
+  return quote do:
+    compareOmniNim_inner(parse_block_untyped(`omni_code`), `nim_code`)

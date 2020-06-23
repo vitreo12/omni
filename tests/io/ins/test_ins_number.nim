@@ -27,7 +27,7 @@ import ../../utils/ins_utils
 #Have the call here because it can export stuff, needs to be top level
 ins 5
 
-suite "ins_number":
+suite "ins: number":
   alloc_ins_Nim(5)
 
   #Check num of inputs
