@@ -1013,6 +1013,9 @@ proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_bloc
         infix_symbol = parsed_statement[0]
         infix_str    = infix_symbol.strVal()
 
+    #This is necessary (even if function is defined properly in omni_math) because
+    #it will work also for all the standard nim cases that will not trigger the specific `/` implementation,
+    #making all division / modulus operations safe
     if infix_str == "/" or infix_str == "div":
         parsed_statement = nnkCall.newTree(
             newIdentNode("safediv"),
