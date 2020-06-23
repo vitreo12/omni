@@ -21,13 +21,18 @@
 # SOFTWARE.
 
 import unittest
-import ../../omni_lang/omni_lang
-import ../utils/ins_utils
-#import macros
+import ../../../omni_lang/omni_lang
+import ../../utils/ins_utils
 
-suite "ins_number":
-  #expandMacros:
-  ins 5
+#Have the call here because it can export stuff, needs to be top level
+ins 5:
+  {440}
+  {0.1}
+  {0.2}
+  {0.3}
+  {0.4}
+
+suite "ins: defaults":
   alloc_ins_Nim(5)
 
   #Check num of inputs
@@ -36,13 +41,13 @@ suite "ins_number":
 
   #Check empty name
   test "input names":
-    check (omni_input_names_const == "__NO_PARAM_NAMES__")
-    check (omni_input_names_let == "__NO_PARAM_NAMES__") 
+    check (omni_input_names_const == "in1,in2,in3,in4,in5")
+    check (omni_input_names_let == "in1,in2,in3,in4,in5") 
 
   #Check default values
   test "default values":
-    check (omni_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
-    check (omni_defaults_let   == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
+    check (omni_defaults_const == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
+    check (omni_defaults_let   == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
 
   #Check that the templates exist
   test "templates exist":
@@ -66,14 +71,14 @@ suite "ins_number":
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenInputs() == int32(5))
-    check (cast[cstring](Omni_UGenInputNames()) == "__NO_PARAM_NAMES__")
+    check (cast[cstring](Omni_UGenInputNames()) == "in1,in2,in3,in4,in5")
     
     let defaultsArray = cast[ptr UncheckedArray[cfloat]](Omni_UGenDefaults())
     check (defaultsArray != nil)
-    check (defaultsArray[0] == 0.0'f32)
-    check (defaultsArray[1] == 0.0'f32)
-    check (defaultsArray[2] == 0.0'f32)
-    check (defaultsArray[3] == 0.0'f32)
-    check (defaultsArray[4] == 0.0'f32)
+    check (defaultsArray[0] == 440.0'f32)
+    check (defaultsArray[1] == 0.1'f32)
+    check (defaultsArray[2] == 0.2'f32)
+    check (defaultsArray[3] == 0.3'f32)
+    check (defaultsArray[4] == 0.4'f32)
 
   dealloc_ins_Nim(5)
