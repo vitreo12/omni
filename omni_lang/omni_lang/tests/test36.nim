@@ -37,11 +37,14 @@ expandMacros:
 
         #gamma = Gamma(h)
 
+        p = 20
         for index in 0..10:
             p = 10
 
         a = 10
 
-sample:
-    a = 12
-    out1 = a
+    sample:
+        a = 12.0
+        for i in 0..9:
+            a = i * 01.23123
+        out1 = a
