@@ -30,9 +30,10 @@ init:
   a float
   b = 1.0
   c = 2 
-  a = 3.0
-  CONST1 = 4.0
-  CONST2 = 5
+  d int = 3
+  a = 4.0
+  CONST1 = 5.0
+  CONST2 int = 6
 
 suite "init: functions and templates exist":
   test "perform_build_names_table":
@@ -51,7 +52,8 @@ suite "init: functions and templates exist":
     check (declared(UGen))
     check (typeof(UGen.a_var) is float)
     check (typeof(UGen.b_var) is float)
-    check (typeof(UGen.c_var) is int)
+    check (typeof(UGen.c_var) is float)
+    check (typeof(UGen.d_var) is int)
     check (typeof(UGen.CONST1_let) is float)
     check (typeof(UGen.CONST2_let) is int)
     check (typeof(UGen.is_initialized_let) is bool)
@@ -107,11 +109,12 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
     check (ugen_64.ugen_auto_buffer_let != nil)
 
   test "ugen's field values":
-    check (ugen_64.a_var == 3.0)
+    check (ugen_64.a_var == 4.0)
     check (ugen_64.b_var == 1.0)
-    check (ugen_64.c_var == 2)
-    check (ugen_64.CONST1_let == 4.0)
-    check (ugen_64.CONST2_let == 5)
+    check (ugen_64.c_var == 2.0)
+    check (ugen_64.d_var == 3)
+    check (ugen_64.CONST1_let == 5.0)
+    check (ugen_64.CONST2_let == 6)
     check (ugen_64.samplerate_let == test_samplerate)
 
   dealloc_ins_Nim(1)
@@ -152,11 +155,12 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit32":
     check (ugen_32.ugen_auto_buffer_let != nil)
 
   test "ugen's field values":
-    check (ugen_32.a_var == 3.0)
+    check (ugen_32.a_var == 4.0)
     check (ugen_32.b_var == 1.0)
-    check (ugen_32.c_var == 2)
-    check (ugen_32.CONST1_let == 4.0)
-    check (ugen_32.CONST2_let == 5)
+    check (ugen_32.c_var == 2.0)
+    check (ugen_32.d_var == 3)
+    check (ugen_32.CONST1_let == 5.0)
+    check (ugen_32.CONST2_let == 6)
     check (ugen_32.samplerate_let == test_samplerate)
 
   dealloc_ins_Nim(1)
@@ -185,11 +189,12 @@ suite "init: Omni_UGenAllocInit64":
     check (ugen_64.ugen_auto_buffer_let != nil)
 
   test "ugen's field values":
-    check (ugen_64.a_var == 3.0)
+    check (ugen_64.a_var == 4.0)
     check (ugen_64.b_var == 1.0)
-    check (ugen_64.c_var == 2)
-    check (ugen_64.CONST1_let == 4.0)
-    check (ugen_64.CONST2_let == 5)
+    check (ugen_64.c_var == 2.0)
+    check (ugen_64.d_var == 3)
+    check (ugen_64.CONST1_let == 5.0)
+    check (ugen_64.CONST2_let == 6)
     check (ugen_64.samplerate_let == test_samplerate)
 
   dealloc_ins_Nim(1)
@@ -218,11 +223,12 @@ suite "init: Omni_UGenAllocInit32":
     check (ugen_32.ugen_auto_buffer_let != nil)
 
   test "ugen's field values":
-    check (ugen_32.a_var == 3.0)
+    check (ugen_32.a_var == 4.0)
     check (ugen_32.b_var == 1.0)
-    check (ugen_32.c_var == 2)
-    check (ugen_32.CONST1_let == 4.0)
-    check (ugen_32.CONST2_let == 5)
+    check (ugen_32.c_var == 2.0)
+    check (ugen_32.d_var == 3)
+    check (ugen_32.CONST1_let == 5.0)
+    check (ugen_32.CONST2_let == 6)
     check (ugen_32.samplerate_let == test_samplerate)
 
   dealloc_ins_Nim(1)

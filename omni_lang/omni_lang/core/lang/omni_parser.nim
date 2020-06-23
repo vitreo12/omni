@@ -385,7 +385,18 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
         
         #look for out1.. etc to perform typeof
         var is_out_variable = false
-        
+
+        #Transform a = 0 into a = 0.0.
+        #This only works for simple variable declarations with integer literals, when no type is specified:
+        #a int = 0 will remain as such, as assgn_left[1] would be int. In a = 0, assgn_left[1] is emptynode.
+        if assgn_left.len == 3:
+            let 
+                assgn_left_type = assgn_left[1]
+                assgn_left_val  = assgn_left[2]
+            if assgn_left_type.kind == nnkEmpty:
+                if assgn_left_val.kind == nnkIntLit:
+                    assgn_left[2] = newFloatLitNode(float(assgn_left_val.intVal()))
+
         if(var_name_str.startsWith("out")):
             #out1.. / out10..
             if var_name_str.len == 4:

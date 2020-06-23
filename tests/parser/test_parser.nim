@@ -47,14 +47,23 @@ suite "parser: variable declarations":
         c float = 2.0
         d float
         d = 3
-        CONST = 4
+        e int = 4
+        f int
+        f = 5
+        CONST = 6
+        CONST_INT int = 7
+        
       nim:
-        var a = 0
+        var a = 0.0
         var b = 1.0
         var c : float = 2.0
         var d : float
         d = typeof(d)(3)
-        let CONST = 4
+        var e : int = 4
+        var f : int
+        f = typeof(f)(5)
+        let CONST = 6.0
+        let CONST_INT : int = 7
 
     check test
 
