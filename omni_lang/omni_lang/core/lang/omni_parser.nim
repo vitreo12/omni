@@ -386,17 +386,6 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
         #look for out1.. etc to perform typeof
         var is_out_variable = false
 
-        #Transform a = 0 into a = 0.0.
-        #This only works for simple variable declarations with integer literals, when no type is specified:
-        #a int = 0 will remain as such, as assgn_left[1] would be int. In a = 0, assgn_left[1] is emptynode.
-        if assgn_left.len == 3:
-            let 
-                assgn_left_type = assgn_left[1]
-                assgn_left_val  = assgn_left[2]
-            if assgn_left_type.kind == nnkEmpty:
-                if assgn_left_val.kind == nnkIntLit:
-                    assgn_left[2] = newFloatLitNode(float(assgn_left_val.intVal()))
-
         if(var_name_str.startsWith("out")):
             #out1.. / out10..
             if var_name_str.len == 4:
@@ -964,19 +953,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     #Check if it's a valid type
     checkValidType(var_type, var_name)
 
-    #Look for consts: capital letters.
-    if var_name.isStrUpperAscii(true):
-        let old_statement_body = parsed_statement[0]
-
-        #Create new let statement
-        let new_let_statement = nnkLetSection.newTree(
-            old_statement_body
-        )
-
-        #Replace the entry in the untyped block, which has yet to be semantically evaluated.
-        parsed_statement = new_let_statement
-
-    #Look for ptr types, structs
+    #Look for structs
     if var_type.kind == nnkPtrTy:
         #Found a struct!
         if var_type.isStruct():
@@ -999,6 +976,51 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
             #Replace the entry in the untyped block, which has yet to be semantically evaluated.
             parsed_statement = new_let_statement
+    
+    #Standard var declarations. Declare as float if not specified in the var decl:
+    # a = 0 -> a float = float(0)
+    # a int = 0 -> a int = 0
+    # a = int(0) -> a = float(int(0))
+    else:
+        var is_const = false
+
+        #Look for consts: capital letters.
+        if var_name.isStrUpperAscii(true):
+            let old_statement_body = parsed_statement[0]
+
+            #Create new let statement
+            let new_let_statement = nnkLetSection.newTree(
+                old_statement_body
+            )
+
+            #Replace the entry in the untyped block, which has yet to be semantically evaluated.
+            parsed_statement = new_let_statement
+
+            is_const = true
+
+        #Don't convert consts, keep them as they are declared
+        if not is_const:
+            #Keep boleans as they are
+            var is_bool = false
+            if var_type.kind == nnkSym:
+                if var_type.strVal() == "bool":
+                    is_bool = true
+
+            let 
+                var_decl_type = parsed_statement[0][1]
+                var_content   = parsed_statement[0][2]
+
+            if var_decl_type.kind == nnkEmpty and is_bool.not:
+                parsed_statement = nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                        var_symbol,
+                        newIdentNode("float"),
+                        nnkCall.newTree(
+                            newIdentNode("float"),
+                            var_content
+                        )
+                    )
+                )
 
     return parsed_statement
 
@@ -1257,6 +1279,8 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
 
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:
+
+        #error repr result
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.

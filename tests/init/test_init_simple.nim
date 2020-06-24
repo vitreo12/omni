@@ -33,7 +33,7 @@ init:
   d int = 3
   a = 4.0
   CONST1 = 5.0
-  CONST2 int = 6
+  CONST2 = 6
 
 suite "init: functions and templates exist":
   test "perform_build_names_table":

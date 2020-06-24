@@ -140,6 +140,7 @@ proc `~`*[T : SomeInteger, Y : SomeInteger](a : T) : auto {.inline.} =
 # Iterators #
 # ========= #
 
+#Should these be all ints, instead of T(x) ???
 iterator items*[T : SomeFloat, Y : SomeInteger](s : HSlice[T, Y]) : auto {.inline.} =
     for x in int(s.a) .. (s.b):
         yield T(x)
