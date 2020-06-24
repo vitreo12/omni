@@ -37,23 +37,36 @@ const
 # Operators #
 # ========= #
 
-proc `+`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
-    when Y is SomeFloat:
-        return Y(a) + b
-    else:
-        return a + T(b)
+#Generate operator functions that work for any number type
+template omniOperatorFunction(func_name : untyped) : untyped {.dirty.} =
+    proc `func_name`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+        when Y is SomeFloat:
+            return `func_name`(Y(a), b)
+        else:
+            return `func_name`(a, T(b))
 
-proc `-`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
-    when Y is SomeFloat:
-        return Y(a) - b
-    else:
-        return a - T(b)
+template omniOperatorFunctionNoReturn(func_name : untyped) : untyped {.dirty.} =
+    #Y as float is already implemented in omni
+    proc `func_name`*[T : SomeNumber, Y : SomeInteger](a : var T, b : Y) : auto {.inline.} =
+        `func_name`(a, T(b))
 
-proc `*`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
-    when Y is SomeFloat:
-        return Y(a) * b
-    else:
-        return a * T(b)
+# != / >= / > are declared as templates: 
+# It's enough to declare for the == / <= / < counterparts, or it will error out!
+omniOperatorFunction(`==`)
+omniOperatorFunction(`<`)
+omniOperatorFunction(`<=`)
+
+omniOperatorFunction(`+`)
+omniOperatorFunction(`-`)
+omniOperatorFunction(`*`)
+
+omniOperatorFunction(`min`)
+omniOperatorFunction(`max`)
+
+#What about /= and %= ?
+omniOperatorFunctionNoReturn(`+=`)
+omniOperatorFunctionNoReturn(`-=`)
+omniOperatorFunctionNoReturn(`*=`)
 
 # ================= #
 # safemod / safediv #
@@ -122,6 +135,42 @@ proc `>>`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
 
 proc `~`*[T : SomeInteger, Y : SomeInteger](a : T) : auto {.inline.} =
     return not a
+
+# ========= #
+# Iterators #
+# ========= #
+
+#Should these be all ints, instead of T(x) ???
+iterator items*[T : SomeFloat, Y : SomeInteger](s : HSlice[T, Y]) : auto {.inline.} =
+    for x in int(s.a) .. (s.b):
+        yield T(x)
+
+iterator items*[T : SomeInteger, Y : SomeFloat](s : HSlice[T, Y]) : auto {.inline.} =
+    for x in (s.a) .. int(s.b):
+        yield T(x)
+
+iterator items*[T : SomeFloat, Y : SomeFloat](s : HSlice[T, Y]) : auto {.inline.} =
+    for x in int(s.a) .. int(s.b):
+        yield T(x)
+
+#Generics don't work here
+iterator `..`*(a : SomeFloat, b : SomeFloat) : auto {.inline.} =
+    var res = int(a)
+    while res <= int(b):
+        yield typeof(a)(res)
+        inc(res)
+
+iterator `..`*(a : SomeFloat, b : SomeInteger) : auto {.inline.} =
+    var res = int(a)
+    while res <= int(b):
+        yield typeof(a)(res)
+        inc(res)
+
+iterator `..`*(a : SomeInteger, b : SomeFloat) : auto {.inline.} =
+    var res = int(a)
+    while res <= int(b):
+        yield typeof(a)(res)
+        inc(res)
 
 # ================= #
 # Simple noise func #

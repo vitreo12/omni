@@ -14,7 +14,7 @@ init:
     INVERSE_SAMPLERATE_DIV2 = INVERSE_SAMPLERATE / 2.0
 
 sample:
-    filter_type = int(in2)
+    filter_type = in2
     g = in3
     r = 1.0 - in4
 
