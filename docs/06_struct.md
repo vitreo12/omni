@@ -66,9 +66,8 @@ def setValuesAlternative(vec, x, y, z):
     vec.z = z
 
 init:
-    #If generics are not specified, they are 
-    #defaulted to 'signal' (which is identical to 'float')
-    myVec1 = Vector() # == Vector[signal, signal, signal]
+    #If generics are not specified, they are defaulted to float
+    myVec1 = Vector() # == Vector[float, float, float]()
     myVec2 = Vector[int, int, int]()
     myVec3 = Vector[float, int, float]()
 

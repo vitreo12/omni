@@ -25,8 +25,7 @@ ins 2:
 outs: 1
 
 init:
-    #One of the ins has to be used in order for omni to point 
-    #at the specified external buffer.
+    #One of the ins has to be used in order for omni to point at the specified external buffer.
     #Here it's been set to the first input, "buffer".
     buffer = Buffer(1)
     phase = 0.0

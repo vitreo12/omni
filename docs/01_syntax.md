@@ -14,12 +14,12 @@ ins:  1
 outs: 1
 
 init:
-    phase = 0.0
+    phase = 0
 
 sample:
     freq_incr = in1 / samplerate
     out1 = sin(phase * TWOPI)
-    phase = (phase + freq_incr) % 1.0
+    phase = (phase + freq_incr) % 1
 ```
 
 In the previous oscillator example, the `ins` and `outs` blocks define the number of inputs and outputs of the algorithm. The `init` block defines the initialization of variables whose state is store and preserved in the `sample` block, which implement the algorithm sample by sample. The `in1` and `out1` variables are dynamically created by omni to represent the input and output values at the current sample, as described by the `ins` and `outs` statements.
@@ -38,6 +38,15 @@ As you might have noticed, declaration of variables in omni doesn't need any key
 ```nim
 init:
     phase float = 0.0
+```
+
+For number types, if not specified otherwise, all variables are declared as `float`. In this regards, `int` types are considered "second class citizens", and need to be explicitly declared.
+
+```nim
+init:
+    phase      = 0      #float
+    phase2 int = 0      #int
+    test       = true   #bool, booleans are not affected by this mechanism
 ```
 
 All variables of standard types, excluding the ones assigned to an instantiation of a struct (more on them later), are modifiable. To declare a non-modifiable variable, declare it with all upper cases:

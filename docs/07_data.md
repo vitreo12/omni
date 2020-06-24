@@ -54,9 +54,7 @@ ins  3
 outs 1
 
 struct Vector:
-    x sig
-    y sig
-    z sig
+    x; y; z
 
 init:
     dataLength = 100
@@ -68,7 +66,7 @@ init:
     for vector in data:
         vector = Vector()
 
-    #Alternatively, one can defined an index for the for-loop in Datas like this:
+    #Alternatively, one can define an index for the loop like this:
     for i, vector in data:
         vector = Vector(i, i+1, i+2)
 

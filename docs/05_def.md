@@ -19,15 +19,16 @@ sample:
 The types of the arguments and the return type of a `def` are inferred by the calling context. This means that the `def mySum` can be called on whatever type that supports the `+` operator.
 
 ```nim
-x = mySum(1, 2)     #returns an int
-y = mySum(1.0, 2.0) #returns a float
-z = mySum(1, 2.0)   #returns a float
+x      = mySum(1, 2)      #returns an int, but x will change it to float
+x2 int = mySum(1, 2)      #this will preserve the int
+y      = mySum(1.0, 2.0)  #returns a float
+z      = mySum(1, 2.0)    #returns a float
 ```
 
 Types can be inforced by appending the type to the argument name.
 
 ```nim
-def myIntSum(a int, b int):
+def myIntSum(a float, b float):
     return a + b
 ```
 
@@ -48,21 +49,21 @@ def mySum(a = 0, b = 0):
 The return type can also be enforced with either of these two syntaxes:
 
 ```nim
-def mySum(a = 0, b = 0) int:
+def mySum(a = 0, b = 0) float:
     return a + b
 
-def myOtherSum(a = 0, b = 0) -> int:
+def myOtherSum(a = 0, b = 0) -> float:
     return a + b
 ```
 
-Return type can of course be a generic type:
+Return type can be a generic type, inferred from the types of the arguments:
 
 ```nim
 def mySum[T, Y](a T = 0, b Y = 0) T:
     return a + b
 ```
 
-When passing `structs` (more on them in the next section) to a `def`, they are passed by reference, meaning that they can be accessed and their values can be modified.
+When passing `structs` (more on them in the next section) to a `def`, they are passed by reference, meaning that they can be accessed and their values can be modified in place.
 
 ```nim
 struct Vector:
