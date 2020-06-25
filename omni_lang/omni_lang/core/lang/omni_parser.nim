@@ -849,11 +849,25 @@ proc reconstruct_modules(old_statement_body : NimNode) : void =
             if old_statement_body.kind != nnkDotExpr:
                 var type_impl = statement.getTypeImpl
                 if type_impl.kind == nnkProcTy:
-                    error repr type_impl
-                    old_statement_body[0] = nnkDotExpr.newTree(
-                        old_statement_body[0].owner,
-                        old_statement_body[0]
-                    )
+                    let statement_str_val = statement.strVal()
+        
+                    #structs
+                    if statement_str_val == "struct_new_inner":
+                        let struct_entry = old_statement_body[1]
+                        if struct_entry.kind == nnkSym:
+                            old_statement_body[1] = nnkDotExpr.newTree(
+                                struct_entry.owner,
+                                struct_entry
+                            )
+
+                    #defs
+                    elif statement_str_val.endsWith("_def_inner"):
+                        let def_entry = old_statement_body[0]
+                        if def_entry.kind == nnkSym:
+                            old_statement_body[0] = nnkDotExpr.newTree(
+                                def_entry.owner,
+                                def_entry
+                            )
             
         reconstruct_modules(statement)
 
@@ -1009,14 +1023,12 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
             
             reconstruct_modules(old_statement_body)
 
-            error repr old_statement_body
+            #error repr old_statement_body
 
             #All good, create new let statement
             let new_let_statement = nnkLetSection.newTree(
                 old_statement_body
             )
-
-            error "ah"
 
             #Replace the entry in the untyped block, which has yet to be semantically evaluated.
             parsed_statement = new_let_statement

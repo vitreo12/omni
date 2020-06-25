@@ -7,5 +7,5 @@ struct Ah:
 
 expandMacros:
     init:
-        #test45Import1 = test45Import1.Something(0, 1, 2)
+        a = test45Import1.Something(0, 1, 2)
         print(test45Import1.someFunc())
