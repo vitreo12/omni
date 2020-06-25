@@ -843,6 +843,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 # Stage 2: Typed code generation #
 # ============================== #
 
+#Recursively add dotExprs where needed in struct / defs
 proc reconstruct_modules(old_statement_body : NimNode) : void =
     for index, statement in old_statement_body.pairs():
         if statement.kind == nnkSym:
@@ -850,7 +851,6 @@ proc reconstruct_modules(old_statement_body : NimNode) : void =
                 var type_impl = statement.getTypeImpl
                 if type_impl.kind == nnkProcTy:
                     let statement_str_val = statement.strVal()
-        
                     #structs
                     if statement_str_val == "struct_new_inner":
                         let struct_entry = old_statement_body[1]
@@ -859,7 +859,6 @@ proc reconstruct_modules(old_statement_body : NimNode) : void =
                                 struct_entry.owner,
                                 struct_entry
                             )
-
                     #defs
                     elif statement_str_val.endsWith("_def_inner"):
                         let def_entry = old_statement_body[0]
@@ -868,7 +867,6 @@ proc reconstruct_modules(old_statement_body : NimNode) : void =
                                 def_entry.owner,
                                 def_entry
                             )
-            
         reconstruct_modules(statement)
 
 #Forward declaration
