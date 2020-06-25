@@ -41,7 +41,7 @@ Consider the case where you want to implement an oscillator engine with multiple
 struct Sine:
     phase #no types specified for struct field, meaning it's defaulted to be `float`
     
-def perform(sine Sine, freq_in = 440.0):
+def process(sine Sine, freq_in = 440.0):
     freq_increment = freq_in / samplerate
     out_value = sin(sine.phase * 2 * PI)
     sine.phase = (sine.phase + freq_increment) % 1.0
@@ -55,7 +55,7 @@ struct Saw:
     phase #no types specified for struct fields, meaning they're defaulted to be `float`
     prev_value
 
-def perform(saw Saw, freq_in = 440.0):
+def process(saw Saw, freq_in = 440.0):
     freq = freq_in
     if freq == 0.0:
         freq = 0.01
@@ -96,10 +96,10 @@ init:
     saw  = Saw()
 
 sample:
-    if in1 < 1.0:
-        out1 = sine.perform(in1)
+    if in1 < 1:
+        out1 = sine.process(in1)
     else:
-        out1 = saw.perform(in1)
+        out1 = saw.process(in1)
 ```
 
 <br>
