@@ -108,39 +108,64 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         proc_call_ident = parsed_statement[0]
         proc_call_ident_kind = proc_call_ident.kind
 
+        is_module_dot_expr = false
+        module_name : NimNode
+
     #Dot expr would be Data.new() or something.perform() and Data[float].new() etc.
     if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
-        proc_call_ident = proc_call_ident[0]
-
-        #Only allow .new() methods to be run on structs, no other one is supported.
-        #This doesn't work as of now, as it also would not allow to run functions with dot (like, buffer.read())
-        #[
+        #Check for module decls
         if proc_call_ident_kind == nnkDotExpr:
-            var dot_expr_function = parsed_statement[0][1]
-            if dot_expr_function.kind == nnkSym or dot_expr_function.kind == nnkIdent:
-                let dot_expr_function_str = dot_expr_function.strVal()
-                if dot_expr_function_str != "new":
-                    error("Undefined function '" & $dot_expr_function_str & "' for '" & (repr(proc_call_ident)) & "'")
-        ]#
-
-        proc_call_ident_kind = proc_call_ident.kind
+            module_name = proc_call_ident[0]
+            proc_call_ident = proc_call_ident[1]
+            proc_call_ident_kind = proc_call_ident.kind
+            is_module_dot_expr = true
         
-        #This happens for Data[float].new
-        if proc_call_ident_kind == nnkBracketExpr:
+        #Check for Data[float].new
+        else:
             proc_call_ident = proc_call_ident[0]
             proc_call_ident_kind = proc_call_ident.kind
+            
+            #This happens for Data[float].new
+            if proc_call_ident_kind == nnkBracketExpr:
+                proc_call_ident = proc_call_ident[0]
+                proc_call_ident_kind = proc_call_ident.kind
     
     if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
         return statement
 
-    var proc_call_ident_str = proc_call_ident.strVal()
+    var 
+        proc_call_ident_str = proc_call_ident.strVal()
+        proc_call_ident_obj : NimNode
 
-    let proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+    var 
+        proc_new_call : NimNode
+        module_dot_expr : NimNode
 
-    var proc_new_call =  nnkCall.newTree(
-        newIdentNode("struct_new"),
-        proc_call_ident
-    )
+    #Normal case: Something()
+    if not is_module_dot_expr:
+        proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+
+        proc_new_call =  nnkCall.newTree(
+            newIdentNode("struct_new"),
+            proc_call_ident
+        )
+
+    #module case: Module.Something()
+    else:
+        module_dot_expr = nnkDotExpr.newTree(
+            module_name,
+            proc_call_ident
+        )
+
+        proc_call_ident_obj = nnkDotExpr.newTree(
+            module_name,
+            newIdentNode(proc_call_ident_str & "_struct_inner")
+        )
+
+        proc_new_call =  nnkCall.newTree(
+            newIdentNode("struct_new"),
+            module_dot_expr
+        )
 
     var data_bracket_expr = false
 
@@ -203,8 +228,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 data_generics
             )
         )
-
-    #error repr proc_new_call
 
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
@@ -820,6 +843,20 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 # Stage 2: Typed code generation #
 # ============================== #
 
+proc reconstruct_modules(old_statement_body : NimNode) : void =
+    for index, statement in old_statement_body.pairs():
+        if statement.kind == nnkSym:
+            if old_statement_body.kind != nnkDotExpr:
+                var type_impl = statement.getTypeImpl
+                if type_impl.kind == nnkProcTy:
+                    echo astGenRepr old_statement_body
+                    old_statement_body[0] = nnkDotExpr.newTree(
+                        old_statement_body[0].owner,
+                        old_statement_body[0]
+                    )
+            
+        reconstruct_modules(statement)
+
 #Forward declaration
 proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.}
 
@@ -839,7 +876,13 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
 
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block)
 
-    let function_call = parsed_statement[0]
+    reconstruct_modules(parsed_statement)
+
+    var function_call = parsed_statement[0]
+
+    #MODULE
+    if function_call.kind == nnkDotExpr:
+        function_call = function_call[1]
 
     if function_call.kind == nnkSym or function_call.kind == nnkIdent:
         
@@ -934,7 +977,6 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
 
     return parsed_statement
 
-
 #Parse the var section
 proc parse_typed_var_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     #print_parse_typed_stage(statement, level)
@@ -944,7 +986,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
     let 
         var_symbol = parsed_statement[0][0]
-        var_type   = var_symbol.getTypeInst().getTypeImpl()
+        var_type   = var_symbol.getTypeInst().getTypeImpl() #just getTypeImpl here???
         var_name   = var_symbol.strVal()
 
     if var_name in non_valid_variable_names:
@@ -965,14 +1007,16 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
                     let error_var_name = old_statement_body[0]
                     error("'" & $error_var_name & "': structs must be instantiated on declaration.")
             
-            #If trying to assign a ptr type to any variable.. this won't probably be caught as it's been already parsed from untyped to typed...
-            #if is_perform_block:
-            #    error("`" & $var_name & "`: cannot declare new structs in the `perform` or `sample` blocks.")
+            reconstruct_modules(old_statement_body)
+
+            error repr old_statement_body
 
             #All good, create new let statement
             let new_let_statement = nnkLetSection.newTree(
                 old_statement_body
             )
+
+            error "ah"
 
             #Replace the entry in the untyped block, which has yet to be semantically evaluated.
             parsed_statement = new_let_statement
@@ -1256,7 +1300,6 @@ proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool =
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
 macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
@@ -1269,6 +1312,9 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     let 
         is_constructor_block = is_constructor_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
+
+    if is_constructor_block:
+        echo repr inner_block
 
     parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block)
 

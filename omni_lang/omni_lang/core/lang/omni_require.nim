@@ -22,12 +22,6 @@
 
 import macros, os
 
-#This could perhaps support untyped in the future
-
-#This is what require does: 
-#import "ImportMe.nim" as ImportMe_module
-#Otherwise, module names will cluster the namespace if they have same name as structs, or defs
-
 #require "path1", "path2" AND require: 
 macro require*(path_list : untyped, paths : varargs[typed]) : untyped =
     
@@ -51,20 +45,16 @@ macro require*(path_list : untyped, paths : varargs[typed]) : untyped =
     result = nnkStmtList.newTree()
 
     for path in unified_path_list:
-        let path_without_extension = (path.strVal().splitFile().name)
+        let omni_file_name = path.strVal().splitFile().name
         
         result.add(
             nnkImportStmt.newTree(
-                nnkInfix.newTree(
-                    newIdentNode("as"),
-                    path,
-                    newIdentNode(path_without_extension & "_module")
-                )
+                path
             ),
 
             #Exporting the module is needed in order to access the entries
             #in the struct declared here...
             nnkExportStmt.newTree(
-                newIdentNode(path_without_extension & "_module")
+                newIdentNode(omni_file_name)
             )
         )
