@@ -33,6 +33,12 @@ let non_valid_variable_names {.compileTime.} = [
     "Data", "Buffer", "Delay"
 ]
 
+let inbuilt_structs {.compileTime.} = [
+    "Buffer",
+    "Data",
+    "Delay",
+]
+
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
     var hasAtleastOneAlphaChar = false
@@ -111,25 +117,23 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         is_module_dot_expr = false
         module_name : NimNode
 
-    #Dot expr would be Data.new() or something.perform() and Data[float].new() etc.
-    if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
-        #Check for module decls
-        if proc_call_ident_kind == nnkDotExpr:
-            module_name = proc_call_ident[0]
-            proc_call_ident = proc_call_ident[1]
-            proc_call_ident_kind = proc_call_ident.kind
-            is_module_dot_expr = true
+    #Check for module decls
+    if proc_call_ident_kind == nnkDotExpr:
+        module_name = proc_call_ident[0]
+        proc_call_ident = proc_call_ident[1]
+        proc_call_ident_kind = proc_call_ident.kind
+        is_module_dot_expr = true
+
+    #Check Data constructors.. Data[float](1)
+    elif proc_call_ident_kind == nnkBracketExpr:
+        proc_call_ident = proc_call_ident[0]
+        proc_call_ident_kind = proc_call_ident.kind
         
-        #Check for Data[float].new
-        else:
+        #This happens for Data[float].new
+        if proc_call_ident_kind == nnkBracketExpr:
             proc_call_ident = proc_call_ident[0]
             proc_call_ident_kind = proc_call_ident.kind
             
-            #This happens for Data[float].new
-            if proc_call_ident_kind == nnkBracketExpr:
-                proc_call_ident = proc_call_ident[0]
-                proc_call_ident_kind = proc_call_ident.kind
-    
     if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
         return statement
 
@@ -855,10 +859,14 @@ proc reconstruct_modules(old_statement_body : NimNode) : void =
                     if statement_str_val == "struct_new_inner":
                         let struct_entry = old_statement_body[1]
                         if struct_entry.kind == nnkSym:
-                            old_statement_body[1] = nnkDotExpr.newTree(
-                                struct_entry.owner,
-                                struct_entry
-                            )
+                            let struct_entry_str = struct_entry.strVal()
+                            #Ignore Data / Buffer / Delay (in-built) ... this is a very cheap mechanism,
+                            #find a better one
+                            if not (struct_entry_str in inbuilt_structs):
+                                old_statement_body[1] = nnkDotExpr.newTree(
+                                    struct_entry.owner,
+                                    struct_entry
+                                )
                     #defs
                     elif statement_str_val.endsWith("_def_inner"):
                         let def_entry = old_statement_body[0]
@@ -1323,9 +1331,6 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
         is_constructor_block = is_constructor_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
 
-    if is_constructor_block:
-        echo repr inner_block
-
     parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block)
 
     #Will return an untyped code block!
@@ -1354,5 +1359,8 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
                 result
             )
         )
+
+    if is_constructor_block:
+        error repr result
 
     #error repr result 
