@@ -9,3 +9,6 @@ expandMacros:
     init:
         a = test45Import1.Something(0, 1, 2)
         print(test45Import1.someFunc())
+
+        b = test45Import2.Something()
+        print(test45Import2.someFunc())
