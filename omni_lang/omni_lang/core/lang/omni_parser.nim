@@ -849,7 +849,7 @@ proc reconstruct_modules(old_statement_body : NimNode) : void =
             if old_statement_body.kind != nnkDotExpr:
                 var type_impl = statement.getTypeImpl
                 if type_impl.kind == nnkProcTy:
-                    echo astGenRepr old_statement_body
+                    error repr type_impl
                     old_statement_body[0] = nnkDotExpr.newTree(
                         old_statement_body[0].owner,
                         old_statement_body[0]
