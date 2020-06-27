@@ -1,6 +1,6 @@
 import ../../omni_lang
 
-struct Something:
+struct Test45Import1:
     a; b; c
 
 def someFunc():
