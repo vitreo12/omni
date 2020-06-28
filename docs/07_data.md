@@ -67,7 +67,6 @@ init:
         vector = Vector()
 
     #Alternatively, one can define an index for the loop like this:
-    #NOTE that this syntax does not yet work with multichannel Datas
     for i, vector in data:
         vector = Vector(i, i+1, i+2)
 
