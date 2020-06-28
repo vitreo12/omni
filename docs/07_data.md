@@ -71,7 +71,7 @@ init:
         vector = Vector(i, i+1, i+2)
 
     #One other way to use loops around Data is by using the standard for-loop counting syntax:
-    for i in 0..data.len-1:
+    for i in 0..<data.len:
         data[i] = Vector()
 ```
 

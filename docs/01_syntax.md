@@ -79,7 +79,12 @@ There are two options for loops in omni, using either the `for` or `while` state
 
 ```nim
 init:
-    for i in 0..9:
+    #This counts from 0 to 10, both included
+    for i in 0..10:
+        print(i)
+
+    #This counts from 0 to 9
+    for i in 0..<10:
         print(i)
 
     i = 0
