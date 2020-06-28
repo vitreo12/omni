@@ -809,7 +809,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    #echo repr final_block
+    #error repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -1121,11 +1121,16 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                 index = index1
                 entry = index2
                 data_name = parsed_statement[2][1]
+
+                data_chan = genSym(ident="data_chan")
+                data_index = genSym(ident="data_index") #unique symbol generation
+               
                 bracket_expr = nnkBracketExpr.newTree(
                     data_name,
-                    index
+                    data_chan,
+                    data_index
                 )
-
+                
             let check_data = data_name.getTypeInst()
             var is_data = false
             if check_data.kind == nnkBracketExpr:
@@ -1155,7 +1160,58 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
 
                 for_loop_substitute(for_loop_body, entry, bracket_expr)
 
-                parsed_statement[3] = for_loop_body
+                for_loop_body = nnkStmtList.newTree(
+                    for_loop_body,
+                    nnkInfix.newTree(
+                        newIdentNode("+="),
+                        newIdentNode("i"),
+                        newLit(1)
+                    )
+                )
+
+                parsed_statement = nnkBlockStmt.newTree(
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        nnkVarSection.newTree(
+                            nnkIdentDefs.newTree(
+                                index,
+                                newEmptyNode(),
+                                newLit(0)
+                            )
+                        ),
+                        nnkForStmt.newTree(
+                            data_chan,
+                            nnkInfix.newTree(
+                                newIdentNode(".."),
+                                newLit(0),
+                                nnkInfix.newTree(
+                                    newIdentNode("-"),
+                                    nnkCall.newTree(
+                                        newIdentNode("chans"),
+                                        data_name
+                                    ),
+                                    newLit(1)
+                                )
+                            ),
+                            nnkForStmt.newTree(
+                                data_index,
+                                nnkInfix.newTree(
+                                    newIdentNode(".."),
+                                    newLit(0),
+                                    nnkInfix.newTree(
+                                        newIdentNode("-"),
+                                        nnkCall.newTree(
+                                            newIdentNode("len"),
+                                            data_name
+                                        ),
+                                        newLit(1)
+                                    )
+                                ),
+                                for_loop_body,
+                            )
+                        )
+                    )
+                )
         
     #for entry in data:
     else:
@@ -1163,10 +1219,14 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
             let 
                 entry = index1
                 data_name = parsed_statement[1][1]
-                index = genSym(ident="data_index") #unique symbol generation
+                
+                data_chan = genSym(ident="data_chan")
+                data_index = genSym(ident="data_index") #unique symbol generation
+               
                 bracket_expr = nnkBracketExpr.newTree(
                     data_name,
-                    index
+                    data_chan,
+                    data_index
                 )
             
             let check_data = data_name.getTypeInst()
@@ -1200,25 +1260,38 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                 for_loop_substitute(for_loop_body, entry, bracket_expr)
 
                 parsed_statement = nnkForStmt.newTree(
-                    index,
+                    data_chan,
                     nnkInfix.newTree(
                         newIdentNode(".."),
                         newLit(0),
                         nnkInfix.newTree(
                             newIdentNode("-"),
                             nnkCall.newTree(
-                                newIdentNode("len"),
+                                newIdentNode("chans"),
                                 data_name
                             ),
                             newLit(1)
                         )
                     ),
-                    for_loop_body
+                    nnkForStmt.newTree(
+                        data_index,
+                        nnkInfix.newTree(
+                            newIdentNode(".."),
+                            newLit(0),
+                            nnkInfix.newTree(
+                                newIdentNode("-"),
+                                nnkCall.newTree(
+                                    newIdentNode("len"),
+                                    data_name
+                                ),
+                                newLit(1)
+                            )
+                        ),
+                        for_loop_body
+                    )
                 )
-
-        #error astGenRepr parsed_statement
-
-    #echo repr parsed_statement
+                
+    #error repr parsed_statement
 
     return parsed_statement
 

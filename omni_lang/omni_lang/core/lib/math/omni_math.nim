@@ -46,8 +46,8 @@ template omniOperatorFunction(func_name : untyped) : untyped {.dirty.} =
             return `func_name`(a, T(b))
 
 template omniOperatorFunctionNoReturn(func_name : untyped) : untyped {.dirty.} =
-    #Y as float is already implemented in omni
-    proc `func_name`*[T : SomeNumber, Y : SomeInteger](a : var T, b : Y) : auto {.inline.} =
+    #Y as float is already implemented in nim
+    proc `func_name`*[T : SomeFloat, Y : SomeInteger](a : var T, b : Y) : auto {.inline.} =
         `func_name`(a, T(b))
 
 # != / >= / > are declared as templates: 

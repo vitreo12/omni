@@ -94,11 +94,12 @@ template new*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data], length 
 
 proc checkDataValidity*[T](data : Data[T]) : bool =
     when T isnot SomeNumber:
-        for i in 0..(data.length_X_chans-1):
-            let entry = cast[pointer](data[i])
-            if isNil(entry):
-                print("ERROR: Omni: Not all Data entries have been initialized in the \'init\' block. This can happen if using a Data containing structs, and not having allocated all of the Data entries in \'init\'!")
-                return false
+        for i in 0..(data.chans-1):
+            for y in 0..(data.length-1):
+                let entry = cast[pointer](data[i, y])
+                if isNil(entry):
+                    print("ERROR: Omni: Not all Data entries have been initialized in the \'init\' block. This can happen if using a Data containing structs, and not having allocated all of the Data entries in \'init\'!")
+                    return false
     return true
 
 ############
@@ -106,16 +107,18 @@ proc checkDataValidity*[T](data : Data[T]) : bool =
 ############
 
 iterator items*[T](data : Data[T]) : T {.inline.} =
-    var i = 0
-    while i < data.length:
-        yield data[i]
-        inc(i)
+    for chan in 0..(data.chans-1):
+        var i = 0
+        while i < data.length:
+            yield data[chan, i]
+            inc(i)
 
-iterator pairs*[T](data: Data[T]): tuple[key: int, val : T] {.inline.} =
-    var i = 0
-    while i < data.length:
-        yield (i, data[i])
-        inc(i)
+iterator pairs*[T](data: Data[T]) : tuple[key: int, val : T] {.inline.} =
+    for chan in 0..(data.chans-1):
+        var i = 0
+        while i < data.length:
+            yield (i, data[i])
+            inc(i)
 
 ##########
 # GETTER #
