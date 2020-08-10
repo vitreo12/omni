@@ -27,7 +27,7 @@ In the previous oscillator example, the `ins` and `outs` blocks define the numbe
 It is important to remember that **ALL** code must always be included inside of each of the different blocks, each one serving a different purpose.
 More information on all the block types follows in the next sections.
 
-**__NOTE:__**
+**_NOTE:_**
 
 In omni, indentation is mandatory to specify each different block section.
 
