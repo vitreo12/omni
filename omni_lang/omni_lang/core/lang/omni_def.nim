@@ -22,7 +22,7 @@
 
 import macros
 
-macro def*(function_signature : untyped, code_block : untyped) : untyped =
+macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
     var 
         proc_and_template = nnkStmtList.newTree()
 
@@ -42,16 +42,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
     #Pass the proc body to the parse_block_untyped macro to parse it
     var proc_body = nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("parse_block_untyped"),
-                code_block,
-                newLit(false),
-                newLit(false),
-                newLit(false),
-                newLit(true)
-            )
-        )   
-    
+        code_block,
+        nnkReturnStmt.newTree(
+            newIdentNode("result")
+        )
+    )
+
     let function_signature_kind = function_signature.kind
 
     if function_signature_kind == nnkCommand or function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall or function_signature_kind == nnkInfix:
@@ -345,3 +341,11 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #Actually instantiate def (proc + template)
         `proc_and_template`
+
+macro def*(function_signature : untyped, code_block : untyped) : untyped =
+    return quote do:
+        parse_block_untyped(
+            `code_block`,
+            is_def_block_typed=true,
+            additional_data=`function_signature`
+        )

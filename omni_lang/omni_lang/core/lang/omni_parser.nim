@@ -270,6 +270,10 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
 
     #error repr parsed_statement
 
+    if statement.kind == nnkReturnStmt:
+        #Convert "return" to "result ="
+        discard
+
     return parsed_statement
 
 #Parse the eq expr syntax, Test(data=Data())
@@ -682,7 +686,7 @@ proc parse_untyped_block_inner(code_block : NimNode, declared_vars : var seq[str
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : bool = false, bits_32_or_64_typed : typed = false) : untyped =
+macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false, additional_data : untyped = nil) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -692,6 +696,8 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
         code_block  = code_block_in
 
         declared_vars : seq[string]
+
+    #error repr code_block_in
 
     let 
         is_constructor_block = is_constructor_block_typed.boolVal()
@@ -811,10 +817,12 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     #error repr final_block
 
+    #echo repr final_block
+
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_def_block_typed`, `additional_data`)
 
 # ============================== #
 # Stage 2: Typed code generation #
@@ -1331,7 +1339,7 @@ proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool =
 
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false, additional_data : untyped = nil) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -1342,6 +1350,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     let 
         is_constructor_block = is_constructor_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
+        is_def_block = is_def_block_typed.strVal() == "true"
 
     parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block)
 
@@ -1372,4 +1381,15 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
             )
         )
 
-    #error repr result 
+    if is_def_block:
+        #Run the whole block through the init_inner macro. This will build the actual
+        #constructor function, and it will run the untyped version of the "build" macro.
+        result = nnkCall.newTree(
+            newIdentNode("def_inner"),
+            additional_data,
+            nnkStmtList.newTree(
+                result
+            )
+        )
+
+    echo repr result 
