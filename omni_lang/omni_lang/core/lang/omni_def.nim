@@ -41,12 +41,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
         checkValidTypes = nnkStmtList.newTree()
 
     #Pass the proc body to the parse_block_untyped macro to parse it
-    var proc_body = nnkStmtList.newTree(
-        code_block,
-        nnkReturnStmt.newTree(
-            newIdentNode("result")
-        )
-    )
+    var proc_body = code_block
 
     let function_signature_kind = function_signature.kind
 
@@ -338,6 +333,8 @@ macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
     return quote do:
         #Run validity type check on each argument of the def
         `checkValidTypes`
+
+        #PASS both signature and code block here to parse_block_untyped, and unpack the code block there
 
         #Actually instantiate def (proc + template)
         `proc_and_template`
