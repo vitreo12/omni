@@ -523,19 +523,8 @@ macro init*(code_block : untyped) : untyped =
         #Use to check variable names in perform block, to check if they are the same as declared vars from init
         var perform_build_names_table {.inject, compileTime.} : seq[string]
             
-        #Trick the compiler of the existence of these variables in order to parse the block.
-        #These will be overwrittne in the UGenCosntructor anyway.
-        let 
-            bufsize          {.inject.} : int                = 0
-            samplerate       {.inject.} : float              = 0.0
-            buffer_interface {.inject.} : pointer            = nil
-            ugen_auto_mem    {.inject.} : ptr OmniAutoMem    = nil
-            ugen_auto_buffer {.inject.} : ptr OmniAutoMem    = nil
-        
-        var ugen_call_type   {.inject, noinit.} : typedesc[CallType]
-
-        #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
-        let ins_Nim          {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
+        #Declare globals if not already
+        declare_globals()
 
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define init_block here so that it will still only be defined once

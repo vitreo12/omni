@@ -20,35 +20,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#DSL macros
-import omni_io
-import omni_init
-import omni_struct
-import omni_parser
-import omni_def
-import omni_perform
-export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
+template declare_globals*() : untyped {.dirty.} =
+    when not declared(bufsize):
+        let bufsize {.inject.} : int = 0
 
-#Needed for def's arg parsing
-import omni_type_checker
-export omni_type_checker
+    when not declared(samplerate):  
+        let samplerate {.inject.} : float = 0.0
+    
+    when not declared(buffer_interface):
+        let buffer_interface {.inject.} : pointer = nil
+    
+    when not declared(ugen_auto_mem):
+        let ugen_auto_mem {.inject.} : ptr OmniAutoMem = nil
 
-#Needed for retrieval of Datas and structs in a struct
-import omni_finder
-export omni_finder
+    when not declared(ugen_auto_buffer):
+        let ugen_auto_buffer {.inject.} : ptr OmniAutoMem = nil
 
-#Utilities
-import omni_types
-export omni_types
+    when not declared(ugen_call_type):
+        var ugen_call_type {.inject, noinit.} : typedesc[CallType]
 
-import omni_call_types
-export omni_call_types
-
-import omni_require
-export omni_require
-
-import omni_module
-export omni_module
-
-import omni_globals
-export omni_globals
+    when not declared(ins_Nim):
+        let ins_Nim {.inject.} : CFloatPtrPtr = cast[CFloatPtrPtr](0)

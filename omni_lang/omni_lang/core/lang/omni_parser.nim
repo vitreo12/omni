@@ -270,9 +270,16 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
 
     #error repr parsed_statement
 
-    if statement.kind == nnkReturnStmt:
-        #Convert "return" to "result ="
-        discard
+    if is_def_block and statement.kind == nnkReturnStmt:
+
+        #Convert "return" to "omni_temp_result_... ="
+        parsed_statement = nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+                genSym(ident="omni_temp_result"),
+                newEmptyNode(),
+                parsed_statement[0]
+            )
+        )
 
     return parsed_statement
 
@@ -1032,6 +1039,24 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
     return parsed_statement
 
+#Used in defs for "return"
+proc parse_typed_let_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
+    level += 1
+
+    var parsed_statement = statement
+
+    let 
+        ident_defs = parsed_statement[0]
+        var_name = ident_defs[0]
+
+    #Convert "omni_temp_result = xyz" to "return xyz" statements
+    if var_name.strVal().startsWith("omni_temp_result"):
+        parsed_statement = nnkReturnStmt.newTree(
+            ident_defs[2]
+        )
+    
+    return parsed_statement
+
 proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     level += 1
 
@@ -1315,6 +1340,8 @@ proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructo
         parsed_statement = parse_typed_call(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkVarSection:
         parsed_statement = parse_typed_var_section(statement, level, is_constructor_block, is_perform_block)
+    elif statement_kind == nnkLetSection:
+        parsed_statement = parse_typed_let_section(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkInfix:
         parsed_statement = parse_typed_infix(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkAsgn:
@@ -1391,5 +1418,3 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
                 result
             )
         )
-
-    echo repr result 

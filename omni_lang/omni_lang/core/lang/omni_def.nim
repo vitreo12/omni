@@ -344,6 +344,9 @@ macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
 
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
     return quote do:
+        #Declare globals if not already
+        declare_globals()
+
         parse_block_untyped(
             `code_block`,
             is_def_block_typed=true,
