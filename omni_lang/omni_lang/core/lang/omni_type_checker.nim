@@ -56,6 +56,9 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
         inner_type_tree : NimNode
         inner_type_tree_kind : NimNodeKind
     
+    if var_type.kind != nnkSym:
+        return false
+
     if not is_struct_field:
         type_tree = var_type.getType()
         if type_tree.len < 2:

@@ -693,7 +693,7 @@ proc parse_untyped_block_inner(code_block : NimNode, declared_vars : var seq[str
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false, additional_data : untyped = nil) : untyped =
+macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -764,6 +764,9 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #if is_perform_block:
     #    error repr code_block
 
+    #if is_def_block:
+    #    error repr code_block
+
     #Begin parsing
     parse_untyped_block_inner(code_block, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
@@ -829,7 +832,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_def_block_typed`, `additional_data`)
+        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_def_block_typed`)
 
 # ============================== #
 # Stage 2: Typed code generation #
@@ -959,6 +962,11 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
     let 
         var_symbol = parsed_statement[0][0]
+    
+    if var_symbol.kind != nnkSym:
+        return parsed_statement
+
+    let 
         var_type   = var_symbol.getTypeInst().getTypeImpl()
         var_name   = var_symbol.strVal()
 
@@ -1064,9 +1072,12 @@ proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_bloc
 
     assert parsed_statement.len == 3
 
-    let 
-        infix_symbol = parsed_statement[0]
-        infix_str    = infix_symbol.strVal()
+    var infix_symbol = parsed_statement[0]
+
+    if infix_symbol.kind == nnkOpenSymChoice:
+        infix_symbol = infix_symbol[0]
+
+    let infix_str    = infix_symbol.strVal()
 
     #This is necessary (even if function is defined properly in omni_math) because
     #it will work also for all the standard nim cases that will not trigger the specific `/` implementation,
@@ -1366,7 +1377,7 @@ proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool =
 
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false, additional_data : untyped = nil) : untyped =
+macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -1408,13 +1419,9 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
             )
         )
 
+    #Add postfix to the proc def
     if is_def_block:
-        #Run the whole block through the init_inner macro. This will build the actual
-        #constructor function, and it will run the untyped version of the "build" macro.
-        result = nnkCall.newTree(
-            newIdentNode("def_inner"),
-            additional_data,
-            nnkStmtList.newTree(
-                result
-            )
+        result[0][0] = nnkPostfix.newTree(
+            newIdentNode("*"),
+            result[0][0]
         )

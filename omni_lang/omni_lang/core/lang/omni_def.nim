@@ -22,10 +22,8 @@
 
 import macros
 
-macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
+macro def*(function_signature : untyped, code_block : untyped) : untyped =
     var 
-        proc_and_template = nnkStmtList.newTree()
-
         proc_def = nnkProcDef.newTree()
         proc_return_type : NimNode
         proc_name : NimNode
@@ -207,13 +205,8 @@ macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
         # BUILD PROC #
         # ========== #
 
-        #Add name of func (with _inner appended) with * for export
-        proc_def.add(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                proc_name
-            )
-        )
+        #Add name of func... the * postfix is added in the omni_parser at the end!
+        proc_def.add(proc_name)
 
         #Add generics
         if proc_generic_params.len > 0:
@@ -323,9 +316,6 @@ macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
     else:
         error "Invalid syntax for def"
 
-    proc_and_template.add(proc_def)
-    proc_and_template.add(template_def)
-
     #echo repr proc_and_template
     #echo astGenRepr proc_formal_params
     #echo repr checkValidTypes
@@ -334,18 +324,11 @@ macro def_inner*(function_signature : untyped, code_block : untyped) : untyped =
         #Run validity type check on each argument of the def
         `checkValidTypes`
 
-        #PASS both signature and code block here to parse_block_untyped, and unpack the code block there
-
-        #Actually instantiate def (proc + template)
-        `proc_and_template`
-
-macro def*(function_signature : untyped, code_block : untyped) : untyped =
-    return quote do:
-        #Declare globals if not already
-        declare_globals()
-
+        #Parse the proc
         parse_block_untyped(
-            `code_block`,
-            is_def_block_typed=true,
-            additional_data=`function_signature`
+            `proc_def`,
+            is_def_block_typed=true
         )
+        
+        #The template
+        `template_def`
