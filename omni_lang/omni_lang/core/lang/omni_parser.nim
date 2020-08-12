@@ -268,6 +268,17 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
     #Detect constructor calls
     parsed_statement = findStructConstructorCall(parsed_statement)
 
+    if is_def_block and statement.kind == nnkReturnStmt:
+        #Convert "return" to "omni_temp_result_... ="
+        #This is needed to avoid type checking weirdness in the def block!
+        parsed_statement = nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+                genSym(ident="omni_temp_result"),
+                newEmptyNode(),
+                parsed_statement[0]
+            )
+        )
+
     #error repr parsed_statement
 
     return parsed_statement
@@ -682,7 +693,7 @@ proc parse_untyped_block_inner(code_block : NimNode, declared_vars : var seq[str
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : bool = false, bits_32_or_64_typed : typed = false) : untyped =
+macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -814,7 +825,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`)
+        parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_def_block_typed`)
 
 # ============================== #
 # Stage 2: Typed code generation #
@@ -1031,9 +1042,12 @@ proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_bloc
 
     assert parsed_statement.len == 3
 
-    let 
-        infix_symbol = parsed_statement[0]
-        infix_str    = infix_symbol.strVal()
+    var infix_symbol = parsed_statement[0]
+
+    if infix_symbol.kind == nnkOpenSymChoice:
+        infix_symbol = infix_symbol[0]
+
+    let infix_str    = infix_symbol.strVal()
 
     #This is necessary (even if function is defined properly in omni_math) because
     #it will work also for all the standard nim cases that will not trigger the specific `/` implementation,
@@ -1295,6 +1309,25 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
 
     return parsed_statement
 
+#Used in defs for "return",
+#This is needed in order to avoid type checking with "return" statements!
+proc parse_typed_let_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
+    level += 1
+
+    var parsed_statement = statement
+
+    let 
+        ident_defs = parsed_statement[0]
+        var_name = ident_defs[0]
+
+    #Convert "omni_temp_result = xyz" to "return xyz" statements
+    if var_name.strVal().startsWith("omni_temp_result"):
+        parsed_statement = nnkReturnStmt.newTree(
+            ident_defs[2]
+        )
+    
+    return parsed_statement
+
 #Dispatcher logic
 proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false) : NimNode {.compileTime.} =
     let statement_kind = statement.kind
@@ -1307,6 +1340,8 @@ proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructo
         parsed_statement = parse_typed_call(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkVarSection:
         parsed_statement = parse_typed_var_section(statement, level, is_constructor_block, is_perform_block)
+    elif statement_kind == nnkLetSection:
+        parsed_statement = parse_typed_let_section(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkInfix:
         parsed_statement = parse_typed_infix(statement, level, is_constructor_block, is_perform_block)
     elif statement_kind == nnkAsgn:
@@ -1331,7 +1366,7 @@ proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool =
 
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false) : untyped =
+macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -1342,6 +1377,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     let 
         is_constructor_block = is_constructor_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
+        is_def_block = is_def_block_typed.strVal() == "true"
 
     parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block)
 
@@ -1371,5 +1407,8 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
                 result
             )
         )
+
+    #if is_def_block:
+    #    error repr result
 
     #error repr result 
