@@ -1035,6 +1035,26 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
     return parsed_statement
 
+#Used in defs for "return",
+#This is needed in order to avoid type checking with "return" statements!
+proc parse_typed_let_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
+    level += 1
+
+    var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
+
+    if is_def_block:
+        let 
+            ident_defs = parsed_statement[0]
+            var_name = ident_defs[0]
+
+        #Convert "omni_temp_result_posadijwehqwensdakswyetrwqeq = xyz" to "return xyz" statements
+        if var_name.strVal().startsWith("omni_temp_result_posadijwehqwensdakswyetrwqeq"):
+            parsed_statement = nnkReturnStmt.newTree(
+                ident_defs[2]
+            )
+    
+    return parsed_statement
+
 proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     level += 1
 
@@ -1307,27 +1327,6 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                 
     #error repr parsed_statement
 
-    return parsed_statement
-
-#Used in defs for "return",
-#This is needed in order to avoid type checking with "return" statements!
-proc parse_typed_let_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
-    #No need to parse this, it's just about substitution for return stmts in def
-    var parsed_statement = statement
-
-    if is_def_block:
-        let 
-            ident_defs = parsed_statement[0]
-            var_name = ident_defs[0]
-
-        #Convert "omni_temp_result_posadijwehqwensdakswyetrwqeq = xyz" to "return xyz" statements
-        if var_name.strVal().startsWith("omni_temp_result_posadijwehqwensdakswyetrwqeq"):
-            parsed_statement = nnkReturnStmt.newTree(
-                ident_defs[2]
-            )
-    
     return parsed_statement
 
 #Dispatcher logic
