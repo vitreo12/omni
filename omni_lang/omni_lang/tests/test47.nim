@@ -3,8 +3,8 @@ import ../../omni_lang, macros
 ins 1
 
 expandMacros:
-    def process(variable float = 0):
-        sample_out = variable
+    def process() float:
+        sample_out = 0
         blabla = 0
         sample_out += 1.0
         #result = sample_out

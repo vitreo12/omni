@@ -829,6 +829,9 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     #echo repr final_block
 
+    if is_def_block:
+        error astGenRepr final_block
+
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
@@ -1390,6 +1393,9 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
         is_perform_block = is_perform_block_typed.strVal() == "true"
         is_def_block = is_def_block_typed.strVal() == "true"
 
+    if is_def_block:
+        error astGenRepr inner_block
+
     parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block)
 
     #Will return an untyped code block!
@@ -1425,3 +1431,5 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
             newIdentNode("*"),
             result[0][0]
         )
+
+        error repr result
