@@ -50,6 +50,9 @@ template omniOperatorFunctionNoReturn(func_name : untyped) : untyped {.dirty.} =
     proc `func_name`*[T : SomeFloat, Y : SomeInteger](a : var T, b : Y) : auto {.inline.} =
         `func_name`(a, T(b))
 
+    proc `func_name`*[T : SomeInteger, Y : SomeFloat](a : var T, b : Y) : auto {.inline.} =
+        `func_name`(a, T(b))
+
 # != / >= / > are declared as templates: 
 # It's enough to declare for the == / <= / < counterparts, or it will error out!
 omniOperatorFunction(`==`)

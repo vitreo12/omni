@@ -1164,7 +1164,7 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                     for_loop_body,
                     nnkInfix.newTree(
                         newIdentNode("+="),
-                        newIdentNode("i"),
+                        index,
                         newLit(1)
                     )
                 )

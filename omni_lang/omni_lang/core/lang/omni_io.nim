@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import macros, strutils
 
 const omni_max_inputs_outputs_const* = 32
 
@@ -330,9 +330,12 @@ macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
     return final_statement
 
 proc checkValidParamName(param_name : string) : void =
+    if param_name[0].isUpperAscii():
+        error("ins: '" & $param_name & "' must start with a lower case letter.")
+
     for individualChar in param_name:
         if not (individualChar in acceptedCharsForParamName):
-            error("Invalid character " & $individualChar & $ " in input name " & $param_name)
+            error("ins: Invalid character '" & $individualChar & $ "' in input name '" & $param_name & "'")
 
 proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tuple[defult : float, min : float, max : float] {.compileTime.} =
     let default_min_max_len = default_min_max.len()
