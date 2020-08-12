@@ -50,10 +50,7 @@ let
     ]
 
 
-proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.compileTime.} =
-    if var_type.kind != nnkSym:
-        return false
-    
+proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.compileTime.} =    
     var 
         type_tree : NimNode
         inner_type_tree : NimNode
