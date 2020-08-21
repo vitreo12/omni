@@ -63,6 +63,25 @@ def mySum[T, Y](a T = 0, b Y = 0) T:
     return a + b
 ```
 
+When using a recursive `def`, the return type must always be specified. It can also just be a generic type.
+
+```
+ins 1
+outs 1
+
+def factorial(x) float:
+    if x <= 1:
+        return 1.0
+    return x * factorial(x - 1)
+
+init:
+    x = factorial(in1)
+    print(x)
+
+sample:
+    out1 = 0.0
+```
+
 When passing `structs` (more on them in the next section) to a `def`, they are passed by reference, meaning that they can be accessed and their values can be modified in place.
 
 ```nim
