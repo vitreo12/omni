@@ -65,7 +65,7 @@ def mySum[T, Y](a T = 0, b Y = 0) T:
 
 When using a recursive `def`, the return type must always be specified. It can also just be a generic type.
 
-```
+```nim
 ins 1
 outs 1
 
