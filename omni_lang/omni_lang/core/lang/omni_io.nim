@@ -676,16 +676,17 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         elif param_names_kind == nnkCommand:
             error("ins: syntax not implemented yet")
 
-    #Remove trailing coma
-    if param_names_string.len > 1:
-        param_names_string = param_names_string[0..param_names_string.high-1]
-    
     #inputs count mismatch
     if param_names_kind == nnkNilLit:
-        param_names_string = "__NO_PARAM_NAMES__"
+        for i in 0..num_of_inputs_VAL-1:
+            param_names_string.add("in" & $(i + 1) & ",")
     else:
         if statement_counter != num_of_inputs_VAL:
             error("Expected " & $num_of_inputs_VAL & " input names, got " & $statement_counter)
+
+    #Remove trailing coma
+    if param_names_string.len > 1:
+        param_names_string = param_names_string[0..param_names_string.high-1]
 
     #Assign to node
     param_names_node = newLit(param_names_string)
@@ -786,18 +787,19 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
             
             param_names_string.add($param_name & ",")
             statement_counter += 1
-
-    #Remove trailing coma
-    if param_names_string.len > 1:
-        param_names_string = param_names_string[0..param_names_string.high-1]
     
-    #outputs count mismatch
+    #No outs specified
     if param_names_kind == nnkNilLit:
-        param_names_string = "__NO_PARAM_NAMES__"
+        for i in 0..num_of_outputs_VAL-1:
+            param_names_string.add("out" & $(i + 1) & ",")
     else:
         if statement_counter != num_of_outputs_VAL:
             error("Expected " & $num_of_outputs_VAL & " input names, got " & $statement_counter)
     
+    #Remove trailing coma
+    if param_names_string.len > 1:
+        param_names_string = param_names_string[0..param_names_string.high-1]
+
     #Assign to node
     param_names_node = newLit(param_names_string)
 

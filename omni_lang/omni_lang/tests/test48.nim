@@ -1,8 +1,6 @@
 import ../../omni_lang, macros
 
-expandMacros:
-    ins 1:
-        freq {440, 0, 2000}
+#expandMacros:
+ins 4
 
-    outs 1:
-        outputt
+outs 3
