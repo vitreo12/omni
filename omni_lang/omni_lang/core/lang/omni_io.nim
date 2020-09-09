@@ -607,7 +607,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
     #This is for the inputs 1, "freq" case. (where "freq" is not viewed as varargs)
     #input 2, "freq", "stmt" is covered in the other macro
-    if param_names_kind == nnkStrLit:
+    if param_names_kind == nnkStrLit or param_names_kind == nnkIdent:
         let param_name = param_names.strVal()
         
         checkValidParamName(param_name)
@@ -622,8 +622,8 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
             for statement in param_names.children():
                 let statement_kind = statement.kind
 
-                #"freq"
-                if statement_kind == nnkStrLit:
+                #"freq" / freq
+                if statement_kind == nnkStrLit or statement_kind == nnkIdent:
                     let param_name = statement.strVal()
 
                     checkValidParamName(param_name)
@@ -635,9 +635,11 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
                     assert statement.len == 2
 
                     #The name of the param
-                    let param_name_node = statement[0]
-                    if param_name_node.kind != nnkStrLit:
-                        error("Expected input name number " & $(statement_counter + 1) & " to be a string literal value")
+                    let 
+                        param_name_node = statement[0]
+                        param_name_node_kind = param_name_node.kind
+                    if param_name_node_kind != nnkStrLit and param_name_node_kind != nnkIdent:
+                        error("Expected input name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
 
                     let param_name = param_name_node.strVal()
                     checkValidParamName(param_name)
@@ -760,7 +762,7 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     var statement_counter = 0
 
     #This is for the outputs 1, "freq" case... output 2, "freq", "stmt" is covered in the other macro
-    if param_names_kind == nnkStrLit:
+    if param_names_kind == nnkStrLit or param_names_kind == nnkIdent:
         let param_name = param_names.strVal()
         
         for individualChar in param_name:
@@ -773,9 +775,11 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     #Normal block case
     else:
         for statement in param_names.children():
-            if statement.kind != nnkStrLit:
-                error("Expected output name number " & $(statement_counter + 1) & " to be a string literal value")
-            
+            let statement_kind = statement.kind
+
+            if statement_kind != nnkStrLit and statement_kind != nnkIdent:
+                error("Expected output name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+        
             let param_name = statement.strVal()
 
             checkValidParamName(param_name)
