@@ -33,10 +33,10 @@ suite "outs: number":
 
   #Check empty name
   test "output names":
-    check (omni_output_names_const == "__NO_PARAM_NAMES__")
-    check (omni_output_names_let == "__NO_PARAM_NAMES__") 
+    check (omni_output_names_const == "out1,out2,out3,out4,out5")
+    check (omni_output_names_let == "out1,out2,out3,out4,out5") 
 
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenOutputs() == int32(5))
-    check (cast[cstring](Omni_UGenOutputNames()) == "__NO_PARAM_NAMES__")
+    check (cast[cstring](Omni_UGenOutputNames()) == "out1,out2,out3,out4,out5")
