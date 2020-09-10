@@ -58,10 +58,12 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
             newLit(1),
             newLit(0)
         ),
+
         nnkCall.newTree(
             newIdentNode("generate_outputs_templates"),
             newIdentNode("omni_outputs")
         ),
+
         nnkForStmt.newTree(
             newIdentNode("audio_index_loop"),
             nnkInfix.newTree(
@@ -76,7 +78,7 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
                 )
             ),
             nnkStmtList.newTree(
-                #Declare ins unpacking via variable names
+                #Declare ins unpacking / variable names for the sample block
                 nnkCall.newTree(
                     newIdentNode("unpackInsWithNames"),
                     newIdentNode("omni_input_names_const")
@@ -86,6 +88,7 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
                 sample_block
             ) 
         ),
+
         nnkLetSection.newTree(
             nnkIdentDefs.newTree(
                 newIdentNode("audio_index_loop"),
@@ -834,6 +837,12 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
             nnkCall.newTree(
                 newIdentNode("unpackUGenVariables"),
                 newIdentNode("UGen")
+            ),
+
+            #Declare ins unpacking / variable names for the perform block
+            nnkCall.newTree(
+                newIdentNode("unpackInsWithNames"),
+                newIdentNode("omni_input_names_const")
             ),
 
             #Re-add code_block

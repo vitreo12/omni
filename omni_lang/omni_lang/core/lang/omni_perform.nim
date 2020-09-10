@@ -173,10 +173,6 @@ template performInner*(code_block : untyped) {.dirty.} =
             #Needed to be passed to all defs
             var ugen_call_type {.inject, noinit.} : typedesc[PerformCall]
 
-            #Unpack the "ins" variable names (perform block, so ins[0][0]).
-            #The unpacking for the sample block is done in omni_parser.nim directly
-            unpackInsWithNames(omni_input_names_const)
-            
             #standard perform block
             when declared(perform_block):
                 parse_block_untyped(code_block, false, true, bits_32_or_64_typed = false)
@@ -193,10 +189,6 @@ template performInner*(code_block : untyped) {.dirty.} =
         proc Omni_UGenPerform64*(ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
             #Needed to be passed to all defs
             var ugen_call_type {.inject, noinit.} : typedesc[PerformCall]
-
-            #Unpack the "ins" variable names (perform block, so ins[0][0]).
-            #The unpacking for the sample block is done in omni_parser.nim directly
-            unpackInsWithNames(omni_input_names_const)
 
             #standard perform block
             when declared(perform_block):
