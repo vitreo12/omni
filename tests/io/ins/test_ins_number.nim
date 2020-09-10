@@ -36,8 +36,8 @@ suite "ins: number":
 
   #Check empty name
   test "input names":
-    check (omni_input_names_const == "__NO_PARAM_NAMES__")
-    check (omni_input_names_let == "__NO_PARAM_NAMES__") 
+    check (omni_input_names_const == "in1,in2,in3,in4,in5")
+    check (omni_input_names_let == "in1,in2,in3,in4,in5") 
 
   #Check default values
   test "default values":
@@ -66,7 +66,7 @@ suite "ins: number":
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenInputs() == int32(5))
-    check (cast[cstring](Omni_UGenInputNames()) == "__NO_PARAM_NAMES__")
+    check (cast[cstring](Omni_UGenInputNames()) == "in1,in2,in3,in4,in5")
     
     let defaultsArray = cast[ptr UncheckedArray[cfloat]](Omni_UGenDefaults())
     check (defaultsArray != nil)

@@ -58,10 +58,12 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
             newLit(1),
             newLit(0)
         ),
+
         nnkCall.newTree(
             newIdentNode("generate_outputs_templates"),
             newIdentNode("omni_outputs")
         ),
+
         nnkForStmt.newTree(
             newIdentNode("audio_index_loop"),
             nnkInfix.newTree(
@@ -75,8 +77,18 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
                     )
                 )
             ),
-            sample_block
+            nnkStmtList.newTree(
+                #Declare ins unpacking / variable names for the sample block
+                nnkCall.newTree(
+                    newIdentNode("unpackInsWithNames"),
+                    newIdentNode("omni_input_names_const")
+                ),
+                
+                #Actually append the sample block
+                sample_block
+            ) 
         ),
+
         nnkLetSection.newTree(
             nnkIdentDefs.newTree(
                 newIdentNode("audio_index_loop"),
@@ -258,10 +270,18 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
     #Parse the call
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
+    let call_name = parsed_statement[0]
+
+    #Detect out of position "build" calls in "init"
+    if is_constructor_block:
+        if call_name.kind == nnkIdent:
+            if call_name.strVal() == "build":
+                error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
+        
     #Something weird happened with Data[Something]() in a def.. It returned a call to a
     #nnkOpenSymChoice with symbols.. Re-interpret it and re-run parser (NEEDS MORE TESTING!)
-    if parsed_statement[0].kind == nnkCall:
-        if parsed_statement[0][0].kind == nnkOpenSymChoice:
+    if call_name.kind == nnkCall:
+        if call_name[0].kind == nnkOpenSymChoice:
             var new_statement = typedToUntyped(parsed_statement)
             parsed_statement = parser_untyped_loop(new_statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
             
@@ -299,6 +319,13 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
 
     var parsed_statement = statement
 
+    #Detect out of position "build" calls in "init"
+    if is_constructor_block:
+        let command_name = parsed_statement[0]
+        if command_name.kind == nnkIdent:
+            if command_name.strVal() == "build":
+                error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
+
     #If top level, it's a declaration. 
     #level == 1 equals to top level here, as the increment is done before parsing.
     if level == 1:
@@ -310,7 +337,8 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
             )
         )
     
-    #HERE I CAN ADD NORMAL COMMAND STUFF SO THAT IT'S PERHAPS POSSIBLE TO ENABLE, BY TURNING IT INTO CALLS: print "hello" -> print("hello")
+    #HERE I CAN ADD NORMAL COMMAND STUFF SO THAT IT'S PERHAPS POSSIBLE TO ENABLE!! 
+    #ONE SOLUTION IS TURNING THEM INTO CALLS: print "hello" -> print("hello")
     else:
         discard
     
@@ -673,21 +701,9 @@ proc parser_untyped_dispatcher(statement : NimNode, level : var int, declared_va
 #Entry point: Parse entire block
 proc parse_untyped_block_inner(code_block : NimNode, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : void {.compileTime.} =
     for index, statement in code_block.pairs():
-        let statement_kind = statement.kind
-
-        #Look for "build:" statement. If there are any, it's an error. Only at last position there should be one.
-        if is_constructor_block:
-            if statement_kind == nnkCall or statement_kind == nnkCommand:
-                let statement_first = statement[0]
-                if statement_first.kind == nnkIdent or statement_first.kind == nnkSym:
-                    if statement_first.strVal() == "build":
-                        error "init: the \'build\' call, if used, must only be one and at the last position of the \'init\' block."
-        
         #Initial level, 0
         var level : int = 0
         let parsed_statement = parser_untyped_dispatcher(statement, level, declared_vars,  is_constructor_block, is_perform_block, is_sample_block, is_def_block)
-
-        #echo repr statement
 
         #Replaced the parsed_statement
         if parsed_statement != nil:
@@ -741,33 +757,39 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
         if not found_sample_block:
             error "'perform': no 'sample' block provided, or not at top level."
         
-    
-    #Remove new statement from the block before all syntactic analysis.
-    #This is needed for this to work:
-    #build:
-    #   phase
-    #   somethingElse
-    #This build_statement will then be passed to the next analysis part in order to be re-added at the end
-    #of all the parsing.
     var build_statement : NimNode
     if is_constructor_block:
+        #This will get rid of the first entry, which is the call to "addBufferIns". It will be
+        #added again as soon as the untyped parsing is completed
+        code_block = code_block.last()
+        
+        #Remove "build" statement from the block before all syntactic analysis.
+        #This is needed for this to work:
+        #build:
+        #   phase
+        #   somethingElse
+        #This build_statement will then be passed to the next analysis part in order to be re-added at the end of all the parsing.
         let code_block_last = code_block.last()
         if code_block_last.kind == nnkCall or code_block_last.kind == nnkCommand:
-            let code_block_last_first = code_block_last[0]
-            if code_block_last_first.kind == nnkIdent or code_block_last_first.kind == nnkSym:
+            let 
+                code_block_last_first = code_block_last[0]
+                code_block_last_first_kind = code_block_last_first.kind
+            if code_block_last_first_kind == nnkIdent or code_block_last_first_kind == nnkSym:
                 if code_block_last_first.strVal() == "build":
                     build_statement = code_block_last
-                    code_block.del(code_block.len() - 1) #delete from code_block too. it will added back again later after semantic evaluation.
-
-    #if is_perform_block:
-    #    error repr code_block
+                    #Delete "build" from the code_block.
+                    #It will be added back again at the end of the typed evaluation
+                    code_block.del(code_block.len() - 1)
 
     #Begin parsing
     parse_untyped_block_inner(code_block, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block)
 
-    #echo declared_vars
-    
-    #error repr code_block
+    #Add "addBufferIns" again (it's on the top position of the code_block_in statement)
+    if is_constructor_block:
+        code_block = nnkStmtList.newTree(
+            code_block_in[0],
+            code_block
+        )
 
     #Add all stuff relative to initialization for perform function:
     #[
@@ -796,6 +818,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
             nnkCall.newTree(
                 newIdentNode("generateTemplatesForPerformVarDeclarations")
             ),
+            
             nnkLetSection.newTree(
                 nnkIdentDefs.newTree(
                     newIdentNode("ugen"),
@@ -808,10 +831,18 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
                     )
                 )
             ),
+            
             castInsOuts_call,
+            
             nnkCall.newTree(
                 newIdentNode("unpackUGenVariables"),
                 newIdentNode("UGen")
+            ),
+
+            #Declare ins unpacking / variable names for the perform block
+            nnkCall.newTree(
+                newIdentNode("unpackInsWithNames"),
+                newIdentNode("omni_input_names_const")
             ),
 
             #Re-add code_block
