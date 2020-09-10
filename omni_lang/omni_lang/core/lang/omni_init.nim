@@ -634,11 +634,11 @@ macro addBufferIns*(ins_names : typed) : untyped =
 
 macro init*(code_block : untyped) : untyped =
     let code_block_with_buffer_ins = nnkStmtList.newTree(
-        code_block,
         nnkCall.newTree(
             newIdentNode("addBufferIns"),
             newIdentNode("omni_input_names_const")
-        )
+        ),
+        code_block
     )
 
     return quote do:
