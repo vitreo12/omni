@@ -2,8 +2,8 @@ import ../../omni_lang, macros
 
 expandMacros:
     ins 2:
-        gondoleta {Buffer}
-        ahah
+        blah {Buffer}
+        bluh
 
     init:
         a = 0

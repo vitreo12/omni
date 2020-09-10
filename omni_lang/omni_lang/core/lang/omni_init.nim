@@ -597,7 +597,7 @@ macro addBufferIns*(ins_names : typed) : untyped =
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("Haven't defined a wrapper interface for 'Buffer'. Can't declare variable '" & in_name & "' at '" & in_number_name & "'.")
+                            newLit("No wrapper interface defined for 'Buffer'. Can't declare variable '" & in_name & "' at '" & in_number_name & "'.")
                         )
                     )
                 )
