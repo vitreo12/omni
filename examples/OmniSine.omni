@@ -1,5 +1,5 @@
 ins 1:
-    "freq" {440, 1, 22000}
+    freq {440, 1, 22000}
 
 outs 1
  
@@ -7,6 +7,6 @@ init:
     phase = 0.0
 
 sample:
-    freq_incr = in1 / samplerate
+    freq_incr = freq / samplerate
     out1 = sin(phase * TWOPI)
     phase = (phase + freq_incr) % 1.0
