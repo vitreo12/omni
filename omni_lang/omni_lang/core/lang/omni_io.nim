@@ -24,8 +24,10 @@ import macros, strutils
 
 const omni_max_inputs_outputs_const* = 32
 
-#Some crazy number
-const RANDOM_FLOAT = -12312418241.1249124194
+#Some crazy numbers
+const 
+    RANDOM_FLOAT = -12312418241.1249124194
+    BUFFER_FLOAT = -13312418241.1249124194
 
 const acceptedCharsForParamName = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
@@ -473,6 +475,12 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
                 error("Invalid syntax for max value of input \"" & $param_name & "\"")
         ]#
 
+        elif value_kind == nnkIdent:
+            if value.strVal == "Buffer":
+                return (0.0, BUFFER_FLOAT, BUFFER_FLOAT)
+            else:
+                error("Invalid syntax for input \"" & $param_name & "\"")
+
         else:
             error("Invalid syntax for input \"" & $param_name & "\"")
 
@@ -521,7 +529,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
         #Always add defaults, they will be 0 if not specified
         defaults_array_bracket.add(newLit(default_val))
 
-        if min_val != RANDOM_FLOAT:
+        if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
             deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
@@ -535,7 +543,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                 )
             )
 
-        if max_val != RANDOM_FLOAT:
+        if max_val != RANDOM_FLOAT and max_val != BUFFER_FLOAT:
             deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
@@ -546,6 +554,21 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                     ),
                     newEmptyNode(),
                     newLit(max_val)
+                )
+            )
+
+        #Buffer case. Just create a const that will be checked against.
+        if min_val == BUFFER_FLOAT and max_val == BUFFER_FLOAT:
+            deafault_min_max_const_section.add(
+                nnkConstDef.newTree(
+                    nnkPragmaExpr.newTree(
+                        newIdentNode("in" & $(i_plus_one) & "_buffer"),
+                        nnkPragma.newTree(
+                            newIdentNode("inject")
+                        )
+                    ),
+                    newEmptyNode(),
+                    newLit(true)
                 )
             )
 

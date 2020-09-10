@@ -27,13 +27,14 @@ import macros, strutils
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
     discard
 
-#the "fake" argument is used at the start of "init" so that fictional let variables are declared
+#the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
-macro unpackInsWithNames*(ins_names : typed, fake : typed = false) : untyped =
-    let ins_names_seq = ins_names.getImpl.strVal.split(',')
+macro unpackInsWithNames*(ins_names : typed, pre_init : typed = false) : untyped =
+    var
+        ident_defs = nnkIdentDefs.newTree()
+        let_statement = nnkLetSection.newTree(ident_defs)
     
-    var ident_defs = nnkIdentDefs.newTree()
-    result = nnkLetSection.newTree(ident_defs)
+    let ins_names_seq = ins_names.getImpl.strVal.split(',')
     
     for i, in_name in ins_names_seq:
         let in_number_name = ("in" & $(i+1))
@@ -41,7 +42,8 @@ macro unpackInsWithNames*(ins_names : typed, fake : typed = false) : untyped =
         #Ignore in1, in2, etc...
         if in_name != in_number_name:
             var ident_val = newIdentNode(in_number_name)
-            if fake.boolVal == true:
+            
+            if pre_init.boolVal == true:
                 ident_val = newLit(0.0)
 
             ident_defs.add(
@@ -50,9 +52,9 @@ macro unpackInsWithNames*(ins_names : typed, fake : typed = false) : untyped =
                 ident_val
             )
 
-    #If empty, return empty result
-    if ident_defs.len == 0:
-        result = nnkStmtList.newTree()
+    #If not empty, return it
+    if ident_defs.len != 0:
+        return let_statement
 
 #This has been correctly parsed!
 macro init_inner*(code_block_stmt_list : untyped) =
