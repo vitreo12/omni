@@ -557,7 +557,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                 )
             )
 
-        #Buffer case. Just create a const that will be checked against.
+        #Buffer case. Just create a const that will be checked against at compile time
         if min_val == BUFFER_FLOAT and max_val == BUFFER_FLOAT:
             deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
