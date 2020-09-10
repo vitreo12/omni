@@ -1,6 +1,11 @@
 import ../../omni_lang, macros
 
-#expandMacros:
-ins 4
+ins 1:
+    ahah {0, 0, 10}
 
-outs 3
+expandMacros:
+    init:
+        phase = ahah
+
+    sample:
+        out1 = ahah

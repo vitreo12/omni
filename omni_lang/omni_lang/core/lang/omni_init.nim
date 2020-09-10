@@ -20,11 +20,39 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, tables
+import macros, strutils
+#import tables
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
     discard
+
+#the "fake" argument is used at the start of "init" so that fictional let variables are declared
+#in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
+macro unpackInsWithNames*(ins_names : typed, fake : typed = false) : untyped =
+    let ins_names_seq = ins_names.getImpl.strVal.split(',')
+    
+    var ident_defs = nnkIdentDefs.newTree()
+    result = nnkLetSection.newTree(ident_defs)
+    
+    for i, in_name in ins_names_seq:
+        let in_number_name = ("in" & $(i+1))
+        
+        #Ignore in1, in2, etc...
+        if in_name != in_number_name:
+            var ident_val = newIdentNode(in_number_name)
+            if fake.boolVal == true:
+                ident_val = newLit(0.0)
+
+            ident_defs.add(
+                newIdentNode(in_name),
+                newEmptyNode(),
+                ident_val
+            )
+
+    #If empty, return empty result
+    if ident_defs.len == 0:
+        result = nnkStmtList.newTree()
 
 #This has been correctly parsed!
 macro init_inner*(code_block_stmt_list : untyped) =
@@ -419,6 +447,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
 
+                #Unpack the "ins" variable names
+                unpackInsWithNames(omni_input_names_const)
+
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
@@ -480,6 +511,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
+
+                #Unpack the "ins" variable names
+                unpackInsWithNames(omni_input_names_const)
         
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -541,6 +575,10 @@ macro init*(code_block : untyped) : untyped =
         #Or, if perform is defining one, define init_block here so that it will still only be defined once
         let init_block {.inject, compileTime.} = true
 
+        #Generate fictional let names (so that parser won't complain when using them)
+        unpackInsWithNames(omni_input_names_const, true)
+        
+        #Actually parse the init block
         parse_block_untyped(`code_block`, true)
 
 #Equal to init:

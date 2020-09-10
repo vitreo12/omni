@@ -75,7 +75,16 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
                     )
                 )
             ),
-            sample_block
+            nnkStmtList.newTree(
+                #Declare ins unpacking via variable names
+                nnkCall.newTree(
+                    newIdentNode("unpackInsWithNames"),
+                    newIdentNode("omni_input_names_const")
+                ),
+                
+                #Actually append the sample block
+                sample_block
+            ) 
         ),
         nnkLetSection.newTree(
             nnkIdentDefs.newTree(
