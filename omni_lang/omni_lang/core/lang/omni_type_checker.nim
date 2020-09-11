@@ -27,6 +27,7 @@ let
     varDeclTypes* {.compileTime.} = [
         "bool", 
         "enum",
+        "tuple",
         "float", "float32", "float64",
         "int", "int32", "int64",
         "uint", "uint32", "uint64",
@@ -102,7 +103,7 @@ proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.comp
 
 
 #Check type validity. This requires var_type to be a typed one. (it's either caled by the macro below or in the typed static analysis in omni_parser.nim)
-proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : bool = false, is_proc_call : bool = false, is_struct_field : bool = false, proc_name : string = "") : void {.compileTime.} =
+proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : bool = false, is_proc_call : bool = false, is_struct_field : bool = false, proc_name : string = "", is_tuple_entry : bool = false) : void {.compileTime.} =
     var var_type_str : string
 
     let var_type_kind = var_type.kind
@@ -118,12 +119,17 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
         else:
             var_type_str = var_type[0].strVal()
     
-    #standard types
+    #Other types
     else:
-        #FOR NOW, error out with tuples (they will supported in the future)
+        #tuples
         if var_type_kind == nnkTupleConstr:
-            error("'" & $var_name & "': tuples are not yet supported!")
-        var_type_str = var_type.strVal()
+            #check all entries of the tuple too
+            for tuple_entry_type in var_type:
+                checkValidType(tuple_entry_type, var_name, is_proc_arg, is_proc_call, is_struct_field, proc_name, true)
+
+            var_type_str = "tuple"
+        else:
+            var_type_str = var_type.strVal()
 
     #echo "checkValidType"
     #echo astGenRepr var_type
@@ -148,6 +154,11 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     elif is_struct_field:
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
             error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
+
+    #tuple field
+    elif is_tuple_entry:
+        if not ((var_type_str in varDeclTypes)):
+            error("tuple '" & $var_name & "' contains an invalid type: '" & $var_type_str & "'. Tuples only support number types.")
 
     #variable declaration
     else:

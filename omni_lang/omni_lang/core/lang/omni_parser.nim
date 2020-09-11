@@ -1018,6 +1018,12 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
             #Replace the entry in the untyped block, which has yet to be semantically evaluated.
             parsed_statement = new_let_statement
+
+    #Look for tuples. They come in as "var".
+    #Should they be "let" or "var" ???
+    elif var_type.kind == nnkTupleConstr:
+        #error astGenRepr parsed_statement
+        discard
     
     #Standard var declarations. Declare as float if not specified in the var decl:
     # a = 0 -> a float = float(0)
