@@ -50,7 +50,8 @@ suite "parser: variable declarations":
         e int = 4
         f int
         f = 5
-        CONST = 6
+        CONST1 = 6
+        CONST2 int = 7
         
       nim:
         var a : float = float(0)
@@ -61,7 +62,8 @@ suite "parser: variable declarations":
         var e : int = 4
         var f : int
         f = typeof(f)(5)
-        let CONST = 6
+        let CONST1 : float = float(6)
+        let CONST2 : int = 7
 
     check test
 

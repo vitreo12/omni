@@ -29,7 +29,9 @@ let
         "enum",
         "tuple",
         "float", "float32", "float64",
+        "cfloat", "cdouble",
         "int", "int32", "int64",
+        "cint", "clong",
         "uint", "uint32", "uint64",
         "sig", "sig32", "sig64",
         "signal", "signal32", "signal64"

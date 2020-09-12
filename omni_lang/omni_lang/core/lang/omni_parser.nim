@@ -976,6 +976,69 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
 
     return parsed_statement
 
+#Types that will be converted to float when in tuples (if not explicitly set, int)
+let tuple_convert_types* {.compileTime.} = [
+    "cfloat", "cdouble", "float32", "float64",
+    "cint", "clong", "int", "int32", "int64"
+]
+
+proc build_new_tuple_recursive(ident_defs : NimNode, tuple_constr : NimNode, tuple_type : NimNode) : NimNode {.compileTime.} =
+    var new_ident_defs = ident_defs
+
+    return new_ident_defs
+
+#Convert all float types (float32, cfloat, etc...) to float.
+#statement comes in as a nnkVarSection
+proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_symbol : NimNode, var_name : string, tuple_type : NimNode) : NimNode {.compileTime.} =
+    #echo astGenRepr tuple_type
+
+    #error astGenRepr statement
+
+    let 
+        tuple_constr = ident_defs[2]
+        tuple_constr_kind = tuple_constr.kind
+
+    if tuple_constr_kind == nnkEmpty:
+        error("'" & $var_name & "': trying to build an empty tuple")
+    
+    #Detect if it's a proper tuple construct (e.g. a = (1, 2), and not a = someTupleFunc())
+    if tuple_constr_kind == nnkTupleConstr:
+        let new_ident_defs = build_new_tuple_recursive(ident_defs, tuple_constr, tuple_type)
+        
+        return nnkVarSection.newTree(
+            new_ident_defs
+        )
+    else:
+        #Perhaps at least do the type info here??
+        return parsed_statement
+
+    #let one = statement[0][2][0]
+    #let two = statement[0][2][1][1]
+    
+    #[
+    return nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+            var_symbol,
+            newEmptyNode(),
+            nnkTupleConstr.newTree(
+                nnkCall.newTree(
+                    newIdentNode("float"),
+                    one
+                ),
+                nnkTupleConstr.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("float"),
+                        one
+                    ),
+                    nnkCall.newTree(
+                        newIdentNode("float"),
+                        two
+                    )
+                )
+            )
+        )
+    )
+    ]#
 
 #Parse the var section
 proc parse_typed_var_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
@@ -985,7 +1048,8 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     let 
-        var_symbol = parsed_statement[0][0]
+        ident_defs = parsed_statement[0]
+        var_symbol = ident_defs[0]
         var_type   = var_symbol.getTypeInst().getTypeImpl()
         var_name   = var_symbol.strVal()
 
@@ -999,7 +1063,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     if var_type.kind == nnkPtrTy:
         #Found a struct!
         if var_type.isStruct():
-            let old_statement_body = parsed_statement[0]
+            let old_statement_body = ident_defs
 
             #Detect if it's a non-initialized struct variable (e.g "data Data[float]")
             if old_statement_body.len == 3:
@@ -1022,17 +1086,12 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     #Look for tuples. They come in as "var".
     #Should they be "let" or "var" ???
     elif var_type.kind == nnkTupleConstr:
-        #error astGenRepr parsed_statement
-        discard
-    
-    #Standard var declarations. Declare as float if not specified in the var decl:
-    # a = 0 -> a float = float(0)
-    # a int = 0 -> a int = 0
-    # a = int(0) -> a = float(int(0))
-    else:
-        var is_const = false
+        parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_name, var_type)
+        
+        #error repr parsed_statement
 
         #Look for consts: capital letters.
+        #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))
         if var_name.isStrUpperAscii(true):
             let old_statement_body = parsed_statement[0]
 
@@ -1041,34 +1100,46 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
                 old_statement_body
             )
 
-            #Replace the entry in the untyped block, which has yet to be semantically evaluated.
             parsed_statement = new_let_statement
+    
+    #Standard var declarations. Declare as float if not specified in the var decl:
+    # a = 0 -> a float = float(0)
+    # a int = 0 -> a int = 0
+    # a = int(0) -> a = float(int(0))
+    else:
+        #Keep boleans as they are
+        var is_bool = false
+        if var_type.kind == nnkSym:
+            if var_type.strVal() == "bool":
+                is_bool = true
 
-            is_const = true
+        let 
+            var_decl_type = ident_defs[1]
+            var_content   = ident_defs[2]
 
-        #Don't convert consts, keep them as they are declared
-        if not is_const:
-            #Keep boleans as they are
-            var is_bool = false
-            if var_type.kind == nnkSym:
-                if var_type.strVal() == "bool":
-                    is_bool = true
-
-            let 
-                var_decl_type = parsed_statement[0][1]
-                var_content   = parsed_statement[0][2]
-
-            if var_decl_type.kind == nnkEmpty and is_bool.not:
-                parsed_statement = nnkVarSection.newTree(
-                    nnkIdentDefs.newTree(
-                        var_symbol,
+        if var_decl_type.kind == nnkEmpty and is_bool.not:
+            parsed_statement = nnkVarSection.newTree(
+                nnkIdentDefs.newTree(
+                    var_symbol,
+                    newIdentNode("float"),
+                    nnkCall.newTree(
                         newIdentNode("float"),
-                        nnkCall.newTree(
-                            newIdentNode("float"),
-                            var_content
-                        )
+                        var_content
                     )
                 )
+            )
+
+        #Look for consts: capital letters.
+        #Same rules apply: MYCONST = 1 -> MYCONST float = float(1) / MYCONST int = 1 -> MYCONST int = 1
+        if var_name.isStrUpperAscii(true):
+            let old_statement_body = parsed_statement[0] #Use the new parsed_statement, not ident_defs
+
+            #Create new let statement
+            let new_let_statement = nnkLetSection.newTree(
+                old_statement_body
+            )
+
+            parsed_statement = new_let_statement
 
     return parsed_statement
 
@@ -1423,6 +1494,9 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     result = typedToUntyped(inner_block)
 
     #error repr result
+
+    #if is_def_block:
+    #    error repr result
 
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:
