@@ -985,6 +985,13 @@ let tuple_convert_types* {.compileTime.} = [
 proc build_new_tuple_recursive(ident_defs : NimNode, tuple_constr : NimNode, tuple_type : NimNode) : NimNode {.compileTime.} =
     var new_ident_defs = ident_defs
 
+    for i, tuple_entry in tuple_constr:
+        let tuple_entry_type = tuple_type[i]
+        echo astGenRepr tuple_entry
+        echo astGenRepr tuple_entry_type
+
+    error "me"
+
     return new_ident_defs
 
 #Convert all float types (float32, cfloat, etc...) to float.
@@ -1088,7 +1095,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     elif var_type.kind == nnkTupleConstr:
         parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_name, var_type)
         
-        #error repr parsed_statement
+        error repr parsed_statement
 
         #Look for consts: capital letters.
         #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))
