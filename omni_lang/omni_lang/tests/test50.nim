@@ -18,7 +18,7 @@ expandMacros:
         #return (one, two)  #(float(one), float(two))
 
     init:
-        a = blah(in1 * 2, in2)
+        a = blah(in1 * 2, in2)[1]
         
         z = some(10, int(12))
         j = 123
