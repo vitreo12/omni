@@ -38,19 +38,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         template_body_call = nnkCall.newTree()
 
         generics : seq[NimNode]
-        checkValidTypes = nnkStmtList.newTree()
-
-    #Pass the proc body to the parse_block_untyped macro to parse it
-    var proc_body = nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("parse_block_untyped"),
-                code_block,
-                newLit(false),
-                newLit(false),
-                newLit(false),
-                newLit(true)
-            )
-        )   
+        checkValidTypes = nnkStmtList.newTree()  
     
     let function_signature_kind = function_signature.kind
 
@@ -122,11 +110,11 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         for index, statement in args_block.pairs():
             
             var 
-                arg_name : NimNode
-                arg_type : NimNode
+                arg_name  : NimNode
+                arg_type  : NimNode
                 arg_value : NimNode
                 
-                new_arg : NimNode
+                new_arg   : NimNode
 
             let statement_kind = statement.kind
 
@@ -275,6 +263,20 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         )   
 
         proc_def.add(newEmptyNode())
+
+        #Pass the proc body to the parse_block_untyped macro to parse it
+        let proc_body = nnkStmtList.newTree(
+            nnkCall.newTree(
+                newIdentNode("parse_block_untyped"),
+                code_block,
+                newLit(false),
+                newLit(false),
+                newLit(false),
+                newLit(true),    #is_def
+                newLit(false),
+                proc_return_type #pass return type as "extra_data"
+            )
+        ) 
         
         #Add function body (with checks for var/lets macro)
         proc_def.add(proc_body)
@@ -327,7 +329,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #echo astGenRepr proc_def
         #echo repr proc_def 
-        #echo repr template_def       
+        #error repr template_def       
              
     else:
         error "Invalid syntax for def"

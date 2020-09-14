@@ -9,7 +9,7 @@ expandMacros:
         if b < 0:
             return a + b
 
-    def blah(one, two):     
+    def blah(one, two): 
         #Untyped:
         c (int, (int, float)) = (1, (1, 2)) #(int(1), (int(1), float(2)))
 
