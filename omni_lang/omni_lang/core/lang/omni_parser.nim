@@ -40,14 +40,6 @@ let tuple_convert_types {.compileTime.} = [
     "cint", "clong", "int", "int32", "int64"
 ]
 
-#explicitly set accepted types
-let valid_number_types {.compileTime.} = [
-    "int", "int32", "int64",
-    "float", "float32", "float64",
-    "sig", "sig32", "sig64",
-    "signal", "signal32", "signal64"
-]
-
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
     var hasAtleastOneAlphaChar = false
@@ -1188,7 +1180,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     elif var_type_kind == nnkTupleConstr:
         parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_decl_type, var_content, var_name, var_type)
         #error repr parsed_statement
-        
+
         #Look for consts: capital letters.
         #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))
         if var_name.isStrUpperAscii(true):
