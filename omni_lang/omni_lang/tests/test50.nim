@@ -4,7 +4,10 @@ expandMacros:
     ins 2
 
     def some(a, b):
-        return a * b
+        if a > 0:
+            return a * b
+        if b < 0:
+            return a + b
 
     def blah(one, two):     
         #Untyped:
@@ -14,15 +17,19 @@ expandMacros:
         d = (one, (one, float(two) + int(one))) #(float(one), (float(one), float(two) + int(one)))
         
         #return (c, d)
-        
-        #Explicit return!! It should run conversions here too
-        return (one, two)  #(float(one), float(two))
+
+        #Explicit return!!
+        #Convert only if it's some kind of weird float?
+        #return (one, int(two))  #(float(one), float(two))
+        return (one, two)
 
     init:
         a = blah(in1 * 2, in2)
        
         z = some(10, int(12))
         j = 123
+
+        d = int(123.12313)
         
         BUBU = (1, 2)              #(float(1), float(2))
         ahah (int, float) = (1, 2) #(int(1), float(2))

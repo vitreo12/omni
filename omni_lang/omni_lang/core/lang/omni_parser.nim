@@ -296,13 +296,15 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
     parsed_statement = findStructConstructorCall(parsed_statement)
 
     if is_def_block and statement.kind == nnkReturnStmt:
+        let return_val = parsed_statement[0]
+
         #Convert "return" to "omni_temp_result_... ="
         #This is needed to avoid type checking weirdness in the def block!
         parsed_statement = nnkLetSection.newTree(
             nnkIdentDefs.newTree(
                 genSym(ident="omni_temp_result_posadijwehqwensdakswyetrwqeq"),
                 newEmptyNode(),
-                parsed_statement[0]
+                return_val
             )
         )
 
@@ -352,10 +354,7 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
     return parsed_statement
 
 #a (int, (int, float)) = (1, (1, 1)) -> (int(1), (int(1), float(1)))
-proc tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void {.compileTime.} =
-    if tuple_type.kind == nnkEmpty:
-        error "ah"
-    
+proc tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void {.compileTime.} = 
     #Loop over all tuple_type
     for i, inner_tuple_type in tuple_type:
         if tuple_val.len <= i:
@@ -1044,21 +1043,23 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
 
     return parsed_statement
 
-#Let nim figure out when doing explicit conversions
-proc find_conv_in_call(call : NimNode) : bool {.compileTime.} =
+#Let nim figure out when doing explicit conversions (on all levels) or variable assignments (only at top level)
+proc find_conversions(call : NimNode) : bool {.compileTime.} =
+    if call.kind == nnkConv:
+        return true
+
     if call.kind == nnkCall or call.kind == nnkInfix or call.kind == nnkPostfix:
         for statement in call:
             if statement.kind == nnkConv:
                 return true
             elif statement.kind == nnkCall:
-                return find_conv_in_call(statement)
+                return find_conversions(statement)
     return false
     
-
-proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_constr : NimNode, tuple_type : NimNode) {.compileTime.} =
+proc build_new_tuple_recursive(tuple_constr : NimNode, tuple_type : NimNode) {.compileTime.} =
     for i, tuple_entry_type in tuple_type:
         if tuple_constr.len <= i:
-            break
+            continue #or break?
 
         #Make sure not to have mismatches between tuple_type and tuple_constr (e.g. when building from functions)
         let tuple_entry_val = tuple_constr[i]
@@ -1066,7 +1067,7 @@ proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_constr : NimNode,
         #If another tuple, run again
         if tuple_entry_val.kind == nnkTupleConstr:
             if tuple_entry_type.kind == nnkTupleConstr:
-                build_new_tuple_recursive(new_ident_defs, tuple_entry_val, tuple_entry_type)
+                build_new_tuple_recursive(tuple_entry_val, tuple_entry_type)
         
         #Wrap each entry in float() if needed
         else:
@@ -1087,8 +1088,8 @@ proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_constr : NimNode,
 
                 #Find out if there are any explicit conversions happening in code. If there are,
                 #let nim figure out the type for that entry (and let the user figure it out)
-                let explicit_conversions = find_conv_in_call(tuple_entry_val)
-                        
+                let explicit_conversions = find_conversions(tuple_entry_val)
+
                 #Run conversion to float if type is not explicitly set with a conversion
                 if not explicit_conversions and tuple_entry_type_str in tuple_convert_types:
                     tuple_constr[i] = nnkCall.newTree(
@@ -1120,12 +1121,11 @@ proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_
     
     #Detect if it's a proper tuple construct (e.g. a = (1, 2), and not a = someTupleFunc())
     if var_content_kind == nnkTupleConstr:
-        #new_ident_defs is modified in place in build_new_tuple_recursive
-        var new_ident_defs = ident_defs
-        build_new_tuple_recursive(new_ident_defs, real_var_content, tuple_type)
+        #real_var_content is modified in place, and it's part of ident_defs anyway.
+        build_new_tuple_recursive(real_var_content, tuple_type)
         
         return nnkVarSection.newTree(
-            new_ident_defs
+            ident_defs
         )
 
     else:
@@ -1206,7 +1206,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
                 is_bool = true
 
         #This makes a = int(1.5) + int(0.432) work!! Lets nim figure out typing if nnkConv are present in the var decl
-        let explicit_conversions = find_conv_in_call(var_content)
+        let explicit_conversions = find_conversions(var_content)
 
         #if explicit_conversions:
         #    error var_name
@@ -1258,8 +1258,16 @@ proc parse_typed_let_section(statement : NimNode, level : var int, is_constructo
 
         #Convert "omni_temp_result_posadijwehqwensdakswyetrwqeq = xyz" to "return xyz" statements
         if var_name.strVal().startsWith("omni_temp_result_posadijwehqwensdakswyetrwqeq"):
+            var return_content = ident_defs[2]
+
+            #If a tuple, run conversions!
+            if return_content.kind == nnkTupleConstr:
+                let tuple_type = return_content.getTypeInst().getTypeImpl()
+                #return content is modified in place
+                build_new_tuple_recursive(return_content, tuple_type)
+
             parsed_statement = nnkReturnStmt.newTree(
-                ident_defs[2]
+                return_content
             )
     
     return parsed_statement
