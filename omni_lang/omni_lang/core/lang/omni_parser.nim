@@ -1063,7 +1063,7 @@ proc find_conv_in_call(call : NimNode) : bool {.compileTime.} =
     return false
     
 
-proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_decl_type : NimNode, tuple_constr : NimNode, tuple_type : NimNode) {.compileTime.} =
+proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_constr : NimNode, tuple_type : NimNode) {.compileTime.} =
     for i, tuple_entry_type in tuple_type:
         if tuple_constr.len <= i:
             break
@@ -1074,7 +1074,7 @@ proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_decl_type : NimNo
         #If another tuple, run again
         if tuple_entry_val.kind == nnkTupleConstr:
             if tuple_entry_type.kind == nnkTupleConstr:
-                build_new_tuple_recursive(new_ident_defs, tuple_decl_type, tuple_entry_val, tuple_entry_type)
+                build_new_tuple_recursive(new_ident_defs, tuple_entry_val, tuple_entry_type)
         
         #Wrap each entry in float() if needed
         else:
@@ -1107,6 +1107,11 @@ proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_decl_type : NimNo
 #Convert all float types (float32, cfloat, etc...) to float.
 #statement comes in as a nnkVarSection
 proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_symbol : NimNode, var_decl_type : NimNode, var_content : NimNode, var_name : string, tuple_type : NimNode) : NimNode {.compileTime.} =
+    #If var_decl_type is not empty, it means it's been expressed by the user already
+    #and dealt with in the untyped block already. Just return
+    if var_decl_type.kind != nnkEmpty:
+        return parsed_statement
+    
     var 
         real_var_content : NimNode
         var_content_kind = var_content.kind
@@ -1125,7 +1130,7 @@ proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_
     if var_content_kind == nnkTupleConstr:
         #new_ident_defs is modified in place in build_new_tuple_recursive
         var new_ident_defs = ident_defs
-        build_new_tuple_recursive(new_ident_defs, var_decl_type, real_var_content, tuple_type)
+        build_new_tuple_recursive(new_ident_defs, real_var_content, tuple_type)
         
         return nnkVarSection.newTree(
             new_ident_defs
@@ -1182,6 +1187,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     #Should they be "let" or "var" ???
     elif var_type_kind == nnkTupleConstr:
         parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_decl_type, var_content, var_name, var_type)
+        #error repr parsed_statement
         
         #Look for consts: capital letters.
         #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))

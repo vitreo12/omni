@@ -8,20 +8,21 @@ expandMacros:
 
     def blah(one, two):     
         #Untyped:
-        #c (int, (int, float)) = (1, (1, 2)) #(int(1), (int(1), float(2)))
+        c (int, (int, float)) = (1, (1, 2)) #(int(1), (int(1), float(2)))
 
         #Typed:
-        c = (one, (one, float(two) + int(one))) #(float(one), (float(one), float(two)))
+        d = (one, (one, float(two) + int(one))) #(float(one), (float(one), float(two) + int(one)))
         
-        return c
+        #return (c, d)
         
-        #return (one, two)  #(float(one), float(two))
+        #Explicit return!! It should run conversions here too
+        return (one, two)  #(float(one), float(two))
 
     init:
-        #a = blah(in1 * 2, in2)
+        a = blah(in1 * 2, in2)
        
         z = some(10, int(12))
         j = 123
         
-        #BUBU = (1, 2)              #(float(1), float(2))
+        BUBU = (1, 2)              #(float(1), float(2))
         ahah (int, float) = (1, 2) #(int(1), float(2))
