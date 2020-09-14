@@ -380,7 +380,8 @@ proc tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void {.co
         #individual value, run conversion!
         else:
             #Extra check... This should exclude function calls with pars too
-            if inner_tuple_type.kind == nnkSym:
+            let inner_tuple_type_kind = inner_tuple_type.kind
+            if inner_tuple_type_kind == nnkSym or inner_tuple_type_kind == nnkIdent:
                 tuple_val[i] = nnkCall.newTree(
                     inner_tuple_type,
                     inner_tuple_val
@@ -434,6 +435,8 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
                 #new_assgn_right is modified in place in tuple_untyped_assign
                 new_assgn_right = assgn_right
                 tuple_untyped_assign(var_type, new_assgn_right)
+
+                #error repr new_assgn_right
             
             #a int = 123.214 -> a : int = int(123.324)...
             #Is this REALLY necessary? Shouldn't the user be careful on this by himself, without
@@ -1075,7 +1078,8 @@ proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_decl_type : NimNo
         
         #Wrap each entry in float() if needed
         else:
-            if tuple_entry_type.kind == nnkSym:
+            let tuple_entry_type_kind = tuple_entry_type.kind
+            if tuple_entry_type_kind == nnkSym or tuple_entry_type_kind == nnkIdent:
                 let tuple_entry_type_str = tuple_entry_type.strVal()
 
                 #[
@@ -1144,7 +1148,8 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
         var_decl_type = ident_defs[1]
         var_content   = ident_defs[2]   
         var_type      = var_symbol.getTypeInst().getTypeImpl()
-        var_name      = var_symbol.strVal()            
+        var_type_kind = var_type.kind
+        var_name      = var_symbol.strVal()        
 
     if var_name in non_valid_variable_names:
         error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.")
@@ -1153,7 +1158,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     checkValidType(var_type, var_name)
 
     #Look for structs
-    if var_type.kind == nnkPtrTy:
+    if var_type_kind == nnkPtrTy:
         #Found a struct!
         if var_type.isStruct():
             #Detect if it's a non-initialized struct variable (e.g "data Data[float]")
@@ -1175,7 +1180,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
     #Look for tuples. They come in as "var".
     #Should they be "let" or "var" ???
-    elif var_type.kind == nnkTupleConstr:
+    elif var_type_kind == nnkTupleConstr:
         parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_decl_type, var_content, var_name, var_type)
         
         #Look for consts: capital letters.
@@ -1198,7 +1203,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     else:
         #Keep boleans as they are
         var is_bool = false
-        if var_type.kind == nnkSym:
+        if var_type_kind == nnkSym:
             if var_type.strVal() == "bool":
                 is_bool = true
 
