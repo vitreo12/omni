@@ -23,6 +23,7 @@
 #remove tables here and move isStrUpperAscii (and strutils) to another module
 import macros, strutils, omni_type_checker, omni_macros_utilities
 
+#Non valid variable names
 let non_valid_variable_names {.compileTime.} = [
     "ins", "inputs",
     "outs", "outputs",
@@ -31,6 +32,20 @@ let non_valid_variable_names {.compileTime.} = [
     "sig", "sig32", "sig64",
     "signal", "signal32", "signal64",
     "Data", "Buffer", "Delay"
+]
+
+#Types that will be converted to float when in tuples (if not explicitly set)
+let tuple_convert_types {.compileTime.} = [
+    "cfloat", "cdouble", "float32", "float64",
+    "cint", "clong", "int", "int32", "int64"
+]
+
+#explicitly set accepted types
+let valid_number_types {.compileTime.} = [
+    "int", "int32", "int64",
+    "float", "float32", "float64",
+    "sig", "sig32", "sig64",
+    "signal", "signal32", "signal64"
 ]
 
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
@@ -344,6 +359,33 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
     
     return parsed_statement
 
+#a (int, (int, float)) = (1, (1, 1)) -> (int(1), (int(1), float(1)))
+proc tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void {.compileTime.} =
+    if tuple_type.kind == nnkEmpty:
+        error "ah"
+    
+    #Loop over all tuple_type
+    for i, inner_tuple_type in tuple_type:
+        if tuple_val.len <= i:
+            continue
+
+        var inner_tuple_val = tuple_val[i]
+
+        #tuple of tuples: run conversion only if both tuple_val and tuple_type are tuples:
+        #check tuple_val first, for mismatches!
+        if inner_tuple_val.kind == nnkPar:
+            if inner_tuple_type.kind == nnkPar:
+                tuple_untyped_assign(inner_tuple_type, inner_tuple_val)
+        
+        #individual value, run conversion!
+        else:
+            #Extra check... This should exclude function calls with pars too
+            if inner_tuple_type.kind == nnkSym:
+                tuple_val[i] = nnkCall.newTree(
+                    inner_tuple_type,
+                    inner_tuple_val
+                )
+
 #Parse the assign syntax: a float = 10 OR a = 10
 proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     #print_parser_stage(statement, level)
@@ -378,15 +420,45 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
             if assgn_left.len != 2:
                 error("Invalid variable type declaration.")
 
+            let 
+                var_name = assgn_left[0]
+                var_type = assgn_left[1]
+
+            var new_assgn_right : NimNode
+
+            #Detect tuple assignment, gotta convert every single entry, or the nim untyped parser won't be happy
+            #a (int, (int, float)) = (1, (1, 1)) -> (int(1), (int(1), float(1)))
+            #This however won't work with function returns, as tuples can't be casted in group:
+            #a (int, (int, float)) = (1, someFunc()) -> if someFunc doesn't return (int, float), it's an error :)
+            if var_type.kind == nnkPar:
+                #new_assgn_right is modified in place in tuple_untyped_assign
+                new_assgn_right = assgn_right
+                tuple_untyped_assign(var_type, new_assgn_right)
+            
+            #a int = 123.214 -> a : int = int(123.324)...
+            #Is this REALLY necessary? Shouldn't the user be careful on this by himself, without
+            #adding this additional check?
+            else:
+                new_assgn_right = nnkCall.newTree(
+                    var_type,
+                    assgn_right
+                )
+
+                #No casting:
+                #new_assgn_right = assgn_right
+
+            #error repr new_assgn_right
+
+            #Build final ident defs, using the newly converted new_assgn_right
             assgn_left = nnkIdentDefs.newTree(
-                assgn_left[0],
-                assgn_left[1],
-                assgn_right
+                var_name,
+                var_type,
+                new_assgn_right
             )
 
             is_command_or_ident = true
         
-        #All other cases: normal ident (a = 10), bracket (a[i] = 10), dot (a.b = 10)
+        #All other cases: normal ident: a = 10, bracket: a[i] = 10, dot: a.b = 10
         else:
             #Normal assignment: a = 0.0
             if assgn_left_kind == nnkIdent:
@@ -851,7 +923,8 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    #error repr final_block
+    #if is_def_block:
+    #    error repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -976,76 +1049,87 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
 
     return parsed_statement
 
-#Types that will be converted to float when in tuples (if not explicitly set, int)
-let tuple_convert_types* {.compileTime.} = [
-    "cfloat", "cdouble", "float32", "float64",
-    "cint", "clong", "int", "int32", "int64"
-]
+#Let nim figure out when doing explicit conversions
+proc find_conv_in_call(call : NimNode) : bool {.compileTime.} =
+    if call.kind == nnkCall or call.kind == nnkInfix or call.kind == nnkPostfix:
+        for statement in call:
+            if statement.kind == nnkConv:
+                return true
+            elif statement.kind == nnkCall:
+                return find_conv_in_call(statement)
+    return false
+    
 
-proc build_new_tuple_recursive(ident_defs : NimNode, tuple_constr : NimNode, tuple_type : NimNode) : NimNode {.compileTime.} =
-    var new_ident_defs = ident_defs
+proc build_new_tuple_recursive(new_ident_defs : NimNode, tuple_decl_type : NimNode, tuple_constr : NimNode, tuple_type : NimNode) {.compileTime.} =
+    for i, tuple_entry_type in tuple_type:
+        if tuple_constr.len <= i:
+            break
 
-    for i, tuple_entry in tuple_constr:
-        let tuple_entry_type = tuple_type[i]
-        echo astGenRepr tuple_entry
-        echo astGenRepr tuple_entry_type
+        #Make sure not to have mismatches between tuple_type and tuple_constr (e.g. when building from functions)
+        let tuple_entry_val = tuple_constr[i]
 
-    error "me"
+        #If another tuple, run again
+        if tuple_entry_val.kind == nnkTupleConstr:
+            if tuple_entry_type.kind == nnkTupleConstr:
+                build_new_tuple_recursive(new_ident_defs, tuple_decl_type, tuple_entry_val, tuple_entry_type)
+        
+        #Wrap each entry in float() if needed
+        else:
+            if tuple_entry_type.kind == nnkSym:
+                let tuple_entry_type_str = tuple_entry_type.strVal()
 
-    return new_ident_defs
+                #[
+                var valid_convert_func = false
+                
+                #Check if there already is a float / int / ... conversion with nnkConv
+                #which could've been applied if explicit types were set by user
+                if tuple_entry_val.kind == nnkConv:
+                    let func_name = tuple_entry_val[0].strVal()
+                    if func_name in valid_number_types:
+                        valid_convert_func = true
+                ]#
+
+                #Find out if there are any explicit conversions happening in code. If there are,
+                #let nim figure out the type for that entry (and let the user figure it out)
+                let explicit_conversions = find_conv_in_call(tuple_entry_val)
+                        
+                #Run conversion to float if type is not explicitly set with a conversion
+                if not explicit_conversions and tuple_entry_type_str in tuple_convert_types:
+                    tuple_constr[i] = nnkCall.newTree(
+                        newIdentNode("float"),
+                        tuple_entry_val
+                    )
 
 #Convert all float types (float32, cfloat, etc...) to float.
 #statement comes in as a nnkVarSection
-proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_symbol : NimNode, var_name : string, tuple_type : NimNode) : NimNode {.compileTime.} =
-    #echo astGenRepr tuple_type
+proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_symbol : NimNode, var_decl_type : NimNode, var_content : NimNode, var_name : string, tuple_type : NimNode) : NimNode {.compileTime.} =
+    var 
+        real_var_content : NimNode
+        var_content_kind = var_content.kind
 
-    #error astGenRepr statement
+    #Weird conversion case? Should I just skip over?? It happens when returning from a def
+    if var_content_kind == nnkHiddenSubConv:
+        real_var_content = var_content[1]
+        var_content_kind = real_var_content.kind
+    else:
+        real_var_content = var_content
 
-    let 
-        tuple_constr = ident_defs[2]
-        tuple_constr_kind = tuple_constr.kind
-
-    if tuple_constr_kind == nnkEmpty:
+    if var_content_kind == nnkEmpty:
         error("'" & $var_name & "': trying to build an empty tuple")
     
     #Detect if it's a proper tuple construct (e.g. a = (1, 2), and not a = someTupleFunc())
-    if tuple_constr_kind == nnkTupleConstr:
-        let new_ident_defs = build_new_tuple_recursive(ident_defs, tuple_constr, tuple_type)
+    if var_content_kind == nnkTupleConstr:
+        #new_ident_defs is modified in place in build_new_tuple_recursive
+        var new_ident_defs = ident_defs
+        build_new_tuple_recursive(new_ident_defs, var_decl_type, real_var_content, tuple_type)
         
         return nnkVarSection.newTree(
             new_ident_defs
         )
+
     else:
         #Perhaps at least do the type info here??
         return parsed_statement
-
-    #let one = statement[0][2][0]
-    #let two = statement[0][2][1][1]
-    
-    #[
-    return nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-            var_symbol,
-            newEmptyNode(),
-            nnkTupleConstr.newTree(
-                nnkCall.newTree(
-                    newIdentNode("float"),
-                    one
-                ),
-                nnkTupleConstr.newTree(
-                    nnkCall.newTree(
-                        newIdentNode("float"),
-                        one
-                    ),
-                    nnkCall.newTree(
-                        newIdentNode("float"),
-                        two
-                    )
-                )
-            )
-        )
-    )
-    ]#
 
 #Parse the var section
 proc parse_typed_var_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
@@ -1055,10 +1139,12 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     let 
-        ident_defs = parsed_statement[0]
-        var_symbol = ident_defs[0]
-        var_type   = var_symbol.getTypeInst().getTypeImpl()
-        var_name   = var_symbol.strVal()
+        ident_defs    = parsed_statement[0]
+        var_symbol    = ident_defs[0]
+        var_decl_type = ident_defs[1]
+        var_content   = ident_defs[2]   
+        var_type      = var_symbol.getTypeInst().getTypeImpl()
+        var_name      = var_symbol.strVal()            
 
     if var_name in non_valid_variable_names:
         error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.")
@@ -1070,13 +1156,10 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     if var_type.kind == nnkPtrTy:
         #Found a struct!
         if var_type.isStruct():
-            let old_statement_body = ident_defs
-
             #Detect if it's a non-initialized struct variable (e.g "data Data[float]")
-            if old_statement_body.len == 3:
-                if old_statement_body[2].kind == nnkEmpty:
-                    let error_var_name = old_statement_body[0]
-                    error("'" & $error_var_name & "': structs must be instantiated on declaration.")
+            if ident_defs.len == 3:
+                if var_content.kind == nnkEmpty:
+                    error("'" & var_name & "': structs must be instantiated on declaration.")
             
             #If trying to assign a ptr type to any variable.. this won't probably be caught as it's been already parsed from untyped to typed...
             #if is_perform_block:
@@ -1084,7 +1167,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 
             #All good, create new let statement
             let new_let_statement = nnkLetSection.newTree(
-                old_statement_body
+                ident_defs
             )
 
             #Replace the entry in the untyped block, which has yet to be semantically evaluated.
@@ -1093,10 +1176,8 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     #Look for tuples. They come in as "var".
     #Should they be "let" or "var" ???
     elif var_type.kind == nnkTupleConstr:
-        parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_name, var_type)
+        parsed_statement = convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_decl_type, var_content, var_name, var_type)
         
-        error repr parsed_statement
-
         #Look for consts: capital letters.
         #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))
         if var_name.isStrUpperAscii(true):
@@ -1112,7 +1193,8 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
     #Standard var declarations. Declare as float if not specified in the var decl:
     # a = 0 -> a float = float(0)
     # a int = 0 -> a int = 0
-    # a = int(0) -> a = float(int(0))
+    # a = int(0) -> a = int(0)
+    # a = int(13) + int(12) -> a = int(13) + int(12)
     else:
         #Keep boleans as they are
         var is_bool = false
@@ -1120,11 +1202,20 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
             if var_type.strVal() == "bool":
                 is_bool = true
 
-        let 
-            var_decl_type = ident_defs[1]
-            var_content   = ident_defs[2]
+        #This makes a = int(1.5) + int(0.432) work!! Lets nim figure out typing if nnkConv are present in the var decl
+        let explicit_conversions = find_conv_in_call(var_content)
 
-        if var_decl_type.kind == nnkEmpty and is_bool.not:
+        #if explicit_conversions:
+        #    error var_name
+
+        #if var_content.kind != nnkConv makes sure that
+        #conversion calls are kept as they are! e.g. a = int(0) should still be int.
+        #This won't make this an int though: a = int(1.5) + int(0.5).
+        #For the old behaviour (with conversions to float on anything user doesn't specify), remove var_content.kind != nnkConv
+        #if var_content.kind != nnkConv and var_decl_type.kind == nnkEmpty and is_bool.not:
+        
+        #This works even with a = int(1.5) + int(0.5)
+        if not explicit_conversions and var_decl_type.kind == nnkEmpty and is_bool.not:
             parsed_statement = nnkVarSection.newTree(
                 nnkIdentDefs.newTree(
                     var_symbol,
