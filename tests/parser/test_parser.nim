@@ -56,14 +56,14 @@ suite "parser: variable declarations":
       nim:
         var a : float = float(0)
         var b : float = float(1.0)
-        var c : float = 2.0
+        var c : float = float(2.0)
         var d : float
         d = typeof(d)(3)
-        var e : int = 4
+        var e : int = int(4)
         var f : int
         f = typeof(f)(5)
         let CONST1 : float = float(6)
-        let CONST2 : int = 7
+        let CONST2 : int = int(7)
 
     check test
 
