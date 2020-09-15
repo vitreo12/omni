@@ -1,5 +1,5 @@
 ins 2:
-    buffer {Buffer}
+    buffer Buffer
     speed  {1, 0, 10}
 
 outs 1
