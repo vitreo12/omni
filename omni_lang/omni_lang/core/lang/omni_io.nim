@@ -333,7 +333,7 @@ macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
 
 proc checkValidParamName(param_name : string) : void =
     if param_name[0].isUpperAscii():
-        error("ins: '" & $param_name & "' must start with a lower case letter.")
+        error("ins: input name '" & $param_name & "' must start with a lower case letter.")
 
     for individualChar in param_name:
         if not (individualChar in acceptedCharsForParamName):
@@ -649,6 +649,9 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
                 if statement_kind == nnkStrLit or statement_kind == nnkIdent:
                     let param_name = statement.strVal()
 
+                    #Buffer without param name ????
+                    #if param_name == "Buffer":
+
                     checkValidParamName(param_name)
                     
                     param_names_string.add($param_name & ",")
@@ -669,14 +672,25 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
                     param_names_string.add($param_name & ",")
                 
-                    #The list of { }
+                    #The list of { } or Buffer
                     let default_min_max = statement[1]
 
-                    if default_min_max.kind != nnkCurly:
-                        error("Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets.")
+                    var 
+                        default_val : float
+                        min_val : float
+                        max_val : float
 
-                    let (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                    #Ident, no curly brackets Buffer
+                    if default_min_max.kind == nnkIdent:
+                        if default_min_max.strVal == "Buffer":
+                            min_val = BUFFER_FLOAT
+                            max_val = BUFFER_FLOAT
                     
+                    elif default_min_max.kind == nnkCurly:
+                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                    else:
+                        error("Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
+
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
                     max_vals[statement_counter] = max_val

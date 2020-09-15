@@ -2,7 +2,7 @@ import ../../omni_lang, macros
 
 expandMacros:
     ins 2:
-        blah {Buffer}
+        blah Buffer
         bluh
 
     init:
