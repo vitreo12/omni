@@ -277,7 +277,9 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
     #Parse the call
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
-    let call_name = parsed_statement[0]
+    let 
+        call_name = parsed_statement[0]
+        call_name_kind = call_name.kind
 
     #Detect out of position "build" calls in "init"
     if is_constructor_block:
@@ -287,13 +289,45 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
         
     #Something weird happened with Data[Something]() in a def.. It returned a call to a
     #nnkOpenSymChoice with symbols.. Re-interpret it and re-run parser (NEEDS MORE TESTING!)
-    if call_name.kind == nnkCall:
+    if call_name_kind == nnkCall:
         if call_name[0].kind == nnkOpenSymChoice:
             var new_statement = typedToUntyped(parsed_statement)
             parsed_statement = parser_untyped_loop(new_statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-            
+    
+    #Happens on []= assignments ... 
+    #make sure to typeof the access 
+    #this is needed for tuples, not Data and Buffer (these extra typeofs are removed in typed section)
+    elif call_name_kind == nnkOpenSymChoice:
+        if call_name[0].strVal() == "[]=":
+            if parsed_statement.len == 4:
+                let 
+                    array_var   = parsed_statement[1]
+                    array_index = parsed_statement[2]
+                    assgn_val   = parsed_statement[3]
+
+                #Replace the val assignment with typeof the accessed array bit
+                parsed_statement[3] = nnkCall.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("typeof"),
+                        nnkCall.newTree(
+                            newIdentNode("[]"),
+                            array_var,
+                            array_index
+                        )
+                    ),
+                    assgn_val
+                )
+
+                #error repr parsed_statement
+        
+        #error repr call_name
+        
     #Detect constructor calls
     parsed_statement = findStructConstructorCall(parsed_statement)
+
+    #if is_def_block:
+    #    error repr call_name
+    #    error repr parsed_statement
 
     if is_def_block and statement.kind == nnkReturnStmt:
         var return_val = parsed_statement[0]
@@ -967,37 +1001,47 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
         
         let function_name = function_call.strVal()
 
-        #echo function_name
-
-        #Fix Data/Buffer access: from [] = (delay_data, phase, write_value) to delay_data[phase] = write_value
+        #Fix Data/Buffer access: from []=(delay_data, phase, write_value) to delay_data[phase] = write_value
         if function_name == "[]=":                
-            var new_array_assignment : NimNode
-
             #1 channel
             if parsed_statement[1].kind == nnkDotExpr:
-                new_array_assignment = nnkAsgn.newTree(
+                
+                var assgn_right = parsed_statement[3]
+
+                #Remove typeof() which has been added in untyped section for tuple access safety
+                if assgn_right.kind == nnkConv:
+                    if assgn_right.len == 2:
+                        if assgn_right[0].kind == nnkTypeOfExpr:
+                            assgn_right = assgn_right[1]
+
+                parsed_statement = nnkAsgn.newTree(
                     nnkBracketExpr.newTree(
                         parsed_statement[1],
                         parsed_statement[2]
                     ),
-                    parsed_statement[3]
+                    assgn_right
                 )
 
             #Multi channel
             else:
                 let bracket_expr = nnkBracketExpr.newTree(parsed_statement[1])
-                
-                #Extract indexes
+
+                #Extract indices
                 for channel_index in 2..parsed_statement.len-2:
                     bracket_expr.add(parsed_statement[channel_index])
 
-                new_array_assignment = nnkAsgn.newTree(
+                var assgn_right = parsed_statement.last()
+
+                #Remove typeof() which has been added in untyped section for tuple access safety
+                if assgn_right.kind == nnkConv:
+                    if assgn_right.len == 2:
+                        if assgn_right[0].kind == nnkTypeOfExpr:
+                            assgn_right = assgn_right[1]
+
+                parsed_statement = nnkAsgn.newTree(
                     bracket_expr,
-                    parsed_statement.last()
+                    assgn_right
                 )
-            
-            if new_array_assignment != nil:
-                parsed_statement = new_array_assignment
 
         #If a struct_new_inner call without generics (and the struct has generics), use floats! (Otherwise it will default to ints due to the struct_new template)
         elif function_name == "struct_new_inner":
@@ -1323,18 +1367,24 @@ proc parse_typed_assgn(statement : NimNode, level : var int, is_constructor_bloc
 
     var 
         parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
-        assgn_right = parsed_statement[0]
+        assgn_left = parsed_statement[0]
 
     #Ignore 'result' (which is used in return stmt)
-    if assgn_right.kind == nnkSym:
-        if assgn_right.strVal() == "result":
+    if assgn_left.kind == nnkSym:
+        if assgn_left.strVal() == "result":
             return parsed_statement
 
-    if isStruct(assgn_right):
-        if assgn_right.kind == nnkDotExpr:
-            error("'" & assgn_right.repr & "': trying to re-assign an already allocated struct field.")
+    if isStruct(assgn_left):
+        if assgn_left.kind == nnkDotExpr:
+            error("'" & assgn_left.repr & "': trying to re-assign an already allocated struct field.")
         else:
-            error("'" & assgn_right.repr & "': trying to re-assign an already allocated struct.")
+            error("'" & assgn_left.repr & "': trying to re-assign an already allocated struct.")
+
+
+    ##########################################################################
+    #CHECK FOR SAME TYPE TO REMOVE ENVETUAL EXCESSIVE TYPEOF() CALLS HERE !!!!
+    ##########################################################################
+
 
     return parsed_statement
 
