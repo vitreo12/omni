@@ -118,6 +118,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
             type_to_inspect = var_type[0]
         else:
             type_to_inspect = var_type
+
+        #Tuples only support numbers for now, so no need to check for Datas
+        #and Structs... Otherwise, they should be checked here!!!
+        if type_to_inspect.kind == nnkTupleConstr:
+            continue
         
         let var_name_kind = var_name.kind
 

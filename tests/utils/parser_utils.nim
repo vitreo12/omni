@@ -58,5 +58,7 @@ macro compareOmniNim*(code : untyped) : untyped =
       code[1][1]
     )
 
+  #echo repr omni_code
+
   return quote do:
     compareOmniNim_inner(parse_block_untyped(`omni_code`), `nim_code`)

@@ -579,7 +579,9 @@ macro addBufferIns*(ins_names : typed) : untyped =
     let ins_names_seq = ins_names.getImpl.strVal.split(',')
 
     for i, in_name in ins_names_seq:
-        let in_number_name = ("in" & $(i+1))
+        let 
+            i_plus_one = i + 1
+            in_number_name = ("in" & $(i_plus_one))
         
         var
             ident_defs = nnkIdentDefs.newTree()
@@ -611,7 +613,7 @@ macro addBufferIns*(ins_names : typed) : untyped =
             nnkCall.newTree(
                 newIdentNode("struct_new_inner"),
                 newIdentNode("Buffer"),
-                newLit(i),
+                newLit(i_plus_one), #Buffer(1) is first input, not Buffer(0)
                 newIdentNode("buffer_interface"),
                 newIdentNode("ugen_auto_mem"),
                 newIdentNode("ugen_call_type")
