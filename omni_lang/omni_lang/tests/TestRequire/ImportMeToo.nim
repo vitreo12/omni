@@ -1,4 +1,7 @@
 import ../../../omni_lang
 
-def somethingElse():
-    return 0
+def something():
+    return 1
+
+proc ImportMe*() : int =
+    return 1
