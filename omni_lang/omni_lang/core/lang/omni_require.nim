@@ -97,4 +97,4 @@ macro require*(path_list : untyped) : untyped =
             )
         )
 
-    error repr result
+    #error repr result

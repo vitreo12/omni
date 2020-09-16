@@ -1,8 +1,8 @@
 import ../../../omni_lang
 
 require:
-    #"ImportMe.omni" as im
-    ../ImportMe/ImportMeToo
+    "ImportMe.nim" as im
+    "ImportMeToo.nim" as imt
 
 init:
     a = something()
