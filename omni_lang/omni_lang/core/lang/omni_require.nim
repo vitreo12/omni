@@ -28,43 +28,73 @@ import macros, os
 #import "ImportMe.nim" as ImportMe_module
 #Otherwise, module names will cluster the namespace if they have same name as structs, or defs
 
-#require "path1", "path2" AND require: 
-macro require*(path_list : untyped, paths : varargs[typed]) : untyped =
+proc check_valid_path(path : NimNode, unified_path_list : var seq[NimNode], as_names : var seq[NimNode]) : void {.compileTime.} =
+    let path_kind = path.kind
     
-    var unified_path_list : seq[NimNode]
+    if path_kind != nnkStrLit and path_kind != nnkIdent and path_kind != nnkInfix:
+        error("require: invalid syntax. Only strings or identifiers are valid to set the paths.")
+    
+    #Custom as
+    if path_kind == nnkInfix:
+        let 
+            infix_name = path[0].strVal()
+            path_name  = path[1]
+            module_as_name = path[2]
 
+        if infix_name != "as":
+            error("require: invalid infix '" & $infix_name & "'")
+
+        if path_name.kind != nnkStrLit and path.kind != nnkIdent:
+            error("require: invalid syntax. Only strings or identifiers are valid to set the paths.")
+
+        if module_as_name.kind != nnkIdent:
+            error("require: invalid module name")
+        
+        let module_as_name_module_inner = newIdentNode(module_as_name.strVal() & "_module_inner")
+
+        unified_path_list.add(path_name)
+        as_names.add(module_as_name_module_inner)
+
+    #String or ident
+    else:
+        let path_without_extension = (path.strVal().splitFile().name)
+        unified_path_list.add(path)
+        as_names.add(newIdentNode(path_without_extension & "_module_inner"))
+
+proc check_valid_paths(path_list : NimNode, unified_path_list : var seq[NimNode], as_names : var seq[NimNode]) : void {.compileTime.} =
     if path_list.len == 0:
-        if path_list.kind != nnkStrLit:
-            error("'require' only accepts strings to set the paths.")
-        unified_path_list.add(path_list)
+        check_valid_path(path_list, unified_path_list, as_names)
     else:
         for path in path_list:
-            if path.kind != nnkStrLit:
-                error("'require' only accepts strings to set the paths.")
-            unified_path_list.add(path)
+            check_valid_path(path, unified_path_list, as_names)
 
-    for path in paths:
-        if path.kind != nnkStrLit:
-            error("'require' only accepts strings to set the paths.")
-        unified_path_list.add(path)
+#require "path1" AND require: 
+macro require*(path_list : untyped) : untyped =
+    
+    var unified_path_list : seq[NimNode]
+    var as_names          : seq[NimNode]
+
+    check_valid_paths(path_list, unified_path_list, as_names)
 
     result = nnkStmtList.newTree()
 
-    for path in unified_path_list:
-        let path_without_extension = (path.strVal().splitFile().name)
+    for i, path in unified_path_list:
+        let as_name = as_names[i]
         
         result.add(
             nnkImportStmt.newTree(
                 nnkInfix.newTree(
                     newIdentNode("as"),
                     path,
-                    newIdentNode(path_without_extension & "_module")
+                    as_name
                 )
             ),
 
             #Exporting the module is needed in order to access the entries
             #in the struct declared here...
             nnkExportStmt.newTree(
-                newIdentNode(path_without_extension & "_module")
+                as_name
             )
         )
+
+    error repr result
