@@ -16,9 +16,7 @@ let b = when declared(imt_module_inner):
 
 echo (a, b)
 
-require:
-    "ImportMe.nim"
-    "ImportMeToo.nim"
+require "ImportMe.nim", "ImportMeToo.nim"
 
 let c = when declared(ImportMe_module_inner):
         ImportMe_module_inner.ImportMe()

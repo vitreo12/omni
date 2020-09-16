@@ -61,20 +61,24 @@ proc check_valid_path(path : NimNode, unified_path_list : var seq[NimNode], as_n
         unified_path_list.add(path)
         as_names.add(newIdentNode(path_without_extension & "_module_inner"))
 
-proc check_valid_paths(path_list : NimNode, unified_path_list : var seq[NimNode], as_names : var seq[NimNode]) : void {.compileTime.} =
+proc check_valid_paths(path_list : NimNode, paths_same_line : NimNode, unified_path_list : var seq[NimNode], as_names : var seq[NimNode]) : void {.compileTime.} =
     if path_list.len == 0:
         check_valid_path(path_list, unified_path_list, as_names)
     else:
         for path in path_list:
             check_valid_path(path, unified_path_list, as_names)
+    
+    #varargs: require "One.omni", "Two.omni"
+    for path in paths_same_line:
+        check_valid_path(path, unified_path_list, as_names)
 
-#require "path1" AND require: 
-macro require*(path_list : untyped) : untyped =
+#require "path1", "path2" AND require: 
+macro require*(path_list : untyped, paths_same_line : varargs[untyped]) : untyped =
     
     var unified_path_list : seq[NimNode]
     var as_names          : seq[NimNode]
 
-    check_valid_paths(path_list, unified_path_list, as_names)
+    check_valid_paths(path_list, paths_same_line, unified_path_list, as_names)
 
     result = nnkStmtList.newTree()
 
