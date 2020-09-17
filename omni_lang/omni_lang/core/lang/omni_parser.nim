@@ -1043,7 +1043,8 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                     assgn_right
                 )
 
-        #If a struct_new_inner call without generics (and the struct has generics), use floats! (Otherwise it will default to ints due to the struct_new template)
+        #If a struct_new_inner call without generics (and the struct has generics), use floats! 
+        #Otherwise it will default to ints due to the struct_new template
         elif function_name == "struct_new_inner":
             var struct_type = parsed_statement[1]
 
@@ -1054,6 +1055,8 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                     let 
                         struct_impl = struct_type.getImpl()
                         generic_params = struct_impl[1]
+
+                    error repr struct_impl
 
                     if generic_params.kind == nnkGenericParams:
                         var 
