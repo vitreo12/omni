@@ -1733,6 +1733,7 @@ proc find_modules_ownership_inner(call_name : NimNode, statement : NimNode, is_s
                     recursive_module_owner_str = recursive_module_owner.strVal()
                     previous_module_owner_str  = previous_module_owner.strVal()
                 
+                #This will not break just for std modules
                 if (recursive_module_owner_str == "omni_lang" or recursive_module_owner_str == "omni") and not(previous_module_owner_str in omni_modules):
                     break
 
