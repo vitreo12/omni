@@ -230,22 +230,25 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
                             )
                         )
 
-#Entry point for struct
+#Entry point for struct.
+#This generates:
+# Phasor_struct_inner = object
+# Phasor = ptr Phasor_struct_inner
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
-        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_struct_inner block
+        obj_type_def    = nnkTypeDef.newTree()          #Phasor_struct_inner
 
-        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_struct_inner block
-        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_struct_inner
+        ptr_type_def    = nnkTypeDef.newTree()          #Phasor = ptr Phasor_struct_inner
+        ptr_ty          = nnkPtrTy.newTree()            #the ptr type expressing ptr Phasor_struct_inner
 
         generics_seq : seq[NimNode]
-        checkValidTypes = nnkStmtList.newTree()        #Check that types fed to struct are correct omni types
+        checkValidTypes = nnkStmtList.newTree()         #Check that types fed to struct are correct omni types
     
     var 
         obj_name : NimNode
         ptr_name : NimNode
 
-        generics = nnkGenericParams.newTree()          #If generics are present in struct definition
+        generics = nnkGenericParams.newTree()           #If generics are present in struct definition
 
         obj_bracket_expr : NimNode
 
@@ -256,8 +259,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #Using generics
     if struct_name.kind == nnkBracketExpr:
-        obj_name = newIdentNode($(struct_name[0].strVal()) & "_struct_inner")  #Phasor_struct_inner
-        ptr_name = struct_name[0]                                     #Phasor
+        obj_name = newIdentNode(struct_name[0].strVal() & "_struct_inner") #Phasor_struct_inner
+        ptr_name = struct_name[0] #Phasor
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
@@ -563,13 +566,20 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
-    #Add first argument: obj_type : typedesc[Phasor[T, Y]]
+    ################################################################################################
+    # IMPORTANT: obj_bracket_expr
+    # is used as obj_type argument of constructors. Constructors still will return the ptr types.
+    # This is fundamental for having modules with same name as structs, as they would create collision
+    # if using the ptr type, which is the one exposed to the user.
+    ################################################################################################
+
+    #Add first argument: obj_type : typedesc[Phasor_init_inner[T, Y]]
     proc_formal_params.add(
         nnkIdentDefs.newTree(
             newIdentNode("obj_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                ptr_bracket_expr
+                obj_bracket_expr
             ),
             newEmptyNode()
         )   

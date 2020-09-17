@@ -35,7 +35,7 @@ type
 
     Delay* = ptr Delay_struct_inner
 
-proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
+proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay_struct_inner], size : S = uint(1), ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
@@ -57,11 +57,11 @@ proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = ui
     result.phase = 0
     result.data = data
 
-template struct_new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1)) : untyped {.dirty.} =
-    struct_new_inner(Delay, size, ugen_auto_mem, ugen_call_type)
+template struct_new*[S : SomeNumber](obj_type : typedesc[Delay_struct_inner], size : S = uint(1)) : untyped {.dirty.} =
+    struct_new_inner(obj_type, size, ugen_auto_mem, ugen_call_type)
 
-template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1)) : untyped {.dirty.} =
-    struct_new_inner(Delay, size, ugen_auto_mem, ugen_call_type)
+template new*[S : SomeNumber](obj_type : typedesc[Delay_struct_inner], size : S = uint(1)) : untyped {.dirty.} =
+    struct_new_inner(obj_type, size, ugen_auto_mem, ugen_call_type)
 
 proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
     return true

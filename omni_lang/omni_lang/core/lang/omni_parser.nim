@@ -131,6 +131,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
     var 
         proc_call_ident = parsed_statement[0]
+        struct_new_struct_inner_ident = proc_call_ident.copy()
         proc_call_ident_kind = proc_call_ident.kind
         proc_call_ident_str : string 
         proc_call_ident_obj : NimNode
@@ -153,12 +154,16 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 #Remove .new call from proc_ident
                 proc_call_ident = proc_call_ident[0]
                 proc_call_ident_kind = proc_call_ident.kind
+
+                #Overwrite struct_new_struct_inner_ident too
+                struct_new_struct_inner_ident = proc_call_ident.copy()
                 
                 #Data.new
                 if proc_call_ident_kind == nnkIdent or proc_call_ident_kind == nnkSym:
-                    proc_call_ident_str = proc_call_ident_obj.strVal()
+                    proc_call_ident_str = proc_call_ident.strVal()
                     proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
-                
+                    struct_new_struct_inner_ident = proc_call_ident_obj
+
                 #Something[float].new
                 elif proc_call_ident_kind == nnkBracketExpr:
                     proc_call_ident_obj = proc_call_ident[0]
@@ -167,24 +172,50 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                     if proc_call_ident_obj_kind == nnkIdent or proc_call_ident_obj_kind == nnkSym:
                         proc_call_ident_str = proc_call_ident_obj.strVal()
                         proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
-                    
+
+                        #Modify in place:
+                        #Something[float] -> Something_init_inner[float]
+                        struct_new_struct_inner_ident[0] = proc_call_ident_obj
+
                     #Module.Something[float].new ... Also works with Module.Something[SomethingElse[float]].new
                     elif proc_call_ident_obj_kind == nnkDotExpr:
                         #Extract Something from Module.Something
                         proc_call_ident_str = proc_call_ident_obj[1].strVal()
                         proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
-                    
+                        
+                        #Modify in place:
+                        #Module.Something[float] -> Module.Something_init_inner[float]
+                        struct_new_struct_inner_ident[0][1] = proc_call_ident_obj
+
                     else:
                         error("Invalid bracket expr in '" & repr(parsed_statement) & "'")
+
+                #Module.AnotherModule.Something.new()
+                elif proc_call_ident_kind == nnkDotExpr:
+                    proc_call_ident_str = proc_call_ident[1].strVal()
+                    proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+
+                    #Modify in place:
+                    #Module.Something[float] -> Module.Something_init_inner[float]
+                    let struct_new_struct_inner_ident_first = struct_new_struct_inner_ident[0]
+                    if struct_new_struct_inner_ident_first.kind == nnkIdent:
+                        struct_new_struct_inner_ident[1] = proc_call_ident_obj
+                    else:
+                        struct_new_struct_inner_ident[0][1] = proc_call_ident_obj
 
                 else:
                     error("Invalid .new call in '" & repr(parsed_statement) & "'")
                 
             #Normal dot syntax call. Simply append last entry with _struct_inner
             else:
+                let new_struct_inner_ident = newIdentNode(proc_call_ident_str & "_struct_inner")
                 proc_call_ident_obj = proc_call_ident.copy() #needed or it will modify proc_call_ident
-                proc_call_ident_obj[proc_call_ident_obj.len-1] = newIdentNode(proc_call_ident_str & "_struct_inner")
-        
+                proc_call_ident_obj[proc_call_ident_obj.len-1] = new_struct_inner_ident
+
+                #Modify in place:
+                #Module.Something -> Module.Something_init_inner
+                struct_new_struct_inner_ident[struct_new_struct_inner_ident.len-1] = new_struct_inner_ident
+               
         else:
             error("Invalid dot expr in '" & repr(parsed_statement) & "'")
     
@@ -192,32 +223,59 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     elif proc_call_ident_kind == nnkBracketExpr:
         proc_call_ident_obj = proc_call_ident[0]
         let proc_call_ident_obj_kind = proc_call_ident_obj.kind
-        
+
         if proc_call_ident_obj_kind == nnkIdent or proc_call_ident_obj_kind == nnkSym:
             proc_call_ident_str = proc_call_ident_obj.strVal()
             proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+            
+            #Modify in place:
+            #Something[float] -> Something_init_inner[float]
+            struct_new_struct_inner_ident[0] = proc_call_ident_obj
         
         #Module.Something[float] ... Also works with Module.Something[SomethingElse[float]]
         elif proc_call_ident_obj_kind == nnkDotExpr:
             #Extract Something from Module.Something
-            proc_call_ident_str = proc_call_ident_obj[1].strVal()
-            proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
-        
+            proc_call_ident_str = proc_call_ident_obj.last().strVal()
+            let new_struct_inner_ident = newIdentNode(proc_call_ident_str & "_struct_inner")
+            proc_call_ident_obj[proc_call_ident_obj.len-1] = new_struct_inner_ident
+
+            #Modify in place:
+            #Module.Something[float] -> Module.Something_init_inner[float]
+            let struct_new_struct_inner_ident_first = struct_new_struct_inner_ident[0]
+            if struct_new_struct_inner_ident_first.kind == nnkIdent:
+                struct_new_struct_inner_ident[1] = new_struct_inner_ident
+            else:
+                struct_new_struct_inner_ident[0][1] = new_struct_inner_ident
         else:
             error("Invalid bracket expr in '" & repr(parsed_statement) & "'")
     
-    #Normal ident call, simply append _struct_inner
+    #Normal ident call, simply append _struct_inner AND _init_inner
     elif proc_call_ident_kind == nnkIdent or proc_call_ident_kind == nnkSym:
         proc_call_ident_str = proc_call_ident.strVal()
         proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+        struct_new_struct_inner_ident = proc_call_ident_obj
     
     else:
         return statement
- 
-    var proc_new_call =  nnkCall.newTree(
+
+    #error repr struct_new_struct_inner_ident
+
+    #echo repr struct_new_struct_inner_ident
+
+    ################################################################################################
+    # IMPORTANT: struct_new_struct_inner_ident, which would be the full ident to a _struct_inner,
+    # is used as obj_type argument of constructors. Constructors still will return the ptr types.
+    # This is fundamental for having modules with same name as structs, as they would create collision
+    # if using the ptr type, which is the one exposed to the user.
+    ################################################################################################
+
+    #Call struct_new with the typedesc with _init_inner !!!
+    var proc_new_call = nnkCall.newTree(
         newIdentNode("struct_new"),
-        proc_call_ident
+        struct_new_struct_inner_ident
     )
+
+    #error repr proc_new_call
 
     var data_bracket_expr = false
 
@@ -234,10 +292,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 #Data case
                 if proc_call_ident_str == "Data":
                     data_bracket_expr = true
-                
-                #Other struct case, use the bracket expr instead of just the ident Phasor[int].struct_new instead of Phasor.struct_new
-                else:
-                    proc_new_call[1] = arg_temp
 
             #Continue in any case: the ident name it's already been added
             continue
@@ -272,7 +326,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         
         #If more than 2 (meaning: Data[int, float], as Data is index 0) error out!
         if parsed_statement_bracket.len > 2:
-            error("Cannot instantiate `Data`: got more than one type.")
+            error("Cannot instantiate 'Data' for '" & repr(parsed_statement) & "': got more than one type.")
             
         proc_new_call.add(nnkExprEqExpr.newTree(
                 newIdentNode("dataType"),
@@ -1024,8 +1078,10 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #if is_def_block:
     #    error repr extra_data
 
-    #if is_constructor_block:
-    #    error repr final_block
+    if is_constructor_block:
+        #error repr final_block
+        echo repr final_block
+        discard
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -1798,7 +1854,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:
 
-        #error repr result
+        error repr result
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.

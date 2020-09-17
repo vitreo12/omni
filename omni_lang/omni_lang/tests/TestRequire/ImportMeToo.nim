@@ -1,9 +1,4 @@
 import ../../../omni_lang
 
-def something():
-    return 1
-
-proc ImportMe*() : int =
-    return 1
-
-type ImportMeToo* = object
+struct ImportMeToo[T]:
+    a T
