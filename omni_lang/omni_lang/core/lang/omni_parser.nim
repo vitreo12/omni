@@ -1056,8 +1056,6 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                         struct_impl = struct_type.getImpl()
                         generic_params = struct_impl[1]
 
-                    error repr struct_impl
-
                     if generic_params.kind == nnkGenericParams:
                         var 
                             new_struct_new_inner = nnkCall.newTree(
