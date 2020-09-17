@@ -132,42 +132,86 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     var 
         proc_call_ident = parsed_statement[0]
         proc_call_ident_kind = proc_call_ident.kind
+        proc_call_ident_str : string 
+        proc_call_ident_obj : NimNode
 
-    #Dot expr would be Module.something() OR phasor.perform() ... Does it work for Data.new()
-    if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
-        discard
-        
-        #error repr proc_call_ident
-        
-        #[
-        proc_call_ident = proc_call_ident[0]
+    #This embraces all the different cases:
+    #Module.something()
+    #Module.SomeStruct(1, 2)
+    #Module.SomeStruct[float](1, 2)
+    #Module.SomeStruct.new(1, 2)
+    #Module.SomeStruct[float].new(1, 2)
+    #phasor.something()
+    #Data[Data[float]].new(1)
+    if proc_call_ident_kind == nnkDotExpr:
+        let last_dot_expr = proc_call_ident.last()
+        if last_dot_expr.kind == nnkIdent or last_dot_expr.kind == nnkSym:
+            proc_call_ident_str = last_dot_expr.strVal()
+            
+            #Detect .new calls
+            if proc_call_ident_str == "new":
+                #Remove .new call from proc_ident
+                proc_call_ident = proc_call_ident[0]
+                proc_call_ident_kind = proc_call_ident.kind
+                
+                #Data.new
+                if proc_call_ident_kind == nnkIdent or proc_call_ident_kind == nnkSym:
+                    proc_call_ident_str = proc_call_ident_obj.strVal()
+                    proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+                
+                #Data[float].new
+                elif proc_call_ident_kind == nnkBracketExpr:
+                    proc_call_ident_obj = proc_call_ident[0]
+                    let proc_call_ident_obj_kind = proc_call_ident_obj.kind 
+                    
+                    if proc_call_ident_obj_kind == nnkIdent or proc_call_ident_obj_kind == nnkSym:
+                        proc_call_ident_str = proc_call_ident_obj.strVal()
+                        proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+                    
+                    #Happens on omni_data.Data[Data[... ]]] ... For future with all generics
+                    elif proc_call_ident_obj_kind == nnkDotExpr:
+                        #Extract Data from omni_data.Data
+                        proc_call_ident_str = proc_call_ident_obj[1].strVal()
+                        proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+                    
+                    else:
+                        error("Invalid bracket expr in '" & repr(parsed_statement) & "'")
 
-        #Only allow .new() methods to be run on structs, no other one is supported.
-        #This doesn't work as of now, as it also would not allow to run functions with dot (like, buffer.read())
-        #[
-        if proc_call_ident_kind == nnkDotExpr:
-            var dot_expr_function = parsed_statement[0][1]
-            if dot_expr_function.kind == nnkSym or dot_expr_function.kind == nnkIdent:
-                let dot_expr_function_str = dot_expr_function.strVal()
-                if dot_expr_function_str != "new":
-                    error("Undefined function '" & $dot_expr_function_str & "' for '" & (repr(proc_call_ident)) & "'")
-        ]#
-
-        proc_call_ident_kind = proc_call_ident.kind
+                else:
+                    error("Invalid .new call in '" & repr(parsed_statement) & "'")
+                
+            #Normal calls.. Modify last entry prepending _struct_inner (for name)
+            else:
+                proc_call_ident_obj = proc_call_ident.copy() #needed or it will modify proc_call_ident
+                proc_call_ident_obj[proc_call_ident_obj.len-1] = newIdentNode(proc_call_ident_str & "_struct_inner")
         
-        #This happens for Data[float].new
-        if proc_call_ident_kind == nnkBracketExpr:
-            proc_call_ident = proc_call_ident[0]
-            proc_call_ident_kind = proc_call_ident.kind
-        ]#
+        else:
+            error("Invalid dot expr in '" & repr(parsed_statement) & "'")
     
-    if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
+    elif proc_call_ident_kind == nnkBracketExpr:
+        proc_call_ident_obj = proc_call_ident[0]
+        let proc_call_ident_obj_kind = proc_call_ident_obj.kind
+        
+        if proc_call_ident_obj_kind == nnkIdent or proc_call_ident_obj_kind == nnkSym:
+            proc_call_ident_str = proc_call_ident_obj.strVal()
+            proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+        
+        #Happens on omni_data.Data[Data[... ]]] ... For future with all generics
+        elif proc_call_ident_obj_kind == nnkDotExpr:
+            #Extract Data from omni_data.Data
+            proc_call_ident_str = proc_call_ident_obj[1].strVal()
+            proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+        
+        else:
+            error("Invalid bracket expr in '" & repr(parsed_statement) & "'")
+    
+    elif proc_call_ident_kind == nnkIdent or proc_call_ident_kind == nnkSym:
+        proc_call_ident_str = proc_call_ident.strVal()
+        proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+    
+    else:
         return statement
-
-    var proc_call_ident_str = proc_call_ident.strVal()
-
-    let proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
-
+ 
     var proc_new_call =  nnkCall.newTree(
         newIdentNode("struct_new"),
         proc_call_ident
@@ -978,7 +1022,8 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #if is_def_block:
     #    error repr extra_data
 
-    #error repr final_block
+    #if is_constructor_block:
+    #    error repr final_block
 
     #Run the actual macro to subsitute structs with let statements
     return quote do:
@@ -1658,40 +1703,59 @@ proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool =
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
+#If is struct, modify first argument of the nnkCall (statement is a nnkCall) (statement[1]). Otherwise, modify the function name (statement[0])
+proc find_modules_ownership_inner(call_name : NimNode, statement : NimNode, is_struct : bool = false) : void {.compileTime.} =
+    let module = call_name.owner #find module
+    if module.symKind == nskModule: #if actually a module, attach it to call
+        var 
+            final_dot_expr : NimNode
+            previous_module_owner  = module
+            recursive_module_owner = module.owner
+        
+        if not is_struct:
+            final_dot_expr = nnkDotExpr.newTree(
+                module,
+                statement[0]
+            )
+        else:
+            final_dot_expr = nnkDotExpr.newTree(
+                module,
+                statement[1]
+            )
+
+        while recursive_module_owner.kind != nnkNilLit:
+            #"omni_lang" gets picked up for modules that shouldn't have anything to do with it..
+            #"omni_lang" should only be added if the module comes from stdlib
+            if previous_module_owner.kind != nnkNilLit:
+                if (recursive_module_owner.strVal() == "omni_lang") and not(previous_module_owner.strVal() in omni_modules):
+                    break
+
+            final_dot_expr = nnkDotExpr.newTree(
+                recursive_module_owner,
+                final_dot_expr
+            )
+
+            previous_module_owner  = recursive_module_owner
+            recursive_module_owner = recursive_module_owner.owner
+
+        #If it's not a strut_new_inner call, prepend to call name. otherwise, prepend to first argument
+        if not is_struct:
+            statement[0] = final_dot_expr
+        else:
+            statement[1] = final_dot_expr
+
 #This should be in the nnkCall typed stuff, but it's easier to reason about here.
 #Eventually it should be moved in that typed loop
 proc find_modules_ownership(code_block : NimNode) : void {.compileTime.} =
     for index, statement in code_block:
         if statement.kind == nnkCall:
-            let call_name = statement[0]
+            var call_name = statement[0]
             if call_name.kind == nnkSym:
-                let module = call_name.owner #find module
-                if module.symKind == nskModule: #if actually a module, attach it to call
-                    var
-                        final_dot_expr = nnkDotExpr.newTree(
-                            module,
-                            statement[0]
-                        )
+                #If a struct_new_inner, the first argument is a type that needs to be modularized too
+                if call_name.strVal() == "struct_new_inner":
+                    find_modules_ownership_inner(call_name, statement, true)
 
-                        previous_module_owner  = module
-                        recursive_module_owner = module.owner
-
-                    while recursive_module_owner.kind != nnkNilLit:
-                        #"omni_lang" gets picked up for modules that shouldn't have anything to do with it..
-                        #"omni_lang" should only be added if the module comes from stdlib
-                        if previous_module_owner.kind != nnkNilLit:
-                            if (recursive_module_owner.strVal() == "omni_lang") and not(previous_module_owner.strVal() in omni_modules):
-                                break
-
-                        final_dot_expr = nnkDotExpr.newTree(
-                            recursive_module_owner,
-                            final_dot_expr
-                        )
-
-                        previous_module_owner  = recursive_module_owner
-                        recursive_module_owner = recursive_module_owner.owner
-
-                    statement[0] = final_dot_expr
+                find_modules_ownership_inner(call_name, statement)
         
         #Keep searching
         find_modules_ownership(statement)
