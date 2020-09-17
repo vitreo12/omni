@@ -1726,10 +1726,14 @@ proc find_modules_ownership_inner(call_name : NimNode, statement : NimNode, is_s
             )
 
         while recursive_module_owner.kind != nnkNilLit:
-            #"omni_lang" gets picked up for modules that shouldn't have anything to do with it..
-            #"omni_lang" should only be added if the module comes from stdlib
+            #"omni_lang" or "omni" gets picked up for modules that shouldn't have anything to do with it..
+            #"omni_lang" or "omni" should only be added if the module comes from stdlib
             if previous_module_owner.kind != nnkNilLit:
-                if (recursive_module_owner.strVal() == "omni_lang") and not(previous_module_owner.strVal() in omni_modules):
+                let 
+                    recursive_module_owner_str = recursive_module_owner.strVal()
+                    previous_module_owner_str  = previous_module_owner.strVal()
+                
+                if (recursive_module_owner_str == "omni_lang" or recursive_module_owner_str == "omni") and not(previous_module_owner_str in omni_modules):
                     break
 
             final_dot_expr = nnkDotExpr.newTree(
