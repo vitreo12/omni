@@ -24,5 +24,10 @@ expandMacros:
         a = ImportMe.something()
         
         bubu = Bubu()
+
+        print(bubu.a)
         
         print(bubu.something())
+
+    sample:
+        out1 = bubu.a + importme1.a * importme2.a
