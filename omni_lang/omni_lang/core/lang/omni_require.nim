@@ -50,7 +50,7 @@ proc check_valid_path(path : NimNode, unified_path_list : var seq[NimNode], as_n
         if module_as_name.kind != nnkIdent:
             error("require: invalid module name")
         
-        let module_as_name_module_inner = newIdentNode(module_as_name.strVal() & "_module_inner")
+        let module_as_name_module_inner = newIdentNode(module_as_name.strVal() #[& "_module_inner"]#)
 
         unified_path_list.add(path_name)
         as_names.add(module_as_name_module_inner)
@@ -59,7 +59,7 @@ proc check_valid_path(path : NimNode, unified_path_list : var seq[NimNode], as_n
     else:
         let path_without_extension = (path.strVal().splitFile().name)
         unified_path_list.add(path)
-        as_names.add(newIdentNode(path_without_extension & "_module_inner"))
+        as_names.add(newIdentNode(path_without_extension #[& "_module_inner"]#))
 
 proc check_valid_paths(path_list : NimNode, paths_same_line : NimNode, unified_path_list : var seq[NimNode], as_names : var seq[NimNode]) : void {.compileTime.} =
     if path_list.len == 0:

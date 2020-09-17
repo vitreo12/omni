@@ -40,6 +40,12 @@ let tuple_convert_types {.compileTime.} = [
     "cint", "clong", "int", "int32", "int64"
 ]
 
+#Omni modules that can inherit from "omni_lang"
+let omni_modules {.compileTime.} = [
+    "omni_alloc", "omni_auto_mem", "omni_data", "omni_delay",
+    "omni_init_global", "omni_math", "omni_print", "omni_utilities"
+]
+
 #This is equal to the old isUpperAscii(str) function, which got removed from nim >= 1.2.0
 proc isStrUpperAscii(s: string, skipNonAlpha: bool): bool  =
     var hasAtleastOneAlphaChar = false
@@ -127,8 +133,13 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         proc_call_ident = parsed_statement[0]
         proc_call_ident_kind = proc_call_ident.kind
 
-    #Dot expr would be Data.new() or something.perform() and Data[float].new() etc.
+    #Dot expr would be Module.something() OR phasor.perform() ... Does it work for Data.new()
     if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
+        discard
+        
+        #error repr proc_call_ident
+        
+        #[
         proc_call_ident = proc_call_ident[0]
 
         #Only allow .new() methods to be run on structs, no other one is supported.
@@ -148,6 +159,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         if proc_call_ident_kind == nnkBracketExpr:
             proc_call_ident = proc_call_ident[0]
             proc_call_ident_kind = proc_call_ident.kind
+        ]#
     
     if proc_call_ident_kind != nnkIdent and proc_call_ident_kind != nnkSym:
         return statement
@@ -214,7 +226,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         
         #If more than 2 (meaning: Data[int, float], as Data is index 0) error out!
         if parsed_statement_bracket.len > 2:
-            error astGenRepr parsed_statement_bracket
             error("Cannot instantiate `Data`: got more than one type.")
             
         proc_new_call.add(nnkExprEqExpr.newTree(
@@ -967,6 +978,8 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #if is_def_block:
     #    error repr extra_data
 
+    #error repr final_block
+
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
@@ -1645,6 +1658,43 @@ proc parse_typed_block_inner(code_block : NimNode, is_constructor_block : bool =
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
+#This should be in the nnkCall typed stuff, but it's easier to reason about here.
+#Eventually it should be moved in that typed loop
+proc find_modules_ownership(code_block : NimNode) : void {.compileTime.} =
+    for index, statement in code_block:
+        if statement.kind == nnkCall:
+            let call_name = statement[0]
+            if call_name.kind == nnkSym:
+                let module = call_name.owner #find module
+                if module.symKind == nskModule: #if actually a module, attach it to call
+                    var
+                        final_dot_expr = nnkDotExpr.newTree(
+                            module,
+                            statement[0]
+                        )
+
+                        previous_module_owner  = module
+                        recursive_module_owner = module.owner
+
+                    while recursive_module_owner.kind != nnkNilLit:
+                        #"omni_lang" gets picked up for modules that shouldn't have anything to do with it..
+                        #"omni_lang" should only be added if the module comes from stdlib
+                        if previous_module_owner.kind != nnkNilLit:
+                            if (recursive_module_owner.strVal() == "omni_lang") and not(previous_module_owner.strVal() in omni_modules):
+                                break
+
+                        final_dot_expr = nnkDotExpr.newTree(
+                            recursive_module_owner,
+                            final_dot_expr
+                        )
+
+                        previous_module_owner  = recursive_module_owner
+                        recursive_module_owner = recursive_module_owner.owner
+
+                    statement[0] = final_dot_expr
+        
+        #Keep searching
+        find_modules_ownership(statement)
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
 macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
@@ -1662,10 +1712,14 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
 
     parse_typed_block_inner(inner_block, is_constructor_block, is_perform_block, is_def_block)
 
-    #Will return an untyped code block!
-    result = typedToUntyped(inner_block)
+    #Find all modules and attach them to the nnkCalls (needed for module handling!!)
+    find_modules_ownership(inner_block)
 
-    #error repr result
+    #if is_constructor_block:
+    #    error repr inner_block
+
+    #It will return an untyped code block!
+    result = typedToUntyped(inner_block)
 
     #if is_def_block:
     #    error repr result

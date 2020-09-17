@@ -5,3 +5,5 @@ def something():
 
 proc ImportMe*() : int =
     return 1
+
+type ImportMeToo* = object

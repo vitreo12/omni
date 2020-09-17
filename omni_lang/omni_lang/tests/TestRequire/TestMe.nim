@@ -1,8 +1,18 @@
-import ../../../omni_lang
+import ../../../omni_lang, macros
 
-require:
-    "ImportMe.nim" as im
-    "ImportMeToo.nim" as imt
+import ImportMe
+import ImportMeToo
 
-init:
-    a = something()
+struct Bubu:
+    a
+
+def something(bubu):
+    return bubu.a
+
+expandMacros:
+    init:
+        a = ImportMe.something()
+        
+        bubu = Bubu()
+        
+        print(bubu.something())

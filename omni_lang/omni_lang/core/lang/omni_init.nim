@@ -109,8 +109,15 @@ macro init_inner*(code_block_stmt_list : untyped) =
     #Look if "build" macro call is the last statement in the block.
     let code_block_last = code_block.last()
     if code_block_last.kind == nnkCall or code_block_last.kind == nnkCommand:
-        if code_block_last[0].strVal() == "build":
-            new_call_provided = true
+        var code_block_last_name = code_block_last[0]
+
+        #Happens with module access: Something.something()
+        if code_block_last_name.kind == nnkDotExpr:
+            code_block_last_name = code_block_last_name[1]
+        
+        if code_block_last_name.kind == nnkIdent or code_block_last_name.kind == nnkSym:
+            if code_block_last_name.strVal() == "build":
+                new_call_provided = true
 
     #[
         REDUCE ALL THESE FOR LOOPS IN A BETTER WAY!!
