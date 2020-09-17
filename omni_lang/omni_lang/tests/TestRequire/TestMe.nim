@@ -13,9 +13,9 @@ expandMacros:
     init:
         importme1 = ImportMe.ImportMe()
 
-        #importme2 = ImportMe.ImportMe[int]()
+        importme2 = ImportMe.ImportMe[int]()
 
-        importme2 = ImportMe.ImportMe(int(1))
+        #importme2 = ImportMe.ImportMe(int(1))
 
         data1 = Data[Data[int]].new()
 

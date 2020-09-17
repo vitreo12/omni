@@ -159,7 +159,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                     proc_call_ident_str = proc_call_ident_obj.strVal()
                     proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
                 
-                #Data[float].new
+                #Something[float].new
                 elif proc_call_ident_kind == nnkBracketExpr:
                     proc_call_ident_obj = proc_call_ident[0]
                     let proc_call_ident_obj_kind = proc_call_ident_obj.kind 
@@ -168,9 +168,9 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                         proc_call_ident_str = proc_call_ident_obj.strVal()
                         proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
                     
-                    #Happens on omni_data.Data[Data[... ]]] ... For future with all generics
+                    #Module.Something[float].new ... Also works with Module.Something[SomethingElse[float]].new
                     elif proc_call_ident_obj_kind == nnkDotExpr:
-                        #Extract Data from omni_data.Data
+                        #Extract Something from Module.Something
                         proc_call_ident_str = proc_call_ident_obj[1].strVal()
                         proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
                     
@@ -180,7 +180,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 else:
                     error("Invalid .new call in '" & repr(parsed_statement) & "'")
                 
-            #Normal calls.. Modify last entry prepending _struct_inner (for name)
+            #Normal dot syntax call. Simply append last entry with _struct_inner
             else:
                 proc_call_ident_obj = proc_call_ident.copy() #needed or it will modify proc_call_ident
                 proc_call_ident_obj[proc_call_ident_obj.len-1] = newIdentNode(proc_call_ident_str & "_struct_inner")
@@ -188,6 +188,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         else:
             error("Invalid dot expr in '" & repr(parsed_statement) & "'")
     
+    #Something[float] OR Something[SomethingElse[float]]
     elif proc_call_ident_kind == nnkBracketExpr:
         proc_call_ident_obj = proc_call_ident[0]
         let proc_call_ident_obj_kind = proc_call_ident_obj.kind
@@ -196,15 +197,16 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
             proc_call_ident_str = proc_call_ident_obj.strVal()
             proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
         
-        #Happens on omni_data.Data[Data[... ]]] ... For future with all generics
+        #Module.Something[float] ... Also works with Module.Something[SomethingElse[float]]
         elif proc_call_ident_obj_kind == nnkDotExpr:
-            #Extract Data from omni_data.Data
+            #Extract Something from Module.Something
             proc_call_ident_str = proc_call_ident_obj[1].strVal()
             proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
         
         else:
             error("Invalid bracket expr in '" & repr(parsed_statement) & "'")
     
+    #Normal ident call, simply append _struct_inner
     elif proc_call_ident_kind == nnkIdent or proc_call_ident_kind == nnkSym:
         proc_call_ident_str = proc_call_ident.strVal()
         proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
