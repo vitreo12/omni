@@ -447,11 +447,12 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
         var return_type = extra_data
 
         #Convert value if explicitly expressed by user
-        if return_type.strVal() != "auto":
-            return_val = nnkCall.newTree(
-                return_type,
-                return_val
-            )
+        if return_type.kind == nnkIdent:
+            if return_type.strVal() != "auto":
+                return_val = nnkCall.newTree(
+                    return_type,
+                    return_val
+                )
 
         #Convert "return" to "omni_temp_result_... ="
         #This is needed to avoid type checking weirdness in the def block!
@@ -1072,11 +1073,10 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
     final_block.add(code_block)
 
-    #if is_def_block:
-    #    error repr final_block
-
-    #if is_def_block:
-    #    error repr extra_data
+    if is_def_block:
+        #error repr final_block
+        echo repr final_block
+        discard
 
     if is_constructor_block:
         #error repr final_block
@@ -1848,8 +1848,8 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     #It will return an untyped code block!
     result = typedToUntyped(inner_block)
 
-    #if is_def_block:
-    #    error repr result
+    if is_def_block:
+        error repr result
 
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:

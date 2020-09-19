@@ -95,9 +95,9 @@ macro require*(path_list : untyped, paths_same_line : varargs[untyped]) : untype
             ),
 
             #Exporting the module is needed in order to access the entries in the struct declared here...
-            nnkExportStmt.newTree(
-                as_name
-            )
+            #nnkExportStmt.newTree(
+            #    as_name
+            #)
         )
 
     #error repr result

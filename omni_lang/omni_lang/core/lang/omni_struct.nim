@@ -77,6 +77,50 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
     
     return statement
 
+#Omni modules that can inherit from "omni_lang"
+let omni_modules {.compileTime.} = [
+    "omni_alloc", "omni_auto_mem", "omni_data", "omni_delay",
+    "omni_init_global", "omni_math", "omni_print", "omni_utilities"
+]
+
+proc find_modules_ownership_inner(call_name : NimNode) : void {.compileTime.} =
+    let module = call_name.owner #find module
+    echo repr call_name
+    echo repr module
+    if module.symKind == nskModule: #if actually a module, attach it to call
+        var 
+            final_dot_expr : NimNode
+            previous_module_owner  = module
+            recursive_module_owner = module.owner
+        
+        final_dot_expr = nnkDotExpr.newTree(
+            module,
+            call_name
+        )
+        
+        while recursive_module_owner.kind != nnkNilLit:
+            #"omni_lang" or "omni" gets picked up for modules that shouldn't have anything to do with it..
+            #"omni_lang" or "omni" should only be added if the module comes from stdlib
+            if previous_module_owner.kind != nnkNilLit:
+                let 
+                    recursive_module_owner_str = recursive_module_owner.strVal()
+                    previous_module_owner_str  = previous_module_owner.strVal()
+                
+                #This will not break just for std modules
+                if (recursive_module_owner_str == "omni_lang" or recursive_module_owner_str == "omni") and not(previous_module_owner_str in omni_modules):
+                    break
+
+            final_dot_expr = nnkDotExpr.newTree(
+                recursive_module_owner,
+                final_dot_expr
+            )
+
+            previous_module_owner  = recursive_module_owner
+            recursive_module_owner = recursive_module_owner.owner
+
+        #If it's not a strut_new_inner call, prepend to call name. otherwise, prepend to first argument
+        #echo repr final_dot_expr
+
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
@@ -98,6 +142,8 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
     var fields_typed_to_signal_generics : seq[NimNode]
 
     for field_typed in fields_typed:
+        find_modules_ownership_inner(field_typed)
+        
         var 
             how_many_datas = 0
             field_typed_to_signal_generics = find_data_bracket_bottom(field_typed, how_many_datas)
@@ -152,6 +198,8 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
 
     #Add the whole type section to result
     final_stmt_list.add(type_section)
+
+    echo repr final_stmt_list
 
     return quote do:
         `final_stmt_list`
