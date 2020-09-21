@@ -2,4 +2,7 @@ import ../../../omni_lang, macros
 
 expandMacros:
     struct Something[T]:
-        a
+        a T
+
+    init:
+        a = Something(9.23)

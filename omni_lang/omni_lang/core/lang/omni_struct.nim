@@ -150,11 +150,13 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_typ
     #Add the type declaration of Phasor to type section
     type_section.add(ptr_type_def)
 
-    #Add the type declaration of Phasor_export_inner
+    #Add the type declaration of Phasor_struct_export
     type_section.add(export_type_def)
 
     #Add the whole type section to result
     final_stmt_list.add(type_section)
+
+    #error repr final_stmt_list
 
     return quote do:
         `final_stmt_list`
@@ -336,6 +338,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #No generics, just name of struct
     elif struct_name.kind == nnkIdent:
         obj_name = newIdentNode($(struct_name) & "_struct_inner")              #Phasor_struct_inner
+        export_name = newIdentNode($(struct_name) & "_struct_export") 
         ptr_name = struct_name                                        #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -583,17 +586,25 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
-    #Add first argument: obj_type : typedesc[Phasor[T, Y]]
-    #[ proc_formal_params.add(
+    #Add first argument, using the export type! This solves a lot of issues with name mangling :)
+    #: obj_type : typedesc[Phasor_struct_export[T, Y]]
+    var export_bracket_expr = ptr_bracket_expr.copy()
+    #error astGenRepr export_bracket_expr
+    if export_bracket_expr.kind == nnkBracketExpr:
+        export_bracket_expr[0] = newIdentNode(ptr_struct_name.strVal() & "_struct_export")
+    else:
+        export_bracket_expr = newIdentNode(ptr_struct_name.strVal() & "_struct_export")
+        
+    proc_formal_params.add(
         nnkIdentDefs.newTree(
             newIdentNode("obj_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                ptr_bracket_expr
+                export_bracket_expr
             ),
             newEmptyNode()
         )   
-    ) ]#
+    )
 
     #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(

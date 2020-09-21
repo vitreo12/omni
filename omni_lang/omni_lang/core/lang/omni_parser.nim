@@ -130,18 +130,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     #Dot expr would be Data.new() or something.perform() and Data[float].new() etc.
     if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
         proc_call_ident = proc_call_ident[0]
-
-        #Only allow .new() methods to be run on structs, no other one is supported.
-        #This doesn't work as of now, as it also would not allow to run functions with dot (like, buffer.read())
-        #[
-        if proc_call_ident_kind == nnkDotExpr:
-            var dot_expr_function = parsed_statement[0][1]
-            if dot_expr_function.kind == nnkSym or dot_expr_function.kind == nnkIdent:
-                let dot_expr_function_str = dot_expr_function.strVal()
-                if dot_expr_function_str != "new":
-                    error("Undefined function '" & $dot_expr_function_str & "' for '" & (repr(proc_call_ident)) & "'")
-        ]#
-
         proc_call_ident_kind = proc_call_ident.kind
         
         #This happens for Data[float].new
@@ -154,11 +142,13 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
     var proc_call_ident_str = proc_call_ident.strVal()
 
-    let proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+    let 
+        struct_export_name = newIdentNode(proc_call_ident_str & "_struct_export")
+        proc_call_ident_struct_new_inner = newIdentNode(proc_call_ident_str & "_struct_new_inner")
 
     var proc_new_call =  nnkCall.newTree(
-        newIdentNode("struct_new"),
-        proc_call_ident
+        proc_call_ident_struct_new_inner,
+        struct_export_name
     )
 
     var data_bracket_expr = false
@@ -223,13 +213,19 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
             )
         )
 
+    #Now prepend ugen_auto_mem and ugen_call_type
+    proc_new_call.add(
+        newIdentNode("ugen_auto_mem"),
+        newIdentNode("ugen_call_type")
+    )
+
     #error repr proc_new_call
 
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
             nnkCall.newTree(
                 newIdentNode("declared"),
-                proc_call_ident_obj
+                proc_call_ident_struct_new_inner
             ),
             nnkStmtList.newTree(
                 proc_new_call
@@ -243,6 +239,8 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     )
 
     result = when_statement_struct_new
+
+    #error repr result
 
 # ================================ #
 # Stage 1: Untyped code generation #
@@ -967,6 +965,10 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #if is_def_block:
     #    error repr extra_data
 
+    if is_constructor_block:
+        #error repr final_block
+        discard
+
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
@@ -1044,7 +1046,7 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                 )
 
         #If a struct_new_inner call without generics (and the struct has generics), use floats! (Otherwise it will default to ints due to the struct_new template)
-        elif function_name == "struct_new_inner":
+        elif function_name.endsWith("_struct_new_inner"):
             var struct_type = parsed_statement[1]
 
             #If struct_type is a bracketexpr, it means it already has generics mapping laid out. no need to run these.
@@ -1058,7 +1060,7 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                     if generic_params.kind == nnkGenericParams:
                         var 
                             new_struct_new_inner = nnkCall.newTree(
-                                newIdentNode("struct_new_inner"),
+                                newIdentNode(function_name),
                             )
 
                             new_struct_expl_type = nnkBracketExpr.newTree(
