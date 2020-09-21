@@ -4,6 +4,7 @@ use ImportMe:
     ImportMe as ImportMe1
     something as something1
     blah as blah1
+    bsdad as sd
 
 #init:
 #    a = something()

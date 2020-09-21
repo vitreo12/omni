@@ -134,8 +134,20 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                             ),
                             struct_case
                         ),
-                        nnkElse.newTree(
+                        nnkElifBranch.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("declared"),
+                                def_case
+                            ),
                             def_case
+                        ),
+                        nnkElse.newTree(
+                            nnkPragma.newTree(
+                                nnkExprColonExpr.newTree(
+                                    newIdentNode("fatal"),
+                                    newLit("Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
+                                )
+                            )
                         )
                     )
 
