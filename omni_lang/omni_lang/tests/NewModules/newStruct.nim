@@ -6,5 +6,5 @@ expandMacros:
 
     init:
         a = Something(9.23)
-        b = Data[int]()
+        b = Data()
         c = Delay()

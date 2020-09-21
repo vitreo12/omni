@@ -1059,7 +1059,7 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
             #If struct_type is a bracketexpr, it means it already has generics mapping laid out. no need to run these.
             if struct_type.kind == nnkSym or struct_type.kind == nnkIdent:
                 #Data has been parsed correctly already
-                if struct_type.strVal() != "Data":
+                if struct_type.strVal() != "Data_struct_export":
                     let 
                         struct_impl = struct_type.getImpl()
                         generic_params = struct_impl[1]
@@ -1457,13 +1457,16 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
             let check_data = data_name.getTypeInst()
             var is_data = false
             if check_data.kind == nnkBracketExpr:
-                if check_data[0].kind == nnkSym:
-                    if check_data[0].strVal() == "Data":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkSym:
+                    let check_data_first_entry_str = check_data_first_entry.strVal()
+                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_struct_export":
                         is_data = true
             elif check_data.kind == nnkPtrTy:
-                if check_data[0].kind == nnkBracketExpr:
-                    if check_data[0][0].kind == nnkSym:
-                        if check_data[0][0].strVal() == "Data_struct_inner":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkBracketExpr:
+                    if check_data_first_entry[0].kind == nnkSym:
+                        if check_data_first_entry[0].strVal() == "Data_struct_inner":
                             is_data = true
 
             if is_data:
@@ -1556,13 +1559,16 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
 
             var is_data = false
             if check_data.kind == nnkBracketExpr:
-                if check_data[0].kind == nnkSym:
-                    if check_data[0].strVal() == "Data":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkSym:
+                    let check_data_first_entry_str = check_data_first_entry.strVal()
+                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_struct_export":
                         is_data = true
             elif check_data.kind == nnkPtrTy:
-                if check_data[0].kind == nnkBracketExpr:
-                    if check_data[0][0].kind == nnkSym:
-                        if check_data[0][0].strVal() == "Data_struct_inner":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkBracketExpr:
+                    if check_data_first_entry[0].kind == nnkSym:
+                        if check_data_first_entry[0].strVal() == "Data_struct_inner":
                             is_data = true
             
             if is_data:

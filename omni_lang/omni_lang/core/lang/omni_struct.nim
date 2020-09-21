@@ -29,14 +29,26 @@ const valid_struct_generics = [
     "sig", "sig32", "sig64"
 ]
 
+#In-built
+let non_valid_struct_names {.compileTime.} = [
+    "Data", "Delay", "Buffer"
+]
+
+let non_valid_struct_ends_with {.compileTime.} = [
+    "struct_inner", "struct_new_inner", "struct_export"
+]
+
 proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
     if statement.kind == nnkBracketExpr:
-        #Data, keep searching
-        if statement[0].strVal() == "Data":
-            how_many_datas += 1
-            return find_data_bracket_bottom(statement[1], how_many_datas)
-        else:
-            error("Invalid type: '" & repr(statement) & "'")
+        let statement_ident = statement[0]
+        if statement_ident.kind == nnkIdent or statement_ident.kind == nnkSym:
+            let statement_ident_str = statement_ident.strVal()
+            #Data, keep searching
+            if statement_ident_str == "Data" or statement_ident_str == "Data_struct_export":
+                how_many_datas += 1
+                return find_data_bracket_bottom(statement[1], how_many_datas)
+            else:
+                error("Invalid type: '" & repr(statement) & "'")
     
     elif statement.kind == nnkSym:
         let 
@@ -164,9 +176,11 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_typ
 #Check if a struct field contains generics
 proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
     if var_type.kind == nnkBracketExpr:
-        if var_type[0].kind == nnkIdent:
+        let var_type_ident = var_type[0]
+        if var_type_ident.kind == nnkIdent:
+            let var_type_ident_str = var_type_ident.strVal()
             #Data, keep searching
-            if var_type[0].strVal() == "Data":
+            if var_type_ident_str == "Data" or var_type_ident_str == "Data_struct_export":
                 return untyped_or_typed(var_type[1], generics_seq)
             
             #Normal bracket expr like Phasor[T] or Phasor[int]
@@ -189,7 +203,7 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
         var already_looped = false
 
         #Check validity of structs that are not Datas
-        if statement[0].strVal() != "Data":
+        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_struct_export":
             already_looped = true
             for index, entry in statement:
                 if index == 0:
