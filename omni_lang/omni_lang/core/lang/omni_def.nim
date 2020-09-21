@@ -20,7 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import macros, strutils
+
+let invalid_def_ends_with {.compileTime.} = [
+    "struct_inner", "struct_new_inner", "struct_export"
+]
 
 macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed) : untyped =
     var 
@@ -29,7 +33,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         proc_def = nnkProcDef.newTree()
         proc_return_type : NimNode
         proc_name : NimNode
-        proc_name_without_inner : NimNode
+        proc_name_str : string
         proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
 
@@ -100,13 +104,21 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         elif first_statement.kind == nnkIdent:
             proc_name = first_statement
 
+        #Check name validity
+        proc_name_str = proc_name.strVal()
+
+        for invalid_ends_with in invalid_def_ends_with:
+            if proc_name_str.endsWith(invalid_ends_with):
+                error("def names can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
+
         #Formal params
         proc_formal_params.add(proc_return_type)    
 
         #Add template and proc names
         template_name = proc_name
-        proc_name_without_inner = proc_name
-        proc_name = newIdentNode("OmniDef_" & current_module.strVal() & "_" & proc_name.strVal())
+
+        #new name for proc_name: OmniDef_moduleName_procName
+        proc_name = newIdentNode("OmniDef_" & current_module.strVal() & "_" & proc_name_str)
         
         #Add proc name to template call
         template_body_call.add(proc_name)
@@ -186,7 +198,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                         newLit(true),
                         newLit(false),
                         newLit(false),
-                        newLit(proc_name_without_inner.strVal())
+                        newLit(proc_name_str)
                     )
                 )
 
@@ -338,7 +350,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #error repr template_def       
              
     else:
-        error "Invalid syntax for def"
+        error "Invalid syntax for def " & repr(function_signature)
 
     proc_and_template.add(proc_def)
     proc_and_template.add(template_def)
