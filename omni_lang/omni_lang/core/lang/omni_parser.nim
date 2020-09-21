@@ -1682,7 +1682,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:
 
-        #error repr result
+        error repr result
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.
