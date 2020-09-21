@@ -608,18 +608,6 @@ macro addBufferIns*(ins_names : typed) : untyped =
         ident_defs.add(
             newIdentNode(in_name),
             newEmptyNode(),
-            
-            #[
-            #struct_new_inner(Buffer, 0, buffer_interface, ugen_auto_mem, ugen_call_type)
-            nnkCall.newTree(
-                newIdentNode("struct_new_inner"),
-                newIdentNode("Buffer"),
-                newLit(i_plus_one), #Buffer(1) is first input, not Buffer(0)
-                newIdentNode("buffer_interface"),
-                newIdentNode("ugen_auto_mem"),
-                newIdentNode("ugen_call_type")
-            )
-            ]#
 
             #Buffer_struct_new_inner(Buffer_struct_export, 0, buffer_interface, ugen_auto_mem, ugen_call_type)
             nnkCall.newTree(
