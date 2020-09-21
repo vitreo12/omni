@@ -72,33 +72,28 @@ proc check_valid_paths(path_list : NimNode, paths_same_line : NimNode, unified_p
     for path in paths_same_line:
         check_valid_path(path, unified_path_list, as_names)
 
-#require "path1", "path2" AND require: 
-macro require*(path_list : untyped, paths_same_line : varargs[untyped]) : untyped =
+#use "Path.omni":
+    #Something as Something1 
+    #someFunc as someFunc1
+macro use*(path : untyped, ident_list : untyped = nil) : untyped =
+    var import_name_without_extension : string
+
+    #"ImportMe.omni" or ImportMe
+    if path.kind == nnkStrLit or path.kind == nnkIdent:
+        import_name_without_extension = path.strVal().splitFile().name
     
-    var unified_path_list : seq[NimNode]
-    var as_names          : seq[NimNode]
+    #../../ImportMe
+    elif path.kind == nnkPrefix:
+        if path.last().kind != nnkIdent:
+            error "use: Invalid path syntax " & repr(path)
 
-    check_valid_paths(path_list, paths_same_line, unified_path_list, as_names)
+        import_name_without_extension = path[^1].strVal()
+    else:
+        error "use: Invalid path syntax: " & repr(path)
 
-    result = nnkStmtList.newTree()
+    echo astGenRepr path
+    
+    for line in ident_list:
+        echo astGenRepr line
 
-    for i, path in unified_path_list:
-        let as_name = as_names[i]
-        
-        result.add(
-            nnkImportStmt.newTree(
-                nnkInfix.newTree(
-                    newIdentNode("as"),
-                    path,
-                    as_name
-                )
-            ),
-
-            #Exporting the module is needed in order to access the entries
-            #in the struct declared here...
-            nnkExportStmt.newTree(
-                as_name
-            )
-        )
-
-    #error repr result
+    error "ye"

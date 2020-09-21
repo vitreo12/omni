@@ -1,8 +1,7 @@
 import ../../../omni_lang
 
-require:
-    "ImportMe.nim" as im
-    "ImportMeToo.nim" as imt
+use ImportMe:
+    Something as Something1
 
 init:
     a = something()
