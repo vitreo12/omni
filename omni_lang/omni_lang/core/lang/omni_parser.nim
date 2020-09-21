@@ -213,10 +213,17 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
             )
         )
 
-    #Now prepend ugen_auto_mem and ugen_call_type
+    #Now prepend ugen_auto_mem and ugen_call_type with named access!
     proc_new_call.add(
-        newIdentNode("ugen_auto_mem"),
-        newIdentNode("ugen_call_type")
+        nnkExprEqExpr.newTree(
+            newIdentNode("ugen_auto_mem"),
+            newIdentNode("ugen_auto_mem")
+        ),
+        
+        nnkExprEqExpr.newTree(
+            newIdentNode("ugen_call_type"),
+            newIdentNode("ugen_call_type")
+        )
     )
 
     #error repr proc_new_call
