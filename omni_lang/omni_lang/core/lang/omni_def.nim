@@ -23,6 +23,8 @@
 import macros, strutils
 
 let invalid_def_ends_with {.compileTime.} = [
+    "def_export",
+    "module_inner", 
     "struct_inner", "struct_new_inner", "struct_export"
 ]
 
@@ -40,6 +42,8 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         template_def = nnkTemplateDef.newTree()
         template_name : NimNode
         template_body_call = nnkCall.newTree()
+
+        proc_def_export : NimNode
 
         generics : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()  
@@ -299,6 +303,14 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #Add function body (with checks for var/lets macro)
         proc_def.add(proc_body)
 
+        # ================= #
+        # BUILD EXPORT PROC #
+        # ================= #
+
+        proc_def_export = proc_def.copy()
+        proc_def_export[0][1] = newIdentNode(proc_name_str & "_def_export")
+        proc_def_export[^1] = proc_name #template_body_call.copy()
+
         # ============== #
         # BUILD TEMPLATE #
         # ============== #
@@ -344,7 +356,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 template_body_call
             )
         )
-
+        
         #echo astGenRepr proc_def
         #echo repr proc_def 
         #error repr template_def       
@@ -353,7 +365,10 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         error "Invalid syntax for def " & repr(function_signature)
 
     proc_and_template.add(proc_def)
+    proc_and_template.add(proc_def_export)
     proc_and_template.add(template_def)
+    
+    #proc_and_template.add(template_def_export)
 
     #echo repr proc_and_template
     #echo astGenRepr proc_formal_params

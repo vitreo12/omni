@@ -1,7 +1,9 @@
 import ../../../omni_lang
 
 use ImportMe:
-    Something as Something1
+    ImportMe as ImportMe1
+    something as something1
+    blah as blah1
 
-init:
-    a = something()
+#init:
+#    a = something()

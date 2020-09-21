@@ -22,11 +22,40 @@
 
 import macros, os
 
-#use "Path.omni":
+macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =
+    #echo astGenRepr struct_or_def_typed
+    if struct_or_def_typed.kind == nnkSym:
+        let struct_or_def_impl = struct_or_def_typed.getImpl()
+
+        #Struct
+        if struct_or_def_impl.kind == nnkTypeDef:
+            discard
+        
+        #Def
+        elif struct_or_def_impl.kind == nnkProcDef:
+            let actual_def_call = struct_or_def_impl[^1]
+            
+            #multiple ones with same name
+            if actual_def_call.kind == nnkOpenSymChoice:
+                for def_call in actual_def_call:
+                    echo astGenRepr def_call.getImpl()
+            
+            elif actual_def_call.kind == nnkSym:
+                echo astGenRepr actual_def_call.getImpl()
+    
+    #echo repr struct_or_def_typed
+
+#use Path:
     #Something as Something1 
     #someFunc as someFunc1
-macro use*(path : untyped, ident_list : untyped = nil) : untyped =
+macro use*(path : untyped, stmt_list : untyped) : untyped =
     var import_name_without_extension : string
+
+    result = nnkStmtList.newTree()
+
+    var 
+        import_stmt = nnkImportExceptStmt.newTree()
+        export_stmt = nnkExportExceptStmt.newTree()
 
     #"ImportMe.omni" or ImportMe
     if path.kind == nnkStrLit or path.kind == nnkIdent:
@@ -41,9 +70,107 @@ macro use*(path : untyped, ident_list : untyped = nil) : untyped =
     else:
         error "use: Invalid path syntax: " & repr(path)
 
-    echo astGenRepr path
-    
-    for line in ident_list:
-        echo astGenRepr line
+    let import_name_module_inner = newIdentNode(import_name_without_extension & "_module_inner")
 
-    error repr result
+    #Add import
+    import_stmt.add(
+        nnkInfix.newTree(
+            newIdentNode("as"),
+            path,
+            import_name_module_inner
+        )
+    )
+
+    #Add export
+    export_stmt.add(
+        import_name_module_inner
+    )
+
+    #Need to be before all the generate_new_module_bindings_for_struct_or_def_calls
+    result.add(
+        import_stmt,
+        export_stmt
+    )
+    
+    #Add the excepts and add entries to use_build_structs_and_defs_call
+    #for type checking 
+    for statement in stmt_list:
+        if statement.kind == nnkInfix:
+            let infix_ident = statement[0]
+            if infix_ident.strVal() == "as":
+                let 
+                    infix_first_val = statement[1]
+                    infix_second_val = statement[2]
+
+                var generate_new_module_bindings_for_struct_or_def_call = nnkCall.newTree(
+                    newIdentNode("generate_new_module_bindings_for_struct_or_def"),
+                    import_name_module_inner,
+                )
+
+                #Add excepts: first entry of infix
+                if infix_first_val.kind == nnkIdent:
+                    let infix_first_val_struct_export = newIdentNode(infix_first_val.strVal() & "_struct_export")
+                    
+                    import_stmt.add(infix_first_val)
+                    import_stmt.add(infix_first_val_struct_export)
+                    export_stmt.add(infix_first_val)
+                    export_stmt.add(infix_first_val_struct_export)
+
+                    let struct_case = nnkDotExpr.newTree(
+                        import_name_module_inner,
+                        infix_first_val_struct_export
+                    )
+
+                    let def_case = nnkDotExpr.newTree(
+                        import_name_module_inner,
+                        newIdentNode(infix_first_val.strVal() & "_def_export")
+                    )
+
+                    var when_statement = nnkWhenStmt.newTree(
+                        nnkElifBranch.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("declared"),
+                                struct_case
+                            ),
+                            struct_case
+                        ),
+                        nnkElse.newTree(
+                            def_case
+                        )
+                    )
+
+                    #When statement: if it's a struct, gonna pass that. Otherwise, gonna pass the def if it's defined
+                    generate_new_module_bindings_for_struct_or_def_call.add(
+                        when_statement
+                    )
+
+                #elif dot expr
+                elif infix_first_val.kind == nnkDotExpr:
+                    error "dot expr not yet"
+                
+                else:
+                    error "use: Invalid first infix value :" & repr(infix_first_val)
+
+                #Add the structs / defs to check: second entry of infix
+                if infix_second_val.kind == nnkIdent:
+                    generate_new_module_bindings_for_struct_or_def_call.add(
+                        infix_second_val
+                    )
+
+                    result.add(
+                        generate_new_module_bindings_for_struct_or_def_call
+                    )
+                else:
+                    error "use: Invalid second infix value :" & repr(infix_second_val)
+            else:
+                error "use: Invalid infix: " & repr(infix_ident)
+        else:
+            error "use: Invalid infix syntax: " & repr(statement)
+
+    #error repr result
+
+#use Path
+#OR
+#use Path1, Path2, Path3
+macro use*(paths : varargs[untyped]) : untyped =
+    error astGenRepr paths
