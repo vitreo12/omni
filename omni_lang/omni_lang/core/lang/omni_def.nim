@@ -22,7 +22,7 @@
 
 import macros
 
-macro def*(function_signature : untyped, code_block : untyped) : untyped =
+macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed) : untyped =
     var 
         proc_and_template = nnkStmtList.newTree()
 
@@ -41,6 +41,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         checkValidTypes = nnkStmtList.newTree()  
     
     let function_signature_kind = function_signature.kind
+
+    #module where def is defined
+    let current_module = omni_current_module_def.owner
+
+    if current_module.kind != nnkSym and current_module.kind != nnkIdent:
+        error ("def " & repr(function_signature) & ": can't retrieve its current module")
 
     if function_signature_kind == nnkCommand or function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall or function_signature_kind == nnkInfix:
         
@@ -100,7 +106,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         #Add template and proc names
         template_name = proc_name
         proc_name_without_inner = proc_name
-        proc_name = newIdentNode(proc_name.strVal() & "_def_inner")
+        proc_name = newIdentNode("OmniDef_" & current_module.strVal() & "_" & proc_name.strVal())
         
         #Add proc name to template call
         template_body_call.add(proc_name)
@@ -347,3 +353,12 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
 
         #Actually instantiate def (proc + template)
         `proc_and_template`
+
+#Define a dummy proc to retrieve current module by passing it as a typed parameter
+#and calling .owner on it
+macro def*(function_signature : untyped, code_block : untyped) : untyped =
+    return quote do:
+        when not declared(omni_current_module_def):
+            proc omni_current_module_def() = discard
+        
+        def_inner(`function_signature`, `code_block`, omni_current_module_def)
