@@ -1,7 +1,7 @@
 import ../../../omni_lang
 
-#use Ah:
-#    ImportMeImportMe as ImportMeImportMe1
+use Ah:
+    ImportMeImportMe as ImportMeImportMe1
 
 struct ImportMe:
     a
@@ -12,17 +12,20 @@ def something(a ImportMe):
 def something(a):
     print("something - auto")
 
-#[ def something():
-    print("something") ]#
+def something():
+    print("something")
 
-#[ def blah(a ImportMe):
+def something[T](a T):
+    print("something - Generics")
+
+def blah(a ImportMe):
     print("blah - ImportMe")
 
 def blah(a):
     print("blah - auto")
 
 def blah():
-    print("blah") ]#
+    print("blah")
 
 #[ init:
     a = ImportMe()

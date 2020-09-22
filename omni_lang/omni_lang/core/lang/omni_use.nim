@@ -20,9 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, os, strutils
+import macros, os, strutils, tables
 
-proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode) : NimNode {.compileTime.} =
+proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     let 
@@ -51,8 +51,6 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
             ),
             newEmptyNode()
         )   
-
-        new_def_export_call : NimNode
 
     for generic_param in generic_params:
         #ignore autos and ugen_call_type:type
@@ -117,28 +115,15 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
             new_template_call
         )
     )
-        
-    #echo repr new_template
-
-    new_def_export_call = parseStmt(repr(def_call_proc_def_typed))
-
-    new_def_export_call[0][0] = nnkPostfix.newTree(
-        newIdentNode("*"),
-        newIdentNode(def_new_name.strVal() & "_def_export")
-    )
     
-    new_def_export_call[0][^1] = nnkStmtList.newTree(
-        def_call
-    )
-    
-    #error repr parseStmt(repr(new_def_export_call))
+    #This will override entries, which is perfect! I need last representation of each duplicate
+    #So that imports of imports are overwritten.
+    #This is only needed to create new procs, as templates override each other already 
+    def_combinations[repr(new_template_formal_params)] = def_call
 
     result.add(new_template)
-    #result.add(new_def_export_call)
 
-    #error repr result
-
-proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_or_def_new_name : NimNode) : NimNode {.compileTime.} =
+proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     let struct_or_def_impl = struct_or_def_typed.getImpl()
@@ -154,18 +139,21 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
         #multiple ones with same name
         if actual_def_call.kind == nnkOpenSymChoice:
             for def_call in actual_def_call:
-                let new_template = generate_new_modue_bindings_def(module_name, def_call, struct_or_def_new_name)
+                let new_template = generate_new_modue_bindings_for_def(module_name, def_call, struct_or_def_new_name, def_combinations)
                 result.add(new_template)
         
         if actual_def_call.kind == nnkSym:
-            let new_template = generate_new_modue_bindings_def(module_name, actual_def_call, struct_or_def_new_name)
+            let new_template = generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
             result.add(new_template)
     
-    
+proc generate_new_def_exports() : NimNode {.compileTime.} =
+    discard
 
 macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =    
+    var def_combinations : OrderedTable[string, NimNode]
+
     if struct_or_def_typed.kind == nnkSym:
-        result = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name)
+        result = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name, def_combinations)
         
     elif struct_or_def_typed.kind == nnkClosedSymChoice:
         result = nnkStmtList.newTree()
@@ -173,12 +161,14 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
         #error astGenRepr struct_or_def_typed
         
         for struct_or_def_choice in struct_or_def_typed:
-            let new_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name)
+            let new_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name, def_combinations)
             result.add(new_templates)
 
     echo repr result
-    
 
+    for key, value in def_combinations:
+        echo key & " -> " & $value
+    
 
 #use Path:
     #Something as Something1 
