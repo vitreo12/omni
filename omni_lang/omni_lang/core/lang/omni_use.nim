@@ -20,9 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, os, strutils, omni_macros_utilities
+import macros, os, strutils
 
 proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode) : NimNode {.compileTime.} =
+    result = nnkStmtList.newTree()
+
     let 
         def_call_proc_def_typed = def_call.getImpl()
         generic_params = def_call_proc_def_typed[2]
@@ -50,6 +52,7 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
             newEmptyNode()
         )   
 
+        new_def_export_call : NimNode
 
     for generic_param in generic_params:
         #ignore autos and ugen_call_type:type
@@ -117,7 +120,23 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
         
     #echo repr new_template
 
-    return new_template
+    new_def_export_call = parseStmt(repr(def_call_proc_def_typed))
+
+    new_def_export_call[0][0] = nnkPostfix.newTree(
+        newIdentNode("*"),
+        newIdentNode(def_new_name.strVal() & "_def_export")
+    )
+    
+    new_def_export_call[0][^1] = nnkStmtList.newTree(
+        def_call
+    )
+    
+    #error repr parseStmt(repr(new_def_export_call))
+
+    result.add(new_template)
+    #result.add(new_def_export_call)
+
+    #error repr result
 
 proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_or_def_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
@@ -131,25 +150,27 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
     #Def
     elif struct_or_def_impl.kind == nnkProcDef:
         let actual_def_call = struct_or_def_impl[^1]
-        
+
         #multiple ones with same name
         if actual_def_call.kind == nnkOpenSymChoice:
             for def_call in actual_def_call:
                 let new_template = generate_new_modue_bindings_def(module_name, def_call, struct_or_def_new_name)
                 result.add(new_template)
         
-        elif actual_def_call.kind == nnkSym:
+        if actual_def_call.kind == nnkSym:
             let new_template = generate_new_modue_bindings_def(module_name, actual_def_call, struct_or_def_new_name)
             result.add(new_template)
     
     
 
-macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =
+macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =    
     if struct_or_def_typed.kind == nnkSym:
         result = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name)
         
     elif struct_or_def_typed.kind == nnkClosedSymChoice:
         result = nnkStmtList.newTree()
+
+        #error astGenRepr struct_or_def_typed
         
         for struct_or_def_choice in struct_or_def_typed:
             let new_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name)

@@ -1,23 +1,28 @@
-import ../../../omni_lang, macros
+import ../../../omni_lang
+
+#use Ah:
+#    ImportMeImportMe as ImportMeImportMe1
 
 struct ImportMe:
     a
 
-#expandMacros:
 def something(a ImportMe):
-    print("something- ImportMe")
+    print("something - ImportMe")
 
 def something(a):
-    print("something")
+    print("something - auto")
 
-def blah(a ImportMe):
+#[ def something():
+    print("something") ]#
+
+#[ def blah(a ImportMe):
     print("blah - ImportMe")
 
 def blah(a):
-    print("blah")
+    print("blah - auto")
 
-#[ def blah(a ImportMe):
-    print("blah - ImportMe") ]#
+def blah():
+    print("blah") ]#
 
 #[ init:
     a = ImportMe()

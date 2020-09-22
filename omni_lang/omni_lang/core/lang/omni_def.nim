@@ -121,7 +121,10 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #Add template and proc names
         template_name = proc_name
 
+        #let proc_name_sym = genSym(ident="OmniDef_" & current_module.strVal() & "_" & proc_name_str)
+
         #new name for proc_name: OmniDef_moduleName_procName
+        #proc_name = parseStmt(repr(proc_name_sym))[0]
         proc_name = newIdentNode("OmniDef_" & current_module.strVal() & "_" & proc_name_str)
         
         #Add proc name to template call
@@ -364,8 +367,67 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
     else:
         error "Invalid syntax for def " & repr(function_signature)
 
+    #This dummy stuff is needed for nim to catch all the references to defs when using modules... Weird bug
+    #Otherwise, proc won't overload and import on modules won't work correctly! Trust me, don't delete this!!!
+    #when not declared(""" & proc_name_str & """_def_dummy):
+    #    proc """ & proc_name_str & """_def_dummy*() = discard
+    #    proc """ & proc_name_str & """_def_export*() = discard
+    let 
+        proc_dummy_name = newIdentNode(proc_name_str & "_def_dummy")
+        proc_dummy_export = newIdentNode(proc_name_str & "_def_export")
+        proc_dummy = nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkPrefix.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        proc_dummy_name
+                    )
+                ),
+                nnkStmtList.newTree(
+                    nnkProcDef.newTree(
+                        nnkPostfix.newTree(
+                            newIdentNode("*"),
+                            proc_dummy_name
+                        ),
+                        newEmptyNode(),
+                        newEmptyNode(),
+                        nnkFormalParams.newTree(
+                            newEmptyNode()
+                        ),
+                        newEmptyNode(),
+                        newEmptyNode(),
+                        nnkStmtList.newTree(
+                            nnkDiscardStmt.newTree(
+                                newEmptyNode()
+                            )
+                        )
+                    ),
+                    nnkProcDef.newTree(
+                        nnkPostfix.newTree(
+                            newIdentNode("*"),
+                            proc_dummy_export
+                        ),
+                        newEmptyNode(),
+                        newEmptyNode(),
+                        nnkFormalParams.newTree(
+                            newEmptyNode()
+                        ),
+                        newEmptyNode(),
+                        newEmptyNode(),
+                        nnkStmtList.newTree(
+                            nnkDiscardStmt.newTree(
+                                newEmptyNode()
+                            )
+                        )
+                    ),
+                )
+            )
+        )
+
     proc_and_template.add(proc_def)
     proc_and_template.add(proc_def_export)
+    proc_and_template.add(proc_dummy)
     proc_and_template.add(template_def)
     
     #proc_and_template.add(template_def_export)
