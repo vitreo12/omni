@@ -91,6 +91,7 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
             let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
                 if inner_type[0].strVal().endsWith("_struct_inner"):
+                    #is this needed? Os is arg_type enough since it's a symbol?
                     let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_struct_export")[0]
             
                     #error astGenRepr new_arg_type 
