@@ -5,8 +5,11 @@ use ImportMe:
     something as something1
     blah as blah1
 
-expandMacros:
-    init:
-        a = ImportMe()
-        a.blah1()
-        blah1(10)
+#expandMacros:
+init:
+    a = ImportMe()
+    a.blah1()
+    blah1(10)
+
+    a.something1()
+    something1()

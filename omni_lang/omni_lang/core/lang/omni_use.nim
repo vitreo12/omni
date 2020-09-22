@@ -33,11 +33,13 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
         new_template_generic_params = nnkGenericParams.newTree(
             new_template_generic_params_ident_defs
         )
+        
         new_template_formal_params = nnkFormalParams.newTree(
             newIdentNode("untyped"),
         )
+
         new_template_call = nnkCall.newTree(
-            def_call
+            def_call #using the symbol, no need to do Module.Function, right?
         )
 
         new_template = nnkTemplateDef.newTree(
@@ -97,7 +99,7 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
                 new_template_formal_params.add(
                     nnkIdentDefs.newTree(
                         arg_name,
-                        arg_type,
+                        arg_type, #pass the symbols, they already have type infos!!
                         newEmptyNode()
                     )
                 )
@@ -113,37 +115,49 @@ proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, 
         )
     )
         
-    echo repr new_template
+    #echo repr new_template
 
     return new_template
 
-macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =
+proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_or_def_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
-    if struct_or_def_typed.kind == nnkSym:
-        let struct_or_def_impl = struct_or_def_typed.getImpl()
+    let struct_or_def_impl = struct_or_def_typed.getImpl()
 
-        #echo astGenRepr struct_or_def_impl[0].getTypeInst()
-
-        #Struct
-        if struct_or_def_impl.kind == nnkTypeDef:
-            discard
+    #Struct
+    if struct_or_def_impl.kind == nnkTypeDef:
+        discard
+    
+    #Def
+    elif struct_or_def_impl.kind == nnkProcDef:
+        let actual_def_call = struct_or_def_impl[^1]
         
-        #Def
-        elif struct_or_def_impl.kind == nnkProcDef:
-            let actual_def_call = struct_or_def_impl[^1]
-            
-            #multiple ones with same name
-            if actual_def_call.kind == nnkOpenSymChoice:
-                for def_call in actual_def_call:
-                    let new_template = generate_new_modue_bindings_def(module_name, def_call, struct_or_def_new_name)
-                    result.add(new_template)
-            
-            elif actual_def_call.kind == nnkSym:
-                let new_template = generate_new_modue_bindings_def(module_name, actual_def_call, struct_or_def_new_name)
+        #multiple ones with same name
+        if actual_def_call.kind == nnkOpenSymChoice:
+            for def_call in actual_def_call:
+                let new_template = generate_new_modue_bindings_def(module_name, def_call, struct_or_def_new_name)
                 result.add(new_template)
+        
+        elif actual_def_call.kind == nnkSym:
+            let new_template = generate_new_modue_bindings_def(module_name, actual_def_call, struct_or_def_new_name)
+            result.add(new_template)
+    
+    
 
-    #echo repr struct_or_def_typed
+macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =
+    if struct_or_def_typed.kind == nnkSym:
+        result = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name)
+        
+    elif struct_or_def_typed.kind == nnkClosedSymChoice:
+        result = nnkStmtList.newTree()
+        
+        for struct_or_def_choice in struct_or_def_typed:
+            let new_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name)
+            result.add(new_templates)
+
+    echo repr result
+    
+
 
 #use Path:
     #Something as Something1 
