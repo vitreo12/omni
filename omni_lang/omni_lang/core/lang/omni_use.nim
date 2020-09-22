@@ -20,12 +20,110 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, os
+import macros, os, strutils, omni_macros_utilities
+
+proc generate_new_modue_bindings_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode) : NimNode {.compileTime.} =
+    let 
+        def_call_proc_def_typed = def_call.getImpl()
+        generic_params = def_call_proc_def_typed[2]
+        formal_params = def_call_proc_def_typed[3]
+
+    var
+        new_template_generic_params_ident_defs = nnkIdentDefs.newTree()
+        new_template_generic_params = nnkGenericParams.newTree(
+            new_template_generic_params_ident_defs
+        )
+        new_template_formal_params = nnkFormalParams.newTree(
+            newIdentNode("untyped"),
+        )
+        new_template_call = nnkCall.newTree(
+            def_call
+        )
+
+        new_template = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode(def_new_name.strVal())
+            ),
+            newEmptyNode()
+        )   
+
+
+    for generic_param in generic_params:
+        #ignore autos and ugen_call_type:type
+        if not (generic_param.strVal().endsWith(":type")):
+            new_template_generic_params_ident_defs.add(
+                newIdentNode(generic_param.strVal())
+            )
+
+    #If generic params
+    if generic_params.len > 1:
+        new_template_generic_params_ident_defs.add(
+            newEmptyNode(),
+            newEmptyNode()
+        )
+
+        new_template.add(new_template_generic_params)
+    else:
+        new_template.add(newEmptyNode())
+        
+
+    for i, formal_param in formal_params:
+        #skip return type (first formal param)
+        if i != 0: 
+            let 
+                arg_name = formal_param[0]
+                arg_name_str = arg_name.strVal()
+                arg_type = formal_param[1]
+
+            #echo astGenRepr arg_type.getTypeImpl()
+
+            var arg_type_str : string
+            if arg_type.kind == nnkIdent or arg_type.kind == nnkSym:
+                arg_type_str = arg_type.strVal()
+            else:
+                arg_type_str = arg_type[0].strVal()
+            
+            #ImportMe -> ImportMe_module_inner.ImportMe_struct_export
+            let inner_type = arg_type.getTypeImpl()
+            if inner_type.kind == nnkPtrTy:
+                if inner_type[0].strVal().endsWith("_struct_inner"):
+                    let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_struct_export")[0]
+            
+                    #error astGenRepr new_arg_type 
+
+            #Skip samplerate. bufsize, ugen_auto_mem, ugen_call_type
+            if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "ugen_auto_mem" and arg_name_str != "ugen_call_type":    
+                new_template_formal_params.add(
+                    nnkIdentDefs.newTree(
+                        arg_name,
+                        arg_type,
+                        newEmptyNode()
+                    )
+                )
+        
+            new_template_call.add(arg_name)
+
+    new_template.add(
+        new_template_formal_params,
+        newEmptyNode(),
+        newEmptyNode(),
+        nnkStmtList.newTree(
+            new_template_call
+        )
+    )
+        
+    echo repr new_template
+
+    return new_template
 
 macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =
-    #echo astGenRepr struct_or_def_typed
+    result = nnkStmtList.newTree()
+
     if struct_or_def_typed.kind == nnkSym:
         let struct_or_def_impl = struct_or_def_typed.getImpl()
+
+        #echo astGenRepr struct_or_def_impl[0].getTypeInst()
 
         #Struct
         if struct_or_def_impl.kind == nnkTypeDef:
@@ -38,11 +136,13 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
             #multiple ones with same name
             if actual_def_call.kind == nnkOpenSymChoice:
                 for def_call in actual_def_call:
-                    echo astGenRepr def_call.getImpl()
+                    let new_template = generate_new_modue_bindings_def(module_name, def_call, struct_or_def_new_name)
+                    result.add(new_template)
             
             elif actual_def_call.kind == nnkSym:
-                echo astGenRepr actual_def_call.getImpl()
-    
+                let new_template = generate_new_modue_bindings_def(module_name, actual_def_call, struct_or_def_new_name)
+                result.add(new_template)
+
     #echo repr struct_or_def_typed
 
 #use Path:
@@ -172,6 +272,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     result.add(
                         generate_new_module_bindings_for_struct_or_def_call
                     )
+
                 else:
                     error "use: Invalid second infix value :" & repr(infix_second_val)
             else:

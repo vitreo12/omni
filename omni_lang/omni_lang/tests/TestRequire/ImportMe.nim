@@ -1,13 +1,14 @@
-import ../../../omni_lang
+import ../../../omni_lang, macros
+
+struct ImportMe:
+    a
 
 def something():
     return 0
 
+#expandMacros:
 def blah(a):
-    return a
+    print("blah")
 
-def blah():
-    return 1
-
-struct ImportMe:
-    a
+def blah(a ImportMe):
+    print("blah - ImportMe")
