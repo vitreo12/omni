@@ -15,8 +15,8 @@ def something(a):
 def something():
     print("something")
 
-def something[T](a T):
-    print("something - Generics")
+#[ def something[T](a T):
+    print("something - Generics") ]#
 
 def blah(a ImportMe):
     print("blah - ImportMe")

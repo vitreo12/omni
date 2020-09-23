@@ -31,10 +31,7 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
         formal_params = def_call_proc_def_typed[3]
 
     var
-        new_template_generic_params_ident_defs = nnkIdentDefs.newTree()
-        new_template_generic_params = nnkGenericParams.newTree(
-            new_template_generic_params_ident_defs
-        )
+        new_template_generic_params = nnkGenericParams.newTree()
         
         new_template_formal_params = nnkFormalParams.newTree(
             newIdentNode("untyped"),
@@ -53,23 +50,23 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
         )   
 
     for generic_param in generic_params:
-        #ignore autos and ugen_call_type:type
+        #ignore autos and ugen_call_type:type in generics!
         if not (generic_param.strVal().endsWith(":type")):
-            new_template_generic_params_ident_defs.add(
-                newIdentNode(generic_param.strVal())
+            new_template_generic_params.add(
+                nnkIdentDefs.newTree(
+                    newIdentNode(generic_param.strVal()),
+                    newIdentNode("SomeNumber"), #generics are always SomeNumber (for now)
+                    newEmptyNode()
+                )
             )
 
     #If generic params
-    if generic_params.len > 1:
-        new_template_generic_params_ident_defs.add(
-            newEmptyNode(),
-            newEmptyNode()
-        )
-
+    if generic_params.len > 1: # 1 because there's always ugen_call_type:type
         new_template.add(new_template_generic_params)
+    
+    #no generics
     else:
         new_template.add(newEmptyNode())
-        
 
     for i, formal_param in formal_params:
         #skip return type (first formal param)
@@ -88,13 +85,13 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
                 arg_type_str = arg_type[0].strVal()
             
             #ImportMe -> ImportMe_module_inner.ImportMe_struct_export
-            let inner_type = arg_type.getTypeImpl()
+            #[ let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
                 if inner_type[0].strVal().endsWith("_struct_inner"):
                     #is this needed? Os is arg_type enough since it's a symbol?
                     let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_struct_export")[0]
             
-                    #error astGenRepr new_arg_type 
+                    #error astGenRepr new_arg_type  ]#
 
             #Skip samplerate. bufsize, ugen_auto_mem, ugen_call_type
             if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "ugen_auto_mem" and arg_name_str != "ugen_call_type":    
@@ -118,8 +115,8 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
     )
     
     #This will override entries, which is perfect! I need last representation of each duplicate
-    #So that imports of imports are overwritten.
-    #This is only needed to create new procs, as templates override each other already 
+    #So that imports of imports are overwritten. (Basically, if a func is defined in two files, and one is imported in the other, only the last one is considered!)
+    #This is only needed to create new def_exports, as templates override each other already 
     let formal_params_repr = repr(new_template_formal_params)
     def_combinations[formal_params_repr] = def_call
 

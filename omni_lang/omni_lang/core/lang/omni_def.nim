@@ -41,6 +41,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
         template_def = nnkTemplateDef.newTree()
         template_name : NimNode
+        #template_proc_call : NimNode
         template_body_call = nnkCall.newTree()
 
         proc_def_export : NimNode
@@ -84,10 +85,13 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         
         #Generics
         if first_statement.kind == nnkBracketExpr:
+            #template_proc_call = nnkBracketExpr.newTree()
+
             for index, entry in first_statement.pairs():
                 #Name of function
                 if index == 0:
                     proc_name = entry
+                    #template_proc_call.add(proc_name)
                     continue
 
                 if entry.kind == nnkExprColonExpr:
@@ -103,6 +107,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 )
 
                 generics.add(entry)
+                #template_proc_call.add(entry)
         
         #No Generics
         elif first_statement.kind == nnkIdent:
@@ -121,11 +126,22 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #Add template and proc names
         template_name = proc_name
 
+        #OmniDef_moduleName_procName121241231 (if needing a unique identifier for any reason)
         #let proc_name_sym = genSym(ident="OmniDef_" & current_module.strVal() & "_" & proc_name_str)
+        #proc_name = parseStmt(repr(proc_name_sym))[0]
 
         #new name for proc_name: OmniDef_moduleName_procName
-        #proc_name = parseStmt(repr(proc_name_sym))[0]
         proc_name = newIdentNode("OmniDef_" & current_module.strVal() & "_" & proc_name_str)
+        
+        #This is for the WIP generics defs: https://github.com/vitreo12/omni/issues/118
+        #[ if generics.len > 0:
+            template_proc_call[0] = proc_name
+        else:
+            template_proc_call = proc_name 
+        
+        template_body_call.add(
+            template_proc_call
+        ) ]#
         
         #Add proc name to template call
         template_body_call.add(proc_name)
@@ -446,7 +462,9 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
     proc_and_template.add(proc_def_export)
     proc_and_template.add(proc_dummy)
     proc_and_template.add(template_def)
-    
+
+    #echo astGenRepr proc_def
+
     #proc_and_template.add(template_def_export)
 
     #echo astGenRepr proc_and_template
