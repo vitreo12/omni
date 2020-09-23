@@ -22,6 +22,53 @@
 
 import macros, os, strutils, tables
 
+#type
+#    ImportMe1 = ImportMe_module_inner.ImportMe_struct_export
+#type
+#    ImportMe1_struct_export = ImportMe1
+proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
+    result = nnkStmtList.newTree()
+
+    let 
+        struct_new_name_str = struct_new_name.strVal()
+        struct_new_name_ident = newIdentNode(struct_new_name_str)
+        struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_struct_export")
+
+    let old_struct_name_export = newIdentNode(struct_typed[2].strVal() & "_struct_export")
+
+    let new_struct = nnkTypeSection.newTree(
+        nnkTypeDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                struct_new_name_ident
+            ),
+            newEmptyNode(),
+            nnkDotExpr.newTree(
+                module_name,
+                old_struct_name_export
+            )
+        )
+    )
+
+    let new_struct_export = nnkTypeSection.newTree(
+        nnkTypeDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                struct_new_name_export_ident
+            ),
+            newEmptyNode(),
+            struct_new_name
+        )
+    )
+
+    result.add(
+        new_struct,
+        new_struct_export
+    )
+
+    #error repr result
+
+
 proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
@@ -129,7 +176,8 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
 
     #Struct
     if struct_or_def_impl.kind == nnkTypeDef:
-        discard
+        let new_struct = generate_new_module_bindings_for_struct(module_name, struct_or_def_impl, struct_or_def_new_name)
+        result.add(new_struct)
     
     #Def
     elif struct_or_def_impl.kind == nnkProcDef:
@@ -370,7 +418,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 #elif dot expr
                 elif infix_first_val.kind == nnkDotExpr:
-                    error "dot expr not yet"
+                    error "dot expr not yet implemented"
                 
                 else:
                     error "use: Invalid first infix value :" & repr(infix_first_val)
