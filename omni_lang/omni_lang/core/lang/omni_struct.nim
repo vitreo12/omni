@@ -35,7 +35,7 @@ let invalid_struct_names {.compileTime.} = [
 ]
 
 let invalid_struct_ends_with {.compileTime.} = [
-    "def_export",
+    "def_export", "def_dummy",
     "module_inner",
     "struct_inner", "struct_new_inner", "struct_export"
 ]

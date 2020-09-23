@@ -23,7 +23,7 @@
 import macros, strutils
 
 let invalid_def_ends_with {.compileTime.} = [
-    "def_export",
+    "def_export", "def_dummy",
     "module_inner", 
     "struct_inner", "struct_new_inner", "struct_export"
 ]
@@ -239,11 +239,15 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
         #Add generics
         if proc_generic_params.len > 0:
-            proc_def.add(newEmptyNode())
-            proc_def.add(proc_generic_params)
+            proc_def.add(
+                newEmptyNode(),
+                proc_generic_params
+            )
         else:
-            proc_def.add(newEmptyNode())
-            proc_def.add(newEmptyNode())
+            proc_def.add(
+                newEmptyNode(),
+                newEmptyNode()
+            )
 
         #Add samplerate / bufsize / ugen_auto_mem : ptr OmniAutoMem / ugen_call_type : CallType = InitCall
         proc_formal_params.add(
@@ -284,10 +288,9 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         proc_def.add(
             nnkPragma.newTree(
                 newIdentNode("inline")
-            )
+            ),
+            newEmptyNode()
         )   
-
-        proc_def.add(newEmptyNode())
 
         #Pass the proc body to the parse_block_untyped macro to parse it
         let proc_body = nnkStmtList.newTree(
@@ -311,7 +314,15 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         # ================= #
 
         proc_def_export = proc_def.copy()
-        proc_def_export[0][1] = newIdentNode(proc_name_str & "_def_export")
+        proc_def_export[0][1] = newIdentNode(proc_name_str & "_def_export") #change name
+        
+        #Can't remove these things because the generated code will be then == to the one generated in the dummy proc with a def with no args!!
+        #[ var proc_def_export_formal_params = proc_def_export[3]
+        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #delete ugen_call_type
+        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
+        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #table shifted, delete bufsize now
+        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #table shifted, delete samplerate now ]#
+        
         proc_def_export[^1] = proc_name #template_body_call.copy()
 
         # ============== #
@@ -328,11 +339,15 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
         #Add generics
         if proc_generic_params.len > 0:
-            template_def.add(newEmptyNode())
-            template_def.add(proc_generic_params)
+            template_def.add(
+                newEmptyNode(),
+                proc_generic_params
+            )
         else:
-            template_def.add(newEmptyNode())
-            template_def.add(newEmptyNode())
+            template_def.add(
+                newEmptyNode(),
+                newEmptyNode()
+            )
 
         #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are ugen_auto_mem and ugen_call_type
         let template_formal_params = proc_formal_params.copy
@@ -341,9 +356,11 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         template_formal_params.del(template_formal_params.len - 1) #table shifted, delete bufsize now
         template_formal_params.del(template_formal_params.len - 1) #table shifted, delete samplerate now
         template_formal_params[0] = newIdentNode("untyped")
-        template_def.add(template_formal_params)
-        template_def.add(newEmptyNode())
-        template_def.add(newEmptyNode())
+        template_def.add(
+            template_formal_params,
+            newEmptyNode(),
+            newEmptyNode()
+        )
 
         #Add samplerate / bufsize / ugen_auto_mem / ugen_call_type to template call
         template_body_call.add(
@@ -432,9 +449,9 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
     
     #proc_and_template.add(template_def_export)
 
-    #echo repr proc_and_template
+    #echo astGenRepr proc_and_template
     #echo astGenRepr proc_formal_params
-    #echo repr checkValidTypes
+    #echo astGenRepr checkValidTypes
 
     return quote do:
         #Run validity type check on each argument of the def

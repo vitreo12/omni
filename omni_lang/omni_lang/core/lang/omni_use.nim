@@ -120,7 +120,8 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
     #This will override entries, which is perfect! I need last representation of each duplicate
     #So that imports of imports are overwritten.
     #This is only needed to create new procs, as templates override each other already 
-    def_combinations[repr(new_template_formal_params)] = def_call
+    let formal_params_repr = repr(new_template_formal_params)
+    def_combinations[formal_params_repr] = def_call
 
     result.add(new_template)
 
@@ -147,14 +148,101 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
             let new_template = generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
             result.add(new_template)
     
-proc generate_new_def_exports() : NimNode {.compileTime.} =
-    discard
+proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], def_new_name : NimNode) : NimNode {.compileTime.} =
+    result = nnkStmtList.newTree()
+    for key, value in def_combinations:
+        let 
+            def_call = value
+
+            def_new_name_str = def_new_name.strVal()
+
+        #def_dummy
+        let 
+            def_dummy_name = newIdentNode(def_new_name_str & "_def_dummy")
+            def_export = newIdentNode(def_new_name_str & "_def_export")
+            
+            def_dummy = nnkWhenStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkPrefix.newTree(
+                        newIdentNode("not"),
+                        nnkCall.newTree(
+                            newIdentNode("declared"),
+                            def_dummy_name
+                        )
+                    ),
+                    nnkStmtList.newTree(
+                        nnkProcDef.newTree(
+                            nnkPostfix.newTree(
+                                newIdentNode("*"),
+                                def_dummy_name
+                            ),
+                            newEmptyNode(),
+                            newEmptyNode(),
+                            nnkFormalParams.newTree(
+                                newEmptyNode()
+                            ),
+                            newEmptyNode(),
+                            newEmptyNode(),
+                            nnkStmtList.newTree(
+                                nnkDiscardStmt.newTree(
+                                    newEmptyNode()
+                                )
+                            )
+                        ),
+                        nnkProcDef.newTree(
+                            nnkPostfix.newTree(
+                                newIdentNode("*"),
+                                def_export
+                            ),
+                            newEmptyNode(),
+                            newEmptyNode(),
+                            nnkFormalParams.newTree(
+                                newEmptyNode()
+                            ),
+                            newEmptyNode(),
+                            newEmptyNode(),
+                            nnkStmtList.newTree(
+                                nnkDiscardStmt.newTree(
+                                    newEmptyNode()
+                                )
+                            )
+                        ),
+                    )
+                )
+            )
+
+        #actual def_export
+        var 
+            def_call_typed = def_call.getImpl() #typed
+            new_def_export = parseStmt(repr(def_call_typed))[0] #typed to untyped
+
+        new_def_export[0] = nnkPostfix.newTree(
+            newIdentNode("*"),
+            def_export
+        )
+
+        #If it has generics, need to be SomeNumber! Or type info won't work
+        var generic_params = new_def_export[2]
+        for generic_param in generic_params:
+            generic_param[1] = newIdentNode("SomeNumber")
+
+        #Symbol!!! Holds all type and module infos
+        new_def_export[^1] = def_call 
+
+        result.add(
+            def_dummy,
+            new_def_export
+        )
+
+    #echo repr result
 
 macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =    
     var def_combinations : OrderedTable[string, NimNode]
+    result = nnkStmtList.newTree()
 
     if struct_or_def_typed.kind == nnkSym:
-        result = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name, def_combinations)
+        let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name, def_combinations)
+        result.add(new_structs_or_def_templates)
         
     elif struct_or_def_typed.kind == nnkClosedSymChoice:
         result = nnkStmtList.newTree()
@@ -162,13 +250,14 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
         #error astGenRepr struct_or_def_typed
         
         for struct_or_def_choice in struct_or_def_typed:
-            let new_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name, def_combinations)
-            result.add(new_templates)
+            let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name, def_combinations)
+            result.add(new_structs_or_def_templates)
+
+    #Only for defs
+    let new_def_exports = generate_new_def_exports(def_combinations, struct_or_def_new_name)
+    result.add(new_def_exports)
 
     echo repr result
-
-    for key, value in def_combinations:
-        echo key & " -> " & $value
     
 
 #use Path:

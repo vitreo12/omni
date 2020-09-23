@@ -1,8 +1,14 @@
 import ../../../omni_lang, macros
 
-expandMacros:
-    def hello(a, b, c):
-        return 0
+struct Dummy:
+    a
 
-    def hello[T](a T):
-        return a
+expandMacros:
+    def something(a):
+        print("Mh")
+    
+    def something(a Dummy):
+        print("Mhmh")
+
+    def something[T](a T):
+        print("Mhmhmh")
