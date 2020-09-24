@@ -1,10 +1,12 @@
-import ../../../omni_lang
+import ../../../omni_lang, macros
 
 use Ah:
-    ImportMeImportMe as ImportMeImportMe1
+    #ImportMeImportMe as ImportMeImportMe1
+    something as something2
 
-struct ImportMe:
-    a
+expandMacros:
+    struct ImportMe[T]:
+        a T
 
 def something(a ImportMe):
     print("something - ImportMe")

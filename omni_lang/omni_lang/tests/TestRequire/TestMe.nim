@@ -1,9 +1,10 @@
 import ../../../omni_lang, macros
 
+#expandMacros:
 use ImportMe:
     ImportMe as ImportMe1
-    #[ something as something1
-    blah as blah1 ]#
+    something as something1
+    blah as blah1
 
 def something(a ImportMe1):
     return a.a
@@ -13,7 +14,7 @@ def something(a ImportMeImportMe1):
 
 #expandMacros:
 #[ init:
-    a = ImportMe()
+    a = ImportMe1()
     a.blah1()
     blah1(10)
     blah1()

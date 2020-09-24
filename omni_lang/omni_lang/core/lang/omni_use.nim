@@ -26,15 +26,42 @@ import macros, os, strutils, tables
 #    ImportMe1 = ImportMe_module_inner.ImportMe_struct_export
 #type
 #    ImportMe1_struct_export = ImportMe1
+#
+#proc ImportMe1_new_struct_inner(obj_type : typedesc[ImportMe1_struct_export], ...) : ImportMe1 {.inline.} =
+#    return ImportMe_module_inner.ImportMe_new_struct_inner(....)
+
 proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
+    var 
+        struct_typed_inner : NimNode
+        struct_typed_generic_params : NimNode
+        stuct_typed_rec_list : NimNode
+        struct_typed_name : string
+
+    #Generics
+    if struct_typed[2].kind == nnkBracketExpr:
+        let old_struct_typed = struct_typed[2][0]
+        struct_typed_name = old_struct_typed.strVal()
+        struct_typed_generic_params = struct_typed[1]
+        struct_typed_inner = old_struct_typed.getType()[1][0].getTypeImpl()
+    
+    #Normal
+    else:
+        let old_struct_typed = struct_typed[2]
+        struct_typed_name = old_struct_typed.strVal()
+        struct_typed_generic_params = newEmptyNode()
+        struct_typed_inner = old_struct_typed.getType()[1].getTypeImpl()
+        
+    stuct_typed_rec_list = struct_typed_inner[2]
+    
     let 
         struct_new_name_str = struct_new_name.strVal()
         struct_new_name_ident = newIdentNode(struct_new_name_str)
         struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_struct_export")
+        struct_new_name_struct_new_inner_ident = newIdentNode(struct_new_name_str & "_struct_new_inner")
 
-    let old_struct_name_export = newIdentNode(struct_typed[2].strVal() & "_struct_export")
+    let old_struct_name_export = newIdentNode(struct_typed_name & "_struct_export")
 
     let new_struct = nnkTypeSection.newTree(
         nnkTypeDef.newTree(
@@ -61,9 +88,20 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
         )
     )
 
+    let new_struct_new_inner = nnkProcDef.newTree(
+        nnkPostfix.newTree(
+            newIdentNode("*"),
+            struct_new_name_struct_new_inner_ident
+        ),
+        newEmptyNode()
+    )
+
+    error astGenRepr new_struct_new_inner
+
     result.add(
         new_struct,
-        new_struct_export
+        new_struct_export,
+        new_struct_new_inner
     )
 
     #error repr result
@@ -259,8 +297,10 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
         #actual def_export
         var 
             def_call_typed = def_call.getImpl() #typed
+            def_call_typed_formal_params = def_call_typed[3] #save formal params! they are typed and carry all type infos
             new_def_export = parseStmt(repr(def_call_typed))[0] #typed to untyped
 
+        #Change name
         new_def_export[0] = nnkPostfix.newTree(
             newIdentNode("*"),
             def_export
@@ -271,7 +311,10 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
         for generic_param in generic_params:
             generic_param[1] = newIdentNode("SomeNumber")
 
-        #Symbol!!! Holds all type and module infos
+        #Use typed formal params (so all type information on arguments and return types is preserverd)
+        new_def_export[3] = def_call_typed_formal_params
+
+        #Use the actual def_call in order to maintain all type information and module belonging!
         new_def_export[^1] = def_call 
 
         result.add(
@@ -302,7 +345,7 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
     let new_def_exports = generate_new_def_exports(def_combinations, struct_or_def_new_name)
     result.add(new_def_exports)
 
-    echo repr result
+    #echo repr result
     
 
 #use Path:
@@ -418,7 +461,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 #elif dot expr
                 elif infix_first_val.kind == nnkDotExpr:
-                    error "dot expr not yet implemented"
+                    error "use: Import with submodules is not yet implemented: " & repr(infix_first_val)
                 
                 else:
                     error "use: Invalid first infix value :" & repr(infix_first_val)
