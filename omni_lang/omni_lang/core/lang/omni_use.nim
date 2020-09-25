@@ -326,6 +326,8 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
     let formal_params_repr = repr(new_template_formal_params)
     def_combinations[formal_params_repr] = def_call
 
+    error astGenRepr new_template
+
     result.add(new_template)
 
 proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =

@@ -2,13 +2,13 @@ import ../../../omni_lang, macros
 
 expandMacros:
     use ImportMe:
-        ImportMe as ImportMe1
+        #[ ImportMe as ImportMe1
         ImportMeImportMe1 as ImportMeImportMe
-        something as something1
+        something as something1 ]#
         blah as blah1
 
 #expandMacros:
-struct Bubu:
+#[ struct Bubu:
     a ImportMe1
     b ImportMeImportMe
 
@@ -16,7 +16,7 @@ def something(a ImportMe1):
     return a.a
 
 def something(a ImportMeImportMe):
-    return a.a
+    return a.a ]#
 
 #expandMacros:
 init:
@@ -24,7 +24,7 @@ init:
     a.blah1() ]#
 
     blah1(10)
-    
+
     #[ a.blah1()
     blah1(10)
     blah1()

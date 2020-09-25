@@ -22,11 +22,11 @@ def something():
 def blah(a ImportMe):
     print("blah - ImportMe")
 
-def blah(a):
+#[ def blah(a):
     print("blah - auto")
 
 def blah():
-    print("blah")
+    print("blah") ]#
 
 #[ init:
     a = ImportMe() ]#
