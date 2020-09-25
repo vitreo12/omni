@@ -21,11 +21,11 @@ def something():
     print("something - Generics") ]#
 
 expandMacros:
-    def blah[T](a ImportMe, b T = 0, c ImportMe[T], d ImportMe):
+    def blah(a ImportMe):
         print("blah - ImportMe")
-
-    def blah[T](a ImportMe[T]):
-        print("blah - ImportMe")
+    
+    def blah(a):
+        print("blah - auto")
 
     #[ def blah(a):
         print("blah - ImportMe") ]#

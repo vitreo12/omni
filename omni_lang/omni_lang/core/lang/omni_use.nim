@@ -470,7 +470,7 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
     let new_def_exports = generate_new_def_exports(def_combinations, struct_or_def_new_name)
     result.add(new_def_exports)
 
-    error repr result
+    #error repr result
     
 
 #use Path:

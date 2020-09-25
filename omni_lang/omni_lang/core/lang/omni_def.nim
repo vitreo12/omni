@@ -28,7 +28,7 @@ let invalid_def_ends_with {.compileTime.} = [
     "struct_inner", "struct_new_inner", "struct_export"
 ]
 
-macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, args : varargs[typed] = nil) : untyped =
+macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
     var 
         proc_and_template = nnkStmtList.newTree()
 
@@ -53,13 +53,6 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
     #module where def is defined
     let current_module = omni_current_module_def.owner
-
-    #Find full parametrization of args, so that if Phasor[T] is defined, here it will become Phasor[auto] (if not already directly specifide)
-    #THis is essential in def retrieving when importing modules around!!!
-    error astGenRepr args
-    for arg in args:
-        if arg.kind == nnkSym:
-            error astGenRepr arg.getImpl()
 
     if current_module.kind != nnkSym and current_module.kind != nnkIdent:
         error ("def " & repr(function_signature) & ": can't retrieve its current module")
@@ -232,8 +225,23 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                     )
                 )
 
-            #Check type validity
-            #checkValidType(arg_type, arg_name.strVal(), is_proc_arg=true, proc_name=proc_name_without_inner_str)
+            #Fully parametrize unparametrized arguments...
+            #This is essential for exported modules, as unparametrized arguments might not be found in defs definitions!
+            let struct_arg = struct_args[index]
+            if struct_arg.kind != nnkNilLit: #already parametrized
+                let 
+                    struct_arg_impl = struct_arg.getImpl()
+                    struct_arg_impl_generic_params = struct_arg_impl[1]
+                if struct_arg_impl_generic_params.kind == nnkGenericParams:
+                    arg_type = nnkBracketExpr.newTree(
+                        arg_type
+                    )
+                    for generic_param in struct_arg_impl_generic_params:
+                        arg_type.add(
+                            newIdentNode("auto")
+                        )
+
+            #error astGenRepr arg_type
 
             #new arg
             new_arg = nnkIdentDefs.newTree(
@@ -467,9 +475,9 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
             )
         )
 
+    proc_and_template.add(proc_dummy)
     proc_and_template.add(proc_def)
     proc_and_template.add(proc_def_export)
-    #proc_and_template.add(proc_dummy)
     proc_and_template.add(template_def)
 
     #echo astGenRepr proc_def
@@ -504,6 +512,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     for i, arg in function_signature:
         let arg_kind = arg.kind
 
+        var arg_type = newNilLit()
+
         #Name of func and generics
         if i == 0:
             #Generics, extract them
@@ -511,14 +521,19 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 for generic_param in arg:
                     if generic_param.kind == nnkIdent:
                         temp_generics.add(generic_param.strVal())
+            continue
         
         if arg_kind == nnkCommand:
-            let arg_type = arg[1]
-            if arg_type.kind == nnkIdent:
-                if not(arg_type.strVal() in temp_generics): #don't add generics!!
-                    call_def_inner.add(newIntLitNode(i-1)) #index of this arg
-                    call_def_inner.add(arg_type) 
-    
+            let arg_type_temp = arg[1]
+            if arg_type_temp.kind == nnkIdent:
+                if not(arg_type_temp.strVal() in temp_generics): #don't add generics!!
+                    arg_type = arg_type_temp
+        
+        #call_def_inner.add(newIntLitNode(i-1)) #index of this arg
+        call_def_inner.add(arg_type)
+        
+    #echo astGenRepr call_def_inner
+
     return quote do:
         when not declared(omni_current_module_def):
             proc omni_current_module_def() = discard
