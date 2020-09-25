@@ -1,21 +1,31 @@
 import ../../../omni_lang, macros
 
+expandMacros:
+    use ImportMe:
+        ImportMe as ImportMe1
+        ImportMeImportMe1 as ImportMeImportMe
+        something as something1
+        blah as blah1
+
 #expandMacros:
-use ImportMe:
-    ImportMe as ImportMe1
-    something as something1
-    blah as blah1
+struct Bubu:
+    a ImportMe1
+    b ImportMeImportMe
 
 def something(a ImportMe1):
     return a.a
 
-def something(a ImportMeImportMe1):
+def something(a ImportMeImportMe):
     return a.a
 
 #expandMacros:
-#[ init:
-    a = ImportMe1()
-    a.blah1()
+init:
+    #[ a = ImportMe1(0)
+    a.blah1() ]#
+
+    blah1(10)
+    
+    #[ a.blah1()
     blah1(10)
     blah1()
 

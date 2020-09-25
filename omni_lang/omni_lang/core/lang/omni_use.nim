@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, os, strutils, tables
+import macros, os, strutils, tables, omni_macros_utilities
 
 #type
 #    ImportMe1 = ImportMe_module_inner.ImportMe_struct_export
@@ -30,38 +30,155 @@ import macros, os, strutils, tables
 #proc ImportMe1_new_struct_inner(obj_type : typedesc[ImportMe1_struct_export], ...) : ImportMe1 {.inline.} =
 #    return ImportMe_module_inner.ImportMe_new_struct_inner(....)
 
-proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
+proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_typed_constructor : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     var 
+        #struct_typed_export =
+
         struct_typed_inner : NimNode
         struct_typed_generic_params : NimNode
         stuct_typed_rec_list : NimNode
-        struct_typed_name : string
+        struct_typed_name_str : string
+
+    #error astGenRepr struct_typed
 
     #Generics
     if struct_typed[2].kind == nnkBracketExpr:
         let old_struct_typed = struct_typed[2][0]
-        struct_typed_name = old_struct_typed.strVal()
+        struct_typed_name_str = old_struct_typed.strVal()
         struct_typed_generic_params = struct_typed[1]
         struct_typed_inner = old_struct_typed.getType()[1][0].getTypeImpl()
     
     #Normal
     else:
         let old_struct_typed = struct_typed[2]
-        struct_typed_name = old_struct_typed.strVal()
+        struct_typed_name_str = old_struct_typed.strVal()
         struct_typed_generic_params = newEmptyNode()
         struct_typed_inner = old_struct_typed.getType()[1].getTypeImpl()
         
     stuct_typed_rec_list = struct_typed_inner[2]
-    
+
     let 
         struct_new_name_str = struct_new_name.strVal()
         struct_new_name_ident = newIdentNode(struct_new_name_str)
         struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_struct_export")
         struct_new_name_struct_new_inner_ident = newIdentNode(struct_new_name_str & "_struct_new_inner")
+        old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_struct_export")
 
-    let old_struct_name_export = newIdentNode(struct_typed_name & "_struct_export")
+    #put generics again if needed
+    var 
+        generics_ident_defs = newEmptyNode()
+        old_struct_name_export : NimNode
+        struct_new_name_final : NimNode
+
+    let 
+        stuct_typed_constuctor_impl = struct_typed_constructor.getImpl()
+
+        #Untyped translation, to retrieve formal params from (and modify them)
+        stuct_untyped_constuctor_impl = typedToUntyped(stuct_typed_constuctor_impl)[0]
+        struct_untyped_formal_params = stuct_untyped_constuctor_impl[3]
+
+    var 
+        #can copy from old impl, they are typed symbols anyway! Only thing to change is the first arg, obj_type
+        new_struct_formal_params = struct_untyped_formal_params
+
+        old_struct_constructor = nnkDotExpr.newTree(
+            module_name,
+            newIdentNode(struct_typed_name_str & "_struct_new_inner")
+        )
+
+    #Add generics to func call and to type descriptions!
+    if struct_typed_generic_params.len > 0:
+        old_struct_name_export = nnkBracketExpr.newTree(
+            nnkDotExpr.newTree(
+                module_name,
+                old_struct_name_export_ident
+            )
+        )
+
+        struct_new_name_final = nnkBracketExpr.newTree(
+            struct_new_name_ident
+        )
+
+        generics_ident_defs = nnkGenericParams.newTree()
+
+        for i, generic_param in struct_typed_generic_params: 
+            #Must be untyped ones here!
+            let generic_param_untyped = newIdentNode(generic_param.strVal())
+            old_struct_name_export.add(generic_param_untyped)
+            struct_new_name_final.add(generic_param_untyped)
+
+            #Convert generics to SomeNumber, in order for proper AST process
+            let new_generic_ident_def_some_number = nnkIdentDefs.newTree(
+                generic_param_untyped,
+                newIdentNode("SomeNumber"),
+                newEmptyNode()
+            )
+
+            struct_typed_generic_params[i] = new_generic_ident_def_some_number
+
+            #No specification for type declarations
+            let new_generic_ident_def = nnkIdentDefs.newTree(
+                generic_param_untyped,
+                newEmptyNode(),
+                newEmptyNode()
+            )
+
+            generics_ident_defs.add(new_generic_ident_def)
+
+    #No generics, use normal idents!
+    else:
+        old_struct_name_export = nnkDotExpr.newTree(
+            module_name,
+            old_struct_name_export_ident
+        )
+
+        struct_new_name_final = struct_new_name_ident
+
+    #Final return stmt
+    var 
+        new_struct_call = nnkCall.newTree(
+            old_struct_constructor,
+            newIdentNode("obj_type")
+        )
+        
+        return_stmt = nnkStmtList.newTree(
+            nnkReturnStmt.newTree(
+                new_struct_call
+            )
+        )
+
+    #Change return type to be the new declared struct
+    var return_type_formal_params = new_struct_formal_params[0]
+
+    #Generics
+    if return_type_formal_params.kind == nnkBracketExpr:
+        new_struct_formal_params[0][0] = struct_new_name_ident
+    else:
+        new_struct_formal_params[0] = struct_new_name_ident
+
+    #Change obj_type to be the new export name, also change generics from syms to idents
+    var obj_type_formal_param_type = new_struct_formal_params[1][1][1]
+    
+    #Generics...
+    if obj_type_formal_param_type.kind == nnkBracketExpr:
+        new_struct_formal_params[1][1][1][0] = struct_new_name_export_ident
+    
+    #Just change name
+    else:
+        new_struct_formal_params[1][1][1] = struct_new_name_export_ident
+
+    #Add args
+    for ident_def in stuct_typed_rec_list:
+        let untyped_ident_def = newIdentNode(ident_def[0].strVal())
+        new_struct_call.add(untyped_ident_def)
+
+    #Add ugen_auto_mem and ugen_call_type etc...
+    new_struct_call.add(
+        newIdentNode("ugen_auto_mem"),
+        newIdentNode("ugen_call_type"),
+    )
 
     let new_struct = nnkTypeSection.newTree(
         nnkTypeDef.newTree(
@@ -69,11 +186,8 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
                 newIdentNode("*"),
                 struct_new_name_ident
             ),
-            newEmptyNode(),
-            nnkDotExpr.newTree(
-                module_name,
-                old_struct_name_export
-            )
+            generics_ident_defs,
+            old_struct_name_export
         )
     )
 
@@ -83,20 +197,27 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
                 newIdentNode("*"),
                 struct_new_name_export_ident
             ),
-            newEmptyNode(),
-            struct_new_name
+            generics_ident_defs,
+            struct_new_name_final
         )
     )
 
-    let new_struct_new_inner = nnkProcDef.newTree(
+    var new_struct_new_inner = nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
             struct_new_name_struct_new_inner_ident
         ),
-        newEmptyNode()
+        newEmptyNode(),
+        struct_typed_generic_params,
+        new_struct_formal_params,
+        nnkPragma.newTree(
+            newIdentNode("inline")
+        ),
+        newEmptyNode(),
+        return_stmt
     )
 
-    error astGenRepr new_struct_new_inner
+    #error astGenRepr new_struct_new_inner
 
     result.add(
         new_struct,
@@ -104,7 +225,7 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
         new_struct_new_inner
     )
 
-    #error repr result
+    #echo repr result
 
 
 proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
@@ -207,14 +328,14 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
 
     result.add(new_template)
 
-proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
+proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     let struct_or_def_impl = struct_or_def_typed.getImpl()
 
     #Struct
     if struct_or_def_impl.kind == nnkTypeDef:
-        let new_struct = generate_new_module_bindings_for_struct(module_name, struct_or_def_impl, struct_or_def_new_name)
+        let new_struct = generate_new_module_bindings_for_struct(module_name, struct_or_def_impl, struct_constructor_typed, struct_or_def_new_name)
         result.add(new_struct)
     
     #Def
@@ -324,12 +445,12 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
 
     #echo repr result
 
-macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_or_def_new_name : untyped) : untyped =    
+macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_constructor_typed : typed = nil, struct_or_def_new_name : untyped) : untyped =    
     var def_combinations : OrderedTable[string, NimNode]
     result = nnkStmtList.newTree()
 
     if struct_or_def_typed.kind == nnkSym:
-        let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_or_def_new_name, def_combinations)
+        let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_constructor_typed, struct_or_def_new_name, def_combinations)
         result.add(new_structs_or_def_templates)
         
     elif struct_or_def_typed.kind == nnkClosedSymChoice:
@@ -338,7 +459,7 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
         #error astGenRepr struct_or_def_typed
         
         for struct_or_def_choice in struct_or_def_typed:
-            let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_or_def_new_name, def_combinations)
+            let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_constructor_typed, struct_or_def_new_name, def_combinations)
             result.add(new_structs_or_def_templates)
 
     #Only for defs
@@ -412,51 +533,86 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 #Add excepts: first entry of infix
                 if infix_first_val.kind == nnkIdent:
-                    let infix_first_val_struct_export = newIdentNode(infix_first_val.strVal() & "_struct_export")
+                    let 
+                        infix_first_val_struct_export = newIdentNode(infix_first_val.strVal() & "_struct_export")
+                        infix_first_val_struct_new_inner = newIdentNode(infix_first_val.strVal() & "_struct_new_inner")
                     
                     import_stmt.add(infix_first_val)
                     import_stmt.add(infix_first_val_struct_export)
                     export_stmt.add(infix_first_val)
                     export_stmt.add(infix_first_val_struct_export)
 
-                    let struct_case = nnkDotExpr.newTree(
-                        import_name_module_inner,
-                        infix_first_val_struct_export
-                    )
+                    let 
+                        struct_dot_expr = nnkDotExpr.newTree(
+                            import_name_module_inner,
+                            infix_first_val_struct_export
+                        )
 
-                    let def_case = nnkDotExpr.newTree(
-                        import_name_module_inner,
-                        newIdentNode(infix_first_val.strVal() & "_def_export")
-                    )
+                        struct_constructor_dot_expr = nnkDotExpr.newTree(
+                            import_name_module_inner,
+                            infix_first_val_struct_new_inner
+                        )
 
-                    var when_statement = nnkWhenStmt.newTree(
-                        nnkElifBranch.newTree(
-                            nnkCall.newTree(
-                                newIdentNode("declared"),
-                                struct_case
+                        def_dot_expr = nnkDotExpr.newTree(
+                            import_name_module_inner,
+                            newIdentNode(infix_first_val.strVal() & "_def_export")
+                        )
+
+                    var 
+                        when_statement_struct_typed = nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkCall.newTree(
+                                    newIdentNode("declared"),
+                                    struct_dot_expr
+                                ),
+                                struct_dot_expr
                             ),
-                            struct_case
-                        ),
-                        nnkElifBranch.newTree(
-                            nnkCall.newTree(
-                                newIdentNode("declared"),
-                                def_case
+                            nnkElifBranch.newTree(
+                                nnkCall.newTree(
+                                    newIdentNode("declared"),
+                                    def_dot_expr
+                                ),
+                                def_dot_expr
                             ),
-                            def_case
-                        ),
-                        nnkElse.newTree(
-                            nnkPragma.newTree(
-                                nnkExprColonExpr.newTree(
-                                    newIdentNode("fatal"),
-                                    newLit("Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
+                            nnkElse.newTree(
+                                nnkPragma.newTree(
+                                    nnkExprColonExpr.newTree(
+                                        newIdentNode("fatal"),
+                                        newLit("Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
+                                    )
                                 )
                             )
                         )
-                    )
+
+                        when_statement_struct_constructor_typed = nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkCall.newTree(
+                                    newIdentNode("declared"),
+                                    struct_constructor_dot_expr
+                                ),
+                                struct_constructor_dot_expr
+                            ),
+                            nnkElifBranch.newTree(
+                                nnkCall.newTree(
+                                    newIdentNode("declared"),
+                                    def_dot_expr
+                                ),
+                                newEmptyNode()
+                            ),
+                            nnkElse.newTree(
+                                nnkPragma.newTree(
+                                    nnkExprColonExpr.newTree(
+                                        newIdentNode("fatal"),
+                                        newLit("Undefined constructor '" & infix_first_val_struct_new_inner.strVal() & "' in '" & repr(statement) & "'")
+                                    )
+                                )
+                            )
+                        )
 
                     #When statement: if it's a struct, gonna pass that. Otherwise, gonna pass the def if it's defined
                     generate_new_module_bindings_for_struct_or_def_call.add(
-                        when_statement
+                        when_statement_struct_typed,
+                        when_statement_struct_constructor_typed
                     )
 
                 #elif dot expr

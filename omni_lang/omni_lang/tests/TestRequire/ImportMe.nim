@@ -1,12 +1,11 @@
 import ../../../omni_lang, macros
 
 use Ah:
-    #ImportMeImportMe as ImportMeImportMe1
+    ImportMeImportMe as ImportMeImportMe1
     something as something2
 
-expandMacros:
-    struct ImportMe[T]:
-        a T
+struct ImportMe[T]:
+    a T
 
 def something(a ImportMe):
     print("something - ImportMe")
@@ -30,8 +29,4 @@ def blah():
     print("blah")
 
 #[ init:
-    a = ImportMe()
-    a.something()
-    something(10)
-    a.blah()
-    blah(10) ]#
+    a = ImportMe() ]#

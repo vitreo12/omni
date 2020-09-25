@@ -170,7 +170,7 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_typ
     #Add the whole type section to result
     final_stmt_list.add(type_section)
 
-    #error repr final_stmt_list
+    #error astgenrepr final_stmt_list
 
     return quote do:
         `final_stmt_list`
@@ -679,7 +679,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             field_type_without_generics = field_type[0]
     
         let 
-            field_is_struct  = field_type_without_generics.isStruct(true)
+            field_is_struct  = field_type_without_generics.isStruct()
             field_is_generic = field_type_without_generics.strVal() in generics
 
         var 
@@ -773,6 +773,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typedToUntyped(final_stmt_list)
+
+    #error astGenRepr final_stmt_list_untyped
     
     return quote do:
         `final_stmt_list_untyped`
