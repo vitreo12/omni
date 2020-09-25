@@ -973,7 +973,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #    error repr extra_data
 
     if is_constructor_block:
-        #error repr final_block
+        error repr final_block
         discard
 
     #Run the actual macro to subsitute structs with let statements

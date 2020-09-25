@@ -48,5 +48,5 @@ proc ImportMe_struct_new_inner_test(T : typedesc = typedesc[float], obj_type: ty
 
 init:
     #a = ImportMe()
-    a = ImportMe_struct_new_inner_test(typedesc[float], ImportMe_struct_export, 0, ugen_auto_mem, ugen_call_type)
+    a = ImportMe_struct_new_inner_test(typedesc[float], ImportMe_struct_export[float], 0, ugen_auto_mem, ugen_call_type)
     a.blah()
