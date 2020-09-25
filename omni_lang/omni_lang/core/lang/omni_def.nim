@@ -56,7 +56,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
     #Find full parametrization of args, so that if Phasor[T] is defined, here it will become Phasor[auto] (if not already directly specifide)
     #THis is essential in def retrieving when importing modules around!!!
-    #error astGenRepr args
+    error astGenRepr args
     for arg in args:
         if arg.kind == nnkSym:
             error astGenRepr arg.getImpl()
@@ -499,6 +499,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         newIdentNode("omni_current_module_def"),
     )
 
+    echo astGenRepr function_signature
+
     for i, arg in function_signature:
         let arg_kind = arg.kind
 
@@ -514,6 +516,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             let arg_type = arg[1]
             if arg_type.kind == nnkIdent:
                 if not(arg_type.strVal() in temp_generics): #don't add generics!!
+                    call_def_inner.add(newIntLitNode(i-1)) #index of this arg
                     call_def_inner.add(arg_type) 
     
     return quote do:
