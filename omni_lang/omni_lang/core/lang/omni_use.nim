@@ -326,14 +326,14 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
     let formal_params_repr = repr(new_template_formal_params)
     def_combinations[formal_params_repr] = def_call
 
-    error astGenRepr new_template
-
     result.add(new_template)
 
 proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     let struct_or_def_impl = struct_or_def_typed.getImpl()
+
+    #error astGenRepr struct_or_def_impl
 
     #Struct
     if struct_or_def_impl.kind == nnkTypeDef:
@@ -451,6 +451,8 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
     var def_combinations : OrderedTable[string, NimNode]
     result = nnkStmtList.newTree()
 
+    #error astGenRepr struct_or_def_typed.getTypeInst
+
     if struct_or_def_typed.kind == nnkSym:
         let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_constructor_typed, struct_or_def_new_name, def_combinations)
         result.add(new_structs_or_def_templates)
@@ -468,7 +470,7 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
     let new_def_exports = generate_new_def_exports(def_combinations, struct_or_def_new_name)
     result.add(new_def_exports)
 
-    #echo repr result
+    error repr result
     
 
 #use Path:

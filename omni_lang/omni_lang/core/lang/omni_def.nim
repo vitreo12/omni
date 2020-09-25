@@ -28,7 +28,7 @@ let invalid_def_ends_with {.compileTime.} = [
     "struct_inner", "struct_new_inner", "struct_export"
 ]
 
-macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed) : untyped =
+macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, args : varargs[typed] = nil) : untyped =
     var 
         proc_and_template = nnkStmtList.newTree()
 
@@ -53,6 +53,13 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
     #module where def is defined
     let current_module = omni_current_module_def.owner
+
+    #Find full parametrization of args, so that if Phasor[T] is defined, here it will become Phasor[auto] (if not already directly specifide)
+    #THis is essential in def retrieving when importing modules around!!!
+    #error astGenRepr args
+    for arg in args:
+        if arg.kind == nnkSym:
+            error astGenRepr arg.getImpl()
 
     if current_module.kind != nnkSym and current_module.kind != nnkIdent:
         error ("def " & repr(function_signature) & ": can't retrieve its current module")
@@ -330,6 +337,8 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         # ================= #
 
         proc_def_export = proc_def.copy()
+        #error astGenRepr proc_def_export
+        proc_def_export[4] = newEmptyNode() #remove inline pragma
         proc_def_export[0][1] = newIdentNode(proc_name_str & "_def_export") #change name
         
         #Can't remove these things because the generated code will be then == to the one generated in the dummy proc with a def with no args!!
@@ -460,7 +469,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
     proc_and_template.add(proc_def)
     proc_and_template.add(proc_def_export)
-    proc_and_template.add(proc_dummy)
+    #proc_and_template.add(proc_dummy)
     proc_and_template.add(template_def)
 
     #echo astGenRepr proc_def
@@ -481,8 +490,34 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 #Define a dummy proc to retrieve current module by passing it as a typed parameter
 #and calling .owner on it
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
+    var temp_generics : seq[string]
+
+    var call_def_inner = nnkCall.newTree(
+        newIdentNode("def_inner"),
+        function_signature,
+        code_block,
+        newIdentNode("omni_current_module_def"),
+    )
+
+    for i, arg in function_signature:
+        let arg_kind = arg.kind
+
+        #Name of func and generics
+        if i == 0:
+            #Generics, extract them
+            if arg_kind == nnkBracketExpr:
+                for generic_param in arg:
+                    if generic_param.kind == nnkIdent:
+                        temp_generics.add(generic_param.strVal())
+        
+        if arg_kind == nnkCommand:
+            let arg_type = arg[1]
+            if arg_type.kind == nnkIdent:
+                if not(arg_type.strVal() in temp_generics): #don't add generics!!
+                    call_def_inner.add(arg_type) 
+    
     return quote do:
         when not declared(omni_current_module_def):
             proc omni_current_module_def() = discard
         
-        def_inner(`function_signature`, `code_block`, omni_current_module_def)
+        `call_def_inner`
