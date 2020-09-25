@@ -21,11 +21,11 @@ def something():
     print("something - Generics") ]#
 
 expandMacros:
-    def blah(a ImportMe):
+    def blah(a ImportMe[float]):
         print("blah - ImportMe")
     
-    def blah(a):
-        print("blah - auto")
+    #[ def blah(a):
+        print("blah - auto") ]#
 
     #[ def blah(a):
         print("blah - ImportMe") ]#
@@ -39,6 +39,6 @@ expandMacros:
 def blah():
     print("blah") ]#
 
-#[ init:
+init:
     a = ImportMe()
-    a.blah() ]#
+    a.blah()

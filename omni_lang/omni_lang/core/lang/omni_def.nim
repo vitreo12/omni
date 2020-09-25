@@ -507,8 +507,6 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
         newIdentNode("omni_current_module_def"),
     )
 
-    echo astGenRepr function_signature
-
     for i, arg in function_signature:
         let arg_kind = arg.kind
 
