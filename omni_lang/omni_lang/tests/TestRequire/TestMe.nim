@@ -5,8 +5,9 @@ expandMacros:
         #[ ImportMe as ImportMe1
         ImportMeImportMe1 as ImportMeImportMe
         something as something1 ]#
-        #ImportMe as ImportMe1
-        blah as blah1
+        #Ah as Ah1
+        ImportMe as ImportMe1
+        #blah as blah1
 
 #expandMacros:
 #[ struct Bubu:
@@ -20,11 +21,11 @@ def something(a ImportMeImportMe):
     return a.a ]#
 
 #expandMacros:
-init:
+#init:
     #[ a = ImportMe1(0)
     a.blah1() ]#
 
-    blah1(10)
+    #blah1(10)
 
     #[ a.blah1()
     blah1(10)

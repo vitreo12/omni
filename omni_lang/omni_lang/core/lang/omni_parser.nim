@@ -142,16 +142,15 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
     var proc_call_ident_str = proc_call_ident.strVal()
 
-    let 
+    var 
         struct_export_name = newIdentNode(proc_call_ident_str & "_struct_export")
         proc_call_ident_struct_new_inner = newIdentNode(proc_call_ident_str & "_struct_new_inner")
 
     var proc_new_call =  nnkCall.newTree(
         proc_call_ident_struct_new_inner,
-        struct_export_name
     )
 
-    var data_bracket_expr = false
+    var explicit_generics = false
 
     for index, arg in statement.pairs():
         var arg_temp = arg
@@ -163,13 +162,8 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
             #Look for Data[int](10) OR Phasor[int]() syntax
             if arg_temp.kind == nnkBracketExpr:
-                #Data case
-                if proc_call_ident_str == "Data":
-                    data_bracket_expr = true
-                
-                #Other struct case, use the bracket expr instead of just the ident Phasor[int].struct_new instead of Phasor.struct_new
-                else:
-                    proc_new_call[1] = arg_temp
+                struct_export_name = arg_temp
+                explicit_generics = true
 
             #Continue in any case: the ident name it's already been added
             continue
@@ -177,44 +171,33 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         #Find other constructors in the args of the call, including the one expressed like: arg=value (nnkExprEqExpr)
         if arg_temp.kind == nnkCall:
             arg_temp = findStructConstructorCall(arg_temp)
+        
         elif arg_temp.kind == nnkExprEqExpr:
             arg_temp[1] = findStructConstructorCall(arg_temp[1])
 
         #Add the new parsed struct call
         proc_new_call.add(arg_temp)
     
-    #Need to prepend after all the dataType=int call
-    if data_bracket_expr:
-        var 
-            parsed_statement_bracket = parsed_statement[0] #This is Data[int]
-            data_generics = parsed_statement_bracket[1]    #This is just int
+    #Add the named generics!
+    if explicit_generics:
+        for i, generic_val in struct_export_name:
+            if i == 0:
+                continue
 
-        #If new statement with dot expr, retrieve the data_generics from the statement
-        if data_generics.kind == nnkIdent:
-            if data_generics.strVal() == "new":
-                #Go one level down from the dot expr
-                parsed_statement_bracket = parsed_statement_bracket[0]
-                
-                #Not a generics call,perhaps doing some weird stuff.
-                if parsed_statement_bracket.kind != nnkBracketExpr:
-                    error("Invalid generics call for '" & $proc_call_ident_str & "'")
-                
-                #Updata data_generics with first bracket entry (index 0 is Data)
-                data_generics = parsed_statement_bracket[1]
-        
-        #If more than 2 (meaning: Data[int, float], as Data is index 0) error out!
-        if parsed_statement_bracket.len > 2:
-            error astGenRepr parsed_statement_bracket
-            error("Cannot instantiate `Data`: got more than one type.")
-            
-        proc_new_call.add(nnkExprEqExpr.newTree(
-                newIdentNode("dataType"),
-                data_generics
+            proc_new_call.add(
+                nnkExprEqExpr.newTree(
+                    newIdentNode("G" & $i),
+                    generic_val
+                )
             )
-        )
 
-    #Now prepend ugen_auto_mem and ugen_call_type with named access!
+    #Now prepend obj_type, ugen_auto_mem and ugen_call_type with named access!
     proc_new_call.add(
+        nnkExprEqExpr.newTree(
+            newIdentNode("obj_type"),
+            struct_export_name
+        ),
+
         nnkExprEqExpr.newTree(
             newIdentNode("ugen_auto_mem"),
             newIdentNode("ugen_auto_mem")
@@ -973,7 +956,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #    error repr extra_data
 
     if is_constructor_block:
-        error repr final_block
+        #error repr final_block
         discard
 
     #Run the actual macro to subsitute structs with let statements
@@ -1052,44 +1035,28 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                     assgn_right
                 )
 
-        #If a struct_new_inner call without generics (and the struct has generics), use floats! (Otherwise it will default to ints due to the struct_new template)
+        #If a struct_new_inner call, figure out generics from the obj_type argument!
         elif function_name.endsWith("_struct_new_inner"):
-            var struct_type = parsed_statement[1]
+            discard
 
-            #If struct_type is a bracketexpr, it means it already has generics mapping laid out. no need to run these.
-            if struct_type.kind == nnkSym or struct_type.kind == nnkIdent:
-                #Data has been parsed correctly already
-                if struct_type.strVal() != "Data_struct_export":
-                    let 
-                        struct_impl = struct_type.getImpl()
-                        generic_params = struct_impl[1]
+            #[ #obj_type is the third last argument, retrieve it
+            var obj_type = parsed_statement[^3]
 
-                    if generic_params.kind == nnkGenericParams:
-                        var 
-                            new_struct_new_inner = nnkCall.newTree(
-                                newIdentNode(function_name),
-                            )
+            #Ok, some generics input from user. Attach it to the func call
+            if obj_type.kind == nnkBracketExpr:
+                let struct_impl = obj_type[0].getImpl()
+            
+                if struct_impl.kind != nnkNilLit:
+                    #Need to offset in order to find starting argument potition of generics.
+                    #-2 is to take in account _struc_new_inner name in parsed_statement and _struct_export name in obj_type
+                    let parsed_statement_offset = parsed_statement.len - obj_type.len - 2
 
-                            new_struct_expl_type = nnkBracketExpr.newTree(
-                                struct_type
-                            )
-                        
-                        #instantiate float for all generic params
-                        for generic_param in generic_params:
-                            new_struct_expl_type.add(
-                                newIdentNode("float")
-                            )
+                    for i, generic_type in obj_type:
+                        #Skip _struct_export name
+                        if i == 0:
+                            continue
 
-                        new_struct_new_inner.add(new_struct_expl_type)
-
-                        #Re-attach all the args
-                        for index,arg in parsed_statement.pairs():
-                            if index <= 1:
-                                continue
-                            new_struct_new_inner.add(arg)
-
-                        #Add to code_block
-                        parsed_statement = new_struct_new_inner
+                        parsed_statement[i-1 + parsed_statement_offset] = generic_type ]#
 
         #Check type of all arguments for other function calls (not array access related) 
         #Ignore function ending in _min_max (the one used for input min/max conditional) OR get_dynamic_input
@@ -1688,7 +1655,7 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
     #if constructor block, run the init_inner macro on the resulting block.
     if is_constructor_block:
 
-        error repr result
+        #error repr result
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.

@@ -47,7 +47,7 @@ const
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 
 #Constructor interface: Data
-proc Data_struct_new_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[Data_struct_export], length : S = int(1), chans : C = int(1), dataType : typedesc = typedesc[float], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[dataType]  {.inline.} =
+proc Data_struct_new_inner*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], obj_type : typedesc[Data_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[G1]  {.inline.} =
     #Trying to allocate in perform block! nonono
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Data`".}
@@ -64,17 +64,17 @@ proc Data_struct_new_inner*[S : SomeNumber, C : SomeNumber](obj_type : typedesc[
         print(chans_error)
         real_chans = 1
 
-    let size_data_obj = sizeof(Data_struct_inner[dataType])
+    let size_data_obj = sizeof(Data_struct_inner[G1])
 
     #Actual object, assigned to result
-    result = cast[Data[dataType]](omni_alloc(culong(size_data_obj)))
+    result = cast[Data[G1]](omni_alloc(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 
         length_X_chans     = real_length * real_chans
-        size_data_type     = sizeof(dataType)
+        size_data_type     = sizeof(G1)
         total_size_culong  = culong(size_data_type * length_X_chans)
-        data               = cast[ArrayPtr[dataType]](omni_alloc0(total_size_culong))
+        data               = cast[ArrayPtr[G1]](omni_alloc0(total_size_culong))
 
     #Register both the Data object and its data to the automatic memory management
     ugen_auto_mem.registerChild(result)
