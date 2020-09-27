@@ -5,7 +5,7 @@ expandMacros:
         #[ ImportMe as ImportMe1
         ImportMeImportMe1 as ImportMeImportMe
         something as something1 ]#
-        #Ah as Ah1
+        Ah as Ah1
         ImportMe as ImportMe1
         #blah as blah1
 

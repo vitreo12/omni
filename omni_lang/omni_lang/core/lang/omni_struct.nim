@@ -704,9 +704,13 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         if field_is_generic:
             field_type = generics_mapping[field_type_without_generics_str] #retrieve the nim node at the key
 
+        #Always have auto params. The typing will be checked in the body anyway.
+        #This solves a lot of problems with generic parameters, and still works (even with structs)
+        arg_field_type = newIdentNode("auto")
+
         #if no struct, go with auto and have value 0
         if not field_is_struct:
-            arg_field_type = newIdentNode("auto")
+            #arg_field_type = newIdentNode("auto")
             arg_field_value = newIntLitNode(0)    
 
         #Add to arg list for struct_new_inner proc
@@ -718,7 +722,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             )
         )
 
-        #Add result.phase = phase, etc... assignments
+        #Add result.phase = phase, etc... assignments... Don't cast
         if field_is_struct:
             proc_body.add(
                 nnkAsgn.newTree(

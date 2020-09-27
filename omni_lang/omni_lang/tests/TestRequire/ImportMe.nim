@@ -4,13 +4,14 @@ import ../../../omni_lang, macros
     ImportMeImportMe as ImportMeImportMe1
     something as something2 ]#
 
-expandMacros:
-    struct Ah:
-        a
-        
-    struct Bubu[T]:
-        a T
+#expandMacros:
+struct Ah:
+    a
 
+struct Bubu[T]:
+    a T
+
+expandMacros:
     struct ImportMe[T, Y, Z]:
         t Y
         a T
@@ -64,6 +65,6 @@ init:
     #a = ImportMe_struct_new_inner_test(typedesc[float], ImportMe_struct_export[float], 0, ugen_auto_mem, ugen_call_type)
     #a.blah() ]#
 
-init:
+#[ init:
     c = Data[Data[Data[int]]](10, 20)
-    a = ImportMe[float, int, signal](a=10, h=Bubu[int](), c=c)
+    a = ImportMe[float, int, signal](a=10, h=Bubu[int](), c=c) ]#

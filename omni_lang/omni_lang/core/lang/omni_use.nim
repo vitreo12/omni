@@ -34,14 +34,10 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
     result = nnkStmtList.newTree()
 
     var 
-        #struct_typed_export =
-
         struct_typed_inner : NimNode
         struct_typed_generic_params : NimNode
         stuct_typed_rec_list : NimNode
         struct_typed_name_str : string
-
-    #error astGenRepr struct_typed
 
     #Generics
     if struct_typed[2].kind == nnkBracketExpr:
@@ -70,7 +66,6 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
     var 
         generics_ident_defs = newEmptyNode()
         old_struct_name_export : NimNode
-        struct_new_name_final : NimNode
 
     let 
         stuct_typed_constuctor_impl = struct_typed_constructor.getImpl()
@@ -88,35 +83,13 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
             newIdentNode(struct_typed_name_str & "_struct_new_inner")
         )
 
-    #Add generics to func call and to type descriptions!
+    #Add generics to type descriptions!
     if struct_typed_generic_params.len > 0:
-        old_struct_name_export = nnkBracketExpr.newTree(
-            nnkDotExpr.newTree(
-                module_name,
-                old_struct_name_export_ident
-            )
-        )
-
-        struct_new_name_final = nnkBracketExpr.newTree(
-            struct_new_name_ident
-        )
-
         generics_ident_defs = nnkGenericParams.newTree()
 
         for i, generic_param in struct_typed_generic_params: 
-            #Must be untyped ones here!
+            #Must be untyped here!
             let generic_param_untyped = newIdentNode(generic_param.strVal())
-            old_struct_name_export.add(generic_param_untyped)
-            struct_new_name_final.add(generic_param_untyped)
-
-            #Convert generics to SomeNumber, in order for proper AST process
-            let new_generic_ident_def_some_number = nnkIdentDefs.newTree(
-                generic_param_untyped,
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-
-            struct_typed_generic_params[i] = new_generic_ident_def_some_number
 
             #No specification for type declarations
             let new_generic_ident_def = nnkIdentDefs.newTree(
@@ -127,20 +100,16 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
 
             generics_ident_defs.add(new_generic_ident_def)
 
-    #No generics, use normal idents!
-    else:
-        old_struct_name_export = nnkDotExpr.newTree(
-            module_name,
-            old_struct_name_export_ident
-        )
-
-        struct_new_name_final = struct_new_name_ident
+    #call to old struct
+    old_struct_name_export = nnkDotExpr.newTree(
+        module_name,
+        old_struct_name_export_ident
+    )
 
     #Final return stmt
     var 
         new_struct_call = nnkCall.newTree(
             old_struct_constructor,
-            newIdentNode("obj_type")
         )
         
         return_stmt = nnkStmtList.newTree(
@@ -149,33 +118,29 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
             )
         )
 
-    #Change return type to be the new declared struct
-    var return_type_formal_params = new_struct_formal_params[0]
-
-    #Generics
-    if return_type_formal_params.kind == nnkBracketExpr:
-        new_struct_formal_params[0][0] = struct_new_name_ident
-    else:
-        new_struct_formal_params[0] = struct_new_name_ident
-
-    #Change obj_type to be the new export name, also change generics from syms to idents
-    var obj_type_formal_param_type = new_struct_formal_params[1][1][1]
-    
-    #Generics...
-    if obj_type_formal_param_type.kind == nnkBracketExpr:
-        new_struct_formal_params[1][1][1][0] = struct_new_name_export_ident
-    
-    #Just change name
-    else:
-        new_struct_formal_params[1][1][1] = struct_new_name_export_ident
-
-    #Add args
+    #Add args from the struct's rec list
     for ident_def in stuct_typed_rec_list:
         let untyped_ident_def = newIdentNode(ident_def[0].strVal())
         new_struct_call.add(untyped_ident_def)
 
-    #Add ugen_auto_mem and ugen_call_type etc...
+    #Change return type to be the new declared struct
+    var return_type_formal_params = new_struct_formal_params[0]
+
+    #Generics (G1, G2, ...). Change return name and add generics (G1, G2, etc...) to call.
+    if return_type_formal_params.kind == nnkBracketExpr:
+        new_struct_formal_params[0][0] = struct_new_name_ident
+        for i, generic_param in return_type_formal_params:
+            if i == 0: continue #skip name
+            new_struct_call.add(generic_param)
+    else:
+        new_struct_formal_params[0] = struct_new_name_ident
+
+    #Change name in obj_type argument (third last)
+    new_struct_formal_params[^3][1][1] = struct_new_name_export_ident
+
+    #Add obj_type, ugen_auto_mem and ugen_call_type etc...
     new_struct_call.add(
+        newIdentNode("obj_type"),
         newIdentNode("ugen_auto_mem"),
         newIdentNode("ugen_call_type"),
     )
@@ -198,7 +163,7 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
                 struct_new_name_export_ident
             ),
             generics_ident_defs,
-            struct_new_name_final
+            struct_new_name_ident
         )
     )
 
@@ -208,7 +173,7 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
             struct_new_name_struct_new_inner_ident
         ),
         newEmptyNode(),
-        struct_typed_generic_params,
+        newEmptyNode(),
         new_struct_formal_params,
         nnkPragma.newTree(
             newIdentNode("inline")
@@ -217,15 +182,14 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
         return_stmt
     )
 
-    #error astGenRepr new_struct_new_inner
-
     result.add(
         new_struct,
         new_struct_export,
         new_struct_new_inner
     )
 
-    #echo repr result
+    #error astGenRepr new_struct
+    #error repr result
 
 
 proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
@@ -451,7 +415,7 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
     var def_combinations : OrderedTable[string, NimNode]
     result = nnkStmtList.newTree()
 
-    #error astGenRepr struct_or_def_typed.getTypeInst
+    #error astGenRepr struct_or_def_typed
 
     if struct_or_def_typed.kind == nnkSym:
         let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_constructor_typed, struct_or_def_new_name, def_combinations)
@@ -492,7 +456,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
     #../../ImportMe
     elif path.kind == nnkPrefix:
         if path.last().kind != nnkIdent:
-            error "use: Invalid path syntax " & repr(path)
+            error "use: Invalid path syntax: " & repr(path)
 
         import_name_without_extension = path[^1].strVal()
     else:
@@ -601,7 +565,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                     newIdentNode("declared"),
                                     def_dot_expr
                                 ),
-                                newEmptyNode()
+                                newNilLit()
                             ),
                             nnkElse.newTree(
                                 nnkPragma.newTree(
@@ -612,6 +576,8 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 )
                             )
                         )
+
+                    #when_statement_struct_constructor_typed = newNilLit()
 
                     #When statement: if it's a struct, gonna pass that. Otherwise, gonna pass the def if it's defined
                     generate_new_module_bindings_for_struct_or_def_call.add(
@@ -624,7 +590,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     error "use: Import with submodules is not yet implemented: " & repr(infix_first_val)
                 
                 else:
-                    error "use: Invalid first infix value :" & repr(infix_first_val)
+                    error "use: Invalid first infix value: " & repr(infix_first_val)
 
                 #Add the structs / defs to check: second entry of infix
                 if infix_second_val.kind == nnkIdent:
