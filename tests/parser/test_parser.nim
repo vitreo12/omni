@@ -72,8 +72,9 @@ suite "parser: struct allocs":
     let test = compareOmniNim:
       omni:
         a = Test1()
+        
       nim:
-        let a = struct_new_inner(Test1, 0, 0, 0, ugen_auto_mem, ugen_call_type) 
+        let a = Test1_struct_new_inner(0, 0, 0, Test1_struct_export, ugen_auto_mem, ugen_call_type) 
 
     check test
 
@@ -83,10 +84,11 @@ suite "parser: struct allocs":
         a = Test2(Test1())
         b = Test1()
         c = Test2(b)
+
       nim:
-        let a = struct_new_inner(Test2, struct_new_inner(Test1, 0, 0, 0, ugen_auto_mem, ugen_call_type), ugen_auto_mem, ugen_call_type)
-        let b = struct_new_inner(Test1, 0, 0, 0, ugen_auto_mem, ugen_call_type)
-        let c = struct_new_inner(Test2, b, ugen_auto_mem, ugen_call_type)
+        let a = Test2_struct_new_inner(Test1_struct_new_inner(0, 0, 0, Test1_struct_export, ugen_auto_mem, ugen_call_type), Test2_struct_export, ugen_auto_mem, ugen_call_type)
+        let b = Test1_struct_new_inner(0, 0, 0, Test1_struct_export, ugen_auto_mem, ugen_call_type) 
+        let c = Test2_struct_new_inner(b, Test2_struct_export, ugen_auto_mem, ugen_call_type)
 
     check test
 
@@ -95,8 +97,9 @@ suite "parser: struct allocs":
       omni:
         data = Data(1)
         a = Test3(data) 
+
       nim:
-        let data = struct_new_inner(Data, 1, int(1), typedesc[float], ugen_auto_mem, ugen_call_type)
-        let a = struct_new_inner(Test3, data, ugen_auto_mem, ugen_call_type)
+        let data = Data_struct_new_inner(1, int(1), typedesc[float], Data_struct_export, ugen_auto_mem, ugen_call_type)
+        let a = Test3_struct_new_inner(data, Test3_struct_export, ugen_auto_mem, ugen_call_type)
 
     check test
