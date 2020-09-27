@@ -83,13 +83,26 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
             newIdentNode(struct_typed_name_str & "_struct_new_inner")
         )
 
+    #call to old struct
+    old_struct_name_export = nnkDotExpr.newTree(
+        module_name,
+        old_struct_name_export_ident
+    )
+
     #Add generics to type descriptions!
     if struct_typed_generic_params.len > 0:
         generics_ident_defs = nnkGenericParams.newTree()
 
+        #Add old generics to old name export
+        old_struct_name_export = nnkBracketExpr.newTree(
+            old_struct_name_export
+        )
+
         for i, generic_param in struct_typed_generic_params: 
             #Must be untyped here!
             let generic_param_untyped = newIdentNode(generic_param.strVal())
+
+            old_struct_name_export.add(generic_param_untyped)
 
             #No specification for type declarations
             let new_generic_ident_def = nnkIdentDefs.newTree(
@@ -100,11 +113,7 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
 
             generics_ident_defs.add(new_generic_ident_def)
 
-    #call to old struct
-    old_struct_name_export = nnkDotExpr.newTree(
-        module_name,
-        old_struct_name_export_ident
-    )
+    #error astGenRepr stuct_typed_constuctor_impl
 
     #Final return stmt
     var 
@@ -166,6 +175,9 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
             struct_new_name_ident
         )
     )
+
+    #Copy the old func's body? Not really needed
+    #return_stmt = stuct_typed_constuctor_impl[^1]
 
     var new_struct_new_inner = nnkProcDef.newTree(
         nnkPostfix.newTree(

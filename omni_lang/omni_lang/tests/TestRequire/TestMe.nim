@@ -2,12 +2,12 @@ import ../../../omni_lang, macros
 
 expandMacros:
     use ImportMe:
-        #[ ImportMe as ImportMe1
-        ImportMeImportMe1 as ImportMeImportMe
-        something as something1 ]#
-        Ah as Ah1
         ImportMe as ImportMe1
-        #blah as blah1
+        ImportMeImportMe1 as ImportMeImportMe
+        something as something1
+        Ah as Ah1
+        Bubu as Bubu1
+        blah as blah1
 
 #expandMacros:
 #[ struct Bubu:
@@ -20,10 +20,11 @@ def something(a ImportMe1):
 def something(a ImportMeImportMe):
     return a.a ]#
 
-#expandMacros:
-#init:
-    #[ a = ImportMe1(0)
-    a.blah1() ]#
+expandMacros:
+    init:
+        h=Bubu1[int]()
+        a = ImportMe1[float, int, float](a=10, h=h, c=Data[Data[Data[int]]]())
+        a.blah1()
 
     #blah1(10)
 
