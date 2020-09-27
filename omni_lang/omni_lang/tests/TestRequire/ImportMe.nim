@@ -9,6 +9,7 @@ struct Ah:
 
 struct Bubu[T]:
     a T
+    b ImportMeImportMe1
 
 struct ImportMe[T, Y, Z]:
     t Y

@@ -22,7 +22,7 @@ def something(a ImportMeImportMe):
 
 expandMacros:
     init:
-        h=Bubu1[int]()
+        h=Bubu1[int](0, ImportMeImportMe())
         a = ImportMe1[float, int, float](a=10, h=h, c=Data[Data[Data[int]]]())
         a.blah1()
 
