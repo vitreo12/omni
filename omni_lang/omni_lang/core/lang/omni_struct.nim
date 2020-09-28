@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils, tables, omni_type_checker, omni_macros_utilities
+import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities
 
 const valid_struct_generics = [
     "int", "int32", "int64",
@@ -29,16 +29,6 @@ const valid_struct_generics = [
     "sig", "sig32", "sig64"
 ]
 
-#In-built
-let invalid_struct_names {.compileTime.} = [
-    "Data", "Delay", "Buffer"
-]
-
-let invalid_struct_ends_with {.compileTime.} = [
-    "def_export", "def_dummy",
-    "module_inner",
-    "struct_inner", "struct_new_inner", "struct_export"
-]
 
 proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
     if statement.kind == nnkBracketExpr:
@@ -394,11 +384,11 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #ptr_bracket_expr = ptr_name
 
     #Detect invalid struct name
-    if struct_name_str in invalid_struct_names:
+    if struct_name_str in omni_invalid_idents:
         error("Trying to redefine in-build struct '" & struct_name_str & "'")
 
     #Detect invalid ends with
-    for invalid_ends_with in invalid_struct_ends_with:
+    for invalid_ends_with in omni_invalid_ends_with:
         if struct_name_str.endsWith(invalid_ends_with):
             error("struct names can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
 

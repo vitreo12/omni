@@ -191,6 +191,15 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 )
             )
 
+    #If buffer, add buffer_interface too
+    if proc_call_ident_str == "Buffer":
+        proc_new_call.add(
+            nnkExprEqExpr.newTree(
+                newIdentNode("buffer_interface"),
+                newIdentNode("buffer_interface")
+            ),
+        )
+
     #Now prepend obj_type, ugen_auto_mem and ugen_call_type with named access!
     proc_new_call.add(
         nnkExprEqExpr.newTree(

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, os, strutils, tables, omni_macros_utilities
+import macros, os, strutils, tables, omni_invalid, omni_macros_utilities
 
 #type
 #    ImportMe1 = ImportMe_module_inner.ImportMe_struct_export
@@ -458,7 +458,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
     var 
         real_path = path
         import_name_without_extension : string
-        
+
         import_stmt = nnkImportExceptStmt.newTree()
         export_stmt = nnkExportExceptStmt.newTree()
 
@@ -551,8 +551,9 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                 #Add excepts: first entry of infix
                 if infix_first_val.kind == nnkIdent:
                     let 
-                        infix_first_val_struct_export = newIdentNode(infix_first_val.strVal() & "_struct_export")
-                        infix_first_val_struct_new_inner = newIdentNode(infix_first_val.strVal() & "_struct_new_inner")
+                        infix_first_val_str = infix_first_val.strVal()
+                        infix_first_val_struct_export = newIdentNode(infix_first_val_str & "_struct_export")
+                        infix_first_val_struct_new_inner = newIdentNode(infix_first_val_str & "_struct_new_inner")
                     
                     import_stmt.add(infix_first_val)
                     import_stmt.add(infix_first_val_struct_export)
@@ -636,13 +637,24 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 #elif dot expr
                 elif infix_first_val.kind == nnkDotExpr:
-                    error "use: Import with submodules is not yet implemented: " & repr(infix_first_val)
+                    error "use: Import with submodules is not yet implemented: '" & repr(statement) & "'"
                 
                 else:
-                    error "use: Invalid first infix value: " & repr(infix_first_val)
+                    error "use: Invalid first infix value '" & repr(infix_first_val) & "' in '" & repr(statement) & "'"
 
                 #Add the structs / defs to check: second entry of infix
                 if infix_second_val.kind == nnkIdent:
+                    let infix_second_val_str = infix_second_val.strVal()
+                    
+                    var invalid_ends_with_bool = false
+
+                    for invalid_ends_with in omni_invalid_ends_with:
+                        if infix_second_val_str.endsWith(invalid_ends_with):
+                            invalid_ends_with_bool = true
+
+                    if infix_second_val_str in omni_invalid_idents or invalid_ends_with_bool:
+                        error "use: Invalid second infix value '" & infix_second_val_str & "' in '" & repr(statement) & "'. It's an in-built identifier." 
+
                     generate_new_module_bindings_for_struct_or_def_call.add(
                         infix_second_val
                     )
@@ -652,11 +664,11 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     )
 
                 else:
-                    error "use: Invalid second infix value :" & repr(infix_second_val)
+                    error "use: Invalid second infix value in '" & repr(statement) & "'"
             else:
-                error "use: Invalid infix: " & repr(infix_ident)
+                error "use: Invalid infix: '" & repr(infix_ident) & "' in '" & repr(statement) & "'"
         else:
-            error "use: Invalid infix syntax: " & repr(statement)
+            error "use: Invalid infix syntax: '" & repr(statement) & "'"
 
     #error repr result
 

@@ -20,13 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils
-
-let invalid_def_ends_with {.compileTime.} = [
-    "def_export", "def_dummy",
-    "module_inner", 
-    "struct_inner", "struct_new_inner", "struct_export"
-]
+import macros, strutils, omni_invalid
 
 macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
     var 
@@ -116,7 +110,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #Check name validity
         proc_name_str = proc_name.strVal()
 
-        for invalid_ends_with in invalid_def_ends_with:
+        for invalid_ends_with in omni_invalid_ends_with:
             if proc_name_str.endsWith(invalid_ends_with):
                 error("def names can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
 
