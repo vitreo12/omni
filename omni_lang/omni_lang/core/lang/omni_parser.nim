@@ -991,9 +991,6 @@ proc parser_typed_loop(statement : NimNode, level : var int, is_constructor_bloc
 
 #Parse the call syntax: function(arg)
 proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    #print_parse_typed_stage(statement, level)
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     let function_call = parsed_statement[0]
@@ -1176,9 +1173,6 @@ proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_
 
 #Parse the var section
 proc parse_typed_var_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    #print_parse_typed_stage(statement, level)
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     let 
@@ -1289,8 +1283,6 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 #Used in defs for "return",
 #This is needed in order to avoid type checking with "return" statements!
 proc parse_typed_let_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     if is_def_block:
@@ -1315,8 +1307,6 @@ proc parse_typed_let_section(statement : NimNode, level : var int, is_constructo
     return parsed_statement
 
 proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     assert parsed_statement.len == 3
@@ -1348,8 +1338,6 @@ proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_bloc
     return parsed_statement
 
 proc parse_typed_assgn(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var 
         parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
         assgn_left = parsed_statement[0]
@@ -1403,8 +1391,6 @@ proc for_loop_substitute(code_block : NimNode, entry : NimNode, substitution : N
 #for i, entry in a:
 #   entry = Something(i)
 proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var parsed_statement = statement
     
     parsed_statement = parser_typed_loop(statement, level, is_constructor_block, is_perform_block, is_def_block)
@@ -1412,6 +1398,8 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
     var 
         index1 = parsed_statement[0]
         index2 = parsed_statement[1]
+
+    error astGenRepr parsed_statement
 
     #for i, entry in data:
     if index2.kind == nnkSym:
@@ -1605,8 +1593,6 @@ proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructo
     let statement_kind = statement.kind
     
     var parsed_statement : NimNode
-
-    #level += 1
 
     if statement_kind   == nnkCall:
         parsed_statement = parse_typed_call(statement, level, is_constructor_block, is_perform_block, is_def_block)
