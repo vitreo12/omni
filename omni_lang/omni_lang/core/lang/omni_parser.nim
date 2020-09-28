@@ -373,7 +373,10 @@ proc parse_untyped_expr_eq_expr(statement : NimNode, level : var int, declared_v
 
 #Parse the command syntax... Disabled it... Variables must ALWAYS been initialized
 proc parse_untyped_command(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    let command_name = statement[0]
+    var 
+        parsed_statement : NimNode
+        new_stmt = false
+        command_name = statement[0]
 
     #Detect out of position "build" calls in "init"
     if is_constructor_block:
@@ -381,15 +384,42 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
 
-    #Turn command to call and parse that
-    var parsed_statement = nnkCall.newTree(
-        command_name
-    )
+    #"new" statement, just do a normal call ignoring "new"
+    if command_name.kind == nnkIdent:
+        if command_name.strVal() == "new":
+            command_name = statement[1]
+            new_stmt = true
 
-    #Put all the stuff back in
-    for i, entry in statement:
-        if i == 0: continue #skip func name
-        parsed_statement.add(entry)
+            #new Data(1).. Just use the nnkCall
+            if command_name.kind == nnkCall:
+                parsed_statement = command_name.copy()
+
+            #new Data 1 ... Not so sure if I wanna support this syntax TBH
+            elif command_name.kind == nnkCommand:
+                parsed_statement = nnkCall.newTree(
+                    command_name[0]
+                )
+
+                #Put all the stuff back in, using command name (not statement!)
+                for i, entry in command_name:
+                    if i == 0: continue #skip func name
+                    parsed_statement.add(entry)
+                
+                #If choosing not to support this syntax anymore
+                #error "'" & $repr(statement) & "': Invalid 'new' syntax. It requires a normal function call."
+            else:
+                error "'" & $repr(statement) & "': Invalid 'new' syntax."
+
+    #This is the normal case for all commands: just turn them to nnkCalls.
+    if not new_stmt:
+        parsed_statement = nnkCall.newTree(
+            command_name
+        )
+
+        #Put all the stuff back in
+        for i, entry in statement:
+            if i == 0: continue #skip func name
+            parsed_statement.add(entry)
 
     #Wrap in stmt list for parsing to work (the parser_untyped_loop works with looping around children)
     parsed_statement = nnkStmtList.newTree(
