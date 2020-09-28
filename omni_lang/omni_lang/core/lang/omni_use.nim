@@ -453,24 +453,61 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
     #Something as Something1 
     #someFunc as someFunc1
 macro use*(path : untyped, stmt_list : untyped) : untyped =
-    var import_name_without_extension : string
-
     result = nnkStmtList.newTree()
-
+        
     var 
+        real_path = path
+        import_name_without_extension : string
+        
         import_stmt = nnkImportExceptStmt.newTree()
         export_stmt = nnkExportExceptStmt.newTree()
 
-    #"ImportMe.omni" or ImportMe
-    if path.kind == nnkStrLit or path.kind == nnkIdent:
+    #"ImportMe.omni"
+    if path.kind == nnkStrLit:
         import_name_without_extension = path.strVal().splitFile().name
+
+    #ImportMe
+    elif path.kind == nnkIdent:
+        import_name_without_extension = path.strVal()
+        
+        #what about .oi?
+        let import_name_omni = import_name_without_extension & ".omni"
+        real_path = newLit(import_name_omni)
+
+        #Check if .omni or .oi exist, and use that... doesnt work now cause it will not find the current used omni file
+        #[ let 
+            import_name_omni = import_name_without_extension & ".omni"
+            import_name_oi = import_name_without_extension & ".oi"
+
+        var omni_exists = false
+
+        if fileExists(import_name_omni):
+            omni_exists = true
+            real_path = newIdentNode(import_name_omni)
+        
+        if fileExists(import_name_oi):
+            if omni_exists:
+                error "Both '" & import_name_oi & "' and '" & import_name_omni & "' exist. Which one to use?"
+            
+            real_path = newIdentNode(import_name_oi)
+        
+        else:
+            error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" ]#
     
     #../../ImportMe
-    elif path.kind == nnkPrefix:
-        if path.last().kind != nnkIdent:
+    elif path.kind == nnkPrefix or path.kind == nnkInfix:
+        let 
+            path_last = path.last()
+            path_last_kind = path_last.kind
+
+        if path_last_kind != nnkIdent:
             error "use: Invalid path syntax: " & repr(path)
 
-        import_name_without_extension = path[^1].strVal()
+        import_name_without_extension = path_last.strVal()
+
+        #what about .oi?
+        let import_name_omni = import_name_without_extension & ".omni" 
+        real_path[^1] = newLit(import_name_omni)
     else:
         error "use: Invalid path syntax: " & repr(path)
 
@@ -480,7 +517,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
     import_stmt.add(
         nnkInfix.newTree(
             newIdentNode("as"),
-            path,
+            real_path,
             import_name_module_inner
         )
     )
@@ -627,4 +664,79 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 #OR
 #use Path1, Path2, Path3
 macro use*(paths : varargs[untyped]) : untyped =
-    error astGenRepr paths
+    result = nnkStmtList.newTree()
+
+    for path in paths:
+        var 
+            real_path = path
+            import_name_without_extension : string
+
+        #"ImportMe.omni"
+        if path.kind == nnkStrLit:
+            import_name_without_extension = path.strVal().splitFile().name
+
+        #ImportMe
+        elif path.kind == nnkIdent:
+            import_name_without_extension = path.strVal()
+            
+            #what about .oi?
+            let import_name_omni = import_name_without_extension & ".omni"
+            real_path = newLit(import_name_omni)
+
+            #Check if .omni or .oi exist, and use that... doesnt work now cause it will not find the current used omni file
+            #[ let 
+                import_name_omni = import_name_without_extension & ".omni"
+                import_name_oi = import_name_without_extension & ".oi"
+
+            var omni_exists = false
+
+            if fileExists(import_name_omni):
+                omni_exists = true
+                real_path = newIdentNode(import_name_omni)
+            
+            if fileExists(import_name_oi):
+                if omni_exists:
+                    error "Both '" & import_name_oi & "' and '" & import_name_omni & "' exist. Which one to use?"
+                
+                real_path = newIdentNode(import_name_oi)
+            
+            else:
+                error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" ]#
+
+        #../../ImportMe
+        elif path.kind == nnkPrefix or path.kind == nnkInfix:
+            let 
+                path_last = path.last()
+                path_last_kind = path_last.kind
+
+            if path_last_kind != nnkIdent:
+                error "use: Invalid path syntax: " & repr(path)
+
+            import_name_without_extension = path_last.strVal()
+
+            #what about .oi?
+            let import_name_omni = import_name_without_extension & ".omni" 
+            real_path[^1] = newLit(import_name_omni)
+            
+        else:
+            error "use: Invalid path syntax: " & repr(path)
+
+        result.add(
+            nnkImportStmt.newTree(
+                nnkInfix.newTree(
+                    newIdentNode("as"),
+                    real_path,
+                    newIdentNode(import_name_without_extension & "_module_inner")
+                )
+            )
+        )
+
+
+#Aliases
+macro require*(path : untyped, stmt_list : untyped) : untyped =
+    return quote do:
+        use(`path`, `stmt_list`)
+
+macro require*(paths : varargs[untyped]) : untyped =
+    return quote do:
+        use(`paths`)

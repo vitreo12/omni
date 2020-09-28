@@ -1,8 +1,9 @@
 import ../../../omni_lang, macros
 
-use Ah:
-    ImportMeImportMe as ImportMeImportMe1
-    something as something2
+expandMacros:
+    use Ah:
+        ImportMeImportMe as ImportMeImportMe1
+        something as something2
 
 struct Ah:
     a
