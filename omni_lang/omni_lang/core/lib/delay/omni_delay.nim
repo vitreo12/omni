@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 import ../../lang/omni_call_types
-import ../../lang/omni_types
 import ../alloc/omni_alloc
 import ../data/omni_data
 import ../auto_mem/omni_auto_mem
