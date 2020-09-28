@@ -31,13 +31,13 @@ type
     Delay_struct_inner* = object
         mask  : int
         phase : int
-        data  : Data[signal]
+        data  : Data[float]
 
     Delay* = ptr Delay_struct_inner
 
     Delay_struct_export* = Delay
 
-proc Delay_struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay_struct_export], size : S = uint(1), ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
+proc Delay_struct_new_inner*[S : SomeNumber](size : S = uint(1), obj_type : typedesc[Delay_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
@@ -48,7 +48,7 @@ proc Delay_struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay_struct_ex
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(int(size)))
-        data  = Data_struct_new_inner(Data_struct_export, delay_length, dataType=signal, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
+        data  = Data_struct_new_inner(delay_length, G1=float, obj_type=Data_struct_export, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
         mask  = int(delay_length - 1)
 
     #Register obj (data has already been registered in Data.struct_new_inner)
