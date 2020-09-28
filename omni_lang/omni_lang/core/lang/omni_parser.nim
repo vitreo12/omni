@@ -516,7 +516,20 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
 
         #If already in the seq, set boolean to true. else, add it
         if var_name_str in declared_vars:
-            var_already_declared = true
+            #This mechanism is faulted, as it won't consider block scopes (like if statements):
+            #This would not work, as "a" would be added to declared vars:
+            
+            #if something:
+            #   a = 0
+            #   return a
+            #else:
+            #   a = 1
+            #   return a
+
+            #Gotta find a better solution that works with scopes too!
+                
+            #var_already_declared = true
+            discard
         else:
             declared_vars.add(var_name_str)
         
