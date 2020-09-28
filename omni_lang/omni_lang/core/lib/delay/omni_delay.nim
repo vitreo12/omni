@@ -59,6 +59,7 @@ proc Delay_struct_new_inner*[S : SomeNumber](size : S = uint(1), obj_type : type
     result.phase = 0
     result.data = data
 
+#This is probably useless and can be removed :)
 proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
     return true
 
