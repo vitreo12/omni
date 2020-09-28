@@ -369,32 +369,36 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
 #Parse the eq expr syntax, Test(data=Data())
 proc parse_untyped_expr_eq_expr(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-
     return parsed_statement
 
 #Parse the command syntax... Disabled it... Variables must ALWAYS been initialized
 proc parse_untyped_command(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    var parsed_statement = statement
+    let command_name = statement[0]
 
     #Detect out of position "build" calls in "init"
     if is_constructor_block:
-        let command_name = parsed_statement[0]
         if command_name.kind == nnkIdent:
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
-    
-    #Disable the "a float" syntax. Variables must always been initialized
-    #[ parsed_statement = nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-            parsed_statement[0],
-            parsed_statement[1],
-            newEmptyNode()
-        )
-    ) ]#
-    
-    #HERE I CAN ADD NORMAL COMMAND STUFF SO THAT IT'S PERHAPS POSSIBLE TO ENABLE!! 
-    #ONE SOLUTION IS TURNING THEM INTO CALLS: print "hello" -> print("hello")
-    
+
+    #Turn command to call and parse that
+    var parsed_statement = nnkCall.newTree(
+        command_name
+    )
+
+    #Put all the stuff back in
+    for i, entry in statement:
+        if i == 0: continue #skip func name
+        parsed_statement.add(entry)
+
+    #Wrap in stmt list for parsing to work (the parser_untyped_loop works with looping around children)
+    parsed_statement = nnkStmtList.newTree(
+        parsed_statement
+    )
+
+    #Run parsing on the nnkCall :)
+    parsed_statement = parser_untyped_loop(parsed_statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+
     return parsed_statement
 
 #a (int, (int, float)) = (1, (1, 1)) -> (int(1), (int(1), float(1)))
@@ -427,8 +431,11 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
     if statement.len > 3:
         error("Invalid variable assignment.")
 
-    var 
-        parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    #Don't keep the parsed things before the = (so that commands will only be parsed in the assgn_right)
+    var parsed_statement = statement.copy() 
+    parsed_statement = parser_untyped_loop(parsed_statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+        
+    var
         assgn_left : NimNode
         assgn_right : NimNode
         is_command_or_ident = false
@@ -437,6 +444,9 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
         bracket_index : NimNode
 
     if parsed_statement.len > 1:
+        #Don't keep the parsed things before the = (so that commands will only be parsed in the assgn_right)
+        parsed_statement[0] = statement[0] #reput previous assgn_left. Needed to do statement.copy() for this reason: need the old one
+
         assgn_left  = parsed_statement[0]
         assgn_right = parsed_statement[1]
 
