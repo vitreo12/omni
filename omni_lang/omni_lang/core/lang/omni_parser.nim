@@ -21,18 +21,7 @@
 # SOFTWARE.
 
 #remove tables here and move isStrUpperAscii (and strutils) to another module
-import macros, strutils, omni_type_checker, omni_macros_utilities
-
-#Non valid variable names
-let non_valid_variable_names {.compileTime.} = [
-    "ins", "inputs",
-    "outs", "outputs",
-    "init", "initialize", "initialise", "build",
-    "perform", "sample",
-    "sig", "sig32", "sig64",
-    "signal", "signal32", "signal64",
-    "Data", "Buffer", "Delay"
-]
+import macros, strutils, omni_invalid, omni_type_checker, omni_macros_utilities
 
 #Types that will be converted to float when in tuples (if not explicitly set)
 let tuple_convert_types {.compileTime.} = [
@@ -268,9 +257,6 @@ proc parser_untyped_loop(statement : NimNode, level : var int, declared_vars : v
 
 #Parse the call syntax: function(arg)
 proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     #Parse the call
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
@@ -355,18 +341,12 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
 
 #Parse the eq expr syntax, Test(data=Data())
 proc parse_untyped_expr_eq_expr(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
     return parsed_statement
 
 #Parse the command syntax: a float
 proc parse_untyped_command(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     var parsed_statement = statement
 
     #Detect out of position "build" calls in "init"
@@ -421,9 +401,6 @@ proc tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void {.co
 
 #Parse the assign syntax: a float = 10 OR a = 10
 proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     if statement.len > 3:
         error("Invalid variable assignment.")
 
@@ -523,22 +500,10 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
         if var_name.kind == nnkIdent:
             var_name_str = var_name.strVal()
 
-        #If already in the seq, set boolean to true. else, add it
+        #If already in the seq, set boolean to true. else, add it,
+        #This, together with parse_untyped_elif_else_for_while, will also be take care of inner scopes!
         if var_name_str in declared_vars:
-            #This mechanism is faulted, as it won't consider block scopes (like if statements):
-            #This would not work, as "a" would be added to declared vars:
-            
-            #if something:
-            #   a = 0
-            #   return a
-            #else:
-            #   a = 1
-            #   return a
-
-            #Gotta find a better solution that works with scopes too!
-                
-            #var_already_declared = true
-            discard
+            var_already_declared = true
         else:
             declared_vars.add(var_name_str)
         
@@ -742,18 +707,11 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
 
 #Parse the dot syntax: .
 proc parse_untyped_dot(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-    
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-
     return parsed_statement
 
 #Parse the square bracket syntax: []
 proc parse_untyped_brackets(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     #Parse the whole statement first
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data) #keep parsing the entry of the bracket expr
 
@@ -792,6 +750,28 @@ proc parse_untyped_brackets(statement : NimNode, level : var int, declared_vars 
 
     return parsed_statement
 
+proc copy_declared_vars(declared_vars : seq[string]) : seq[string] {.inline.} =
+    var declared_vars_copy : seq[string]
+    for declared_var in declared_vars:
+        declared_vars_copy.add(declared_var)
+    return declared_vars_copy
+
+proc reset_declared_vars(declared_vars : var seq[string], declared_vars_copy : seq[string]) : void {.inline.} =
+    declared_vars.reset()
+    for declared_var_copy in declared_vars_copy:
+        declared_vars.add(declared_var_copy)
+
+proc parse_untyped_elif_else_for_while(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
+    #Copy the vars that were declared in the previous scope
+    var declared_vars_copy = declared_vars.copy_declared_vars()
+
+    #Ok, go through with the parsing of the elif / else / for / while statements
+    var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+
+    #Reset declared vars, so they won't affect other scopes!
+    declared_vars.reset_declared_vars(declared_vars_copy)
+    
+    return parsed_statement
 
 #Dispatcher logic
 proc parser_untyped_dispatcher(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
@@ -808,11 +788,18 @@ proc parser_untyped_dispatcher(statement : NimNode, level : var int, declared_va
     elif statement_kind == nnkDotExpr:
         parsed_statement = parse_untyped_dot(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     elif statement_kind == nnkBracketExpr:
-        parsed_statement = parse_untyped_brackets(statement, level,declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+        parsed_statement = parse_untyped_brackets(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     elif statement_kind == nnkExprEqExpr:
         parsed_statement = parse_untyped_expr_eq_expr(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-    elif statement_kind == nnkReturnStmt: #parse return statement just like calls, to detect constructors!
+    
+    #parse return statement just like calls, to detect constructors!
+    elif statement_kind == nnkReturnStmt:
         parsed_statement = parse_untyped_call(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    
+    #This is needed to introduce new scopes, in order for declared_vars to work everytime on a different scope level
+    elif statement_kind == nnkElifBranch or statement_kind == nnkElse or statement_kind == nnkForStmt or statement_kind == nnkWhileStmt:
+        parsed_statement = parse_untyped_elif_else_for_while(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    
     else:
         parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
@@ -1203,7 +1190,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
         var_type_kind = var_type.kind
         var_name      = var_symbol.strVal()        
 
-    if var_name in non_valid_variable_names:
+    if var_name in omni_invalid_variable_names:
         error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.")
 
     #Check if it's a valid type

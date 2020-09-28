@@ -29,3 +29,13 @@ let omni_invalid_ends_with* {.compileTime.} = [
     "module_inner",
     "struct_inner", "struct_new_inner", "struct_export"
 ]
+
+let omni_invalid_variable_names* {.compileTime.} = [
+    "ins", "inputs",
+    "outs", "outputs",
+    "init", "initialize", "initialise", "build",
+    "perform", "sample",
+    "sig", "sig32", "sig64",
+    "signal", "signal32", "signal64",
+    "Data", "Buffer", "Delay"
+]
