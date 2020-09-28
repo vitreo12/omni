@@ -489,6 +489,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #checkValidity triggers the checks for correct initialization of all Datas entries,
+                #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
                     ugen.is_initialized_let = false
                     return 0
@@ -554,6 +556,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #checkValidity triggers the checks for correct initialization of all Datas entries,
+                #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
                     ugen.is_initialized_let = false
                     return 0
