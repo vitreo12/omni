@@ -372,7 +372,7 @@ proc parse_untyped_expr_eq_expr(statement : NimNode, level : var int, declared_v
 
     return parsed_statement
 
-#Parse the command syntax: a float
+#Parse the command syntax... Disabled it... Variables must ALWAYS been initialized
 proc parse_untyped_command(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
     var parsed_statement = statement
 
@@ -382,22 +382,18 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
         if command_name.kind == nnkIdent:
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
-
-    #If top level, it's a declaration. 
-    #level == 1 equals to top level here, as the increment is done before parsing.
-    if level == 1:
-        parsed_statement = nnkVarSection.newTree(
-            nnkIdentDefs.newTree(
-                parsed_statement[0],
-                parsed_statement[1],
-                newEmptyNode()
-            )
+    
+    #Disable the "a float" syntax. Variables must always been initialized
+    #[ parsed_statement = nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+            parsed_statement[0],
+            parsed_statement[1],
+            newEmptyNode()
         )
+    ) ]#
     
     #HERE I CAN ADD NORMAL COMMAND STUFF SO THAT IT'S PERHAPS POSSIBLE TO ENABLE!! 
     #ONE SOLUTION IS TURNING THEM INTO CALLS: print "hello" -> print("hello")
-    else:
-        discard
     
     return parsed_statement
 

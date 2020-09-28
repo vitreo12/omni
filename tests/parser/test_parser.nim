@@ -45,11 +45,11 @@ suite "parser: variable declarations":
         a = 0 
         b = 1.0
         c float = 2.0
-        d float
-        d = 3
+        #d float
+        #d = 3
         e int = 4
-        f int
-        f = 5
+        #f int
+        #f = 5
         CONST1 = 6
         CONST2 int = 7
         
@@ -57,11 +57,11 @@ suite "parser: variable declarations":
         var a : float = float(0)
         var b : float = float(1.0)
         var c : float = float(2.0)
-        var d : float
-        d = typeof(d)(3)
+        #var d : float = float(0.0)
+        #d = typeof(d)(3)
         var e : int = int(4)
-        var f : int
-        f = typeof(f)(5)
+        #var f : int
+        #f = typeof(f)(5)
         let CONST1 : float = float(6)
         let CONST2 : int = int(7)
 
