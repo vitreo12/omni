@@ -309,8 +309,6 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
 
     let struct_or_def_impl = struct_or_def_typed.getImpl()
 
-    #error astGenRepr struct_or_def_impl
-
     #Struct
     if struct_or_def_impl.kind == nnkTypeDef:
         let new_struct = generate_new_module_bindings_for_struct(module_name, struct_or_def_impl, struct_constructor_typed, struct_or_def_new_name)
@@ -329,6 +327,8 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
         if actual_def_call.kind == nnkSym:
             let new_template = generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
             result.add(new_template)
+
+        #error repr result
     
 proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], def_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
@@ -397,7 +397,15 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
         var 
             def_call_typed = def_call.getImpl() #typed
             def_call_typed_formal_params = def_call_typed[3] #save formal params! they are typed and carry all type infos
-            new_def_export = parseStmt(repr(def_call_typed))[0] #typed to untyped
+        
+        #Remove the actual function body, it's unneeded
+        #and it creates problems too with parsing of some return statements, due to the parsed_untyped_loop being triggered with typedToUntyped
+        def_call_typed[^1] = nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
+
+        #This is only needed to change name to def_export, tbh... Find a cleaner solution
+        var new_def_export = typedToUntyped(def_call_typed)[0] #typed to untyped
 
         #Change name
         new_def_export[0] = nnkPostfix.newTree(
@@ -414,6 +422,7 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
         new_def_export[3] = def_call_typed_formal_params
 
         #Use the actual def_call in order to maintain all type information and module belonging!
+        #This must be put here (and not before typedToUntyped) in order for the nnkSym to be maintained after the typedToUntyped
         new_def_export[^1] = def_call 
 
         result.add(
@@ -421,7 +430,7 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
             new_def_export
         )
 
-    #echo repr result
+    #error repr result
 
 macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_constructor_typed : typed = nil, struct_or_def_new_name : untyped) : untyped =    
     var def_combinations : OrderedTable[string, NimNode]
@@ -626,8 +635,6 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 )
                             )
                         )
-
-                    #when_statement_struct_constructor_typed = newNilLit()
 
                     #When statement: if it's a struct, gonna pass that. Otherwise, gonna pass the def if it's defined
                     generate_new_module_bindings_for_struct_or_def_call.add(

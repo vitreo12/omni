@@ -94,6 +94,18 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         )
     )
 
+macro Buffer_check_input_num*(input_num_typed : typed, omni_inputs_typed : typed) : untyped =
+    let 
+        input_num = input_num_typed.intVal()
+        omni_inputs = omni_inputs_typed.intVal()
+
+    #If these checks fail set to sc_world to nil, which will invalidate the Buffer.
+    #result.input_num is needed for get_buffer(buffer, ins[0][0), as 1 is the minimum number for ins, for now...
+    if input_num > omni_inputs: 
+        error("Buffer's 'input_num = " & $input_num & "' is out of bounds: maximum number of inputs: " & $omni_inputs)
+    elif input_num < 1:
+        error("Buffer's 'input_num = " & $input_num & "' is out of bounds: minimum input number is 1")
+
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
 #if the function name + "_struct_inner" is declared, meaning it's a struct constructor the user is trying to call.
@@ -180,15 +192,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 )
             )
 
-    #If buffer, add buffer_interface too
-    if proc_call_ident_str == "Buffer":
-        proc_new_call.add(
-            nnkExprEqExpr.newTree(
-                newIdentNode("buffer_interface"),
-                newIdentNode("buffer_interface")
-            ),
-        )
-
     #Now prepend obj_type, ugen_auto_mem and ugen_call_type with named access!
     proc_new_call.add(
         nnkExprEqExpr.newTree(
@@ -206,6 +209,30 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
             newIdentNode("ugen_call_type")
         )
     )
+
+    #If buffer, add buffer_interface too
+    if proc_call_ident_str == "Buffer":
+
+        let buffer_input_num = proc_new_call[1]
+
+        if buffer_input_num.kind != nnkIntLit:
+            error("'" & repr(parsed_statement) & "': Buffer's 'input_num' must be expressed as an integer literal value")
+        
+        proc_new_call.add(
+            nnkExprEqExpr.newTree(
+                newIdentNode("buffer_interface"),
+                newIdentNode("buffer_interface")
+            ),
+        )
+
+        proc_new_call = nnkStmtList.newTree(
+            nnkCall.newTree(
+                newIdentNode("Buffer_check_input_num"),
+                buffer_input_num,
+                newIdentNode("omni_inputs")
+            ),
+            proc_new_call
+        )
 
     #error repr proc_new_call
 
@@ -1398,8 +1425,6 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
     var 
         index1 = parsed_statement[0]
         index2 = parsed_statement[1]
-
-    error astGenRepr parsed_statement
 
     #for i, entry in data:
     if index2.kind == nnkSym:
