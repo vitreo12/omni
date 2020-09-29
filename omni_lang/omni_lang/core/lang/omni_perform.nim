@@ -141,9 +141,6 @@ template performInner*(code_block : untyped) {.dirty.} =
     
     template unlock_buffers*() : untyped {.dirty.} =
         when at_least_one_buffer:
-            when not declared(Buffer):
-                error("No Buffer module declared! Buffers are only supported in wrappers around omni, like omnicollider and omnimax.")
-            
             when defined(multithreadBuffers):
                 if allocated_buffers123456789 > 0:
                     for i in (0..allocated_buffers123456789-1):
@@ -152,9 +149,6 @@ template performInner*(code_block : untyped) {.dirty.} =
 
     template get_buffers*() : untyped {.dirty.} =
         when at_least_one_buffer:
-            when not declared(Buffer):
-                error("No Buffer module declared! Buffers are only supported in wrappers around omni, like omnicollider and omnimax.")
-
             let allocated_buffers123456789 = ugen_auto_buffer.num_allocs
             if allocated_buffers123456789 > 0:
                 for i in (0..allocated_buffers123456789-1):

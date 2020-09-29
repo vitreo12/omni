@@ -1,0 +1,42 @@
+import ../../../omni_lang, macros
+
+expandMacros:
+    use Ah:
+        ImportMeImportMe as ImportMeImportMe1
+        something as something2
+
+struct Ah:
+    a
+
+struct Bubu[T]:
+    a T
+    b ImportMeImportMe1
+
+struct ImportMe[T, Y, Z]:
+    t Y
+    a T
+    b Z
+    h Bubu[int]
+    c Data[Data[Data[int]]]
+
+def something(a ImportMe):
+    print("something - ImportMe")
+
+def something(a):
+    print("something - auto")
+
+def something():
+    print("something")
+
+def blah(a ImportMe):
+    print("blah - ImportMe")
+    
+def blah(a):
+    print("blah - auto")
+
+def blah():
+    print("blah") 
+
+#[ init:
+    c = Data[Data[Data[int]]](10, 20)
+    a = ImportMe[float, int, signal](a=10, h=Bubu[int](), c=c) ]#

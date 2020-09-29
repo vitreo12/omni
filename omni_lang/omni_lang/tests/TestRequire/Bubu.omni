@@ -1,0 +1,4 @@
+import ../../../omni_lang
+
+struct Bububu:
+    a; b

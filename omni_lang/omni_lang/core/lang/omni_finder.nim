@@ -134,7 +134,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
         let var_name_ident = newIdentNode(var_name.strVal())
 
         #Found a data
-        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_struct_inner":
+        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_struct_inner" or type_to_inspect_string == "Data_struct_export":
             if var_type.kind != nnkBracketExpr:
                 continue
 
@@ -186,11 +186,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
                     let type_name_str = type_name.strVal()
-                    if type_name_str == "Data" or type_name_str == "Data_struct_inner":
+                    if type_name_str == "Data" or type_name_str == "Data_struct_inner" or type_name_str == "Data_struct_export":
                         is_data = true
                         interim_type = data_content   
                     
-                    elif type_name_str == "Buffer" or type_name_str == "Buffer_struct_inner": 
+                    elif type_name_str == "Buffer" or type_name_str == "Buffer_struct_inner" or type_name_str == "Buffer_struct_export": 
                         at_least_one_buffer = true
                 
                 elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
@@ -388,7 +388,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
         elif type_to_inspect_string.endsWith("_struct_inner") or type_to_inspect.isStruct():
             
             #Compile time setting of variable
-            if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_struct_inner":
+            if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_struct_inner" or type_to_inspect_string == "Buffer_struct_export":
                 at_least_one_buffer = true
 
             proc_body.add(

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, omni_type_checker, omni_macros_utilities
+import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities
 
 const valid_struct_generics = [
     "int", "int32", "int64",
@@ -29,14 +29,18 @@ const valid_struct_generics = [
     "sig", "sig32", "sig64"
 ]
 
+
 proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
     if statement.kind == nnkBracketExpr:
-        #Data, keep searching
-        if statement[0].strVal() == "Data":
-            how_many_datas += 1
-            return find_data_bracket_bottom(statement[1], how_many_datas)
-        else:
-            error("Invalid type: '" & repr(statement) & "'")
+        let statement_ident = statement[0]
+        if statement_ident.kind == nnkIdent or statement_ident.kind == nnkSym:
+            let statement_ident_str = statement_ident.strVal()
+            #Data, keep searching
+            if statement_ident_str == "Data" or statement_ident_str == "Data_struct_export":
+                how_many_datas += 1
+                return find_data_bracket_bottom(statement[1], how_many_datas)
+            else:
+                error("Invalid type: '" & repr(statement) & "'")
     
     elif statement.kind == nnkSym:
         let 
@@ -80,7 +84,7 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
-macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
         type_section    = nnkTypeSection.newTree()       #the whole type section (both struct_inner and ptr)
@@ -150,8 +154,14 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
     #Add the type declaration of Phasor to type section
     type_section.add(ptr_type_def)
 
+    #Add the type declaration of Phasor_struct_export
+    type_section.add(export_type_def)
+
     #Add the whole type section to result
     final_stmt_list.add(type_section)
+
+    #error astgenrepr final_stmt_list
+    #echo repr final_stmt_list
 
     return quote do:
         `final_stmt_list`
@@ -159,9 +169,11 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, var_names 
 #Check if a struct field contains generics
 proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
     if var_type.kind == nnkBracketExpr:
-        if var_type[0].kind == nnkIdent:
+        let var_type_ident = var_type[0]
+        if var_type_ident.kind == nnkIdent:
+            let var_type_ident_str = var_type_ident.strVal()
             #Data, keep searching
-            if var_type[0].strVal() == "Data":
+            if var_type_ident_str == "Data" or var_type_ident_str == "Data_struct_export":
                 return untyped_or_typed(var_type[1], generics_seq)
             
             #Normal bracket expr like Phasor[T] or Phasor[int]
@@ -184,7 +196,7 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
         var already_looped = false
 
         #Check validity of structs that are not Datas
-        if statement[0].strVal() != "Data":
+        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_struct_export":
             already_looped = true
             for index, entry in statement:
                 if index == 0:
@@ -237,6 +249,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_struct_inner block
         ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_struct_inner
+        
+        export_type_def : NimNode
 
         generics_seq : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()        #Check that types fed to struct are correct omni types
@@ -244,6 +258,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
         obj_name : NimNode
         ptr_name : NimNode
+        export_name : NimNode
 
         generics = nnkGenericParams.newTree()          #If generics are present in struct definition
 
@@ -254,9 +269,14 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         fields_untyped = nnkStmtList.newTree()
         fields_typed   : seq[NimNode]
 
+    var struct_name_str : string
+
     #Using generics
     if struct_name.kind == nnkBracketExpr:
-        obj_name = newIdentNode($(struct_name[0].strVal()) & "_struct_inner")  #Phasor_struct_inner
+        struct_name_str = struct_name[0].strVal()
+        
+        obj_name = newIdentNode(struct_name_str & "_struct_inner")  #Phasor_struct_inner
+        export_name = newIdentNode(struct_name_str & "_struct_export")
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -328,7 +348,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #No generics, just name of struct
     elif struct_name.kind == nnkIdent:
-        obj_name = newIdentNode($(struct_name) & "_struct_inner")              #Phasor_struct_inner
+        struct_name_str = struct_name.strVal()
+        
+        obj_name = newIdentNode(struct_name_str & "_struct_inner")              #Phasor_struct_inner
+        export_name = newIdentNode(struct_name_str & "_struct_export") 
         ptr_name = struct_name                                        #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -359,6 +382,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
         obj_bracket_expr = obj_name
         #ptr_bracket_expr = ptr_name
+
+    #Detect invalid struct name
+    if struct_name_str in omni_invalid_idents:
+        error("Trying to redefine in-build struct '" & struct_name_str & "'")
+
+    #Detect invalid ends with
+    for invalid_ends_with in omni_invalid_ends_with:
+        if struct_name_str.endsWith(invalid_ends_with):
+            error("struct names can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
 
     #Loop over struct's body
     for code_stmt in code_block:
@@ -427,6 +459,19 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to declare_struct
     ptr_type_def.add(ptr_ty)
 
+    #Build the Phasor_struct_export out of the ptr
+    export_type_def = ptr_type_def.copy()
+    export_type_def[0][1] = export_name
+    export_type_def[^1] = export_type_def.last()[0]
+
+    #Generics
+    if export_type_def.last().kind == nnkBracketExpr:
+        export_type_def[^1][0] = ptr_name
+    else:
+        export_type_def[^1] = ptr_name
+
+    #error repr export_type_def
+
     #The init_struct macro, which will declare the "proc struct_new_inner ..." and the "template new ..."
     let struct_create_init_proc_and_template = nnkCall.newTree(
         newIdentNode("struct_create_init_proc_and_template"),
@@ -442,14 +487,13 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         newIdentNode("declare_struct"),
         obj_type_def,
         ptr_type_def,
+        export_type_def,
         var_names,
         fields_untyped
     )
 
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
-
-    #echo repr checkValidTypes
 
     return quote do:
         `checkValidTypes`
@@ -472,39 +516,26 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()
         obj_struct_type : NimNode
-        generics : seq[string]
+        generics_mapping : OrderedTable[string, NimNode]
 
     var 
         obj_bracket_expr : NimNode
         ptr_bracket_expr : NimNode
 
-        generics_proc_def    = nnkGenericParams.newTree() #These are all the generics that will be set to be T : SomeNumber, instead of just T
+        generics_ident_defs  = nnkStmtList.newTree()     #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
         proc_def             = nnkProcDef.newTree()      #the struct_new_inner* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
-        
-        template_def = nnkTemplateDef.newTree()          #the new* template
-        template_formal_params : NimNode
-        template_body_call = nnkCall.newTree()
 
     #The name of the function with the asterisk, in case of supporting modules in the future
-    #proc struct_new_inner
+    #proc Phasor_struct_new_inner
     proc_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("struct_new_inner")
+            newIdentNode(ptr_name & "_struct_new_inner")
         ),
-        newEmptyNode()
-    )
-
-    #Add name with * for export
-    #template struct_new
-    template_def.add(
-        nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("struct_new")
-        ),
+        newEmptyNode(),
         newEmptyNode()
     )
 
@@ -518,43 +549,35 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         ptr_bracket_expr = nnkBracketExpr.newTree(ptr_struct_name)
 
         #Retrieve generics
-        for index, generic_val in obj_struct_name.pairs():
+        for index, generic_ident in obj_struct_name.pairs():
             if index == 0:
                 continue
 
+            let new_G_generic_ident = newIdentNode("G" & $index)
+
             ##Also add the name of the generic to the Phasor_struct_inner[T, Y...]
-            obj_bracket_expr.add(generic_val)
+            obj_bracket_expr.add(new_G_generic_ident)
 
             #Also add the name of the generic to the Phasor[T, Y...]
-            ptr_bracket_expr.add(generic_val)
+            ptr_bracket_expr.add(new_G_generic_ident)
 
-            var generic_proc_proc_def = nnkIdentDefs.newTree()
-            generic_proc_proc_def.add(generic_val)
-            generic_proc_proc_def.add(newIdentNode("SomeNumber"))  #add ": SomeNumber" to the generic type
-            generic_proc_proc_def.add(newEmptyNode())
-            generics_proc_def.add(generic_proc_proc_def)
-            
-            generics.add(generic_val.strVal())
+            generics_ident_defs.add(
+                nnkIdentDefs.newTree(
+                    new_G_generic_ident,
+                    newIdentNode("typedesc"),
+                    nnkBracketExpr.newTree(
+                        newIdentNode("typedesc"),
+                        newIdentNode("float")
+                    )
+                )
+            )
 
-        #Add generics to proc definition. (proc init*[T : SomeNumber, Y : SomeNumber]...) These will have added the ": SomeNumber" on each generic.
-        proc_def.add(generics_proc_def)
-
-        #Add generics to template definition
-        template_def.add(generics_proc_def)
+            #This is needed for comparison later (casting operations)
+            generics_mapping[generic_ident.strVal()] = new_G_generic_ident
 
     #no generics
     else:
         obj_struct_type = obj_struct_name.getTypeImpl()
-
-        #Add one more empty node (needed when no generics)
-        proc_def.add(
-            newEmptyNode()
-        )
-
-        #Add one more empty node (needed when no generics)
-        template_def.add(
-            newEmptyNode()
-        )
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
         obj_bracket_expr = obj_struct_name
@@ -563,17 +586,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
-    #Add first argument: obj_type : typedesc[Phasor[T, Y]]
-    proc_formal_params.add(
-        nnkIdentDefs.newTree(
-            newIdentNode("obj_type"),
-            nnkBracketExpr.newTree(
-                newIdentNode("typedesc"),
-                ptr_bracket_expr
-            ),
-            newEmptyNode()
-        )   
-    )
+    #This is the _struct_export. Don't put the generics in! They will fail some constructors otherwise
+    var struct_export_arg =  newIdentNode(ptr_struct_name.strVal() & "_struct_export")
 
     #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(
@@ -595,6 +609,30 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             )
         )
     )
+
+    #Add the when...for generics type checking
+    if generics_ident_defs.len > 0:
+        for generic_ident_defs in generics_ident_defs:
+            let generic_ident = generic_ident_defs[0]
+            proc_body.add(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode("isnot"),
+                            generic_ident,
+                            newIdentNode("SomeNumber")
+                        ),
+                        nnkStmtList.newTree(
+                            nnkPragma.newTree(
+                                nnkExprColonExpr.newTree(
+                                    newIdentNode("fatal"),
+                                    newLit("'" & ptr_name & "': " & $generic_ident.strVal() & " must be some number type.")
+                                )
+                            )
+                        )
+                    )
+                )
+            )
 
     #Add the allocation of the struct as first entry i n the body of the struct
     proc_body.add(
@@ -625,10 +663,6 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         )
     )
 
-    #add struct_new_inner func and ptr name to template's call statement (calling struct_new_inner) using "obj_type"
-    template_body_call.add(newIdentNode("struct_new_inner"))
-    template_body_call.add(newIdentNode("obj_type"))
-
     let struct_fields = obj_struct_type[2]
 
     for index, field in struct_fields:
@@ -642,20 +676,32 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         
         if field_type.kind == nnkBracketExpr:
             field_type_without_generics = field_type[0]
+
+        let field_type_without_generics_str = field_type_without_generics.strVal()
     
         let 
-            field_is_struct  = field_type_without_generics.isStruct(true)
-            field_is_generic = field_type_without_generics.strVal() in generics
-
+            field_is_struct  = field_type_without_generics.isStruct()
+            field_is_generic = generics_mapping.hasKey(field_type_without_generics_str)
+        
+        #Use the types without generics, as they are set before the generics are declared.
+        #Also, these will be solved when assigning the results... Perhaps I could go with auto anyway?
+        #Values are set already in result.a = a
         var 
-            arg_field_type = field_type
+            arg_field_type  = field_type_without_generics
             arg_field_value = newEmptyNode()
         
-        if not(field_is_struct) and not(field_is_generic):
-            arg_field_type = newIdentNode("auto")
-        
-        if not(field_is_struct):
-            arg_field_value = newIntLitNode(0)
+        #If field is generic, change T to G1
+        if field_is_generic:
+            field_type = generics_mapping[field_type_without_generics_str] #retrieve the nim node at the key
+
+        #Always have auto params. The typing will be checked in the body anyway.
+        #This solves a lot of problems with generic parameters, and still works (even with structs)
+        arg_field_type = newIdentNode("auto")
+
+        #if no struct, go with auto and have value 0
+        if not field_is_struct:
+            #arg_field_type = newIdentNode("auto")
+            arg_field_value = newIntLitNode(0)    
 
         #Add to arg list for struct_new_inner proc
         proc_formal_params.add(
@@ -666,8 +712,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             )
         )
 
-        #Add result.phase = phase, etc... assignments
-        if field_is_struct or field_is_generic:
+        #Add result.phase = phase, etc... assignments... Don't cast
+        if field_is_struct:
             proc_body.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
@@ -678,7 +724,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                 )
             )
 
-        #If it's not a struct, convert the value too
+        #If it's not a struct, convert the value too (so that generics and types are applied)
         else:
             proc_body.add(
                 nnkAsgn.newTree(
@@ -693,12 +739,26 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
                 )
             )
 
-        #Add the list of var names to the template's struct_new_inner function call
-        template_body_call.add(field_name)
+    # ===================== #
+    # STRUCT_NEW_INNER PROC  #
+    # ===================== #
 
-    # ====================== #
-    # STRUCT_NEW_INNER PROC #
-    # ====================== #
+    #Add generics
+    if generics_ident_defs.len > 0:
+        for generic_ident_defs in generics_ident_defs:
+            proc_formal_params.add(generic_ident_defs)
+
+    #Add obj_type
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("obj_type"),
+            nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                struct_export_arg
+            ),
+            newEmptyNode()
+        )   
+    )
     
     #Add ugen_auto_mem : ptr OmniAutoMem argument
     proc_formal_params.add(
@@ -727,7 +787,8 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     proc_def.add(proc_formal_params)
 
     #add inline pragma to proc definition
-    proc_def.add(nnkPragma.newTree(
+    proc_def.add(
+        nnkPragma.newTree(
             newIdentNode("inline")
         ),
         newEmptyNode()
@@ -739,43 +800,10 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     #Add proc to result
     final_stmt_list.add(proc_def)
 
-    # ============ #
-    # NEW TEMPLATE #
-    # ============ #
-
-    #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are ugen_auto_mem and ugen_call_type
-    template_formal_params = proc_formal_params.copy
-    template_formal_params.del(template_formal_params.len - 1) #delete ugen_call_type
-    template_formal_params.del(template_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
-    template_formal_params[0] = newIdentNode("untyped")
-    template_def.add(template_formal_params)
-    template_def.add(newEmptyNode())
-    template_def.add(newEmptyNode())
-
-    #Add function ugen_auto_mem / ugen_call_type to template call
-    template_body_call.add(
-        newIdentNode("ugen_auto_mem"),
-        newIdentNode("ugen_call_type")
-    )
-
-    #Add body (just call _inner proc, adding "ugen_auto_mem" and "ugen_call_type" at the end)
-    template_def.add(
-        template_body_call
-    )
-
-    #Also create a "new" template that's identical to struct_new,
-    #to support the new(Phasor) syntax, which eventually can support nnkCommands in the future to do: new Phasor
-    let new_template_def = template_def.copy()
-    new_template_def[0][1] = newIdentNode("new")
-    
-    #Add templates to result
-    final_stmt_list.add(
-        template_def,
-        new_template_def
-    )
-
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typedToUntyped(final_stmt_list)
+
+    #error repr final_stmt_list_untyped
     
     return quote do:
         `final_stmt_list_untyped`

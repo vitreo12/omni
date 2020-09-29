@@ -53,54 +53,36 @@ let
     ]
 
 
-proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.compileTime.} =    
-    var 
-        type_tree : NimNode
-        inner_type_tree : NimNode
-        inner_type_tree_kind : NimNodeKind
-    
-    if not is_struct_field:
-        type_tree = var_type.getType()
-        if type_tree.len < 2:
-            return false
-        inner_type_tree = type_tree[1]
-        inner_type_tree_kind = inner_type_tree.kind
-        
-        if inner_type_tree_kind == nnkBracketExpr:
-            let inner_inner_type_tree = inner_type_tree[1]
-
-            #struct with generics
-            if inner_inner_type_tree.kind == nnkBracketExpr:
-                if inner_inner_type_tree[0].strVal().endsWith("_struct_inner"):
-                    return true
-            
-            #normal struct
-            elif inner_inner_type_tree.kind == nnkIdent or inner_inner_type_tree.kind == nnkSym or inner_inner_type_tree.kind == nnkStrLit:
-                if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
-                    return true
-    
-        elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_struct_inner"):
-                return true
-
-    else:
+proc isStruct*(var_type : NimNode) : bool {.compileTime.} =        
+    #if not is_struct_field:
+    let 
         type_tree = var_type.getTypeImpl()
-        if type_tree.kind != nnkPtrTy:
-            return false
-        
-        inner_type_tree = type_tree[0]
-        inner_type_tree_kind = inner_type_tree.kind
+        type_tree_kind = type_tree.kind
 
-        if inner_type_tree_kind == nnkBracketExpr:
-            let inner_inner_type_tree = inner_type_tree[0]
+    if type_tree_kind == nnkSym:
+        let type_tree_str = type_tree.strVal()
+        if type_tree_str.endsWith("_struct_inner") or type_tree_str.endsWith("_struct_export"):
+            return true
 
-            if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
-                return true
-            
-        elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_struct_inner"):
-                return true
+    elif type_tree_kind == nnkBracketExpr or type_tree_kind == nnkPtrTy:
+        var 
+            type_inner = type_tree[0]
+            type_inner_kind = type_inner.kind
         
+        if type_inner_kind == nnkBracketExpr:
+            type_inner = type_inner[0]
+            type_inner_kind = type_inner.kind
+
+        if type_inner_kind == nnkSym:
+            let type_inner_str = type_inner.strVal()
+
+            #First arg of defs (obj_type)... Run on the enclosing paranthesis typedesc[Phasor]
+            if type_inner_str == "typeDesc":
+                return isStruct(type_tree[1])
+
+            elif type_inner_str.endsWith("_struct_inner") or type_inner_str.endsWith("_struct_export"):
+                return true
+    
     return false
 
 

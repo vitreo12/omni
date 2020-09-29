@@ -27,7 +27,7 @@ import ../utils/init_utils
 
 #expandMacros:
 init:
-  a float
+  a float = 0.0
   b = 1.0
   c = 2 
   d int = 3

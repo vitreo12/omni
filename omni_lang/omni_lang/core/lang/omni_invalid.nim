@@ -20,32 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#DSL macros
-import omni_io
-import omni_init
-import omni_struct
-import omni_parser
-import omni_def
-import omni_perform
-export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
+let omni_invalid_idents* {.compileTime.} = [
+    "Data", "Delay", "Buffer"
+]
 
-#Needed for def's arg parsing
-import omni_type_checker
-export omni_type_checker
+let omni_invalid_ends_with* {.compileTime.} = [
+    "def_export", "def_dummy",
+    "module_inner",
+    "struct_inner", "struct_new_inner", "struct_export"
+]
 
-#Needed for retrieval of Datas and structs in a struct
-import omni_finder
-export omni_finder
-
-#Utilities
-import omni_types
-export omni_types
-
-import omni_call_types
-export omni_call_types
-
-import omni_use
-export omni_use
-
-import omni_module
-export omni_module
+let omni_invalid_variable_names* {.compileTime.} = [
+    "ins", "inputs",
+    "outs", "outputs",
+    "init", "initialize", "initialise", "build",
+    "perform", "sample",
+    "sig", "sig32", "sig64",
+    "signal", "signal32", "signal64",
+    "Data", "Buffer", "Delay"
+]

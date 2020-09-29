@@ -489,6 +489,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #checkValidity triggers the checks for correct initialization of all Datas entries,
+                #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
                     ugen.is_initialized_let = false
                     return 0
@@ -554,6 +556,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #checkValidity triggers the checks for correct initialization of all Datas entries,
+                #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
                     ugen.is_initialized_let = false
                     return 0
@@ -608,13 +612,13 @@ macro addBufferIns*(ins_names : typed) : untyped =
         ident_defs.add(
             newIdentNode(in_name),
             newEmptyNode(),
-            
-            #struct_new_inner(Buffer, 0, buffer_interface, ugen_auto_mem, ugen_call_type)
+
+            #Buffer_struct_new_inner(Buffer_struct_export, 0, buffer_interface, ugen_auto_mem, ugen_call_type)
             nnkCall.newTree(
-                newIdentNode("struct_new_inner"),
-                newIdentNode("Buffer"),
+                newIdentNode("Buffer_struct_new_inner"),
                 newLit(i_plus_one), #Buffer(1) is first input, not Buffer(0)
                 newIdentNode("buffer_interface"),
+                newIdentNode("Buffer_struct_export"),
                 newIdentNode("ugen_auto_mem"),
                 newIdentNode("ugen_call_type")
             )

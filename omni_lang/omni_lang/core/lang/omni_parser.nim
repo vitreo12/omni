@@ -21,18 +21,7 @@
 # SOFTWARE.
 
 #remove tables here and move isStrUpperAscii (and strutils) to another module
-import macros, strutils, omni_type_checker, omni_macros_utilities
-
-#Non valid variable names
-let non_valid_variable_names {.compileTime.} = [
-    "ins", "inputs",
-    "outs", "outputs",
-    "init", "initialize", "initialise", "build",
-    "perform", "sample",
-    "sig", "sig32", "sig64",
-    "signal", "signal32", "signal64",
-    "Data", "Buffer", "Delay"
-]
+import macros, strutils, omni_invalid, omni_type_checker, omni_macros_utilities
 
 #Types that will be converted to float when in tuples (if not explicitly set)
 let tuple_convert_types {.compileTime.} = [
@@ -105,6 +94,18 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         )
     )
 
+macro Buffer_check_input_num*(input_num_typed : typed, omni_inputs_typed : typed) : untyped =
+    let 
+        input_num = input_num_typed.intVal()
+        omni_inputs = omni_inputs_typed.intVal()
+
+    #If these checks fail set to sc_world to nil, which will invalidate the Buffer.
+    #result.input_num is needed for get_buffer(buffer, ins[0][0), as 1 is the minimum number for ins, for now...
+    if input_num > omni_inputs: 
+        error("Buffer's 'input_num = " & $input_num & "' is out of bounds: maximum number of inputs: " & $omni_inputs)
+    elif input_num < 1:
+        error("Buffer's 'input_num = " & $input_num & "' is out of bounds: minimum input number is 1")
+
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
 #if the function name + "_struct_inner" is declared, meaning it's a struct constructor the user is trying to call.
@@ -130,18 +131,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     #Dot expr would be Data.new() or something.perform() and Data[float].new() etc.
     if proc_call_ident_kind == nnkDotExpr or proc_call_ident_kind == nnkBracketExpr:
         proc_call_ident = proc_call_ident[0]
-
-        #Only allow .new() methods to be run on structs, no other one is supported.
-        #This doesn't work as of now, as it also would not allow to run functions with dot (like, buffer.read())
-        #[
-        if proc_call_ident_kind == nnkDotExpr:
-            var dot_expr_function = parsed_statement[0][1]
-            if dot_expr_function.kind == nnkSym or dot_expr_function.kind == nnkIdent:
-                let dot_expr_function_str = dot_expr_function.strVal()
-                if dot_expr_function_str != "new":
-                    error("Undefined function '" & $dot_expr_function_str & "' for '" & (repr(proc_call_ident)) & "'")
-        ]#
-
         proc_call_ident_kind = proc_call_ident.kind
         
         #This happens for Data[float].new
@@ -154,14 +143,15 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
     var proc_call_ident_str = proc_call_ident.strVal()
 
-    let proc_call_ident_obj = newIdentNode(proc_call_ident_str & "_struct_inner")
+    var 
+        struct_export_name = newIdentNode(proc_call_ident_str & "_struct_export")
+        proc_call_ident_struct_new_inner = newIdentNode(proc_call_ident_str & "_struct_new_inner")
 
     var proc_new_call =  nnkCall.newTree(
-        newIdentNode("struct_new"),
-        proc_call_ident
+        proc_call_ident_struct_new_inner,
     )
 
-    var data_bracket_expr = false
+    var explicit_generics = false
 
     for index, arg in statement.pairs():
         var arg_temp = arg
@@ -173,13 +163,8 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
             #Look for Data[int](10) OR Phasor[int]() syntax
             if arg_temp.kind == nnkBracketExpr:
-                #Data case
-                if proc_call_ident_str == "Data":
-                    data_bracket_expr = true
-                
-                #Other struct case, use the bracket expr instead of just the ident Phasor[int].struct_new instead of Phasor.struct_new
-                else:
-                    proc_new_call[1] = arg_temp
+                struct_export_name = arg_temp
+                explicit_generics = true
 
             #Continue in any case: the ident name it's already been added
             continue
@@ -187,40 +172,73 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         #Find other constructors in the args of the call, including the one expressed like: arg=value (nnkExprEqExpr)
         if arg_temp.kind == nnkCall:
             arg_temp = findStructConstructorCall(arg_temp)
+        
         elif arg_temp.kind == nnkExprEqExpr:
             arg_temp[1] = findStructConstructorCall(arg_temp[1])
 
         #Add the new parsed struct call
         proc_new_call.add(arg_temp)
     
-    #Need to prepend after all the dataType=int call
-    if data_bracket_expr:
-        var 
-            parsed_statement_bracket = parsed_statement[0] #This is Data[int]
-            data_generics = parsed_statement_bracket[1]    #This is just int
+    #Add the named generics!
+    if explicit_generics:
+        for i, generic_val in struct_export_name:
+            if i == 0:
+                continue
 
-        #If new statement with dot expr, retrieve the data_generics from the statement
-        if data_generics.kind == nnkIdent:
-            if data_generics.strVal() == "new":
-                #Go one level down from the dot expr
-                parsed_statement_bracket = parsed_statement_bracket[0]
-                
-                #Not a generics call,perhaps doing some weird stuff.
-                if parsed_statement_bracket.kind != nnkBracketExpr:
-                    error("Invalid generics call for '" & $proc_call_ident_str & "'")
-                
-                #Updata data_generics with first bracket entry (index 0 is Data)
-                data_generics = parsed_statement_bracket[1]
-        
-        #If more than 2 (meaning: Data[int, float], as Data is index 0) error out!
-        if parsed_statement_bracket.len > 2:
-            error astGenRepr parsed_statement_bracket
-            error("Cannot instantiate `Data`: got more than one type.")
-            
-        proc_new_call.add(nnkExprEqExpr.newTree(
-                newIdentNode("dataType"),
-                data_generics
+            proc_new_call.add(
+                nnkExprEqExpr.newTree(
+                    newIdentNode("G" & $i),
+                    generic_val
+                )
             )
+
+    #Now prepend obj_type, ugen_auto_mem and ugen_call_type with named access!
+    proc_new_call.add(
+        nnkExprEqExpr.newTree(
+            newIdentNode("obj_type"),
+            struct_export_name
+        ),
+
+        nnkExprEqExpr.newTree(
+            newIdentNode("ugen_auto_mem"),
+            newIdentNode("ugen_auto_mem")
+        ),
+        
+        nnkExprEqExpr.newTree(
+            newIdentNode("ugen_call_type"),
+            newIdentNode("ugen_call_type")
+        )
+    )
+
+    #If buffer, add buffer_interface too
+    if proc_call_ident_str == "Buffer":
+
+        var buffer_input_num = proc_new_call[1]
+
+        #Buffer(input_num=1)
+        if buffer_input_num.kind == nnkExprEqExpr:
+            let buffer_input_num_arg =  buffer_input_num[0]
+            if buffer_input_num_arg.kind == nnkIdent:
+                if buffer_input_num_arg.strVal() == "input_num":
+                    buffer_input_num = buffer_input_num[1]
+
+        if buffer_input_num.kind != nnkIntLit:
+            error("'" & repr(parsed_statement) & "': Buffer's 'input_num' must be expressed as an integer literal value")
+        
+        proc_new_call.add(
+            nnkExprEqExpr.newTree(
+                newIdentNode("buffer_interface"),
+                newIdentNode("buffer_interface")
+            ),
+        )
+
+        proc_new_call = nnkStmtList.newTree(
+            nnkCall.newTree(
+                newIdentNode("Buffer_check_input_num"),
+                buffer_input_num,
+                newIdentNode("omni_inputs")
+            ),
+            proc_new_call
         )
 
     #error repr proc_new_call
@@ -229,7 +247,7 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         nnkElifExpr.newTree(
             nnkCall.newTree(
                 newIdentNode("declared"),
-                proc_call_ident_obj
+                proc_call_ident_struct_new_inner
             ),
             nnkStmtList.newTree(
                 proc_new_call
@@ -243,6 +261,8 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     )
 
     result = when_statement_struct_new
+
+    #error repr result
 
 # ================================ #
 # Stage 1: Untyped code generation #
@@ -271,9 +291,6 @@ proc parser_untyped_loop(statement : NimNode, level : var int, declared_vars : v
 
 #Parse the call syntax: function(arg)
 proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     #Parse the call
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
@@ -358,43 +375,67 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
 
 #Parse the eq expr syntax, Test(data=Data())
 proc parse_untyped_expr_eq_expr(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-
     return parsed_statement
 
-#Parse the command syntax: a float
+#Parse the command syntax... Disabled it... Variables must ALWAYS been initialized
 proc parse_untyped_command(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
-    var parsed_statement = statement
+    var 
+        parsed_statement : NimNode
+        new_stmt = false
+        command_name = statement[0]
 
     #Detect out of position "build" calls in "init"
     if is_constructor_block:
-        let command_name = parsed_statement[0]
         if command_name.kind == nnkIdent:
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
 
-    #If top level, it's a declaration. 
-    #level == 1 equals to top level here, as the increment is done before parsing.
-    if level == 1:
-        parsed_statement = nnkVarSection.newTree(
-            nnkIdentDefs.newTree(
-                parsed_statement[0],
-                parsed_statement[1],
-                newEmptyNode()
-            )
+    #"new" statement, just do a normal call ignoring "new"
+    if command_name.kind == nnkIdent:
+        if command_name.strVal() == "new":
+            command_name = statement[1]
+            new_stmt = true
+
+            #new Data(1).. Just use the nnkCall
+            if command_name.kind == nnkCall:
+                parsed_statement = command_name.copy()
+
+            #new Data 1 ... Not so sure if I wanna support this syntax TBH
+            elif command_name.kind == nnkCommand:
+                parsed_statement = nnkCall.newTree(
+                    command_name[0]
+                )
+
+                #Put all the stuff back in, using command name (not statement!)
+                for i, entry in command_name:
+                    if i == 0: continue #skip func name
+                    parsed_statement.add(entry)
+                
+                #If choosing not to support this syntax anymore
+                #error "'" & $repr(statement) & "': Invalid 'new' syntax. It requires a normal function call."
+            else:
+                error "'" & $repr(statement) & "': Invalid 'new' syntax."
+
+    #This is the normal case for all commands: just turn them to nnkCalls.
+    if not new_stmt:
+        parsed_statement = nnkCall.newTree(
+            command_name
         )
-    
-    #HERE I CAN ADD NORMAL COMMAND STUFF SO THAT IT'S PERHAPS POSSIBLE TO ENABLE!! 
-    #ONE SOLUTION IS TURNING THEM INTO CALLS: print "hello" -> print("hello")
-    else:
-        discard
-    
+
+        #Put all the stuff back in
+        for i, entry in statement:
+            if i == 0: continue #skip func name
+            parsed_statement.add(entry)
+
+    #Wrap in stmt list for parsing to work (the parser_untyped_loop works with looping around children)
+    parsed_statement = nnkStmtList.newTree(
+        parsed_statement
+    )
+
+    #Run parsing on the nnkCall :)
+    parsed_statement = parser_untyped_loop(parsed_statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+
     return parsed_statement
 
 #a (int, (int, float)) = (1, (1, 1)) -> (int(1), (int(1), float(1)))
@@ -424,14 +465,14 @@ proc tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void {.co
 
 #Parse the assign syntax: a float = 10 OR a = 10
 proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     if statement.len > 3:
         error("Invalid variable assignment.")
 
-    var 
-        parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    #Don't keep the parsed things before the = (so that commands will only be parsed in the assgn_right)
+    var parsed_statement = statement.copy() 
+    parsed_statement = parser_untyped_loop(parsed_statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+        
+    var
         assgn_left : NimNode
         assgn_right : NimNode
         is_command_or_ident = false
@@ -440,6 +481,9 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
         bracket_index : NimNode
 
     if parsed_statement.len > 1:
+        #Don't keep the parsed things before the = (so that commands will only be parsed in the assgn_right)
+        parsed_statement[0] = statement[0] #reput previous assgn_left. Needed to do statement.copy() for this reason: need the old one
+
         assgn_left  = parsed_statement[0]
         assgn_right = parsed_statement[1]
 
@@ -526,7 +570,8 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
         if var_name.kind == nnkIdent:
             var_name_str = var_name.strVal()
 
-        #If already in the seq, set boolean to true. else, add it
+        #If already in the seq, set boolean to true. else, add it,
+        #This, together with parse_untyped_elif_else_for_while, will also be take care of inner scopes!
         if var_name_str in declared_vars:
             var_already_declared = true
         else:
@@ -732,18 +777,11 @@ proc parse_untyped_assign(statement : NimNode, level : var int, declared_vars : 
 
 #Parse the dot syntax: .
 proc parse_untyped_dot(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-    
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-
     return parsed_statement
 
 #Parse the square bracket syntax: []
 proc parse_untyped_brackets(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    #print_parser_stage(statement, level)
-    level += 1
-
     #Parse the whole statement first
     var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data) #keep parsing the entry of the bracket expr
 
@@ -782,6 +820,28 @@ proc parse_untyped_brackets(statement : NimNode, level : var int, declared_vars 
 
     return parsed_statement
 
+proc copy_declared_vars(declared_vars : seq[string]) : seq[string] {.inline.} =
+    var declared_vars_copy : seq[string]
+    for declared_var in declared_vars:
+        declared_vars_copy.add(declared_var)
+    return declared_vars_copy
+
+proc reset_declared_vars(declared_vars : var seq[string], declared_vars_copy : seq[string]) : void {.inline.} =
+    declared_vars.reset()
+    for declared_var_copy in declared_vars_copy:
+        declared_vars.add(declared_var_copy)
+
+proc parse_untyped_elif_else_for_while(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
+    #Copy the vars that were declared in the previous scope
+    var declared_vars_copy = declared_vars.copy_declared_vars()
+
+    #Ok, go through with the parsing of the elif / else / for / while statements
+    var parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+
+    #Reset declared vars, so they won't affect other scopes!
+    declared_vars.reset_declared_vars(declared_vars_copy)
+    
+    return parsed_statement
 
 #Dispatcher logic
 proc parser_untyped_dispatcher(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
@@ -798,11 +858,18 @@ proc parser_untyped_dispatcher(statement : NimNode, level : var int, declared_va
     elif statement_kind == nnkDotExpr:
         parsed_statement = parse_untyped_dot(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     elif statement_kind == nnkBracketExpr:
-        parsed_statement = parse_untyped_brackets(statement, level,declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+        parsed_statement = parse_untyped_brackets(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     elif statement_kind == nnkExprEqExpr:
         parsed_statement = parse_untyped_expr_eq_expr(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-    elif statement_kind == nnkReturnStmt: #parse return statement just like calls, to detect constructors!
+    
+    #parse return statement just like calls, to detect constructors!
+    elif statement_kind == nnkReturnStmt:
         parsed_statement = parse_untyped_call(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    
+    #This is needed to introduce new scopes, in order for declared_vars to work everytime on a different scope level
+    elif statement_kind == nnkElifBranch or statement_kind == nnkElse or statement_kind == nnkForStmt or statement_kind == nnkWhileStmt:
+        parsed_statement = parse_untyped_elif_else_for_while(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    
     else:
         parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
@@ -967,6 +1034,10 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #if is_def_block:
     #    error repr extra_data
 
+    if is_constructor_block:
+        #error repr final_block
+        discard
+
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
@@ -990,9 +1061,6 @@ proc parser_typed_loop(statement : NimNode, level : var int, is_constructor_bloc
 
 #Parse the call syntax: function(arg)
 proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    #print_parse_typed_stage(statement, level)
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     let function_call = parsed_statement[0]
@@ -1043,44 +1111,28 @@ proc parse_typed_call(statement : NimNode, level : var int, is_constructor_block
                     assgn_right
                 )
 
-        #If a struct_new_inner call without generics (and the struct has generics), use floats! (Otherwise it will default to ints due to the struct_new template)
-        elif function_name == "struct_new_inner":
-            var struct_type = parsed_statement[1]
+        #If a struct_new_inner call, figure out generics from the obj_type argument!
+        elif function_name.endsWith("_struct_new_inner"):
+            discard
 
-            #If struct_type is a bracketexpr, it means it already has generics mapping laid out. no need to run these.
-            if struct_type.kind == nnkSym or struct_type.kind == nnkIdent:
-                #Data has been parsed correctly already
-                if struct_type.strVal() != "Data":
-                    let 
-                        struct_impl = struct_type.getImpl()
-                        generic_params = struct_impl[1]
+            #[ #obj_type is the third last argument, retrieve it
+            var obj_type = parsed_statement[^3]
 
-                    if generic_params.kind == nnkGenericParams:
-                        var 
-                            new_struct_new_inner = nnkCall.newTree(
-                                newIdentNode("struct_new_inner"),
-                            )
+            #Ok, some generics input from user. Attach it to the func call
+            if obj_type.kind == nnkBracketExpr:
+                let struct_impl = obj_type[0].getImpl()
+            
+                if struct_impl.kind != nnkNilLit:
+                    #Need to offset in order to find starting argument potition of generics.
+                    #-2 is to take in account _struc_new_inner name in parsed_statement and _struct_export name in obj_type
+                    let parsed_statement_offset = parsed_statement.len - obj_type.len - 2
 
-                            new_struct_expl_type = nnkBracketExpr.newTree(
-                                struct_type
-                            )
-                        
-                        #instantiate float for all generic params
-                        for generic_param in generic_params:
-                            new_struct_expl_type.add(
-                                newIdentNode("float")
-                            )
+                    for i, generic_type in obj_type:
+                        #Skip _struct_export name
+                        if i == 0:
+                            continue
 
-                        new_struct_new_inner.add(new_struct_expl_type)
-
-                        #Re-attach all the args
-                        for index,arg in parsed_statement.pairs():
-                            if index <= 1:
-                                continue
-                            new_struct_new_inner.add(arg)
-
-                        #Add to code_block
-                        parsed_statement = new_struct_new_inner
+                        parsed_statement[i-1 + parsed_statement_offset] = generic_type ]#
 
         #Check type of all arguments for other function calls (not array access related) 
         #Ignore function ending in _min_max (the one used for input min/max conditional) OR get_dynamic_input
@@ -1191,9 +1243,6 @@ proc convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode, var_
 
 #Parse the var section
 proc parse_typed_var_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    #print_parse_typed_stage(statement, level)
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     let 
@@ -1205,7 +1254,7 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
         var_type_kind = var_type.kind
         var_name      = var_symbol.strVal()        
 
-    if var_name in non_valid_variable_names:
+    if var_name in omni_invalid_variable_names:
         error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.")
 
     #Check if it's a valid type
@@ -1304,8 +1353,6 @@ proc parse_typed_var_section(statement : NimNode, level : var int, is_constructo
 #Used in defs for "return",
 #This is needed in order to avoid type checking with "return" statements!
 proc parse_typed_let_section(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     if is_def_block:
@@ -1330,8 +1377,6 @@ proc parse_typed_let_section(statement : NimNode, level : var int, is_constructo
     return parsed_statement
 
 proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
 
     assert parsed_statement.len == 3
@@ -1363,8 +1408,6 @@ proc parse_typed_infix(statement : NimNode, level : var int, is_constructor_bloc
     return parsed_statement
 
 proc parse_typed_assgn(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var 
         parsed_statement = parser_typed_loop(statement, level, is_perform_block, is_def_block)
         assgn_left = parsed_statement[0]
@@ -1418,8 +1461,6 @@ proc for_loop_substitute(code_block : NimNode, entry : NimNode, substitution : N
 #for i, entry in a:
 #   entry = Something(i)
 proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    level += 1
-
     var parsed_statement = statement
     
     parsed_statement = parser_typed_loop(statement, level, is_constructor_block, is_perform_block, is_def_block)
@@ -1448,13 +1489,16 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
             let check_data = data_name.getTypeInst()
             var is_data = false
             if check_data.kind == nnkBracketExpr:
-                if check_data[0].kind == nnkSym:
-                    if check_data[0].strVal() == "Data":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkSym:
+                    let check_data_first_entry_str = check_data_first_entry.strVal()
+                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_struct_export":
                         is_data = true
             elif check_data.kind == nnkPtrTy:
-                if check_data[0].kind == nnkBracketExpr:
-                    if check_data[0][0].kind == nnkSym:
-                        if check_data[0][0].strVal() == "Data_struct_inner":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkBracketExpr:
+                    if check_data_first_entry[0].kind == nnkSym:
+                        if check_data_first_entry[0].strVal() == "Data_struct_inner":
                             is_data = true
 
             if is_data:
@@ -1547,13 +1591,16 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
 
             var is_data = false
             if check_data.kind == nnkBracketExpr:
-                if check_data[0].kind == nnkSym:
-                    if check_data[0].strVal() == "Data":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkSym:
+                    let check_data_first_entry_str = check_data_first_entry.strVal()
+                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_struct_export":
                         is_data = true
             elif check_data.kind == nnkPtrTy:
-                if check_data[0].kind == nnkBracketExpr:
-                    if check_data[0][0].kind == nnkSym:
-                        if check_data[0][0].strVal() == "Data_struct_inner":
+                let check_data_first_entry = check_data[0]
+                if check_data_first_entry.kind == nnkBracketExpr:
+                    if check_data_first_entry[0].kind == nnkSym:
+                        if check_data_first_entry[0].strVal() == "Data_struct_inner":
                             is_data = true
             
             if is_data:
@@ -1614,8 +1661,6 @@ proc parser_typed_dispatcher(statement : NimNode, level : var int, is_constructo
     let statement_kind = statement.kind
     
     var parsed_statement : NimNode
-
-    #level += 1
 
     if statement_kind   == nnkCall:
         parsed_statement = parse_typed_call(statement, level, is_constructor_block, is_perform_block, is_def_block)
