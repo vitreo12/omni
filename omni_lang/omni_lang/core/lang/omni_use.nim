@@ -504,14 +504,16 @@ proc use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 path_last = path.last()
                 path_last_kind = path_last.kind
 
-            if path_last_kind != nnkIdent:
+            if path_last_kind != nnkIdent and path_last_kind != nnkStrLit:
                 error "use: Invalid path syntax: " & repr(path)
+            
+            #strLit already has Something/"Module.omni" figured out
+            if path_last_kind == nnkIdent:
+                import_name_without_extension = path_last.strVal()
 
-            import_name_without_extension = path_last.strVal()
-
-            #what about .oi?
-            let import_name_omni = import_name_without_extension & ".omni" 
-            real_path[^1] = newLit(import_name_omni)
+                #what about .oi?
+                let import_name_omni = import_name_without_extension & ".omni" 
+                real_path[^1] = newLit(import_name_omni)
             
         else:
             error "use: Invalid path syntax: " & repr(path)
@@ -583,14 +585,16 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
             path_last = path.last()
             path_last_kind = path_last.kind
 
-        if path_last_kind != nnkIdent:
+        if path_last_kind != nnkIdent and path_last_kind != nnkStrLit:
             error "use: Invalid path syntax: " & repr(path)
+            
+        #strLit already has Something/"Module.omni" figured out
+        if path_last_kind == nnkIdent:
+            import_name_without_extension = path_last.strVal()
 
-        import_name_without_extension = path_last.strVal()
-
-        #what about .oi?
-        let import_name_omni = import_name_without_extension & ".omni" 
-        real_path[^1] = newLit(import_name_omni)
+            #what about .oi?
+            let import_name_omni = import_name_without_extension & ".omni" 
+            real_path[^1] = newLit(import_name_omni)
     else:
         error "use: Invalid path syntax: " & repr(path)
 
