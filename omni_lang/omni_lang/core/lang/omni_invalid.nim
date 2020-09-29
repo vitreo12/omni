@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 let omni_invalid_idents* {.compileTime.} = [
-    "Data", "Delay", "Buffer"
+    "Data", "Delay", "Buffer", "UGen"
 ]
 
 let omni_invalid_ends_with* {.compileTime.} = [
