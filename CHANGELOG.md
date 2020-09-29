@@ -17,7 +17,46 @@
     a = Data.new(10)
     ```
 
-3) Introducing `modules` via the `use` / `require` statements (they are equivalent, still deciding which name I like better):
+3) Explicit casting at variables declaration will keep the type:
+
+    ```nim
+    a = int(1) #Will be int, not float!
+    ```
+
+4) Variables and `Buffers` can now be declared from the `ins` statement:
+
+    ```nim
+    ins 2:
+        buffer Buffer
+        speed  {1, 0, 10}
+
+    outs 1
+
+    init:
+        phase = 0.0
+
+    sample:
+        scaled_rate = buffer.samplerate / samplerate
+        out1 = buffer[phase]
+        phase += (speed * scaled_rate)
+        phase = phase % buffer.len
+    ```
+
+5) Added `tuples` support:
+
+    ```nim
+    def giveMeATuple():
+        a (int, int) = (1, 2) #OR a = (int(1), int(2))
+        b = (1, 2, a) #(float, float, (int, int))
+        return b     
+
+    init:
+        a = giveMeATuple()
+        print a[0]; print a[1]
+        print a[2][0]; print a[2][1]
+    ```
+
+6) Introducing `modules` via the `use` / `require` statements (they are equivalent, still deciding which name I like better):
 
     `One.omni:`
 
@@ -60,7 +99,7 @@
 
     For more complex examples, check the `NewModules` folder in `omni_lang`'s tests.
 
-4) Better handling of variables' scope. `if / elif / else / for / while` have their own scope, but won't overwrite variables of encapsulating scopes.
+7) Better handling of variables' scope. `if / elif / else / for / while` have their own scope, but won't overwrite variables of encapsulating scopes.
 
     ```nim
     init:
