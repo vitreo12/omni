@@ -165,14 +165,32 @@ iterator `..`*(a : SomeFloat, b : SomeFloat) : auto {.inline.} =
 
 iterator `..`*(a : SomeFloat, b : SomeInteger) : auto {.inline.} =
     var res = int(a)
-    while res <= int(b):
+    while res <= b:
         yield typeof(a)(res)
         inc(res)
 
 iterator `..`*(a : SomeInteger, b : SomeFloat) : auto {.inline.} =
-    var res = int(a)
+    var res = a
     while res <= int(b):
+        yield res
+        inc(res)
+
+iterator `..<`*(a : SomeFloat, b : SomeFloat) : auto {.inline.} =
+    var res = int(a)
+    while res < int(b):
         yield typeof(a)(res)
+        inc(res)
+
+iterator `..<`*(a : SomeFloat, b : SomeInteger) : auto {.inline.} =
+    var res = int(a)
+    while res < b:
+        yield typeof(a)(res)
+        inc(res)
+
+iterator `..<`*(a : SomeInteger, b : SomeFloat) : auto {.inline.} =
+    var res = a
+    while res < int(b):
+        yield res
         inc(res)
 
 # ================= #

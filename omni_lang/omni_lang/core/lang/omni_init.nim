@@ -20,11 +20,66 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, tables
+import macros, strutils
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
     discard
+
+#the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
+#in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
+macro unpackInsWithNames*(ins_names : typed, pre_init : typed = false) : untyped =
+    result = nnkStmtList.newTree()
+
+    let 
+        ins_names_seq = ins_names.getImpl.strVal.split(',')
+        pre_init_bool = pre_init.boolVal()
+    
+    for i, in_name in ins_names_seq:
+        let in_number_name = ("in" & $(i+1))
+
+        #let_statement will be overwritten if needed
+        var
+            ident_defs : NimNode
+            
+            let_statement = nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        
+        #Ignore in1, in2, etc...
+        if in_name != in_number_name:
+            var ident_val = newIdentNode(in_number_name)
+
+            ident_defs = nnkIdentDefs.newTree()
+            let_statement = nnkLetSection.newTree(ident_defs)
+            
+            if pre_init_bool == true:
+                ident_val = newLit(0.0)
+
+            ident_defs.add(
+                newIdentNode(in_name),
+                newEmptyNode(),
+                ident_val
+            )
+
+        #Check for no {Buffer} on current in1, in2, etc...
+        #The {Buffer} case is handled in the "addBufferIns" macro
+        let when_statement = nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkPrefix.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        newIdentNode(in_number_name & "_buffer")
+                    )
+                ),
+                nnkStmtList.newTree(
+                    let_statement
+                )
+            )
+        )  
+
+        result.add(when_statement)
 
 #This has been correctly parsed!
 macro init_inner*(code_block_stmt_list : untyped) =
@@ -419,6 +474,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
 
+                #Unpack the "ins" variable names
+                unpackInsWithNames(omni_input_names_const)
+
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
@@ -431,6 +489,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #checkValidity triggers the checks for correct initialization of all Datas entries,
+                #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
                     ugen.is_initialized_let = false
                     return 0
@@ -480,6 +540,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
+
+                #Unpack the "ins" variable names
+                unpackInsWithNames(omni_input_names_const)
         
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -493,6 +556,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Assign ugen fields
                 `assign_ugen_fields`
 
+                #checkValidity triggers the checks for correct initialization of all Datas entries,
+                #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
                     ugen.is_initialized_let = false
                     return 0
@@ -510,8 +575,78 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     if not isNil(ugen_ptr):
                         Omni_UGenFree(ugen_ptr)
                     return cast[pointer](nil)
-                
+
+#Retrieve {Buffer} ins and pass them here (so that they will be declared as UGen members!)
+macro addBufferIns*(ins_names : typed) : untyped =
+    result = nnkStmtList.newTree()
+
+    let ins_names_seq = ins_names.getImpl.strVal.split(',')
+
+    for i, in_name in ins_names_seq:
+        let 
+            i_plus_one = i + 1
+            in_number_name = ("in" & $(i_plus_one))
+        
+        var
+            ident_defs = nnkIdentDefs.newTree()
+            when_Buffer_var_statement = nnkWhenStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        newIdentNode("Buffer")
+                    ),
+                    nnkVarSection.newTree(
+                        ident_defs
+                    )
+                ),
+                nnkElse.newTree(
+                    nnkPragma.newTree(
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("fatal"),
+                            newLit("No wrapper interface defined for 'Buffer'. Can't declare variable '" & in_name & "' at '" & in_number_name & "'.")
+                        )
+                    )
+                )
+            )
+
+        ident_defs.add(
+            newIdentNode(in_name),
+            newEmptyNode(),
+
+            #Buffer_struct_new_inner(Buffer_struct_export, 0, buffer_interface, ugen_auto_mem, ugen_call_type)
+            nnkCall.newTree(
+                newIdentNode("Buffer_struct_new_inner"),
+                newLit(i_plus_one), #Buffer(1) is first input, not Buffer(0)
+                newIdentNode("buffer_interface"),
+                newIdentNode("Buffer_struct_export"),
+                newIdentNode("ugen_auto_mem"),
+                newIdentNode("ugen_call_type")
+            )
+        )
+
+        let when_statement = nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkCall.newTree(
+                    newIdentNode("declared"),
+                    newIdentNode(in_number_name & "_buffer")
+                ),
+                nnkStmtList.newTree(
+                    when_Buffer_var_statement
+                )
+            )
+        )
+
+        result.add(when_statement)
+
 macro init*(code_block : untyped) : untyped =
+    let code_block_with_buffer_ins = nnkStmtList.newTree(
+        nnkCall.newTree(
+            newIdentNode("addBufferIns"),
+            newIdentNode("omni_input_names_const")
+        ),
+        code_block
+    )
+
     return quote do:
         #If ins / outs are not declared, declare them!
         when not declared(declared_inputs):
@@ -541,7 +676,11 @@ macro init*(code_block : untyped) : untyped =
         #Or, if perform is defining one, define init_block here so that it will still only be defined once
         let init_block {.inject, compileTime.} = true
 
-        parse_block_untyped(`code_block`, true)
+        #Generate fictional let names for ins (so that parser won't complain when using them)
+        unpackInsWithNames(omni_input_names_const, true)
+        
+        #Actually parse the init block
+        parse_block_untyped(`code_block_with_buffer_ins`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =

@@ -24,8 +24,10 @@ import macros, strutils
 
 const omni_max_inputs_outputs_const* = 32
 
-#Some crazy number
-const RANDOM_FLOAT = -12312418241.1249124194
+#Some crazy numbers
+const 
+    RANDOM_FLOAT = -12312418241.1249124194
+    BUFFER_FLOAT = -13312418241.1249124194
 
 const acceptedCharsForParamName = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
@@ -331,7 +333,7 @@ macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
 
 proc checkValidParamName(param_name : string) : void =
     if param_name[0].isUpperAscii():
-        error("ins: '" & $param_name & "' must start with a lower case letter.")
+        error("ins: input name '" & $param_name & "' must start with a lower case letter.")
 
     for individualChar in param_name:
         if not (individualChar in acceptedCharsForParamName):
@@ -473,6 +475,12 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
                 error("Invalid syntax for max value of input \"" & $param_name & "\"")
         ]#
 
+        elif value_kind == nnkIdent:
+            if value.strVal == "Buffer":
+                return (0.0, BUFFER_FLOAT, BUFFER_FLOAT)
+            else:
+                error("Invalid syntax for input \"" & $param_name & "\"")
+
         else:
             error("Invalid syntax for input \"" & $param_name & "\"")
 
@@ -521,7 +529,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
         #Always add defaults, they will be 0 if not specified
         defaults_array_bracket.add(newLit(default_val))
 
-        if min_val != RANDOM_FLOAT:
+        if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
             deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
@@ -535,7 +543,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                 )
             )
 
-        if max_val != RANDOM_FLOAT:
+        if max_val != RANDOM_FLOAT and max_val != BUFFER_FLOAT:
             deafault_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
@@ -546,6 +554,21 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                     ),
                     newEmptyNode(),
                     newLit(max_val)
+                )
+            )
+
+        #Buffer case. Just create a const that will be checked against at compile time
+        if min_val == BUFFER_FLOAT and max_val == BUFFER_FLOAT:
+            deafault_min_max_const_section.add(
+                nnkConstDef.newTree(
+                    nnkPragmaExpr.newTree(
+                        newIdentNode("in" & $(i_plus_one) & "_buffer"),
+                        nnkPragma.newTree(
+                            newIdentNode("inject")
+                        )
+                    ),
+                    newEmptyNode(),
+                    newLit(true)
                 )
             )
 
@@ -607,7 +630,7 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
 
     #This is for the inputs 1, "freq" case. (where "freq" is not viewed as varargs)
     #input 2, "freq", "stmt" is covered in the other macro
-    if param_names_kind == nnkStrLit:
+    if param_names_kind == nnkStrLit or param_names_kind == nnkIdent:
         let param_name = param_names.strVal()
         
         checkValidParamName(param_name)
@@ -622,9 +645,12 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
             for statement in param_names.children():
                 let statement_kind = statement.kind
 
-                #"freq"
-                if statement_kind == nnkStrLit:
+                #"freq" / freq
+                if statement_kind == nnkStrLit or statement_kind == nnkIdent:
                     let param_name = statement.strVal()
+
+                    #Buffer without param name ????
+                    #if param_name == "Buffer":
 
                     checkValidParamName(param_name)
                     
@@ -635,23 +661,36 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
                     assert statement.len == 2
 
                     #The name of the param
-                    let param_name_node = statement[0]
-                    if param_name_node.kind != nnkStrLit:
-                        error("Expected input name number " & $(statement_counter + 1) & " to be a string literal value")
+                    let 
+                        param_name_node = statement[0]
+                        param_name_node_kind = param_name_node.kind
+                    if param_name_node_kind != nnkStrLit and param_name_node_kind != nnkIdent:
+                        error("Expected input name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
 
                     let param_name = param_name_node.strVal()
                     checkValidParamName(param_name)
 
                     param_names_string.add($param_name & ",")
                 
-                    #The list of { }
+                    #The list of { } or Buffer
                     let default_min_max = statement[1]
 
-                    if default_min_max.kind != nnkCurly:
-                        error("Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets.")
+                    var 
+                        default_val : float
+                        min_val : float
+                        max_val : float
 
-                    let (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                    #Ident, no curly brackets Buffer
+                    if default_min_max.kind == nnkIdent:
+                        if default_min_max.strVal == "Buffer":
+                            min_val = BUFFER_FLOAT
+                            max_val = BUFFER_FLOAT
                     
+                    elif default_min_max.kind == nnkCurly:
+                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                    else:
+                        error("Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
+
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
                     max_vals[statement_counter] = max_val
@@ -674,16 +713,17 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         elif param_names_kind == nnkCommand:
             error("ins: syntax not implemented yet")
 
-    #Remove trailing coma
-    if param_names_string.len > 1:
-        param_names_string = param_names_string[0..param_names_string.high-1]
-    
     #inputs count mismatch
     if param_names_kind == nnkNilLit:
-        param_names_string = "__NO_PARAM_NAMES__"
+        for i in 0..num_of_inputs_VAL-1:
+            param_names_string.add("in" & $(i + 1) & ",")
     else:
         if statement_counter != num_of_inputs_VAL:
             error("Expected " & $num_of_inputs_VAL & " input names, got " & $statement_counter)
+
+    #Remove trailing coma
+    if param_names_string.len > 1:
+        param_names_string = param_names_string[0..param_names_string.high-1]
 
     #Assign to node
     param_names_node = newLit(param_names_string)
@@ -760,7 +800,7 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     var statement_counter = 0
 
     #This is for the outputs 1, "freq" case... output 2, "freq", "stmt" is covered in the other macro
-    if param_names_kind == nnkStrLit:
+    if param_names_kind == nnkStrLit or param_names_kind == nnkIdent:
         let param_name = param_names.strVal()
         
         for individualChar in param_name:
@@ -773,27 +813,30 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     #Normal block case
     else:
         for statement in param_names.children():
-            if statement.kind != nnkStrLit:
-                error("Expected output name number " & $(statement_counter + 1) & " to be a string literal value")
-            
+            let statement_kind = statement.kind
+
+            if statement_kind != nnkStrLit and statement_kind != nnkIdent:
+                error("Expected output name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+        
             let param_name = statement.strVal()
 
             checkValidParamName(param_name)
             
             param_names_string.add($param_name & ",")
             statement_counter += 1
-
-    #Remove trailing coma
-    if param_names_string.len > 1:
-        param_names_string = param_names_string[0..param_names_string.high-1]
     
-    #outputs count mismatch
+    #No outs specified
     if param_names_kind == nnkNilLit:
-        param_names_string = "__NO_PARAM_NAMES__"
+        for i in 0..num_of_outputs_VAL-1:
+            param_names_string.add("out" & $(i + 1) & ",")
     else:
         if statement_counter != num_of_outputs_VAL:
             error("Expected " & $num_of_outputs_VAL & " input names, got " & $statement_counter)
     
+    #Remove trailing coma
+    if param_names_string.len > 1:
+        param_names_string = param_names_string[0..param_names_string.high-1]
+
     #Assign to node
     param_names_node = newLit(param_names_string)
 

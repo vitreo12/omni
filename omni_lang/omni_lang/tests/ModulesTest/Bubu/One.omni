@@ -1,0 +1,8 @@
+import ../../../../omni_lang, macros
+
+struct Something:
+    a
+
+expandMacros:
+    def someFunc():
+        return 0.7

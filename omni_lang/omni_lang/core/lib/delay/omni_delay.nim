@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 import ../../lang/omni_call_types
-import ../../lang/omni_types
 import ../alloc/omni_alloc
 import ../data/omni_data
 import ../auto_mem/omni_auto_mem
@@ -31,11 +30,13 @@ type
     Delay_struct_inner* = object
         mask  : int
         phase : int
-        data  : Data[signal]
+        data  : Data[float]
 
     Delay* = ptr Delay_struct_inner
 
-proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1), ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
+    Delay_struct_export* = Delay
+
+proc Delay_struct_new_inner*[S : SomeNumber](size : S = uint(1), obj_type : typedesc[Delay_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
@@ -46,7 +47,7 @@ proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = ui
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(int(size)))
-        data  = Data.struct_new_inner(delay_length, dataType=signal, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
+        data  = Data_struct_new_inner(delay_length, G1=float, obj_type=Data_struct_export, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
         mask  = int(delay_length - 1)
 
     #Register obj (data has already been registered in Data.struct_new_inner)
@@ -57,12 +58,7 @@ proc struct_new_inner*[S : SomeNumber](obj_type : typedesc[Delay], size : S = ui
     result.phase = 0
     result.data = data
 
-template struct_new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1)) : untyped {.dirty.} =
-    struct_new_inner(Delay, size, ugen_auto_mem, ugen_call_type)
-
-template new*[S : SomeNumber](obj_type : typedesc[Delay], size : S = uint(1)) : untyped {.dirty.} =
-    struct_new_inner(Delay, size, ugen_auto_mem, ugen_call_type)
-
+#This is probably useless and can be removed :)
 proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
     return true
 

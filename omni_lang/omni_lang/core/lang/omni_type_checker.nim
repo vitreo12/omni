@@ -27,8 +27,11 @@ let
     varDeclTypes* {.compileTime.} = [
         "bool", 
         "enum",
+        "tuple",
         "float", "float32", "float64",
+        "cfloat", "cdouble",
         "int", "int32", "int64",
+        "cint", "clong",
         "uint", "uint32", "uint64",
         "sig", "sig32", "sig64",
         "signal", "signal32", "signal64"
@@ -50,59 +53,41 @@ let
     ]
 
 
-proc isStruct*(var_type : NimNode, is_struct_field : bool = false) : bool {.compileTime.} =    
-    var 
-        type_tree : NimNode
-        inner_type_tree : NimNode
-        inner_type_tree_kind : NimNodeKind
-    
-    if not is_struct_field:
-        type_tree = var_type.getType()
-        if type_tree.len < 2:
-            return false
-        inner_type_tree = type_tree[1]
-        inner_type_tree_kind = inner_type_tree.kind
-        
-        if inner_type_tree_kind == nnkBracketExpr:
-            let inner_inner_type_tree = inner_type_tree[1]
-
-            #struct with generics
-            if inner_inner_type_tree.kind == nnkBracketExpr:
-                if inner_inner_type_tree[0].strVal().endsWith("_struct_inner"):
-                    return true
-            
-            #normal struct
-            elif inner_inner_type_tree.kind == nnkIdent or inner_inner_type_tree.kind == nnkSym or inner_inner_type_tree.kind == nnkStrLit:
-                if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
-                    return true
-    
-        elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_struct_inner"):
-                return true
-
-    else:
+proc isStruct*(var_type : NimNode) : bool {.compileTime.} =        
+    #if not is_struct_field:
+    let 
         type_tree = var_type.getTypeImpl()
-        if type_tree.kind != nnkPtrTy:
-            return false
-        
-        inner_type_tree = type_tree[0]
-        inner_type_tree_kind = inner_type_tree.kind
+        type_tree_kind = type_tree.kind
 
-        if inner_type_tree_kind == nnkBracketExpr:
-            let inner_inner_type_tree = inner_type_tree[0]
+    if type_tree_kind == nnkSym:
+        let type_tree_str = type_tree.strVal()
+        if type_tree_str.endsWith("_struct_inner") or type_tree_str.endsWith("_struct_export"):
+            return true
 
-            if inner_inner_type_tree.strVal().endsWith("_struct_inner"):
-                return true
-            
-        elif inner_type_tree_kind == nnkSym:
-            if inner_type_tree.strVal().endsWith("_struct_inner"):
-                return true
+    elif type_tree_kind == nnkBracketExpr or type_tree_kind == nnkPtrTy:
+        var 
+            type_inner = type_tree[0]
+            type_inner_kind = type_inner.kind
         
+        if type_inner_kind == nnkBracketExpr:
+            type_inner = type_inner[0]
+            type_inner_kind = type_inner.kind
+
+        if type_inner_kind == nnkSym:
+            let type_inner_str = type_inner.strVal()
+
+            #First arg of defs (obj_type)... Run on the enclosing paranthesis typedesc[Phasor]
+            if type_inner_str == "typeDesc":
+                return isStruct(type_tree[1])
+
+            elif type_inner_str.endsWith("_struct_inner") or type_inner_str.endsWith("_struct_export"):
+                return true
+    
     return false
 
 
 #Check type validity. This requires var_type to be a typed one. (it's either caled by the macro below or in the typed static analysis in omni_parser.nim)
-proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : bool = false, is_proc_call : bool = false, is_struct_field : bool = false, proc_name : string = "") : void {.compileTime.} =
+proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : bool = false, is_proc_call : bool = false, is_struct_field : bool = false, proc_name : string = "", is_tuple_entry : bool = false) : void {.compileTime.} =
     var var_type_str : string
 
     let var_type_kind = var_type.kind
@@ -118,12 +103,17 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
         else:
             var_type_str = var_type[0].strVal()
     
-    #standard types
+    #Other types
     else:
-        #FOR NOW, error out with tuples (they will supported in the future)
+        #tuples
         if var_type_kind == nnkTupleConstr:
-            error("'" & $var_name & "': tuples are not yet supported!")
-        var_type_str = var_type.strVal()
+            #check all entries of the tuple too
+            for tuple_entry_type in var_type:
+                checkValidType(tuple_entry_type, var_name, is_proc_arg, is_proc_call, is_struct_field, proc_name, true)
+
+            var_type_str = "tuple"
+        else:
+            var_type_str = var_type.strVal()
 
     #echo "checkValidType"
     #echo astGenRepr var_type
@@ -148,6 +138,11 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
     elif is_struct_field:
         if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
             error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
+
+    #tuple field
+    elif is_tuple_entry:
+        if not ((var_type_str in varDeclTypes)):
+            error("tuple '" & $var_name & "' contains an invalid type: '" & $var_type_str & "'. Tuples only support number types.")
 
     #variable declaration
     else:

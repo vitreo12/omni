@@ -20,23 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import unittest
-import ../../../omni_lang/omni_lang
+let omni_invalid_idents* {.compileTime.} = [
+    "Data", "Delay", "Buffer"
+]
 
-#Have the call here because it can export stuff, needs to be top level
-outs 5
+let omni_invalid_ends_with* {.compileTime.} = [
+    "def_export", "def_dummy",
+    "module_inner",
+    "struct_inner", "struct_new_inner", "struct_export"
+]
 
-suite "outs: number":
-  #Check num of inputs
-  test "number of outputs":
-    check (omni_outputs == 5)
-
-  #Check empty name
-  test "output names":
-    check (omni_output_names_const == "out1,out2,out3,out4,out5")
-    check (omni_output_names_let == "out1,out2,out3,out4,out5") 
-
-  #Check C exported functions
-  test "exported C functions":
-    check (Omni_UGenOutputs() == int32(5))
-    check (cast[cstring](Omni_UGenOutputNames()) == "out1,out2,out3,out4,out5")
+let omni_invalid_variable_names* {.compileTime.} = [
+    "ins", "inputs",
+    "outs", "outputs",
+    "init", "initialize", "initialise", "build",
+    "perform", "sample",
+    "sig", "sig32", "sig64",
+    "signal", "signal32", "signal64",
+    "Data", "Buffer", "Delay"
+]
