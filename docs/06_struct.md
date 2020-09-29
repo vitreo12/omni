@@ -29,17 +29,20 @@ An alternative constructor syntax, is by using the `new` keyword.
 ins:  1
 outs: 1
 
+#When no types are specified for struct fields, they are defaulted to 'float'
 struct Vector:
-    x float
-    y float
-    z float
+    x
+    y
+    z
 
 init:
-    #Four different ways of constructing a Vector
-    myVec1 = Vector(0.0, 0.0, 0.0)
-    myVec2 = Vector()
-    myVec3 = Vector.new(0.0, 0.0, 0.0)
-    myVec4 = Vector.new()
+    #Six different ways of constructing a Vector
+    myVec1 = Vector()
+    myVec2 = Vector(0, 0, 0)
+    myVec3 = Vector.new()
+    myVec4 = Vector.new(0, 0, 0)
+    myVec5 = new Vector
+    myVec6 = new Vector(0, 0, 0)
 ```
 
 `structs`, just like `defs`, support generics. Generics, as of now, only support number types.
@@ -111,7 +114,7 @@ When not otherwise specified, `structs` with generics will default to `float`:
 
 ```nim
 struct MyStruct:
-    data Data       #defaulted to Data[float]
+    data Data #defaulted to Data[float]
 
 init:
     data = Data(10) #Data(10) defaults to Data[float](10)

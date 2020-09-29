@@ -46,6 +46,7 @@ For number types, if not specified otherwise, all variables are declared as `flo
 init:
     phase      = 0      #float
     phase2 int = 0      #int
+    phase3     = int(0) #int, explicit conversion
     test       = true   #bool, booleans are not affected by this mechanism
 ```
 
@@ -60,17 +61,21 @@ init:
 
 ## Function calls
 
-The syntax to call functions, `defs` (more on them later),  can be either of the following:
+The syntax to call functions, `defs` (more on them later), can be either of the following:
 
 ```nim
 def mySum(a, b):
     return a + b
 
+def myTanh(a):
+    return tanh(a)
+
 init:
-    a = 1
-    b = 2
+    a = 1; b = 2    #; merges multiple statements in one liners
     x = mySum(a, b) #standard calling syntax
     y = a.mySum(b)  #alternative "method" calling syntax
+    z = myTanh x    #for single argument defs, the command syntax can be used
+    print z
 ```
 
 ## Flow control
@@ -96,9 +101,10 @@ init:
 As for conditionals, the standard `if` / `elif` / `else` are provided. Note also that, just as in the nim programming language, it is possible to assign the result of a conditional statement to a variable:
 
 ```nim
+ins 2
+
 init:
-    a = 10
-    b = 20
+    a = in1; b = in2
 
     if a < b:
         print("less then")
