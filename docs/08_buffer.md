@@ -3,7 +3,7 @@ layout: page
 title: Buffer
 ---
 
-`Buffer` is a special construct that is implemented on a per-wrapper basis. It doesn't exist as a standalone omni `struct`, but it only works if the wrapper around omni (like [omnicollider](https://github.com/vitreo12/omnicollider) and [omnimax](https://github.com/vitreo12/omnimax)) implement it. Its purpose is to deal with memory allocated from outside of omni, as it's the case with SuperCollider's or Max's own buffers. Check [here](11_writing_wrappers.md) for a description on how to write an omni wrapper (including the `Buffer` interface).
+`Buffer` is a special construct that is implemented on a per-wrapper basis. While it doesn't exist as a standalone omni `struct`, the omni parser knows about its existence. However, the code will only compile if the wrapper around omni (like [omnicollider](https://github.com/vitreo12/omnicollider) and [omnimax](https://github.com/vitreo12/omnimax)) implements it. Its purpose is to deal with memory allocated from outside of omni, as it's the case with SuperCollider's or Max's own buffers. Check [here](11_writing_wrappers.md) for a description on how to write an omni wrapper (including the `Buffer` interface).
 
 ## Buffer methods
 
@@ -16,18 +16,17 @@ These are methods that only work in the `perform` or `sample` blocks. If used in
 
 ## Example
 
+To access a `Buffer`, one of the `ins` has to be used in order for omni to point at the specified external buffer. In the example below, the first `in`, named `buffer`, is declared as a `Buffer`. This makes the `buffer` variable available in the `sample` block to be accessed and used.
+
 ### *MyBuffer.omni*:
 ```nim
 ins 2:
-    "buffer"
-    "speed" {1, 0.1, 10}
+    buffer Buffer
+    speed  {1, 0.1, 10}
 
 outs: 1
 
 init:
-    #One of the ins has to be used in order for omni to point at the specified external buffer.
-    #Here it's been set to the first input, "buffer".
-    buffer = Buffer(1)
     phase = 0.0
 
 perform:
@@ -35,7 +34,7 @@ perform:
     
     sample:
         out1 = buffer[phase]
-        phase += (in2 * scaled_rate)
+        phase += (speed * scaled_rate)
         phase = phase % float(buffer.len)
 ```
 

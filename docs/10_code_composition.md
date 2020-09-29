@@ -3,7 +3,9 @@ layout: page
 title: Code composition
 ---
 
-Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `require` statement.
+Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `use` / `require` statements (they are analogous, the choice of the final name will come at a later stage).
+
+## Example 1
 
 ### *Vector.omni*:
 ```nim
@@ -20,18 +22,20 @@ def setValues(vec Vector, x, y, z):
 
 ### *VecTest.omni*:
 ```nim
-require "Vector.omni"
+use "Vector.omni"
 
 ins:  3
 outs: 1
 
 init:
-    myVec = Vector(0.0, 0.0, 0.0)
+    myVec = Vector()
 
 sample:
     myVec.setValues(in1, in2, in3)
     out1 = myVec.x * myVec.y * myVec.z
 ```
+
+## Example 2
 
 Consider the case where you want to implement an oscillator engine with multiple waveforms. The project can be split up in different files to implement each algorithm, and have a single `Oscillator.omni` file to compile to bring everything together:
 
@@ -39,10 +43,10 @@ Consider the case where you want to implement an oscillator engine with multiple
 
 ```nim
 struct Sine:
-    phase #no types specified for struct field, meaning it's defaulted to be `float`
+    phase
     
-def process(sine Sine, freq_in = 440.0):
-    freq_increment = freq_in / samplerate
+def process(sine Sine, freq = 440.0):
+    freq_increment = freq / samplerate
     out_value = sin(sine.phase * 2 * PI)
     sine.phase = (sine.phase + freq_increment) % 1.0
     return out_value
@@ -52,18 +56,10 @@ def process(sine Sine, freq_in = 440.0):
 
 ```nim
 struct Saw:
-    phase #no types specified for struct fields, meaning they're defaulted to be `float`
+    phase
     prev_value
 
-def process(saw Saw, freq_in = 440.0):
-    freq = freq_in
-    if freq == 0.0:
-        freq = 0.01
-    
-    #0.0 would result in 0 / 0 -> NaN
-    if saw.phase == 0.0:
-        saw.phase = 1.0
-
+def process(saw Saw, freq = 440.0):
     #BLIT
     n = trunc((samplerate * 0.5) / freq)
     phase_2pi = saw.phase * 2 * PI
@@ -83,23 +79,69 @@ def process(saw Saw, freq_in = 440.0):
 ### *Oscillator.omni*
 
 ```nim
-require "Saw.omni", "Sine.omni"
+#equivalent to -> use "Sine.omni", "Saw.omni"
+use Sine, Saw
 
 ins 1:
-    "sineOrSaw" {0, 0, 1}
-    "freq" {440, 0, 22000}
+    sineOrSaw {0, 0, 1}
+    freq {440, 0.01, 22000}
 
 outs 1
 
 init:
-    sine = Sine()  #all float fields are defaulted to 0 if not specifed otherwise
+    sine = Sine()
     saw  = Saw()
 
 sample:
-    if in1 < 1:
-        out1 = sine.process(in1)
+    if sineOrSaw < 1:
+        out1 = sine.process(freq)
     else:
-        out1 = saw.process(in1)
+        out1 = saw.process(freq)
+```
+
+## Example 3
+
+In the case of name collisions across modules, this syntax will allow the import of specific `structs` and `defs` with specific names, allowing, for example, multiple implementations with same name of some algorithms to coexist in the same project:
+
+### *One.omni*
+
+```nim
+struct Something:
+    a
+
+def someFunc():
+    return 0.7
+```
+
+### *Two.omni*
+
+```nim
+struct Something:
+    a
+
+def someFunc():
+    return 0.3
+```
+
+### *Three.omni*
+
+```nim
+#equivalent to -> use "One.omni":
+use One:
+    Something as Something1
+    someFunc as someFunc1
+
+#equivalent to -> use "Two.omni":
+use Two:
+    Something as Something2
+    someFunc as someFunc2
+
+init:
+    one = Something1()
+    two = Something2()
+
+sample:
+    out1 = someFunc1() + someFunc2()
 ```
 
 <br>

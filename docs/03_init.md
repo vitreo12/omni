@@ -12,7 +12,7 @@ The `init` block is an optional block that takes care of initializing and storin
     outs 1
 
     init:
-        myVariable = 0.0
+        myVariable = 0
 
     sample:
         out1 = myVariable
@@ -23,13 +23,13 @@ The `init` block is an optional block that takes care of initializing and storin
 
     ```nim
     ins 2:
-        "input"
-        "delayTime" {0.5, 0, 1}
+        input
+        delayTime {0.5, 0, 1}
 
     outs 1
 
     init:
-        delayLength  = samplerate
+        delayLength = samplerate
         myDelay = Delay(delayLength)
 
         #the build block only passes specific variables to perform/sample
@@ -37,10 +37,8 @@ The `init` block is an optional block that takes care of initializing and storin
             myDelay
 
     sample:
-        input = in1
-
         #input + read the delay line, using the second input as a delay time control
-        outVal = (input * 0.5) + (myDelay.read(in2 * samplerate) * 0.5)
+        outVal = (input * 0.5) + (myDelay.read(delayTime * samplerate) * 0.5)
         
         out1 = outVal
 
