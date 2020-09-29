@@ -213,7 +213,14 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
     #If buffer, add buffer_interface too
     if proc_call_ident_str == "Buffer":
 
-        let buffer_input_num = proc_new_call[1]
+        var buffer_input_num = proc_new_call[1]
+
+        #Buffer(input_num=1)
+        if buffer_input_num.kind == nnkExprEqExpr:
+            let buffer_input_num_arg =  buffer_input_num[0]
+            if buffer_input_num_arg.kind == nnkIdent:
+                if buffer_input_num_arg.strVal() == "input_num":
+                    buffer_input_num = buffer_input_num[1]
 
         if buffer_input_num.kind != nnkIntLit:
             error("'" & repr(parsed_statement) & "': Buffer's 'input_num' must be expressed as an integer literal value")
