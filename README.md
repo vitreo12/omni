@@ -63,7 +63,7 @@ Run `omni -h` to get help on all the available flags.
 
 When running the `omni` compiler, the output is either a static or shared library (depending on the `--lib` flag). Along with it, an `omni.h` file (depending on the `--exportHeader` flag) containing all the callable functions in the shared/static library will be exported.
 
-    omni ~/.nimble/pkgs/omni-0.1.0/examples/OmniSaw.omni -o:./
+    omni ~/.nimble/pkgs/omni-0.2.0/examples/OmniSaw.omni -o:./
 
 This command will compile an antialiased sawtooth oscillator (part of the examples) to a shared library (`libOmniSaw.so/dylib/dll`), together with a header file (`omni.h`), in the current folder.
 
