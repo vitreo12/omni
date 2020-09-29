@@ -9,10 +9,10 @@ title: Buffer
 
 These are methods that only work in the `perform` or `sample` blocks. If used in the `init` block, they will yield 0:
 
-1. `length`     : returns the length of the `Buffer`.
-2. `size`       : returns the total length of the `Buffer` (length * channels).
-3. `chans`      : returns the number of channels of the `Buffer`.
-4. `samplerate` : returns the samplerate of the `Buffer`.
+1. `len` / `length` : returns the length of the `Buffer`.
+2. `size`           : returns the total size of the `Buffer` (length * channels).
+3. `chans`          : returns the number of channels of the `Buffer`.
+4. `samplerate`     : returns the samplerate of the `Buffer`.
 
 ## Example
 
