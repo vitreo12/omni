@@ -1,6 +1,6 @@
 import ../../../omni_lang
 
-#[ use One:
+use One:
     someFunc as someFunc1
     Something as Something1
 
@@ -13,6 +13,4 @@ init:
     two = Something2()
 
 sample:
-    out1 = someFunc1() + someFunc2() ]#
-
-use Bubu/One, Bubu/Two
+    out1 = someFunc1() + someFunc2()
