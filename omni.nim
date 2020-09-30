@@ -129,10 +129,18 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     
     #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Omni/issues/12745
     setCurrentDir(outDirFullPath)
+
+    #If architecture == native, also pass the mtune=native flag.
+    #If architecture == none, no architecture applied
+    var real_architecture = "--passC:-march=" & $architecture
+    if architecture == "native":
+        real_architecture = real_architecture & " --passC:-mtune=native"
+    elif architecture == "none":
+        real_architecture = ""
     
-    #Actual compile command. NOTE THE -f:on TO FORCE RECOMPILATION AND DEBUG CORRECT LINKED MODULES! IT WILL BE REMOVED!!!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --opt:speed --passC:-fPIC --passC:-march=" & $architecture & " -d:release -d:danger"
-    
+    #Actual compile command. Keep the --forceBuild:on in order to recompile omni modules when changing them!
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --passC:-fPIC " & $real_architecture
+
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
