@@ -731,6 +731,14 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     let defaults_mins_maxs = buildDefaultMinMaxArrays(num_of_inputs_VAL, default_vals, min_vals, max_vals)
 
     return quote do:
+        #Export to C: inline all functions
+        when defined(omni_export_c):
+            {.pragma: omni_export_or_dynlib, inline.}
+
+        #shared / static lib: needs dynlib for export the symbol
+        else:
+            {.pragma: omni_export_or_dynlib, dynlib.}
+            
         const 
             omni_inputs            {.inject.} = `num_of_inputs_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             omni_input_names_const {.inject.} = `param_names_node`  #It's possible to insert NimNodes directly in the code block 
@@ -756,13 +764,13 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
                 return 0.0
         
         #Export to C
-        proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
+        proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", omni_export_or_dynlib.} =
             return int32(omni_inputs)
 
-        proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
+        proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", omni_export_or_dynlib.} =
             return cast[ptr cchar](unsafeAddr(omni_input_names_let[0]))
 
-        proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
+        proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", omni_export_or_dynlib.} =
             return cast[ptr cfloat](omni_defaults_let.unsafeAddr)
 
 macro inputs*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
@@ -853,10 +861,10 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
         #generate_outputs_templates(`num_of_outputs_VAL`)
         
         #Export to C
-        proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
+        proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", omni_export_or_dynlib.} =
             return int32(omni_outputs)
 
-        proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
+        proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", omni_export_or_dynlib.} =
             return cast[ptr cchar](unsafeAddr(omni_output_names_let[0]))
 
 macro outputs*(num_of_outputs : typed, param_names : untyped = nil) : untyped  =
