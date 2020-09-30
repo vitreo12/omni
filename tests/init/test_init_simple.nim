@@ -56,7 +56,6 @@ suite "init: functions and templates exist":
     check (typeof(UGen.d_var) is int)
     check (typeof(UGen.CONST1_let) is float)
     check (typeof(UGen.CONST2_let) is int)
-    check (typeof(UGen.is_initialized_let) is bool)
     check (typeof(UGen.samplerate_let) is float)
     check (typeof(UGen.ugen_auto_mem_let) is ptr OmniAutoMem)
     check (typeof(UGen.ugen_auto_buffer_let) is ptr OmniAutoMem)
@@ -82,9 +81,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
     ugen_ptr_64 = Omni_UGenAlloc()
     ugen_64 = cast[ptr UGen](ugen_ptr_64)
 
-  test "is_initialized is false":
-    check (ugen_64.is_initialized_let == false)
-
   test "ugen_auto_mem is nil":
     check (ugen_64.ugen_auto_mem_let == nil)
 
@@ -98,9 +94,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
 
   test "ugen init":
     check (init_ugen == 1)
-
-  test "ugen is_initialized true":
-    check (ugen_64.is_initialized_let == true)
 
   test "ugen_auto_mem is not nil":
     check (ugen_64.ugen_auto_mem_let != nil)
@@ -128,9 +121,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit32":
     ugen_ptr_32 = Omni_UGenAlloc()
     ugen_32 = cast[ptr UGen](ugen_ptr_32)
 
-  test "is_initialized is false":
-    check (ugen_32.is_initialized_let == false)
-
   test "ugen_auto_mem is nil":
     check (ugen_32.ugen_auto_mem_let == nil)
 
@@ -144,9 +134,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit32":
 
   test "ugen init":
     check (init_ugen == 1)
-
-  test "ugen is_initialized true":
-    check (ugen_32.is_initialized_let == true)
 
   test "ugen_auto_mem is not nil":
     check (ugen_32.ugen_auto_mem_let != nil)
@@ -179,9 +166,6 @@ suite "init: Omni_UGenAllocInit64":
   test "ugen init":
     check (ugen_ptr_64 != nil)
 
-  test "ugen is_initialized true":
-    check (ugen_64.is_initialized_let == true)
-
   test "ugen_auto_mem is not nil":
     check (ugen_64.ugen_auto_mem_let != nil)
 
@@ -212,9 +196,6 @@ suite "init: Omni_UGenAllocInit32":
 
   test "ugen init":
     check (ugen_ptr_32 != nil)
-
-  test "ugen is_initialized true":
-    check (ugen_32.is_initialized_let == true)
 
   test "ugen_auto_mem is not nil":
     check (ugen_32.ugen_auto_mem_let != nil)

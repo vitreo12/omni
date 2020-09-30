@@ -414,7 +414,6 @@ macro init_inner*(code_block_stmt_list : untyped) =
             if isNil(ugen_ptr):
                 print("ERROR: Omni: could not allocate memory")
             
-            ugen.is_initialized_let   = false
             ugen.ugen_auto_mem_let    = nil
             ugen.ugen_auto_buffer_let = nil
 
@@ -492,11 +491,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #checkValidity triggers the checks for correct initialization of all Datas entries,
                 #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
-                    ugen.is_initialized_let = false
                     return 0
-
-                #Successful init
-                ugen.is_initialized_let = true
                 
                 return 1
 
@@ -559,12 +554,8 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #checkValidity triggers the checks for correct initialization of all Datas entries,
                 #while also adding all the Buffers to ugen_auto_buffer
                 if not checkValidity(ugen, ugen_auto_buffer):
-                    ugen.is_initialized_let = false
                     return 0
-                    
-                #Successful init
-                ugen.is_initialized_let = true
-
+                
                 return 1
 
             proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
@@ -770,15 +761,6 @@ macro build*(var_names : varargs[typed]) =
         nnkIdentDefs.newTree(
             newIdentNode("samplerate_let"),
             getType(float),
-            newEmptyNode()
-        )
-    )
-
-    #Add is_initialized_let variable
-    var_names_and_types.add(
-        nnkIdentDefs.newTree(
-            newIdentNode("is_initialized_let"),
-            getType(bool),
             newEmptyNode()
         )
     )
