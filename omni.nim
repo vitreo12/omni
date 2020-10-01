@@ -127,7 +127,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     else:
         output_name = $outName & $lib_extension
     
-    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Omni/issues/12745
+    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
     setCurrentDir(outDirFullPath)
 
     #If architecture == native, also pass the mtune=native flag.
