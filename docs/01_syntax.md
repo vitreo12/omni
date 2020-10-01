@@ -75,10 +75,23 @@ init:
 
 ## Flow control
 
-There are two options for loops in omni, using either the `for` or `while` statements:
+There are three options for loops in omni: `loop`, `for` or `while` statements:
+
+**_NOTE:_**
+The `loop` statement is the preferred way of doing loops in omni, as it's more optimized. When used wih integer literals, it automatically unrolls the loops.
 
 ```nim
 init:
+    #This counts from 0 to 9
+    i = 0
+    loop 10:
+        print(i)
+        i += 1
+
+    #This counts from 0 to 9
+    loop 10 i:
+        print(i)  
+
     #This counts from 0 to 10
     for i in 0..10:
         print(i)
@@ -87,6 +100,7 @@ init:
     for i in 0..<10:
         print(i)
 
+    #This counts from 0 to 9
     i = 0
     while i < 10:
         print(i)
