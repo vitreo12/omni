@@ -126,7 +126,7 @@ init:
 
 ## Keywords
 
-```if, elif, else, case, for, while, mod, and, or, not, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, signal, signal32, signal64, sig, sig32, sig64```
+```if, elif, else, case, loop, for, while, mod, and, or, not, float, float32, float64, int, int32, int64, def, struct, samplerate, bufsize, ins, outs, in[1..32], out[1..32], init, build, perform, sample, Data, Delay, Buffer, signal, signal32, signal64, sig, sig32, sig64```
 
 **_NOTES:_** 
 
