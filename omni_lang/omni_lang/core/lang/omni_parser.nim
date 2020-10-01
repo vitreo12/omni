@@ -21,7 +21,8 @@
 # SOFTWARE.
 
 #remove tables here and move isStrUpperAscii (and strutils) to another module
-import macros, strutils, omni_invalid, omni_type_checker, omni_macros_utilities
+import macros, strutils
+import omni_loop, omni_invalid, omni_type_checker, omni_macros_utilities
 
 #Types that will be converted to float when in tuples (if not explicitly set)
 let tuple_convert_types {.compileTime.} = [
@@ -298,11 +299,17 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
         call_name = parsed_statement[0]
         call_name_kind = call_name.kind
 
-    #Detect out of position "build" calls in "init"
-    if is_constructor_block:
-        if call_name.kind == nnkIdent:
-            if call_name.strVal() == "build":
-                error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
+    if call_name.kind == nnkIdent:
+        let call_name_str = call_name.strVal()
+
+        #loop(4) / loop(i, 4)
+        if call_name_str == "loop":
+            parsed_statement = loop_inner(parsed_statement.copy())
+            return parsed_statement
+        
+        #Detect out of position "build" calls in "init"
+        if is_constructor_block and call_name_str == "build":
+            error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
         
     #Something weird happened with Data[Something]() in a def.. It returned a call to a
     #nnkOpenSymChoice with symbols.. Re-interpret it and re-run parser (NEEDS MORE TESTING!)
@@ -383,6 +390,7 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
     var 
         parsed_statement : NimNode
         new_stmt = false
+        loop_stmt = false
         command_name = statement[0]
 
     #Detect out of position "build" calls in "init"
@@ -391,9 +399,11 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
 
-    #"new" statement, just do a normal call ignoring "new"
+    #ident statements: "loop", "new"
     if command_name.kind == nnkIdent:
-        if command_name.strVal() == "new":
+        let command_name_str = command_name.strVal()
+        
+        if command_name_str == "new":
             command_name = statement[1]
             new_stmt = true
 
@@ -416,9 +426,14 @@ proc parse_untyped_command(statement : NimNode, level : var int, declared_vars :
                 #error "'" & $repr(statement) & "': Invalid 'new' syntax. It requires a normal function call."
             else:
                 error "'" & $repr(statement) & "': Invalid 'new' syntax."
-
+        
+        #loop 4 / loop i 4
+        elif command_name_str == "loop":
+            loop_stmt = true
+            parsed_statement = loop_inner(statement.copy())
+            
     #This is the normal case for all commands: just turn them to nnkCalls.
-    if not new_stmt:
+    if not new_stmt and not loop_stmt:
         parsed_statement = nnkCall.newTree(
             command_name
         )

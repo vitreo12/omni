@@ -49,3 +49,6 @@ export omni_use
 
 import omni_module
 export omni_module
+
+import omni_loop
+export omni_loop
