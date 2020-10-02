@@ -65,6 +65,8 @@ macro generate_ye_loops(proc_name : typed, var_name_str : typed, num : typed, nu
         )
     )
 
+    echo repr result
+
 template ye(a) =
     generate_ye_loops(ye_inner, "a", a)
 
@@ -112,6 +114,8 @@ macro generate_ya_loops(proc_name : typed, var_name_str : typed, num : typed, nu
             num
         )
     )
+
+    echo repr result
 
 template ya(a) =
     generate_ya_loops(ya_inner, "a", a)
@@ -162,12 +166,12 @@ macro generate_yu_loops(proc_name : typed, var_name_str : typed, num : typed, nu
         )
     )
 
-    #error repr result
+    echo repr result
 
 template yu(a) =
     generate_yu_loops(yu_inner, "a", a)
 
 
-expandMacros:
-    yu 10
-    yu 100
+#expandMacros:
+yu 10
+yu 100
