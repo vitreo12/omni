@@ -1,7 +1,12 @@
-import ../../omni_lang
+import ../../omni_lang, macros
 
-struct `Something`:
-    a float
-    
+expandMacros:
+    struct Bubu:
+        a
+
+    struct Something:
+        b Data
+        a (float, float)
+
 def `+`():
     print "ye"

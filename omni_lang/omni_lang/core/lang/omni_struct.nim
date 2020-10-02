@@ -188,11 +188,11 @@ proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.
     return false 
 
 proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : NimNode, var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
-    if statement.kind == nnkBracketExpr:
-        let 
-            var_name_str = var_name.strVal()
-            ptr_name_str = ptr_name.strVal()
+    let 
+        var_name_str = var_name.strVal()
+        ptr_name_str = ptr_name.strVal()
 
+    if statement.kind == nnkBracketExpr:
         var already_looped = false
 
         #Check validity of structs that are not Datas
@@ -241,6 +241,21 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
                                 newLit(ptr_name_str)
                             )
                         )
+
+    #All other cases
+    else:
+        if not(statement in generics_seq):
+            checkValidTypes.add(
+                nnkCall.newTree(
+                    newIdentNode("checkValidType_macro"),
+                    statement,
+                    newLit(var_name_str), 
+                    newLit(false),
+                    newLit(false),
+                    newLit(true),
+                    newLit(ptr_name_str)
+                )
+            )
 
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
@@ -409,16 +424,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = newIdentNode("float")
 
         #phase float
-        if code_stmt_kind == nnkCommand:
+        elif code_stmt_kind == nnkCommand:
             var_name = code_stmt[0]
             var_type = code_stmt[1]
 
             if var_name.kind != nnkIdent:
                 error "struct " & repr(ptr_name) & ": Invalid field name in '" & repr(code_stmt) & "'"
             
-            #Type can either be an ident or a bracket expr (generics)
-            if var_type.kind != nnkIdent:
-                if var_type.kind != nnkBracketExpr:
+            let var_type_kind = var_type.kind
+
+            #Type can either be an ident, a bracket expr (generics) or a tuple (par)
+            if var_type_kind != nnkIdent:
+                if var_type_kind != nnkBracketExpr and var_type_kind != nnkPar:
                     error "struct " & repr(ptr_name) & ": Invalid field type in '" & repr(code_stmt) & "'"
 
         else:
@@ -487,6 +504,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     for field_typed in fields_typed:
         declare_struct.add(field_typed)
+
+    #error astGenRepr checkValidTypes
 
     return quote do:
         `checkValidTypes`
@@ -660,15 +679,20 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
     for index, field in struct_fields:
         assert field.len == 3
-        
+
         var 
             field_name = field[0]
             field_type = field[1]
+            field_type_kind = field_type.kind
 
         var field_type_without_generics = field_type
         
-        if field_type.kind == nnkBracketExpr:
+        if field_type_kind == nnkBracketExpr:
             field_type_without_generics = field_type[0]
+        
+        #Skip tuples
+        elif field_type_kind == nnkTupleConstr:
+            continue
 
         let field_type_without_generics_str = field_type_without_generics.strVal()
     

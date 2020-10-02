@@ -103,17 +103,20 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
         else:
             var_type_str = var_type[0].strVal()
     
-    #Other types
-    else:
-        #tuples
-        if var_type_kind == nnkTupleConstr:
-            #check all entries of the tuple too
-            for tuple_entry_type in var_type:
-                checkValidType(tuple_entry_type, var_name, is_proc_arg, is_proc_call, is_struct_field, proc_name, true)
+    #tuples
+    elif var_type_kind == nnkTupleConstr or var_type_kind == nnkPar:
+        #check all entries of the tuple too
+        for tuple_entry_type in var_type:
+            checkValidType(tuple_entry_type, var_name, is_proc_arg, is_proc_call, is_struct_field, proc_name, true)
 
-            var_type_str = "tuple"
-        else:
-            var_type_str = var_type.strVal()
+        var_type_str = "tuple"
+    
+    #idents / syms
+    elif var_type_kind == nnkIdent or var_type_kind == nnkSym:
+        var_type_str = var_type.strVal()
+
+    else:
+        error "Type checker: invalid kind '" & $var_type_kind & "'"
 
     #echo "checkValidType"
     #echo astGenRepr var_type
@@ -136,11 +139,11 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
 
     #struct field
     elif is_struct_field:
-        if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type_str in additionalArgCallTypes) or (var_type.isStruct())):
+        if not ((var_type_str in varDeclTypes) or (var_type_str in additionalArgDeclTypes) or (var_type.isStruct())):
             error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
 
     #tuple field
-    elif is_tuple_entry:
+    if is_tuple_entry:
         if not ((var_type_str in varDeclTypes)):
             error("tuple '" & $var_name & "' contains an invalid type: '" & $var_type_str & "'. Tuples only support number types.")
 
