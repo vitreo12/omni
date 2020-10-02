@@ -1,9 +1,8 @@
 import ../../omni_lang, macros
 
 expandMacros:
-    def bubu(a):
-        
-        loop a i:
+    def bubu(SOMETHING = 2):
+        loop SOMETHING i:
             print i
 
     init:
