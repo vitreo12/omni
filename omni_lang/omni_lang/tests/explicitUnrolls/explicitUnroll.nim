@@ -184,7 +184,7 @@ def something_unroll(AMT):
         print i
 
 def something_normal(amt):
-    loop amt i #<-- not unrolled, amt is not a const
+    loop amt i: #<-- not unrolled, amt is not a const
         print i
 
 init:
