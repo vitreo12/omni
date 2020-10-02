@@ -143,7 +143,7 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
             error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
 
     #tuple field
-    if is_tuple_entry:
+    elif is_tuple_entry:
         if not ((var_type_str in varDeclTypes)):
             error("tuple '" & $var_name & "' contains an invalid type: '" & $var_type_str & "'. Tuples only support number types.")
 

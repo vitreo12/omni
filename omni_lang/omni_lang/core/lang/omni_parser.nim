@@ -1670,6 +1670,8 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                         for_loop_body
                     )
                 )
+
+    #error astGenRepr parsed_statement[1][2].getImpl()
                 
     #error repr parsed_statement
 
