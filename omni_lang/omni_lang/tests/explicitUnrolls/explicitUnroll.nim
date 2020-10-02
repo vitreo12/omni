@@ -172,6 +172,28 @@ template yu(a) =
     generate_yu_loops(yu_inner, "a", a)
 
 
+#Only works with auto params cause I need the macros to be triggered
+#on function call, not instantiation. This only happens for generic params.
+#The proposed syntax for this feature is full capital letters for compile time arguments to
+#defs. Of course, these can only be either explicit ints or floats. This will be useful in order
+#To use `loop` inside defs:
+
+#[ 
+def something_unroll(AMT):
+    loop AMT i: #<-- with this mechanism, this will be unrolled!
+        print i
+
+def something_normal(amt):
+    loop amt i #<-- not unrolled, amt is not a const
+        print i
+
+init:
+    something_unroll 10
+    something_unroll 5
+    a = 10; something_unroll a #<-- ERROR: a is not an int or float lit!
+    a = 10; something_normal a #<-- This would still work, normal call
+]#
+
 #expandMacros:
 yu 10
 yu 100
