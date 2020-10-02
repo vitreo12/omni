@@ -1671,7 +1671,8 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                     )
                 )
 
-    #error astGenRepr parsed_statement[1][2].getImpl()
+    echo astGenRepr parsed_statement
+    error astGenRepr parsed_statement[1][2].getImpl()
                 
     #error repr parsed_statement
 
