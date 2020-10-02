@@ -1,3 +1,14 @@
+## 0.2.1
+
+1) Introducing the `loop` construct:
+
+    ```nim
+    loop 4 i:
+        print i
+    ```
+
+2) Better error printing for invalid `def` and `struct` builds.
+
 ## 0.2.0
 
 1) Support for command-like calls. Just like `nim`, it works for one arguments only:
