@@ -70,7 +70,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         elif function_signature_kind == nnkInfix:
             
             if function_signature[0].strVal() != "->":
-                error "def: invalid return operator: \"" & $function_signature[0] & "\". Use \"->\"."
+                error "def: Invalid return operator: '" & $function_signature[0] & "'. Use '->'."
             
             name_with_args   = function_signature[1]
             proc_return_type = function_signature[2]
@@ -88,8 +88,8 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                     #template_proc_call.add(proc_name)
                     continue
 
-                if entry.kind == nnkExprColonExpr:
-                    error "def: can't specify generics value \"" & $entry[0].strVal & " : " & $entry[1].strVal & "\" for \"def " & $proc_name.strVal & "\". It is defaulted to be \"SomeNumber\"."
+                if entry.kind != nnkIdent:
+                    error "def " & repr(proc_name) & ": Invalid generic '" & repr(entry) & "'"
                 
                 #Generics (for now) can only be SomeNumber
                 proc_generic_params.add(
@@ -106,6 +106,10 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #No Generics
         elif first_statement.kind == nnkIdent:
             proc_name = first_statement
+
+        #Perhaps at least support `+` in the future (nnkAccQuoted)
+        if proc_name.kind != nnkIdent and proc_name.kind != nnkSym:
+            error "def: Invalid name: '" & repr(first_statement) & "'"
 
         #Check name validity
         proc_name_str = proc_name.strVal()
@@ -180,7 +184,6 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 arg_type = statement[1]
                 arg_value = newEmptyNode()
 
-            
             #a -> a : auto
             elif statement_kind == nnkIdent:
                 arg_name = statement
@@ -188,7 +191,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 arg_value = newEmptyNode()
                 
             else:
-                error("\"def " & $proc_name.strVal() & "\": Invalid argument, \"" & $(repr statement) & "\"")
+                error("def " & proc_name_str & ": Invalid syntax for argument '" & repr(statement) & "'")
 
             var arg_type_is_generic = false
 

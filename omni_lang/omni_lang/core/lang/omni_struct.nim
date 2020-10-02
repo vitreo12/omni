@@ -382,6 +382,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
         obj_bracket_expr = obj_name
         #ptr_bracket_expr = ptr_name
+    
+    else:
+        error "struct: Invalid name: '" & repr(struct_name) & "'"
 
     #Detect invalid struct name
     if struct_name_str in omni_invalid_idents:
@@ -407,29 +410,19 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #phase float
         if code_stmt_kind == nnkCommand:
-            assert code_stmt.len == 2
-            assert code_stmt[0].kind == nnkIdent
-            
-            #This is needed for generics!
-            if code_stmt[1].kind != nnkIdent:
-                if code_stmt[1].kind != nnkBracketExpr:
-                    error("\"" & $ptr_name & "\": " & "Invalid struct body")
-
             var_name = code_stmt[0]
             var_type = code_stmt[1]
 
-        #phase : float
-        elif code_stmt_kind == nnkCall:
+            if var_name.kind != nnkIdent:
+                error "struct " & repr(ptr_name) & ": Invalid field name in '" & repr(code_stmt) & "'"
             
-            #Have some better error checking and printing here
-            if code_stmt.len != 2 or code_stmt[0].kind != nnkIdent or code_stmt[1].kind != nnkStmtList or code_stmt[1][0].kind != nnkIdent:
+            #Type can either be an ident or a bracket expr (generics)
+            if var_type.kind != nnkIdent:
+                if var_type.kind != nnkBracketExpr:
+                    error "struct " & repr(ptr_name) & ": Invalid field type in '" & repr(code_stmt) & "'"
 
-                #Needed for generics in body of struct
-                if code_stmt[1][0].kind != nnkBracketExpr:
-                    error("\"" & $ptr_name & "\": " & "Invalid struct body")
-        
-            var_name = code_stmt[0]
-            var_type = code_stmt[1][0]
+        else:
+            error "struct " & repr(ptr_name) & ": Invalid field '" & repr(code_stmt) & "'"
 
         var var_type_untyped_or_typed = false
 
