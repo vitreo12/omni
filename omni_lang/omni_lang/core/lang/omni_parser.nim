@@ -357,14 +357,18 @@ proc parse_untyped_call(statement : NimNode, level : var int, declared_vars : va
         var return_val = parsed_statement[0]
 
         #Retrieve return type of def from extra_data
-        var return_type = extra_data
+        var 
+            return_type = extra_data
+            return_type_kind = return_type.kind
 
-        #Convert value if explicitly expressed by user
-        if return_type.strVal() != "auto":
-            return_val = nnkCall.newTree(
-                return_type,
-                return_val
-            )
+        #Convert value if explicitly expressed by user. 
+        #This would just work for number types anyway.
+        if return_type_kind == nnkIdent or return_type_kind == nnkSym:
+            if return_type.strVal() != "auto":
+                return_val = nnkCall.newTree(
+                    return_type,
+                    return_val
+                )
 
         #Convert "return" to "omni_temp_result_... ="
         #This is needed to avoid type checking weirdness in the def block!
