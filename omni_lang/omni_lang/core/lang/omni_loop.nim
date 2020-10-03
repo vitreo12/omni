@@ -22,7 +22,9 @@
 
 import macros
 
-#[ proc loop_index_substitute(code_block : NimNode, index_original : NimNode, index_sub : NimNode) : void {.compileTime.} =
+#[ 
+    
+proc loop_index_substitute(code_block : NimNode, index_original : NimNode, index_sub : NimNode) : void {.compileTime.} =
     for i, statement in code_block:
         if statement == index_original:
             code_block[i] = index_sub
@@ -58,7 +60,8 @@ proc loop_unroll(code_block : NimNode, num : NimNode, index : NimNode) : NimNode
         result
     )
 
-    #error repr result ]#
+    #error repr result
+]#
         
 proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
     if loop_block.kind == nnkCall:
