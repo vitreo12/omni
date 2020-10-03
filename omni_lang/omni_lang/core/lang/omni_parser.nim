@@ -850,7 +850,7 @@ proc reset_declared_vars(declared_vars : var seq[string], declared_vars_copy : s
     for declared_var_copy in declared_vars_copy:
         declared_vars.add(declared_var_copy)
 
-proc parse_untyped_elif_else_for_while(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
+proc parse_untyped_elif_else_for_while_block(statement : NimNode, level : var int, declared_vars : var seq[string], is_constructor_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
     #Copy the vars that were declared in the previous scope
     var declared_vars_copy = declared_vars.copy_declared_vars()
 
@@ -886,8 +886,8 @@ proc parser_untyped_dispatcher(statement : NimNode, level : var int, declared_va
         parsed_statement = parse_untyped_call(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     
     #This is needed to introduce new scopes, in order for declared_vars to work everytime on a different scope level
-    elif statement_kind == nnkElifBranch or statement_kind == nnkElse or statement_kind == nnkForStmt or statement_kind == nnkWhileStmt:
-        parsed_statement = parse_untyped_elif_else_for_while(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    elif statement_kind == nnkElifBranch or statement_kind == nnkElse or statement_kind == nnkForStmt or statement_kind == nnkWhileStmt or statement_kind == nnkBlockStmt:
+        parsed_statement = parse_untyped_elif_else_for_while_block(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     
     else:
         parsed_statement = parser_untyped_loop(statement, level, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
@@ -1048,7 +1048,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     final_block.add(code_block)
 
     #if is_def_block:
-    #    error repr final_block
+    #    echo repr final_block
 
     #if is_def_block:
     #    error repr extra_data

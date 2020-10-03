@@ -9,13 +9,10 @@ expandMacros:
         loop 3 i:
             b = i
             c = 0
-            loop 1 y:
+            loop i y:
                 c = y
             
-            if b == 0:
-                c = 0.23
-            
-        loop(4, i):
+        #[ loop(4, i):
             loop(2, y):
                 print i
                 print y
@@ -41,4 +38,4 @@ expandMacros:
             print i
         
         loop(a):
-            print 0
+            print 0 ]#
