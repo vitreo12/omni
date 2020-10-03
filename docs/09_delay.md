@@ -7,8 +7,8 @@ title: Delay
 
 ```nim
 ins 2:
-    "input"
-    "delayTime" {0.5, 0, 1}
+    input
+    delayTime {0.5, 0, 1}
 
 outs 1
 
@@ -17,8 +17,7 @@ init:
     myDelay = Delay(delayLength) #length is expressed in samples
 
 sample:
-    input = in1
-    delayVal = myDelay.read(in2 * samplerate) #delay time is expressed in samples
+    delayVal = myDelay.read(delayTime * samplerate) #delay time is expressed in samples
     out1 = input + delayVal
     myDelay.write(input)
 ```
