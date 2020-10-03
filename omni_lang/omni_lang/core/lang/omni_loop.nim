@@ -22,78 +22,43 @@
 
 import macros
 
-proc loop_index_substitute(code_block : NimNode, index_original : NimNode, index_sub : NimNode) : void {.compileTime.} =
+#[ proc loop_index_substitute(code_block : NimNode, index_original : NimNode, index_sub : NimNode) : void {.compileTime.} =
     for i, statement in code_block:
         if statement == index_original:
             code_block[i] = index_sub
         loop_index_substitute(statement, index_original, index_sub)
 
+#loop_unroll actually slows things down apparently...
 proc loop_unroll(code_block : NimNode, num : NimNode, index : NimNode) : NimNode {.compileTime.} =
     let num_val = num.intVal()
     
-    var unique_index : NimNode         
-    
     result = nnkStmtList.newTree()
+
+    #if loop <= 0, return 
+    if num_val <= 0:
+        return result
         
     for i in 0..<num_val:
-        if index.kind == nnkIdent:
-            if i == 0:
-                unique_index = genSym(ident=index.strVal())
-                unique_index = parseExpr(repr(unique_index)) #need untyped repr
-                result.add(
-                    nnkWhenStmt.newTree(
-                        nnkElifBranch.newTree(
-                            nnkPrefix.newTree(
-                                newIdentNode("not"),
-                                nnkCall.newTree(
-                                    newIdentNode("declaredInScope"),
-                                    unique_index
-                                )
-                            ),
-                            nnkStmtList.newTree(
-                                nnkVarSection.newTree(
-                                    nnkIdentDefs.newTree(
-                                        unique_index,
-                                        newIdentNode("int"),
-                                        newLit(int(i))
-                                    )
-                                )
-                            )
-                        ),
-                        nnkElse.newTree(
-                            nnkStmtList.newTree(
-                                nnkAsgn.newTree(
-                                    unique_index,
-                                    newLit(int(i))
-                                )
-                            )
-                        )
-                    )
-                    
-                )
-            else:
-                result.add(
-                    nnkAsgn.newTree(
-                        unique_index,
-                        newLit(int(i))
-                    )
-                )
+        let code_block_cp = code_block.copy()
+        let new_index = newLit(int(i))
         
+        loop_index_substitute(code_block_cp, index, new_index)
+
         #Needed for struct re-assigning!
         result.add(
             nnkBlockStmt.newTree(
                 newEmptyNode(),
-                code_block
+                code_block_cp
             )
         )
-
-    loop_index_substitute(result, index, unique_index)
 
     #Wrap the whole loop in block, so the scope is not polluted
     result = nnkBlockStmt.newTree(
         newEmptyNode(),
         result
     )
+
+    #error repr result ]#
         
 proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
     if loop_block.kind == nnkCall:
@@ -107,10 +72,24 @@ proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                 code_block = loop_block[3]
 
             if index_kind == nnkIdent:
-                #loop unroll
+                #loop(4, i)
                 if num_kind == nnkIntLit:
-                    return loop_unroll(code_block, num, index)
+                    #use num_val: gcc will optimize the loop
+                    let num_val = newLit(int(num.intVal()))
+                    return nnkForStmt.newTree(
+                        index,
+                        nnkInfix.newTree(
+                            newIdentNode("..<"),
+                            newLit(0),
+                            num_val
+                        ),
+                        code_block
+                    )
+                    
+                    #loop_unroll actually slows things down apparently...
+                    #return loop_unroll(code_block, num, index)
                 
+                #loop(a, i)
                 elif num_kind == nnkIdent:
                     return nnkForStmt.newTree(
                         index,
@@ -119,7 +98,7 @@ proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                             newLit(0),
                             num
                         ),
-                        loop_block[3]
+                        code_block
                     )
                 else:
                     error "loop: Invalid number or identifier '" & repr(num) & "' in ' " & repr(loop_block) & "'"
@@ -135,16 +114,29 @@ proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
 
         code_block = loop_block[2]
 
+    var unique_index = genSym(ident="index")
+    unique_index = parseExpr(repr(unique_index))
+
     #loop 4 / loop variable / loop(4) / loop(variable)
 
-    #loop unroll
+    #loop 4
     if index_or_num_kind == nnkIntLit:
-        return loop_unroll(code_block, index_or_num, nil)
+        #use num_val: gcc will optimize the loop
+        let num_val = newLit(int(index_or_num.intVal()))
+        return nnkForStmt.newTree(
+            unique_index,
+            nnkInfix.newTree(
+                newIdentNode("..<"),
+                newLit(0),
+                num_val
+            ),
+            code_block
+        )
+
+        #return loop_unroll(code_block, index_or_num, nil)
     
+    #loop a
     elif index_or_num_kind == nnkIdent:
-        var unique_index = genSym(ident="index")
-        unique_index = parseExpr(repr(unique_index))
-        
         return nnkForStmt.newTree(
             unique_index,
             nnkInfix.newTree(
@@ -164,10 +156,23 @@ proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
             index_kind = index.kind
 
         if index_kind == nnkIdent:
-            #loop unroll
+            #loop 4 i
             if num_kind == nnkIntLit:
-                return loop_unroll(code_block, num, index)
+                #use num_val: gcc will optimize the loop
+                let num_val = newLit(int(num.intVal()))
+                return nnkForStmt.newTree(
+                    index,
+                    nnkInfix.newTree(
+                        newIdentNode("..<"),
+                        newLit(0),
+                        num_val
+                    ),
+                    code_block
+                )
 
+                #return loop_unroll(code_block, num, index)
+            
+            #loop a i
             elif num_kind == nnkIdent:
                 return nnkForStmt.newTree(
                     index,
