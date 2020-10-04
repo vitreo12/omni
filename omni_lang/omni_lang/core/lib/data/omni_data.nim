@@ -41,8 +41,8 @@ type
      
 #Having the strings as const as --gc:none is used
 const
-    length_error = "WARNING: Data's length must be a positive number. Setting it to 1"
-    chans_error  = "WARNING: Data's chans must be a positive number. Setting it to 1"
+    length_error = "WARNING: Omni: Data's length must be a positive number. Setting it to 1"
+    chans_error  = "WARNING: Omni: Data's chans must be a positive number. Setting it to 1"
 
     #bounds_error = "WARNING: Trying to access out of bounds Data."
 

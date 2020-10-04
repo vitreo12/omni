@@ -213,7 +213,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
     #If buffer, add buffer_interface too
     if proc_call_ident_str == "Buffer":
-
         var buffer_input_num = proc_new_call[1]
 
         #Buffer(input_num=1)
@@ -240,6 +239,15 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 newIdentNode("omni_inputs")
             ),
             proc_new_call
+        )
+
+    #If Delay, pass samplerate (needed for default)
+    elif proc_call_ident_str == "Delay":
+        proc_new_call.add(
+            nnkExprEqExpr.newTree(
+                newIdentNode("samplerate"),
+                newIdentNode("samplerate")
+            ),
         )
 
     #error repr proc_new_call

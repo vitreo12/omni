@@ -36,17 +36,22 @@ type
 
     Delay_struct_export* = Delay
 
-proc Delay_struct_new_inner*[S : SomeNumber](size : S = uint(1), obj_type : typedesc[Delay_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
+proc Delay_struct_new_inner*[S : SomeNumber](size : S = int(0), samplerate : float, obj_type : typedesc[Delay_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when ugen_call_type is PerformCall:
         {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
+
+    #If size <= 0 (default), delay length will be samplerate
+    var actual_size = int(size)
+    if actual_size <= 0:
+        actual_size = int(samplerate)
 
     #Allocate obj
     result = cast[Delay](omni_alloc(culong(sizeof(Delay_struct_inner))))
 
     #Allocate data
     let 
-        delay_length = int(nextPowerOfTwo(int(size)))
+        delay_length = int(nextPowerOfTwo(actual_size))
         data  = Data_struct_new_inner(delay_length, G1=float, obj_type=Data_struct_export, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
         mask  = int(delay_length - 1)
 
