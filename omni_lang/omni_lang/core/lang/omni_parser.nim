@@ -1679,6 +1679,20 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                     )
                 )
 
+        #Replace explicit const values in loops (gcc will optimize those)
+        else:
+            let var_name = index2[2]
+            if var_name.kind == nnkSym:
+                let var_name_str = var_name.strVal()
+                if var_name_str.isStrUpperAscii(true): #if a const
+                    let var_ident_defs = var_name.getImpl()
+                    if var_ident_defs.kind == nnkIdentDefs:
+                        let var_impl_val = var_ident_defs[2] #actual decl var
+                        if var_impl_val.kind == nnkIntLit:
+                            index2[2] = newLit(int(var_impl_val.intVal()))
+                        elif var_impl_val.kind == nnkFloatLit:
+                            index2[2] = newLit(int(var_impl_val.floatVal()))
+
     #error repr parsed_statement
 
     return parsed_statement
