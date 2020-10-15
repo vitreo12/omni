@@ -139,7 +139,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         real_architecture = ""
     
     #Actual compile command. Keep the --forceBuild:on in order to recompile omni modules when changing them!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger -d:lto --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --passC:-fPIC " & $real_architecture
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger -d:lto --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
 
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
