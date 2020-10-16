@@ -22,10 +22,10 @@
 
 import macros, strutils
 
+#nim <= 1.4.0
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
-macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =  
-    error repr code_block 
-    return code_block
+#macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =  
+#    discard
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
@@ -397,7 +397,10 @@ macro init_inner*(code_block_stmt_list : untyped) =
         `perform_build_names_table_static`
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
-        executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
+        #executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
+        
+        #nim >= 1.4.0 doesn't require the typed call to executeNewStatementAndBuildUGenObjectType
+        `code_block_with_var_let_templates_and_call_to_build_macro`
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =

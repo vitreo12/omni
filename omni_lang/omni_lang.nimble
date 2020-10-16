@@ -20,11 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-version       = "0.2.1"
+version       = "0.2.2"
 author        = "Francesco Cameli"
 description   = "omni_lang"
 license       = "MIT"
 
-requires "nim >= 1.0.0"
+requires "nim >= 1.4.0"
 
 installDirs = @["omni_lang"]

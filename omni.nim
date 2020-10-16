@@ -92,7 +92,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         outDirFullPath = outDir.normalizedPath().expandTilde().absolutePath()
     
     #Check if dir exists
-    if not outDirFullPath.existsDir():
+    if not outDirFullPath.dirExists():
         printError("outDir: " & $outDirFullPath & " does not exist.")
         return 1
 
@@ -236,7 +236,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
             omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
             omni_header_out_path = outDirFullPath & "/omni.h"
         
-        if not omni_header_path.existsFile():
+        if not omni_header_path.fileExists():
             printError("exportHeader: " & $omni_header_path & " does not exist.")
             return 1
         
@@ -253,7 +253,7 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
         #If it's a file, compile it
-        if omniFileFullPath.existsFile():
+        if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if omniFiles.len == 1:
                 return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader)
@@ -262,7 +262,7 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
-        elif omniFileFullPath.existsDir():
+        elif omniFileFullPath.dirExists():
             for kind, dirFile in walkDir(omniFileFullPath):
                 if kind == pcFile:
                     let 
