@@ -213,7 +213,6 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
 
     #If buffer, add buffer_interface too
     if proc_call_ident_str == "Buffer":
-
         var buffer_input_num = proc_new_call[1]
 
         #Buffer(input_num=1)
@@ -240,6 +239,15 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 newIdentNode("omni_inputs")
             ),
             proc_new_call
+        )
+
+    #If Delay, pass samplerate (needed for default)
+    elif proc_call_ident_str == "Delay":
+        proc_new_call.add(
+            nnkExprEqExpr.newTree(
+                newIdentNode("samplerate"),
+                newIdentNode("samplerate")
+            ),
         )
 
     #error repr proc_new_call
@@ -1670,6 +1678,20 @@ proc parse_typed_for(statement : NimNode, level : var int, is_constructor_block 
                         for_loop_body
                     )
                 )
+
+        #Replace explicit const values in loops (gcc will optimize those)
+        else:
+            let var_name = index2[2]
+            if var_name.kind == nnkSym:
+                let var_name_str = var_name.strVal()
+                if var_name_str.isStrUpperAscii(true): #if a const
+                    let var_ident_defs = var_name.getImpl()
+                    if var_ident_defs.kind == nnkIdentDefs:
+                        let var_impl_val = var_ident_defs[2] #actual decl var
+                        if var_impl_val.kind == nnkIntLit:
+                            index2[2] = newLit(int(var_impl_val.intVal()))
+                        elif var_impl_val.kind == nnkFloatLit:
+                            index2[2] = newLit(int(var_impl_val.floatVal()))
 
     #error repr parsed_statement
 

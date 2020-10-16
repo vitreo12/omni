@@ -22,9 +22,10 @@
 
 import macros, strutils
 
+#nim <= 1.4.0
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
-macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
-    discard
+#macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =  
+#    discard
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
@@ -288,15 +289,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_let_declaration
 
-    #echo repr code_block
-    #echo astGenRepr call_to_build_macro
-
-    #echo astGenRepr templates_for_perform_var_declarations
-
-    #error repr templates_for_perform_var_declarations
-
     #First statement of the constructor is the allocation of the "ugen" variable. 
-    #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
     #[
         dumpAstGen:
             var ugen: ptr UGen = cast[ptr UGen](alloc0(sizeof(UGen)))
@@ -391,6 +384,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
+
+    #error repr alloc_ugen
+
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "generateTemplatesForPerformVarDeclarations()" macro
@@ -401,7 +397,10 @@ macro init_inner*(code_block_stmt_list : untyped) =
         `perform_build_names_table_static`
                 
         #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
-        executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
+        #executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
+        
+        #nim >= 1.4.0 doesn't require the typed call to executeNewStatementAndBuildUGenObjectType
+        `code_block_with_var_let_templates_and_call_to_build_macro`
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
