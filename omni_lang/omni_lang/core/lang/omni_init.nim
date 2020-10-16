@@ -23,8 +23,9 @@
 import macros, strutils
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
-macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =   
-    discard
+macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =  
+    error repr code_block 
+    return code_block
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
@@ -288,15 +289,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_let_declaration
 
-    #echo repr code_block
-    #echo astGenRepr call_to_build_macro
-
-    #echo astGenRepr templates_for_perform_var_declarations
-
-    #error repr templates_for_perform_var_declarations
-
     #First statement of the constructor is the allocation of the "ugen" variable. 
-    #The allocation should be done using SC's RTAlloc functions. For testing, use alloc0 for now.
     #[
         dumpAstGen:
             var ugen: ptr UGen = cast[ptr UGen](alloc0(sizeof(UGen)))
@@ -390,6 +383,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
+
+
+    #error repr alloc_ugen
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
