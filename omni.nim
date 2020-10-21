@@ -285,7 +285,7 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
     return 0
 
 #Workaround to pass custom version
-clCfg.version = "Omni -- version " & $omni_ver
+clCfg.version = "Omni - version " & $omni_ver
 
 #Dispatch the omni function as the CLI one
 dispatch(
