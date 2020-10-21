@@ -24,6 +24,7 @@
 {.compile: "./omni_samplerate_bufsize.c".}
 
 #Pass optimization flag to C compiler
+{.localPassc: "-O3".}
 {.passC: "-O3".}
 
 proc omni_get_samplerate_C*() : cdouble {.importc: "omni_get_samplerate_C", cdecl.}

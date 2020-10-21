@@ -24,6 +24,7 @@
 {.compile: "./omni_alloc.c".}
 
 #Pass optimization flag to C compiler
+{.localPassc: "-O3".}
 {.passC: "-O3".}
 
 #C funcs

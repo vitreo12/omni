@@ -24,4 +24,5 @@
 {.compile: "./omni_init_global.c".}
 
 #Pass optimization flag to C compiler
+{.localPassc: "-O3".}
 {.passC: "-O3".}

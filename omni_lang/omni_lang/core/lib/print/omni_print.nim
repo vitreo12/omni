@@ -24,6 +24,7 @@
 {.compile: "./omni_print.c".}
 
 #Pass optimization flag to C compiler
+{.localPassc: "-O3".}
 {.passC: "-O3".}
 
 proc omni_print_debug*   (format_string : cstring, value : culong) : void {.importc: "omni_print_debug_C", cdecl.}
