@@ -276,17 +276,28 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
         else:
             printError($omniFileFullPath & " does not exist.")
             return 1
+
+    #no files provided
+    if omniFiles.len == 0:
+        printError("No Omni files to compile provided.")
+        return 1
     
     return 0
 
+#Workaround to pass custom version ?
+clCfg.version = omni_ver
+
 #Dispatch the omni function as the CLI one
-dispatch(omni, 
+dispatch(
+    omni,
+
     short={
+        "version" : 'v',
         "outName" : 'n',
         "performBits" : 'b'
     },
     
-    help={ 
+    help={
         "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended (e.g. \"OmniSaw.omni\" -> \"libOmniSaw" & $shared_lib_extension & "\"). This flag doesn't work for multiple files or directories.",
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
