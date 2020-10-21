@@ -25,6 +25,6 @@ author        = "Francesco Cameli"
 description   = "omni_lang"
 license       = "MIT"
 
-requires "nim >= 1.4.0"
+requires "nim >= 1.0.0"
 
 installDirs = @["omni_lang"]
