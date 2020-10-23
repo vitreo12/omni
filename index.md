@@ -23,7 +23,7 @@ Run `omni -h` to get help on all the available flags.
 
 ```
 Usage:
-  omni [optional-params] [omniFiles: string...]
+  omni [optional-params] [files: string...]
 Options:
   -h, --help                               print this cligen-erated help
   --help-syntax                            advanced: prepend,plurals,..
