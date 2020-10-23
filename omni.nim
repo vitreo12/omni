@@ -247,15 +247,15 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
-    for omniFile in omniFiles:
+proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
+    for omniFile in files:
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
         #If it's a file, compile it
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
-            if omniFiles.len == 1:
+            if files.len == 1:
                 return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader)
             else:
                 if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader) > 0:
@@ -278,7 +278,7 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
             return 1
 
     #no files provided
-    if omniFiles.len == 0:
+    if files.len == 0:
         printError("No Omni files to compile provided.")
         return 1
     
