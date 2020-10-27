@@ -137,9 +137,20 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         real_architecture = real_architecture & " --passC:-mtune=native"
     elif architecture == "none":
         real_architecture = ""
+
+    #Add -d:lto only on Linux and Windows (not working on OSX + Clang yet: https://github.com/nim-lang/Nim/issues/15578)
+    var lto = ""
+    when defined(Linux) or defined(Windows):
+        lto = "-d:lto"
     
     #Actual compile command. Keep the --forceBuild:on in order to recompile omni modules when changing them!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger -d:lto --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger " & lto & " --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
+
+    #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
+    when defined(MacOSX) or defined(MacOS):
+        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
+
+    echo compile_command
 
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
