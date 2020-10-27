@@ -150,8 +150,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     when defined(MacOSX) or defined(MacOS):
         compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
 
-    echo compile_command
-
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
