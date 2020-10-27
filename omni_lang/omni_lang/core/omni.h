@@ -43,8 +43,8 @@ extern "C" {
     
     //Alloc
     typedef void*  omni_alloc_func_t(size_t in_size);
-    typedef void*  omni_realloc_func_t(void *in_ptr, size_t in_size);
-    typedef void   omni_free_func_t(void *in_ptr);
+    typedef void*  omni_realloc_func_t(void *in, size_t in_size);
+    typedef void   omni_free_func_t(void *in);
 
     //extern omni_alloc_func_t*   omni_alloc_func;   // = malloc;  //Default with malloc
     //extern omni_realloc_func_t* omni_realloc_func; // = realloc; //Default with realloc
@@ -108,22 +108,22 @@ extern "C" {
     OMNI_DLL_EXPORT extern char*  Omni_UGenOutputNames();
 
     //Alloc/Init. Returns NULL if fails to alloc/init
-    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
-    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit64(double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit64(double** ins, int bufsize, double samplerate, void* buffer_interface);
     
     //returns NULL if it fails
     OMNI_DLL_EXPORT extern void*  Omni_UGenAlloc();
     
     //Return 1 if it succeeds / 0 if it fails
-    OMNI_DLL_EXPORT extern int    Omni_UGenInit32(void* ugen_ptr, float**  ins_ptr, int bufsize, double samplerate, void* buffer_interface);
-    OMNI_DLL_EXPORT extern int    Omni_UGenInit64(void* ugen_ptr, double** ins_ptr, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern int    Omni_UGenInit32(void* omni_ugen, float**  ins, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern int    Omni_UGenInit64(void* omni_ugen, double** ins, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform
-    OMNI_DLL_EXPORT extern void   Omni_UGenPerform32(void* ugen_ptr, float**  ins_ptr, float**  outs_ptr, int bufsize);
-    OMNI_DLL_EXPORT extern void   Omni_UGenPerform64(void* ugen_ptr, double** ins_ptr, double** outs_ptr, int bufsize);
+    OMNI_DLL_EXPORT extern void   Omni_UGenPerform32(void* omni_ugen, float**  ins, float**  outs, int bufsize);
+    OMNI_DLL_EXPORT extern void   Omni_UGenPerform64(void* omni_ugen, double** ins, double** outs, int bufsize);
 
     //Free
-    OMNI_DLL_EXPORT extern void   Omni_UGenFree(void* ugen_ptr);
+    OMNI_DLL_EXPORT extern void   Omni_UGenFree(void* omni_ugen);
 
 #ifdef __cplusplus
 }

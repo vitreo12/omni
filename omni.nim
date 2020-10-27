@@ -137,18 +137,24 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         real_architecture = real_architecture & " --passC:-mtune=native"
     elif architecture == "none":
         real_architecture = ""
+
+    #Add -d:lto only on Linux and Windows (not working on OSX + Clang yet: https://github.com/nim-lang/Nim/issues/15578)
+    var lto = ""
+    when defined(Linux) or defined(Windows):
+        lto = "-d:lto"
     
     #Actual compile command. Keep the --forceBuild:on in order to recompile omni modules when changing them!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger -d:lto --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger " & lto & " --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
+
+    #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
+    when defined(MacOSX) or defined(MacOS):
+        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
+
+    echo compile_command
 
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
         compile_command.add(" --cc:" & compiler)
-    
-    #gcc / clang. add flto instruction to compiler and linker (only for non-windows builds)
-    #else:
-    #    when not defined(Windows):
-    #        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
 
     #Append additional definitions
     for new_define in define:
@@ -247,15 +253,15 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
-    for omniFile in omniFiles:
+proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
+    for omniFile in files:
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
         #If it's a file, compile it
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
-            if omniFiles.len == 1:
+            if files.len == 1:
                 return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader)
             else:
                 if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader) > 0:
@@ -276,17 +282,28 @@ proc omni(omniFiles : seq[string], outName : string = "", outDir : string = "", 
         else:
             printError($omniFileFullPath & " does not exist.")
             return 1
+
+    #no files provided
+    if files.len == 0:
+        printError("No Omni files to compile provided.")
+        return 1
     
     return 0
 
+#Workaround to pass custom version
+clCfg.version = "Omni - version " & $omni_ver & "\n(c) 2020 Francesco Cameli "
+
 #Dispatch the omni function as the CLI one
-dispatch(omni, 
+dispatch(
+    omni,
+
     short={
+        "version" : 'v',
         "outName" : 'n',
         "performBits" : 'b'
     },
     
-    help={ 
+    help={
         "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended (e.g. \"OmniSaw.omni\" -> \"libOmniSaw" & $shared_lib_extension & "\"). This flag doesn't work for multiple files or directories.",
         "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
         "lib" : "Build a shared or static library.",
