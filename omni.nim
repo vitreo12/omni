@@ -63,6 +63,19 @@ proc printDone(msg : string) : void =
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
+#parse compilation output for Gc allocations and pretty print it with colors
+proc parseAndPrintCompilationString(msg : string) : bool =
+    #Turn Error: and Warning: into red bright(1m) Error: (ansi escape codes: https://forum.nim-lang.org/t/7002)
+    var colored_msg = msg.multiReplace([("Error:", "\e[31;1mError:\e[0m"), ("Warning:", "\e[31;1mError:\e[0m")])
+    echo colored_msg
+
+    #Check GcMem. --warningAsError doesn't work correctly, as it would print error even when there is not!
+    if msg.contains("GcMem"):
+        printError("Trying to allocate memory through Nim's GC. This is not allowed in Omni. Use 'Data' for all your allocations.")
+        return true
+
+    return false
+
 #Actual compiler
 proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32/64", exportHeader : bool = true) : int =
 
@@ -144,7 +157,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         lto = "-d:lto"
     
     #Actual compile command. Keep the --forceBuild:on in order to recompile omni modules when changing them!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger " & lto & " --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger " & lto & " --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
 
     #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
     when defined(MacOSX) or defined(MacOS):
@@ -206,14 +219,12 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     compile_command.add(" \"" & $fileFullPath & "\"")
 
     #Actually execute compilation. execCmdEx works fine on all OSes
-    let (stdoutString, failedOmniCompilation) = execCmdEx(compile_command)
+    let (compilationString, failedOmniCompilation) = execCmdEx(compile_command)
 
-    #Echo the stdout. Find a neat way to colour code the errors! 
-    echo stdoutString
+    #Check for GcMem warnings and print out 
+    let failedParsingOmniCompilationString = parseAndPrintCompilationString(compilationString)
 
-    #Check GcMem. --warningAsError doesn't work correctly, as it would print error even when there is not!
-    if stdoutString.contains("GcMem"):
-        printError("Trying to allocate memory through Nim's GC. This is not allowed in Omni. Use 'Data' for all your allocations.")
+    if failedParsingOmniCompilationString:
         return 1
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
