@@ -205,13 +205,16 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
 
-    #echo compile_command
-    
-    #Actually execute compilation
-    when not defined(Windows):
-        let failedOmniCompilation = execCmd(compile_command)
-    else:
-        let failedOmniCompilation = execShellCmd(compile_command)
+    #Actually execute compilation. execCmdEx works fine on all OSes
+    let (stdoutString, failedOmniCompilation) = execCmdEx(compile_command)
+
+    #Echo the stdout. Find a neat way to colour code the errors! 
+    echo stdoutString
+
+    #Check GcMem. --warningAsError doesn't work correctly, as it would print error even when there is not!
+    if stdoutString.contains("GcMem"):
+        printError("Trying to allocate memory through Nim's GC. This is not allowed in Omni. Use 'Data' for all your allocations.")
+        return 1
 
     #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
     if failedOmniCompilation > 0:
