@@ -126,7 +126,7 @@ macro castInsOuts64*() =
             ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
             outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
-template performInner*(code_block : untyped) {.dirty.} =
+template perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / outs are not declared, declare them!
     when not declared(declared_inputs):
         ins 1
@@ -219,12 +219,12 @@ template performInner*(code_block : untyped) {.dirty.} =
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "ugen".
 template perform*(code_block : untyped) {.dirty.} =
     let perform_block {.compileTime.} = true
-    performInner(code_block)
+    perform_inner(code_block)
 
 #Run perform inner, but directly to the for loop
 template sample*(code_block : untyped) {.dirty.} =
     when not declared(perform_block):
-        performInner(code_block)
+        perform_inner(code_block)
     else:
         static:
             error("\'sample\': there already is a \'perform\' block declared.")
