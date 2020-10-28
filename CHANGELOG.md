@@ -1,3 +1,16 @@
+## 0.2.3
+
+1) Fix for `-d:lto` on MacOS
+2) Added `-v` flag and copyright
+3) Added Error printing on Warning[GcMem]
+
+## 0.2.2
+
+1) Support for Nim 1.4.0
+2) Added `-d:lto` flag
+3) Added `--panics:on` flag
+4) `Delay` length defaults to 1
+
 ## 0.2.1
 
 1) Introducing the `loop` construct:
