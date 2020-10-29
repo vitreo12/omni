@@ -27,6 +27,9 @@ const
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
+#-v / --version
+let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020 Francesco Cameli "
+
 #Path to omni_lang
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
@@ -266,6 +269,11 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
 #Unpack files arg and pass it to compiler
 proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
+    #no files provided, print --version
+    if files.len == 0:
+        echo version_flag
+        return 0
+
     for omniFile in files:
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
@@ -294,16 +302,11 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         else:
             printError($omniFileFullPath & " does not exist.")
             return 1
-
-    #no files provided
-    if files.len == 0:
-        printError("No Omni files to compile provided.")
-        return 1
     
     return 0
 
-#Workaround to pass custom version
-clCfg.version = "Omni - version " & $omni_ver & "\n(c) 2020 Francesco Cameli "
+#Workaround to pass custom version string
+clCfg.version = version_flag
 
 #Dispatch the omni function as the CLI one
 dispatch(
