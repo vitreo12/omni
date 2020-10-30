@@ -151,6 +151,9 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     var real_architecture = "--passC:-march=" & $architecture
     if architecture == "native":
         real_architecture = real_architecture & " --passC:-mtune=native"
+    #x86_64 as alias for x86-64
+    elif architecture == "x86_64":
+        real_architecture = "--passC:-march=x86-64"
     elif architecture == "none":
         real_architecture = ""
 
