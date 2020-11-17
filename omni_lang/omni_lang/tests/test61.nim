@@ -1,7 +1,13 @@
-import ../../omni_lang
+import ../../omni_lang, macros
 
-params 2:
+expandMacros:
+    ins 2: one; two
+
+#[ params 2:
     freq; amp
 
 sample:
-    out1 = freq * amp
+    out1 = freq * amp ]#
+
+sample:
+    out1 = one

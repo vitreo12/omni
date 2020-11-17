@@ -581,9 +581,8 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
     #Declare min max as const, the array as both const (for static IO at the end of perform) and let (so i can get its memory address for Omni_UGenDefaults())
     result.add(deafault_min_max_const_section)
     result.add(defaults_array_let_section)
-    
 
-macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
+macro ins_inner*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
     
     var 
         num_of_inputs_VAL : int
@@ -765,11 +764,47 @@ macro ins*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
         proc Omni_UGenDefaults() : ptr cfloat {.exportc: "Omni_UGenDefaults", dynlib.} =
             return cast[ptr cfloat](omni_defaults_let.unsafeAddr)
 
-macro inputs*(num_of_inputs : typed, param_names : untyped = nil) : untyped =
-    return quote do:
-        ins(`num_of_inputs`, `param_names`)
+macro ins*(args : varargs[untyped]) : untyped =
+    var 
+        ins_number : int
+        ins_names  : NimNode
 
-macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
+    let args_first = args[0]
+
+    # ins 1 
+    # ins: ... (dynamic counting)
+    if args.len == 1:
+        if args_first.kind == nnkIntLit:
+            ins_number = int(args_first.intVal)
+        elif args_first.kind == nnkStmtList:
+            ins_names = args_first
+            ins_number = ins_names.len
+        else:
+            error("ins: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+    
+    # ins 1: ...
+    elif args.len == 2:
+        if args_first.kind == nnkIntLit:
+            ins_number = int(args_first.intVal)
+            let args_second = args[1]
+            if args_second.kind == nnkStmtList:
+                ins_names = args_second
+            else:
+                error("ins: invalid statement list: '" & repr(args_second) & "'.")
+        else:
+            error("ins: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+
+    else:
+        error("ins: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+
+    return quote do:
+        ins_inner(`ins_number`, `ins_names`)
+
+macro inputs*(args : varargs[untyped]) : untyped =
+    return quote do:
+        ins(args)
+
+macro outs_inner*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
     
     var 
         num_of_outputs_VAL : int
@@ -859,6 +894,42 @@ macro outs*(num_of_outputs : typed, param_names : untyped = nil) : untyped =
         proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
             return cast[ptr cchar](unsafeAddr(omni_output_names_let[0]))
 
-macro outputs*(num_of_outputs : typed, param_names : untyped = nil) : untyped  =
+macro outs*(args : varargs[untyped]) : untyped =
+    var 
+        outs_number : int
+        outs_names  : NimNode
+
+    let args_first = args[0]
+
+    # outs 1 
+    # outs: ... (dynamic counting)
+    if args.len == 1:
+        if args_first.kind == nnkIntLit:
+            outs_number = int(args_first.intVal)
+        elif args_first.kind == nnkStmtList:
+            outs_names = args_first
+            outs_number = outs_names.len
+        else:
+            error("outs: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+    
+    # outs 1: ...
+    elif args.len == 2:
+        if args_first.kind == nnkIntLit:
+            outs_number = int(args_first.intVal)
+            let args_second = args[1]
+            if args_second.kind == nnkStmtList:
+                outs_names = args_second
+            else:
+                error("outs: invalid statement list: '" & repr(args_second) & "'.")
+        else:
+            error("outs: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+
+    else:
+        error("outs: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+
     return quote do:
-        outs(`num_of_outputs`, `param_names`)
+        outs_inner(`outs_number`, `outs_names`)
+
+macro outputs*(args : varargs[untyped]) : untyped =
+    return quote do:
+        outs(args)
