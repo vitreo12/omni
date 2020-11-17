@@ -20,7 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils
+import atomics
 
-from omni_io import RANDOM_FLOAT, acceptedCharsForParamName
+proc acquire*(lock : var AtomicFlag) : bool {.inline.} =
+    return lock.testAndSet(moAcquire)
 
+proc release*(lock : var AtomicFlag) : void {.inline.} =
+    lock.clear(moRelease)
+
+template spin*(lock: var AtomicFlag, body: untyped) : untyped =
+    while lock.testAndSet(moAcquire) : discard
+    body
+    lock.clear(moRelease)
+
+export AtomicFlag

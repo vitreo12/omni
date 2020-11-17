@@ -46,7 +46,7 @@ suite "ins: names":
 
   #Check default values
   test "default values":
-    check (omni_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
+    check (omni_input_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
     check (omni_defaults_let   == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
 
   #Check that the templates exist

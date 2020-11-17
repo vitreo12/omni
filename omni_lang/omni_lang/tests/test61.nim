@@ -1,7 +1,9 @@
 import ../../omni_lang, macros
 
-params 2:
-    freq; amp
+expandMacros:
+    params 2:
+        freq {440, 1, 22000}
+        amp  {1, 0, 1}
 
-sample:
-    out1 = freq * amp
+#[ sample:
+    out1 = freq * amp ]#

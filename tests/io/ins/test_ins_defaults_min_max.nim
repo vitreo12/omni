@@ -46,7 +46,7 @@ suite "ins: defaults + min/max":
 
   #Check default values
   test "default values":
-    check (omni_defaults_const == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
+    check (omni_input_defaults_const == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
     check (omni_defaults_let   == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
 
   #Check min values

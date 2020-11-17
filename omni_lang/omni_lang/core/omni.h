@@ -99,9 +99,7 @@ extern "C" {
     //Inputs
     OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
     OMNI_DLL_EXPORT extern char*  Omni_UGenInputNames();
-
-    //Default values
-    OMNI_DLL_EXPORT extern float* Omni_UGenDefaults();
+    OMNI_DLL_EXPORT extern float* Omni_UGenInputDefaults();
 
     //Outputs
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();

@@ -204,7 +204,7 @@ template perform_inner*(code_block : untyped) {.dirty.} =
         static:
             var text = $omni_inputs & "\n" & $omni_input_names_const & "\n" 
             
-            for index, default_val in omni_defaults_const:
+            for index, default_val in omni_input_defaults_const:
                 if index == (omni_inputs - 1):
                     text.add($default_val & "\n") 
                     break
