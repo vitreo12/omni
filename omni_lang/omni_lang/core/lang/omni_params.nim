@@ -20,5 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-macro params*(param_names : untyped = nil) : untyped =
+macro params_inner*(num_of_params : typed, param_names : untyped) : untyped =
+    discard
+
+macro params*(param_names : varargs[untyped]) : untyped =
     discard

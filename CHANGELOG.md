@@ -1,3 +1,29 @@
+## 0.3.0
+
+1) New `ins` and `outs` mechanism: dynamic counting of IO:
+
+    ```nim
+    ins 2
+
+    ins 2:
+        freq
+        amp
+
+    ins:
+        freq
+        amp
+    
+    outs 2
+
+    outs 2:
+        out1
+        out2
+
+    outs:
+        out1
+        out2
+    ```
+
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS
