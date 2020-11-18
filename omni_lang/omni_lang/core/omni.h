@@ -45,10 +45,6 @@ extern "C" {
     typedef void*  omni_alloc_func_t(size_t in_size);
     typedef void*  omni_realloc_func_t(void *in, size_t in_size);
     typedef void   omni_free_func_t(void *in);
-
-    //extern omni_alloc_func_t*   omni_alloc_func;   // = malloc;  //Default with malloc
-    //extern omni_realloc_func_t* omni_realloc_func; // = realloc; //Default with realloc
-    //extern omni_free_func_t*    omni_free_func;    // = free;    //Default it with free
     
     //Print
     typedef void   omni_print_debug_func_t(const char* format_string, size_t value);
@@ -56,14 +52,9 @@ extern "C" {
     typedef void   omni_print_float_func_t(float value);
     typedef void   omni_print_int_func_t(int value);
 
-    //extern omni_print_func_t* omni_print_func;     // = printf; //Default it with printf
-    
     //Utilities
     typedef double omni_get_samplerate_func_t();
     typedef int    omni_get_bufsize_func_t();
-    
-    //extern omni_get_samplerate_func_t* omni_get_samplerate_func;
-    //extern omni_get_bufsize_func_t*    omni_get_bufsize_func;
 
     /****************************/
     /* Initialization functions */
@@ -93,13 +84,18 @@ extern "C" {
     OMNI_DLL_EXPORT extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);
 
     /*************************/
-    /* Omni module functions */
+    /* Omni UGen functions */
     /*************************/
 
     //Inputs
     OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
     OMNI_DLL_EXPORT extern char*  Omni_UGenInputNames();
     OMNI_DLL_EXPORT extern float* Omni_UGenInputDefaults();
+
+    //Params
+    OMNI_DLL_EXPORT extern int    Omni_UGenParams();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenParamNames();
+    OMNI_DLL_EXPORT extern float* Omni_UGenParamDefaults();
 
     //Outputs
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();

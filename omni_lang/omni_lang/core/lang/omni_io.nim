@@ -850,14 +850,6 @@ macro outputs*(args : varargs[untyped]) : untyped =
         outs(args)
 
 #params
-proc params_buildDefaultMinMaxArrays(num_of_params : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
-    let default_vals_len = default_vals.len()
-
-    #Find mismatch. Perhaps user hasn't defined def/min/max for some params
-    if num_of_params != default_vals_len:
-        error("params: Got " & $num_of_params & " number of params but only " & $default_vals_len & " default / min / max values.")
-
-    result = nnkStmtList.newTree()
 
 macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     var 
@@ -922,9 +914,6 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                 if statement_kind == nnkStrLit or statement_kind == nnkIdent:
                     let param_name = statement.strVal()
 
-                    #Buffer without param name ????
-                    #if param_name == "Buffer":
-
                     checkValidParamName(param_name)
                     
                     params_names_string.add($param_name & ",")
@@ -987,11 +976,34 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     #Assign to node
     params_names_node = newLit(params_names_string)
 
-    let defaults_params_maxs = params_buildDefaultMinMaxArrays(params_number_VAL, default_vals, min_vals, max_vals)
-    
-    error repr defaults_params_maxs
+    error repr default_vals
 
     return quote do:
+        const 
+            omni_params            {.inject.}  = `params_number_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_param_names_const {.inject.}  = `params_names_node`  #It's possible to insert NimNodes directly in the code block 
+
+        let omni_param_names_let   {.inject.}  = `params_names_node`
+
+        #compile time variable if params are defined
+        let declared_params {.inject, compileTime.} = true
+
+        #individual set functions (exported)
+
+        #setParam function (exported)
+
+        #declareParamsForUGen (to declare params as lets of the ugen)
+
+        #Export to C
+        proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
+            return int32(omni_params)
+
+        proc Omni_UGenParamNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib.} =
+            return cast[ptr cchar](unsafeAddr(omni_param_names_let[0]))
+
+        proc Omni_UGenParamDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
+            return cast[ptr cfloat](omni_param_defaults_let.unsafeAddr)
+
         discard
 
 macro params*(args : varargs[untyped]) : untyped =
