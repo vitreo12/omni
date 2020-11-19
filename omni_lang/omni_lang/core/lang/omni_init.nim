@@ -757,6 +757,7 @@ macro build*(var_names : varargs[typed]) =
     )
 
     #Add ugen_params_lock_var variable
+    #[
     var_names_and_types.add(
         nnkIdentDefs.newTree(
             newIdentNode("params_lock_var"),
@@ -764,6 +765,7 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
     )
+    ]#
     
     #Add samplerate_let variable
     var_names_and_types.add(

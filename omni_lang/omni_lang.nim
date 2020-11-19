@@ -39,6 +39,10 @@ export omni_alloc
 import omni_lang/core/lib/auto_mem/omni_auto_mem
 export omni_auto_mem
 
+#Buffer
+import omni_lang/core/lib/buffer/omni_buffer
+export omni_buffer
+
 #Data
 import omni_lang/core/lib/data/omni_data
 export omni_data
