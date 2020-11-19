@@ -211,8 +211,12 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
         )
     )
 
-    #If buffer, add buffer_interface too
+    #Can't create a Buffer explicitly
     if proc_call_ident_str == "Buffer":
+        error "'" & (repr statement) & "': Buffers can't be created explicitly. Use the 'in' or 'param' interface instead."
+
+        #[ 
+        #If Buffer, add buffer_interface too
         var buffer_input_num = proc_new_call[1]
 
         #Buffer(input_num=1)
@@ -239,7 +243,8 @@ proc findStructConstructorCall(statement : NimNode) : NimNode {.compileTime.} =
                 newIdentNode("omni_inputs")
             ),
             proc_new_call
-        )
+        ) 
+        ]#
 
     #If Delay, pass samplerate (needed for default)
     elif proc_call_ident_str == "Delay":

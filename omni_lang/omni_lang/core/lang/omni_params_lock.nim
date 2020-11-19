@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import atomics
+export AtomicFlag
 
 proc acquire*(lock : var AtomicFlag) : bool {.inline.} =
     return lock.testAndSet(moAcquire)
@@ -32,5 +33,3 @@ template spin*(lock: var AtomicFlag, body: untyped) : untyped =
     while lock.testAndSet(moAcquire) : discard
     body
     lock.clear(moRelease)
-
-export AtomicFlag

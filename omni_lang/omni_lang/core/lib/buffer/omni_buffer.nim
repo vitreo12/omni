@@ -20,9 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 import macros
-import ../../lang/omni_call_types
 import ../auto_mem/omni_auto_mem
 
 type
@@ -37,8 +35,11 @@ type
     Buffer = ptr Buffer_inherit
     Buffer_struct_export = Buffer
 
+#[ 
+#no need for this, it's taken care of in addBufferIns / addBufferParams
 proc Buffer_struct_new_inner*[S : SomeInteger](input_num : S, buffer_interface : pointer, obj_type : typedesc[Buffer_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Buffer {.inline.} =
     {.fatal: "No wrapper defined for 'Buffer'.".}
+]#
 
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =

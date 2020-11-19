@@ -227,4 +227,4 @@ template sample*(code_block : untyped) {.dirty.} =
         perform_inner(code_block)
     else:
         static:
-            error("\'sample\': there already is a \'perform\' block declared.")
+            error("sample: there already is a 'perform' block declared.")

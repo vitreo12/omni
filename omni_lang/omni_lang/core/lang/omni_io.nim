@@ -26,7 +26,7 @@ const omni_max_inputs_outputs_const* = 32
 
 #Some crazy numbers
 const 
-    RANDOM_FLOAT* = -12312418241.1249124194
+    RANDOM_FLOAT = -12312418241.1249124194
     BUFFER_FLOAT = -13312418241.1249124194
 
 const acceptedCharsForParamName* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
