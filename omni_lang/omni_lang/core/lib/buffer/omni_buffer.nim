@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 import macros
 import ../../lang/omni_call_types
 import ../auto_mem/omni_auto_mem
@@ -32,12 +33,45 @@ type
         chans*      : int
         samplerate* : float
 
-    #Dummys for parser
-    Buffer = object
-    Buffer_struct_export = object
+    #Don't export these
+    Buffer = ptr Buffer_inherit
+    Buffer_struct_export = Buffer
 
 proc Buffer_struct_new_inner*[S : SomeInteger](input_num : S, buffer_interface : pointer, obj_type : typedesc[Buffer_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Buffer {.inline.} =
-    {.fatal: "No wrapper defined for `Buffer`.".}
+    {.fatal: "No wrapper defined for 'Buffer'.".}
+
+#1 channel
+template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
+    getter(buffer, 0, int(i), ugen_call_type)
+    
+#more than 1 channel (i1 == channel, i2 == index)
+template `[]`*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2) : untyped {.dirty.} =
+    getter(buffer, int(i1), int(i2), ugen_call_type)
+
+#1 channel
+template `[]=`*[I : SomeNumber, S : SomeNumber](buffer : Buffer, i : I, x : S) : untyped {.dirty.} =
+    setter(buffer, 0, int(i), x, ugen_call_type)
+
+#more than 1 channel (i1 == channel, i2 == index)
+template `[]=`*[I1 : SomeNumber, I2 : SomeNumber, S : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2, x : S) : untyped {.dirty.} =
+    setter(buffer, int(i1), int(i2), x, ugen_call_type)
+
+#interp read
+template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
+    read_inner(buffer, index, ugen_call_type)
+
+#interp read
+template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
+    read_inner(buffer, chan, index, ugen_call_type)
+
+#Alias for length
+template len*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.length
+
+#Internal checking for structs. It works fine without redefining it for every newBufferInterface!
+proc checkValidity*(obj : Buffer, ugen_auto_buffer : ptr OmniAutoMem) : bool =
+    ugen_auto_buffer.registerChild(cast[pointer](obj))
+    return true
 
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
 macro newBufferInterface*(code_block : untyped) : untyped =
@@ -127,7 +161,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             nnkPragma.newTree(
                                 nnkExprColonExpr.newTree(
                                     newIdentNode("fatal"),
-                                    newLit("attempting to allocate memory in the `perform` or `sample` blocks for `struct Buffer`")
+                                    newLit("attempting to allocate memory in the 'perform' or 'sample' blocks for `struct Buffer`")
                                 )
                             )
                         )
@@ -341,7 +375,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                                     nnkPragma.newTree(
                                         nnkExprColonExpr.newTree(
                                             newIdentNode("fatal"),
-                                            newLit("`Buffers` can only be accessed in the `perform` / `sample` blocks")
+                                            newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
                                         )
                                     )
                                 )
@@ -414,7 +448,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                                     nnkPragma.newTree(
                                         nnkExprColonExpr.newTree(
                                             newIdentNode("fatal"),
-                                            newLit("`Buffers` can only be accessed in the `perform` / `sample` blocks")
+                                            newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
                                         )
                                     )
                                 )
@@ -449,163 +483,200 @@ macro newBufferInterface*(code_block : untyped) : untyped =
     if setter == nil:
         error "newBufferInterface: Missing `setter`"
 
-    let otherStuff = nnkStmtList.newTree(
+    #[
+        proc read_inner*[I : SomeNumber](buffer : Buffer, index : I, ugen_call_type : typedesc[CallType] = InitCall) : float {.inline.} =
+            when ugen_call_type is InitCall:
+                {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
+
+            let buf_len = buffer.length
+            
+            if buf_len <= 0:
+                return 0.0
+
+            let
+                index_int = int(index)
+                index1 : int = index_int mod buf_len
+                index2 : int = (index1 + 1) mod buf_len
+                frac : float  = float(index) - float(index_int)
+            
+            return float(linear_interp(frac, buffer.getter(0, index1, ugen_call_type), buffer.getter(0, index2, ugen_call_type)))
+
+        #linear interp read (more than 1 channel) (i1 == channel, i2 == index)
+        proc read_inner*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2, ugen_call_type : typedesc[CallType] = InitCall) : float {.inline.} =
+            when ugen_call_type is InitCall:
+                {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
+
+            let buf_len = buffer.length
+
+            if buf_len <= 0:
+                return 0.0
+            
+            let 
+                chan_int = int(chan)
+                index_int = int(index)
+                index1 : int = index_int mod buf_len
+                index2 : int = (index1 + 1) mod buf_len
+                frac : float  = float(index) - float(index_int)
+            
+            return float(linear_interp(frac, buffer.getter(chan_int, index1, ugen_call_type), buffer.getter(chan_int, index2, ugen_call_type)))
+    ]#
+    let read_inner = nnkStmtList.newTree(
         nnkProcDef.newTree(
             nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("read_inner")
+            newIdentNode("*"),
+            newIdentNode("read_inner")
             ),
             newEmptyNode(),
             nnkGenericParams.newTree(
-                nnkIdentDefs.newTree(
-                    newIdentNode("I"),
-                    newIdentNode("SomeNumber"),
-                    newEmptyNode()
-                )
+            nnkIdentDefs.newTree(
+                newIdentNode("I"),
+                newIdentNode("SomeNumber"),
+                newEmptyNode()
+            )
             ),
             nnkFormalParams.newTree(
-                newIdentNode("float"),
-                nnkIdentDefs.newTree(
-                    newIdentNode("buffer"),
-                    newIdentNode("Buffer"),
-                    newEmptyNode()
+            newIdentNode("float"),
+            nnkIdentDefs.newTree(
+                newIdentNode("buffer"),
+                newIdentNode("Buffer"),
+                newEmptyNode()
+            ),
+            nnkIdentDefs.newTree(
+                newIdentNode("index"),
+                newIdentNode("I"),
+                newEmptyNode()
+            ),
+            nnkIdentDefs.newTree(
+                newIdentNode("ugen_call_type"),
+                nnkBracketExpr.newTree(
+                newIdentNode("typedesc"),
+                newIdentNode("CallType")
                 ),
-                nnkIdentDefs.newTree(
-                    newIdentNode("index"),
-                    newIdentNode("I"),
-                    newEmptyNode()
-                ),
-                nnkIdentDefs.newTree(
-                    newIdentNode("ugen_call_type"),
-                    nnkBracketExpr.newTree(
-                        newIdentNode("typedesc"),
-                        newIdentNode("CallType")
-                    ),
-                    newIdentNode("InitCall")
-                )
+                newIdentNode("InitCall")
+            )
             ),
             nnkPragma.newTree(
-                newIdentNode("inline")
+            newIdentNode("inline")
             ),
             newEmptyNode(),
             nnkStmtList.newTree(
-                nnkWhenStmt.newTree(
-                    nnkElifBranch.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode("is"),
-                            newIdentNode("ugen_call_type"),
-                            newIdentNode("InitCall")
-                        ),
-                        nnkStmtList.newTree(
-                            nnkPragma.newTree(
-                                nnkExprColonExpr.newTree(
-                                    newIdentNode("fatal"),
-                                    newLit("`Buffers` can only be accessed in the `perform` / `sample` blocks")
-                                )
-                            )
-                        )
-                    )
+            nnkWhenStmt.newTree(
+                nnkElifBranch.newTree(
+                nnkInfix.newTree(
+                    newIdentNode("is"),
+                    newIdentNode("ugen_call_type"),
+                    newIdentNode("InitCall")
                 ),
-                nnkLetSection.newTree(
-                    nnkIdentDefs.newTree(
-                        newIdentNode("buf_len"),
-                        newEmptyNode(),
-                        nnkDotExpr.newTree(
-                            newIdentNode("buffer"),
-                            newIdentNode("length")
-                        )
-                    )
-                ),
-                nnkIfStmt.newTree(
-                    nnkElifBranch.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode("<="),
-                            newIdentNode("buf_len"),
-                            newLit(0)
-                        ),
-                        nnkStmtList.newTree(
-                            nnkReturnStmt.newTree(
-                                newLit(0.0)
-                            )
-                        )
-                    )
-                ),
-                nnkLetSection.newTree(
-                    nnkIdentDefs.newTree(
-                        newIdentNode("index_int"),
-                        newEmptyNode(),
-                        nnkCall.newTree(
-                            newIdentNode("int"),
-                            newIdentNode("index")
-                        )
-                    ),
-                    nnkIdentDefs.newTree(
-                        newIdentNode("index1"),
-                        newIdentNode("int"),
-                        nnkInfix.newTree(
-                            newIdentNode("mod"),
-                            newIdentNode("index_int"),
-                            newIdentNode("buf_len")
-                        )
-                    ),
-                    nnkIdentDefs.newTree(
-                        newIdentNode("index2"),
-                        newIdentNode("int"),
-                        nnkInfix.newTree(
-                            newIdentNode("mod"),
-                            nnkPar.newTree(
-                                nnkInfix.newTree(
-                                    newIdentNode("+"),
-                                    newIdentNode("index1"),
-                                    newLit(1)
-                                )
-                            ),
-                            newIdentNode("buf_len")
-                        )
-                    ),
-                    nnkIdentDefs.newTree(
-                        newIdentNode("frac"),
-                        newIdentNode("float"),
-                        nnkInfix.newTree(
-                            newIdentNode("-"),
-                            nnkCall.newTree(
-                                newIdentNode("float"),
-                                newIdentNode("index")
-                            ),
-                            nnkCall.newTree(
-                                newIdentNode("float"),
-                                newIdentNode("index_int")
-                            )
-                        )
-                    )
-                ),
-                nnkReturnStmt.newTree(
-                    nnkCall.newTree(
-                    newIdentNode("float"),
-                    nnkCall.newTree(
-                        newIdentNode("linear_interp"),
-                        newIdentNode("frac"),
-                        nnkCall.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("buffer"),
-                            newIdentNode("getter")
-                        ),
-                        newLit(0),
-                        newIdentNode("index1"),
-                        newIdentNode("ugen_call_type")
-                        ),
-                        nnkCall.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("buffer"),
-                            newIdentNode("getter")
-                        ),
-                        newLit(0),
-                        newIdentNode("index2"),
-                        newIdentNode("ugen_call_type")
-                        )
+                nnkStmtList.newTree(
+                    nnkPragma.newTree(
+                    nnkExprColonExpr.newTree(
+                        newIdentNode("fatal"),
+                        newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
                     )
                     )
                 )
+                )
+            ),
+            nnkLetSection.newTree(
+                nnkIdentDefs.newTree(
+                newIdentNode("buf_len"),
+                newEmptyNode(),
+                nnkDotExpr.newTree(
+                    newIdentNode("buffer"),
+                    newIdentNode("length")
+                )
+                )
+            ),
+            nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                nnkInfix.newTree(
+                    newIdentNode("<="),
+                    newIdentNode("buf_len"),
+                    newLit(0)
+                ),
+                nnkStmtList.newTree(
+                    nnkReturnStmt.newTree(
+                    newLit(0.0)
+                    )
+                )
+                )
+            ),
+            nnkLetSection.newTree(
+                nnkIdentDefs.newTree(
+                newIdentNode("index_int"),
+                newEmptyNode(),
+                nnkCall.newTree(
+                    newIdentNode("int"),
+                    newIdentNode("index")
+                )
+                ),
+                nnkIdentDefs.newTree(
+                newIdentNode("index1"),
+                newIdentNode("int"),
+                nnkInfix.newTree(
+                    newIdentNode("mod"),
+                    newIdentNode("index_int"),
+                    newIdentNode("buf_len")
+                )
+                ),
+                nnkIdentDefs.newTree(
+                newIdentNode("index2"),
+                newIdentNode("int"),
+                nnkInfix.newTree(
+                    newIdentNode("mod"),
+                    nnkPar.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("+"),
+                        newIdentNode("index1"),
+                        newLit(1)
+                    )
+                    ),
+                    newIdentNode("buf_len")
+                )
+                ),
+                nnkIdentDefs.newTree(
+                newIdentNode("frac"),
+                newIdentNode("float"),
+                nnkInfix.newTree(
+                    newIdentNode("-"),
+                    nnkCall.newTree(
+                    newIdentNode("float"),
+                    newIdentNode("index")
+                    ),
+                    nnkCall.newTree(
+                    newIdentNode("float"),
+                    newIdentNode("index_int")
+                    )
+                )
+                )
+            ),
+            nnkReturnStmt.newTree(
+                nnkCall.newTree(
+                newIdentNode("float"),
+                nnkCall.newTree(
+                    newIdentNode("linear_interp"),
+                    newIdentNode("frac"),
+                    nnkCall.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("getter")
+                    ),
+                    newLit(0),
+                    newIdentNode("index1"),
+                    newIdentNode("ugen_call_type")
+                    ),
+                    nnkCall.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("getter")
+                    ),
+                    newLit(0),
+                    newIdentNode("index2"),
+                    newIdentNode("ugen_call_type")
+                    )
+                )
+                )
+            )
             )
         ),
         nnkProcDef.newTree(
@@ -668,7 +739,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     nnkPragma.newTree(
                     nnkExprColonExpr.newTree(
                         newIdentNode("fatal"),
-                        newLit("`Buffers` can only be accessed in the `perform` / `sample` blocks")
+                        newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
                     )
                     )
                 )
@@ -783,393 +854,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 )
             )
             )
-        ),
-        nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            nnkAccQuoted.newTree(
-                newIdentNode("[]")
-            )
-            ),
-            newEmptyNode(),
-            nnkGenericParams.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("I"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-            ),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("i"),
-                newIdentNode("I"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("getter"),
-                newIdentNode("buffer"),
-                newLit(0),
-                nnkCall.newTree(
-                newIdentNode("int"),
-                newIdentNode("i")
-                ),
-                newIdentNode("ugen_call_type")
-            )
-            )
-        ),
-        nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            nnkAccQuoted.newTree(
-                newIdentNode("[]")
-            )
-            ),
-            newEmptyNode(),
-            nnkGenericParams.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("I1"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("I2"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-            ),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("i1"),
-                newIdentNode("I1"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("i2"),
-                newIdentNode("I2"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("getter"),
-                newIdentNode("buffer"),
-                nnkCall.newTree(
-                newIdentNode("int"),
-                newIdentNode("i1")
-                ),
-                nnkCall.newTree(
-                newIdentNode("int"),
-                newIdentNode("i2")
-                ),
-                newIdentNode("ugen_call_type")
-            )
-            )
-        ),
-        nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            nnkAccQuoted.newTree(
-                newIdentNode("[]=")
-            )
-            ),
-            newEmptyNode(),
-            nnkGenericParams.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("I"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("S"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-            ),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("i"),
-                newIdentNode("I"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("x"),
-                newIdentNode("S"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("setter"),
-                newIdentNode("buffer"),
-                newLit(0),
-                nnkCall.newTree(
-                newIdentNode("int"),
-                newIdentNode("i")
-                ),
-                newIdentNode("x"),
-                newIdentNode("ugen_call_type")
-            )
-            )
-        ),
-        nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            nnkAccQuoted.newTree(
-                newIdentNode("[]=")
-            )
-            ),
-            newEmptyNode(),
-            nnkGenericParams.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("I1"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("I2"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("S"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-            ),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("i1"),
-                newIdentNode("I1"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("i2"),
-                newIdentNode("I2"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("x"),
-                newIdentNode("S"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("setter"),
-                newIdentNode("buffer"),
-                nnkCall.newTree(
-                newIdentNode("int"),
-                newIdentNode("i1")
-                ),
-                nnkCall.newTree(
-                newIdentNode("int"),
-                newIdentNode("i2")
-                ),
-                newIdentNode("x"),
-                newIdentNode("ugen_call_type")
-            )
-            )
-        ),
-        nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("read")
-            ),
-            newEmptyNode(),
-            nnkGenericParams.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("I"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-            ),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("index"),
-                newIdentNode("I"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("read_inner"),
-                newIdentNode("buffer"),
-                newIdentNode("index"),
-                newIdentNode("ugen_call_type")
-            )
-            )
-        ),
-        nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("read")
-            ),
-            newEmptyNode(),
-            nnkGenericParams.newTree(
-            nnkIdentDefs.newTree(
-                newIdentNode("I1"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("I2"),
-                newIdentNode("SomeNumber"),
-                newEmptyNode()
-            )
-            ),
-            nnkFormalParams.newTree(
-            newIdentNode("untyped"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("chan"),
-                newIdentNode("I1"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("index"),
-                newIdentNode("I2"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("read_inner"),
-                newIdentNode("buffer"),
-                newIdentNode("chan"),
-                newIdentNode("index"),
-                newIdentNode("ugen_call_type")
-            )
-            )
-        ),
-        nnkProcDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("len")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-            newIdentNode("int"),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-            newIdentNode("inline")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkReturnStmt.newTree(
-                nnkDotExpr.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("length")
-                )
-            )
-            )
-        ),
-        nnkProcDef.newTree(
-            nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode("checkValidity")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-            newIdentNode("bool"),
-            nnkIdentDefs.newTree(
-                newIdentNode("obj"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("ugen_auto_buffer"),
-                nnkPtrTy.newTree(
-                newIdentNode("OmniAutoMem")
-                ),
-                newEmptyNode()
-            )
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-            nnkCall.newTree(
-                nnkDotExpr.newTree(
-                newIdentNode("ugen_auto_buffer"),
-                newIdentNode("registerChild")
-                ),
-                nnkCast.newTree(
-                newIdentNode("pointer"),
-                newIdentNode("obj")
-                )
-            ),
-            nnkReturnStmt.newTree(
-                newIdentNode("true")
-            )
-            )
         )
-    )
+        )
 
     result.add(
         obj,
@@ -1179,5 +865,5 @@ macro newBufferInterface*(code_block : untyped) : untyped =
         unlockBuffer,
         getter,
         setter,
-        other_stuff
+        read_inner
     )
