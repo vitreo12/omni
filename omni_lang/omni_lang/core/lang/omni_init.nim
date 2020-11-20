@@ -22,6 +22,9 @@
 
 import macros, strutils
 
+#Import the compile time list of float parameters to be added to UGen
+from omni_io import params_names_list, params_defaults_list
+
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 when (NimMajor, NimMinor) < (1, 4):
     macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =  
@@ -458,27 +461,21 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 
                 #Initialize auto_mem
                 ugen.ugen_auto_mem_let    = allocInitOmniAutoMem()
-                #ugen.ugen_auto_buffer_let = allocInitOmniAutoMem()
 
                 if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                     print("ERROR: Omni: could not allocate auto_mem")
                     return 0
 
-                #[
-                if isNil(cast[pointer](ugen.ugen_auto_buffer_let)):
-                    print("ERROR: Omni: could not allocate auto_buffer")
-                    return 0
-                ]#
-
-                let 
-                    ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-                    #ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
+                let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
 
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
 
                 #Unpack the "ins" variable names
                 unpackInsWithNames(omni_input_names_const)
+
+                #Unpack params and set default values
+                unpack_params_init()
 
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -493,8 +490,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 `assign_ugen_fields`
 
                 #checkValidity triggers the checks for correct initialization of all Datas entries,
-                #while also adding all the Buffers to ugen_auto_buffer
-                if not checkValidity(ugen #[, ugen_auto_buffer]#):
+                if not checkValidity(ugen):
                     return 0
                 
                 return 1
@@ -523,27 +519,21 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #Initialize auto_mem
                 ugen.ugen_auto_mem_let    = allocInitOmniAutoMem()
-                #ugen.ugen_auto_buffer_let = allocInitOmniAutoMem()
 
                 if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                     print("ERROR: Omni: could not allocate auto_mem")
                     return 0
-                
-                #[
-                if isNil(cast[pointer](ugen.ugen_auto_buffer_let)):
-                    print("ERROR: Omni: could not allocate auto_buffer")
-                    return 0
-                ]#
 
-                let 
-                    ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-                    #ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
+                let ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
 
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
 
                 #Unpack the "ins" variable names
                 unpackInsWithNames(omni_input_names_const)
+
+                #Unpack params and set default values
+                unpack_params_init()
         
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -558,8 +548,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 `assign_ugen_fields`
 
                 #checkValidity triggers the checks for correct initialization of all Datas entries,
-                #while also adding all the Buffers to ugen_auto_buffer
-                if not checkValidity(ugen #[, ugen_auto_buffer]#):
+                if not checkValidity(ugen):
                     return 0
                 
                 return 1
@@ -662,7 +651,6 @@ macro init*(code_block : untyped) : untyped =
             samplerate       {.inject.} : float              = 0.0
             buffer_interface {.inject.} : pointer            = nil
             ugen_auto_mem    {.inject.} : ptr OmniAutoMem    = nil
-            #ugen_auto_buffer {.inject.} : ptr OmniAutoMem    = nil
         
         var ugen_call_type   {.inject, noinit.} : typedesc[CallType]
 
@@ -675,6 +663,9 @@ macro init*(code_block : untyped) : untyped =
 
         #Generate fictional let names for ins (so that parser won't complain when using them)
         unpackInsWithNames(omni_input_names_const, true)
+
+        #Generate fictional let names for params (so that parser won't complain when using them)
+        unpack_params_pre_init()
         
         #Actually parse the init block
         parse_block_untyped(`code_block_with_buffer_ins`, true)
@@ -740,6 +731,16 @@ macro build*(var_names : varargs[typed]) =
         var_name_and_type.add(newEmptyNode())
         var_names_and_types.add(var_name_and_type)
 
+    #Add params
+    for param_name in params_names_list:
+        var_names_and_types.add(
+            nnkIdentDefs.newTree(
+                newIdentNode(param_name & "_param"),
+                getType(float),
+                newEmptyNode()
+            )
+        )
+
     #Add ugen_auto_mem_let variable (ptr OmniAutoMem)
     var_names_and_types.add(
         nnkIdentDefs.newTree(
@@ -764,16 +765,14 @@ macro build*(var_names : varargs[typed]) =
     )
     ]#
 
-    #Add ugen_params_lock_var variable
-    #[
+    #Add params_lock
     var_names_and_types.add(
         nnkIdentDefs.newTree(
-            newIdentNode("params_lock_var"),
+            newIdentNode("params_lock"),
             newIdentNode("AtomicFlag"),
             newEmptyNode()
         )
     )
-    ]#
     
     #Add samplerate_let variable
     var_names_and_types.add(
@@ -786,5 +785,7 @@ macro build*(var_names : varargs[typed]) =
 
     #Add to final obj
     final_obj.add(var_names_and_types)
+
+    #error repr final_obj
 
     return final_type

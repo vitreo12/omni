@@ -21,10 +21,10 @@
 # SOFTWARE.
 
 import atomics
-export AtomicFlag
+export atomics
 
 proc acquire*(lock : var AtomicFlag) : bool {.inline.} =
-    return lock.testAndSet(moAcquire)
+    return not(lock.testAndSet(moAcquire))
 
 proc release*(lock : var AtomicFlag) : void {.inline.} =
     lock.clear(moRelease)

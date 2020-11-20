@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import macros, strutils
 from omni_io import ins_buffers_list, params_buffers_list
     
 proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
@@ -30,6 +30,9 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         let_section = nnkLetSection.newTree()
         lock_buffers = nnkCall.newTree(
             newIdentNode("lock_buffers")
+        )
+        unpack_params = nnkCall.newTree(
+            newIdentNode("unpack_params_perform")
         )
 
     let type_def = getImpl(t)
@@ -61,10 +64,8 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         #someData = ugen.someData_let (or someData_var)
         if var_desc.kind == nnkPtrTy or var_desc.kind == nnkRefTy:
             
-            let var_name_ext = var_name_string[len(var_name_string) - 3..var_name_string.high]
-            
             #If a struct is declared as var, it's an error! This should be fixed to still allow to do it.
-            if var_name_ext == "var":
+            if var_name_string.endsWith("var"):
                 error($(var_name_string[0 .. len(var_name_string) - 5]) & " is declared as \"var\". This is not allowed for structs. Use \"let\" instead.")
                 
             ident_def_stmt = nnkIdentDefs.newTree(
@@ -81,7 +82,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
             #var variables
             #phase_var = unsafeAddr ugen.phase_var.
             #phase_var is then accessed via the "phase" template (which is the code used by the user), which returns pointer dereferencing "phase_var[]"
-            if var_name_string[len(var_name_string) - 4 .. len(var_name_string) - 1] == "_var":
+            if var_name_string.endsWith("_var"):
                 ident_def_stmt = nnkIdentDefs.newTree(
                     newIdentNode(var_name_string),                 #name of the variable
                     newEmptyNode(),
@@ -97,7 +98,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
             #let variables
             #sampleRate = ugen.sampleRate_let
             #sampleRate will be then be normally accessed as an immutable inside the perform/sample statements.
-            elif var_name_string[len(var_name_string) - 4 .. len(var_name_string) - 1] == "_let":
+            elif var_name_string.endsWith("_let"):
                 ident_def_stmt = nnkIdentDefs.newTree(
                     newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),        #name of the variable WITHOUT "_let"
                     newEmptyNode(),
@@ -107,11 +108,15 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
                     )
                 )
 
-        let_section.add(ident_def_stmt)
+        if ident_def_stmt != nil:
+            let_section.add(ident_def_stmt)
     
-    result.add(let_section)
-    result.add(lock_buffers)
-
+    result.add(
+        let_section,
+        lock_buffers,
+        unpack_params
+    )
+    
 #Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
 macro unpackUGenVariables*(t : typed) =
     return unpackUGenVariablesProc(t)

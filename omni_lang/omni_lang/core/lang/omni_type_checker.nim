@@ -116,6 +116,10 @@ proc checkValidType*(var_type : NimNode, var_name : string = "", is_proc_arg : b
         var_type_str = var_type.strVal()
 
     else:
+        #Quick fix for params_lock.testAndSet(moAcquire) (moAcquire is actually enum for 2)
+        if var_name == "2":
+            return
+
         error "Type checker: invalid kind '" & $var_type_kind & "'"
 
     #echo "checkValidType"

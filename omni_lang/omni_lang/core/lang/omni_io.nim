@@ -31,12 +31,16 @@ const
 
 const acceptedCharsForParamName* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
+#Compile time arrays for params code generation
+var
+    params_names_list*    {.compileTime.} : seq[string]
+    params_defaults_list* {.compileTime.} : seq[float]
+
 #Compile time array of buffers to unpack
 var 
-    #at_least_one_buffer is a compile time variable to use in the lock_buffers/unlock_buffers templates in omni_perform
-    at_least_one_buffer* {.compileTime.} = false
-    ins_buffers_list* {.compileTime.}    : seq[NimNode]
-    params_buffers_list* {.compileTime.} : seq[NimNode]
+    at_least_one_buffer*  {.compileTime.} = false
+    ins_buffers_list*     {.compileTime.} : seq[NimNode]
+    params_buffers_list*  {.compileTime.} : seq[NimNode]
 
 proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
@@ -445,7 +449,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
     return (default_num, min_num, max_num)
 
-proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string) : NimNode {.compileTime.} =
+proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string, ins_or_params : bool = false) : NimNode {.compileTime.} =
     let default_vals_len = default_vals.len()
 
     #Find mismatch. Perhaps user hasn't defined def/min/max for some params
@@ -453,6 +457,14 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
         error("ins: Got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
 
     result = nnkStmtList.newTree()
+
+    var 
+        in_or_param = "in"
+        input_or_param = "input"
+
+    if ins_or_params == true:
+        in_or_param = "param"
+        input_or_param = "param"
 
     #Get the ins names as a seq to be indexed
     var ins_names_seq = ins_names_string.split(',')
@@ -462,7 +474,7 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
         defaults_array_let_section = nnkLetSection.newTree()
         defaults_array_const = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("omni_input_defaults_const"),
+                newIdentNode("omni_" & input_or_param & "_defaults_const"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -471,7 +483,7 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
         )
         defaults_array_let = nnkIdentDefs.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("omni_input_defaults_let"),
+                newIdentNode("omni_" & input_or_param & "_defaults_let"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -489,13 +501,19 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
             max_val = max_vals[i]
 
         #Always add defaults, they will be 0 if not specified
-        defaults_array_bracket.add(newLit(default_val))
+        defaults_array_bracket.add(
+            newLit(default_val)
+        )
+
+        #param
+        if ins_or_params:
+            params_defaults_list.add(default_val)
 
         if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
             default_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
-                        newIdentNode("in" & $(i_plus_one) & "_min"),
+                        newIdentNode(in_or_param & $(i_plus_one) & "_min"),
                         nnkPragma.newTree(
                             newIdentNode("inject")
                         )
@@ -509,7 +527,7 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
             default_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
-                        newIdentNode("in" & $(i_plus_one) & "_max"),
+                        newIdentNode(in_or_param & $(i_plus_one) & "_max"),
                         nnkPragma.newTree(
                             newIdentNode("inject")
                         )
@@ -525,15 +543,20 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
             at_least_one_buffer = true
 
             #Add to compile time buffers list
-            ins_buffers_list.add(
-                newIdentNode(ins_names_seq[i])
-            )
+            if ins_or_params == false:
+                ins_buffers_list.add(
+                    newIdentNode(ins_names_seq[i])
+                )
+            else:
+                params_buffers_list.add(
+                    newIdentNode(ins_names_seq[i])
+                )
             
             #Add to injected symbols
             default_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
-                        newIdentNode("in" & $(i_plus_one) & "_buffer"),
+                        newIdentNode(in_or_param & $(i_plus_one) & "_buffer"),
                         nnkPragma.newTree(
                             newIdentNode("inject")
                         )
@@ -642,7 +665,9 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     ins_names_string.add($param_name & ",")
                 
                     #The list of { } or Buffer
-                    let default_min_max = statement[1]
+                    let 
+                        default_min_max = statement[1]
+                        default_min_max_kind = default_min_max.kind
 
                     var 
                         default_val : float
@@ -650,13 +675,17 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                         max_val : float
 
                     #Ident, no curly brackets Buffer
-                    if default_min_max.kind == nnkIdent:
+                    if default_min_max_kind == nnkIdent:
                         if default_min_max.strVal == "Buffer":
                             min_val = BUFFER_FLOAT
-                            max_val = BUFFER_FLOAT
-                    
-                    elif default_min_max.kind == nnkCurly:
+                            max_val = BUFFER_FLOAT     
+                    elif default_min_max_kind == nnkCurly:
                         (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+
+                    #single number literal: wrap in curly brackets
+                    elif default_min_max_kind == nnkIntLit or default_min_max_kind == nnkFloatLit:
+                        let default_min_max_curly = nnkCurly.newTree(default_min_max)
+                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max_curly, param_name)
                     else:
                         error("ins: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
 
@@ -697,7 +726,7 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #Assign to node
     ins_names_node = newLit(ins_names_string)
 
-    let defaults_mins_maxs = ins_buildDefaultMinMaxArrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
+    let defaults_mins_maxs = buildDefaultMinMaxArrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
 
     return quote do:
         const 
@@ -908,6 +937,163 @@ macro outputs*(args : varargs[untyped]) : untyped =
 
 #params
 
+#Returns a template that generates all set procs, including setParam
+proc params_generate_set_templates() : NimNode {.compileTime.} =
+    return nnkDiscardStmt.newTree(newEmptyNode())
+
+#Returns a template that unpacks params for perform block
+proc params_generate_unpack_templates() : NimNode {.compileTime.} =
+    var 
+        init_block = nnkStmtList.newTree()
+        unpack_params_init = nnkTemplateDef.newTree(
+            newIdentNode("unpack_params_init"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            init_block
+        )
+        pre_init_block = nnkStmtList.newTree()
+        unpack_params_pre_init = nnkTemplateDef.newTree(
+            newIdentNode("unpack_params_pre_init"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            pre_init_block
+        )
+        perform_block = nnkStmtList.newTree()
+        unpack_params_perform = nnkTemplateDef.newTree(
+            newIdentNode("unpack_params_perform"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            perform_block
+        )
+
+    result = nnkStmtList.newTree(
+        unpack_params_init,
+        unpack_params_pre_init,
+        unpack_params_perform
+    )
+
+    if params_names_list.len > 0:
+        var 
+            unpack_init = nnkStmtList.newTree()
+            unpack_pre_init = nnkStmtList.newTree()
+            unpack_perform = nnkStmtList.newTree()
+
+        init_block.add(
+            nnkCall.newTree(
+                nnkDotExpr.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode("params_lock")
+                ),
+                newIdentNode("spin")
+                ),
+                unpack_init
+            )
+        )
+
+        pre_init_block.add(
+            unpack_pre_init
+        )
+
+        perform_block.add(
+            nnkCall.newTree(
+                nnkDotExpr.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode("params_lock")
+                ),
+                newIdentNode("spin")
+                ),
+                unpack_perform
+            )
+        )
+
+        for i, param_name in params_names_list:
+            unpack_init.add(
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("ugen"),
+                        newIdentNode(param_name & "_param")
+                    ),
+                    newLit(
+                        params_defaults_list[i]
+                    )
+                ),
+
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(param_name),
+                        newEmptyNode(),
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            newIdentNode(param_name & "_param")
+                        )
+                    )
+                )
+            )
+
+            unpack_pre_init.add(
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(param_name),
+                        newEmptyNode(),
+                        newLit(0)
+                    )
+                )
+            )
+
+            unpack_perform.add(
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(param_name),
+                        newEmptyNode(),
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            newIdentNode(param_name & "_param")
+                        )
+                    )
+                )
+            )
+    else:
+        init_block.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
+        pre_init_block.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
+        perform_block.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
 macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     var 
         params_number_VAL : int
@@ -974,6 +1160,7 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                     checkValidParamName(param_name)
                     
                     params_names_string.add($param_name & ",")
+                    params_names_list.add(param_name)
                 
                 #"freq" {440, 0, 22000} OR "freq" {440 0 22000}
                 elif statement_kind == nnkCommand:
@@ -990,19 +1177,32 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                     checkValidParamName(param_name)
 
                     params_names_string.add($param_name & ",")
+                    params_names_list.add(param_name)
                 
                     #The list of { } or Buffer
-                    let default_min_max = statement[1]
+                    let 
+                        default_min_max = statement[1]
+                        default_min_max_kind = default_min_max.kind
 
                     var 
                         default_val : float
                         min_val : float
                         max_val : float
 
-                    if default_min_max.kind == nnkCurly:
+                    #Ident, no curly brackets Buffer
+                    if default_min_max_kind == nnkIdent:
+                        if default_min_max.strVal == "Buffer":
+                            min_val = BUFFER_FLOAT
+                            max_val = BUFFER_FLOAT     
+                    elif default_min_max_kind == nnkCurly:
                         (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+
+                    #single number literal: wrap in curly brackets
+                    elif default_min_max_kind == nnkIntLit or default_min_max_kind == nnkFloatLit:
+                        let default_min_max_curly = nnkCurly.newTree(default_min_max)
+                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max_curly, param_name)
                     else:
-                        error("params: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets.")
+                        error("ins: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
 
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
@@ -1019,12 +1219,8 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
             error("params: syntax not implemented yet")
 
     #params count mismatch
-    if params_names_kind == nnkNilLit:
-        for i in 0..params_number_VAL-1:
-            params_names_string.add("in" & $(i + 1) & ",")
-    else:
-        if statement_counter != params_number_VAL:
-            error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter)
+    if statement_counter != params_number_VAL:
+        error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter)
 
     #Remove trailing coma
     if params_names_string.len > 1:
@@ -1033,11 +1229,14 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     #Assign to node
     params_names_node = newLit(params_names_string)
 
-    error repr default_vals
-
+    let
+        defaults_mins_maxs = buildDefaultMinMaxArrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
+        params_generate_set_templates = params_generate_set_templates()
+        params_generate_unpack_templates = params_generate_unpack_templates()
+    
     return quote do:
         const 
-            omni_params            {.inject.}  = `params_number_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_params            {.inject.}  = `params_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             omni_param_names_const {.inject.}  = `params_names_node`  #It's possible to insert NimNodes directly in the code block 
 
         let omni_param_names_let   {.inject.}  = `params_names_node`
@@ -1045,11 +1244,14 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
         #compile time variable if params are defined
         let declared_params {.inject, compileTime.} = true
 
-        #individual set functions (exported)
+        #const statement for defaults / mins / maxs
+        `defaults_mins_maxs`
 
-        #setParam function (exported)
+        #Returns a template that generates all setParams procs. This must be called after UGen definition
+        `params_generate_set_templates`
 
-        #declareParamsForUGen (to declare params as lets of the ugen)
+        #Returns a template that generates the unpacking of params for perform block
+        `params_generate_unpack_templates`
 
         #Export to C
         proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
@@ -1060,8 +1262,6 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
 
         proc Omni_UGenParamDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
             return cast[ptr cfloat](omni_param_defaults_let.unsafeAddr)
-
-        discard
 
 macro params*(args : varargs[untyped]) : untyped =
     var 

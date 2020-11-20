@@ -38,6 +38,9 @@ import omni_finder
 export omni_finder
 
 #Utilities
+import omni_params_lock
+export omni_params_lock
+
 import omni_types
 export omni_types
 
