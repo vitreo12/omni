@@ -31,6 +31,13 @@ const
 
 const acceptedCharsForParamName* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
+#Compile time array of buffers to unpack
+var 
+    #at_least_one_buffer is a compile time variable to use in the lock_buffers/unlock_buffers templates in omni_perform
+    at_least_one_buffer* {.compileTime.} = false
+    ins_buffers_list* {.compileTime.}    : seq[NimNode]
+    params_buffers_list* {.compileTime.} : seq[NimNode]
+
 proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num = "in" & $index
@@ -120,8 +127,24 @@ proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
         in_num : string = "in" & $(index)
         in_num_min : string = in_num & "_min"
         in_num_min_max  : string = in_num_min & "_max"
-
         index_minus_one : int = int(index) - 1
+
+    let buffer_fatal = nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_num & "_buffer")
+            ),
+            nnkStmtList.newTree(
+                nnkPragma.newTree(
+                    nnkExprColonExpr.newTree(
+                        newIdentNode("fatal"),
+                        newLit("Can\'t access " & in_num & ", it\'s a Buffer input.")
+                    )
+                )
+            )
+        )
+    )
 
     #Generate template if proc for min max is defined
     return nnkWhenStmt.newTree(
@@ -141,6 +164,7 @@ proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
+                        buffer_fatal,
                         nnkCall.newTree(
                             newIdentNode(in_num_min_max),
                             nnkBracketExpr.newTree(
@@ -167,6 +191,7 @@ proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
+                        buffer_fatal,
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
                                 newIdentNode("ins_Nim"),
@@ -185,8 +210,24 @@ proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
         in_num : string = "in" & $(index)
         in_num_min : string = in_num & "_min"
         in_num_min_max  : string = in_num_min & "_max"
-
         index_minus_one : int = int(index) - 1
+
+    let buffer_fatal = nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("declared"),
+                newIdentNode(in_num & "_buffer")
+            ),
+            nnkStmtList.newTree(
+                nnkPragma.newTree(
+                    nnkExprColonExpr.newTree(
+                        newIdentNode("fatal"),
+                        newLit("Can\'t access " & in_num & ", it\'s a Buffer input.")
+                    )
+                )
+            )
+        )
+    )
 
     #Generate template if proc for min max is defined
     return nnkWhenStmt.newTree(
@@ -206,6 +247,7 @@ proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
+                        buffer_fatal,
                         nnkCall.newTree(
                             newIdentNode(in_num_min_max),
                             nnkBracketExpr.newTree(
@@ -232,6 +274,7 @@ proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
+                        buffer_fatal,
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
                                 newIdentNode("ins_Nim"),
@@ -402,7 +445,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
     return (default_num, min_num, max_num)
 
-proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
+proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string) : NimNode {.compileTime.} =
     let default_vals_len = default_vals.len()
 
     #Find mismatch. Perhaps user hasn't defined def/min/max for some params
@@ -410,9 +453,12 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
         error("ins: Got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
 
     result = nnkStmtList.newTree()
+
+    #Get the ins names as a seq to be indexed
+    var ins_names_seq = ins_names_string.split(',')
     
     var 
-        deafault_min_max_const_section = nnkConstSection.newTree()
+        default_min_max_const_section = nnkConstSection.newTree()
         defaults_array_let_section = nnkLetSection.newTree()
         defaults_array_const = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
@@ -446,7 +492,7 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
         defaults_array_bracket.add(newLit(default_val))
 
         if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
-            deafault_min_max_const_section.add(
+            default_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
                         newIdentNode("in" & $(i_plus_one) & "_min"),
@@ -460,7 +506,7 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
             )
 
         if max_val != RANDOM_FLOAT and max_val != BUFFER_FLOAT:
-            deafault_min_max_const_section.add(
+            default_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
                         newIdentNode("in" & $(i_plus_one) & "_max"),
@@ -475,7 +521,16 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
 
         #Buffer case. Just create a const that will be checked against at compile time
         if min_val == BUFFER_FLOAT and max_val == BUFFER_FLOAT:
-            deafault_min_max_const_section.add(
+            #At least one buffer used
+            at_least_one_buffer = true
+
+            #Add to compile time buffers list
+            ins_buffers_list.add(
+                newIdentNode(ins_names_seq[i])
+            )
+            
+            #Add to injected symbols
+            default_min_max_const_section.add(
                 nnkConstDef.newTree(
                     nnkPragmaExpr.newTree(
                         newIdentNode("in" & $(i_plus_one) & "_buffer"),
@@ -489,13 +544,13 @@ proc ins_buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float3
             )
 
     defaults_array_const.add(defaults_array_bracket)
-    deafault_min_max_const_section.add(defaults_array_const)
+    default_min_max_const_section.add(defaults_array_const)
 
     defaults_array_let.add(defaults_array_bracket)
     defaults_array_let_section.add(defaults_array_let)
 
     #Declare min max as const, the array as both const (for static IO at the end of perform) and let (so i can get its memory address for Omni_UGenDefaults())
-    result.add(deafault_min_max_const_section)
+    result.add(default_min_max_const_section)
     result.add(defaults_array_let_section)
 
 macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
@@ -642,11 +697,11 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #Assign to node
     ins_names_node = newLit(ins_names_string)
 
-    let defaults_mins_maxs = ins_buildDefaultMinMaxArrays(ins_number_VAL, default_vals, min_vals, max_vals)
+    let defaults_mins_maxs = ins_buildDefaultMinMaxArrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
 
     return quote do:
         const 
-            omni_inputs            {.inject.} = `ins_number_VAL` #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+            omni_inputs            {.inject.} = `ins_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
             omni_input_names_const {.inject.} = `ins_names_node`  #It's possible to insert NimNodes directly in the code block 
 
         let omni_input_names_let   {.inject.} = `ins_names_node`
@@ -660,8 +715,10 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         #Generate procs for min/max
         generate_inputs_templates(`ins_number_VAL`, 0, 1)
 
+        #Generate arg aliases for in
         generate_args_templates(`ins_number_VAL`)
 
+        #For in[i] access
         proc get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, audio_index_loop : int = 0) : float =
             let chan_int = int(chan)
             if chan_int < omni_inputs:

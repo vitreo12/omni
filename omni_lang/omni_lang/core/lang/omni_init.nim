@@ -415,7 +415,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 print("ERROR: Omni: could not allocate memory")
             
             ugen.ugen_auto_mem_let    = nil
-            ugen.ugen_auto_buffer_let = nil
+            #ugen.ugen_auto_buffer_let = nil
 
             return ugen_ptr
         
@@ -433,8 +433,10 @@ macro init_inner*(code_block_stmt_list : untyped) =
             if not isNil(ugen.ugen_auto_mem_let):
                 freeOmniAutoMem(ugen.ugen_auto_mem_let)
             
+            #[
             if not isNil(ugen.ugen_auto_buffer_let):
                 freeOmniAutoMem(ugen.ugen_auto_buffer_let, false)
+            ]#
 
             omni_free(ugen_ptr)
 
@@ -456,19 +458,21 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 
                 #Initialize auto_mem
                 ugen.ugen_auto_mem_let    = allocInitOmniAutoMem()
-                ugen.ugen_auto_buffer_let = allocInitOmniAutoMem()
+                #ugen.ugen_auto_buffer_let = allocInitOmniAutoMem()
 
                 if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                     print("ERROR: Omni: could not allocate auto_mem")
                     return 0
 
+                #[
                 if isNil(cast[pointer](ugen.ugen_auto_buffer_let)):
                     print("ERROR: Omni: could not allocate auto_buffer")
                     return 0
+                ]#
 
                 let 
                     ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-                    ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
+                    #ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
 
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
@@ -490,7 +494,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #checkValidity triggers the checks for correct initialization of all Datas entries,
                 #while also adding all the Buffers to ugen_auto_buffer
-                if not checkValidity(ugen, ugen_auto_buffer):
+                if not checkValidity(ugen #[, ugen_auto_buffer]#):
                     return 0
                 
                 return 1
@@ -519,19 +523,21 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #Initialize auto_mem
                 ugen.ugen_auto_mem_let    = allocInitOmniAutoMem()
-                ugen.ugen_auto_buffer_let = allocInitOmniAutoMem()
+                #ugen.ugen_auto_buffer_let = allocInitOmniAutoMem()
 
                 if isNil(cast[pointer](ugen.ugen_auto_mem_let)):
                     print("ERROR: Omni: could not allocate auto_mem")
                     return 0
                 
+                #[
                 if isNil(cast[pointer](ugen.ugen_auto_buffer_let)):
                     print("ERROR: Omni: could not allocate auto_buffer")
                     return 0
+                ]#
 
                 let 
                     ugen_auto_mem    {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_mem_let
-                    ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
+                    #ugen_auto_buffer {.inject.} : ptr OmniAutoMem = ugen.ugen_auto_buffer_let
 
                 #Needed to be passed to all defs
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
@@ -553,7 +559,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
 
                 #checkValidity triggers the checks for correct initialization of all Datas entries,
                 #while also adding all the Buffers to ugen_auto_buffer
-                if not checkValidity(ugen, ugen_auto_buffer):
+                if not checkValidity(ugen #[, ugen_auto_buffer]#):
                     return 0
                 
                 return 1
@@ -656,7 +662,7 @@ macro init*(code_block : untyped) : untyped =
             samplerate       {.inject.} : float              = 0.0
             buffer_interface {.inject.} : pointer            = nil
             ugen_auto_mem    {.inject.} : ptr OmniAutoMem    = nil
-            ugen_auto_buffer {.inject.} : ptr OmniAutoMem    = nil
+            #ugen_auto_buffer {.inject.} : ptr OmniAutoMem    = nil
         
         var ugen_call_type   {.inject, noinit.} : typedesc[CallType]
 
@@ -746,6 +752,7 @@ macro build*(var_names : varargs[typed]) =
     )
 
     #Add ugen_auto_buffer_let variable (ptr OmniAutoMem)
+    #[
     var_names_and_types.add(
         nnkIdentDefs.newTree(
             newIdentNode("ugen_auto_buffer_let"),
@@ -755,6 +762,7 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
     )
+    ]#
 
     #Add ugen_params_lock_var variable
     #[

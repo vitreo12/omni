@@ -95,17 +95,19 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         )
     )
 
+#[
 macro Buffer_check_input_num*(input_num_typed : typed, omni_inputs_typed : typed) : untyped =
     let 
         input_num = input_num_typed.intVal()
         omni_inputs = omni_inputs_typed.intVal()
 
     #If these checks fail set to sc_world to nil, which will invalidate the Buffer.
-    #result.input_num is needed for get_buffer(buffer, ins[0][0), as 1 is the minimum number for ins, for now...
+    #result.input_num is needed for lock_buffers_input(buffer, ins[0][0), as 1 is the minimum number for ins, for now...
     if input_num > omni_inputs: 
         error("Buffer's 'input_num = " & $input_num & "' is out of bounds: maximum number of inputs: " & $omni_inputs)
     elif input_num < 1:
         error("Buffer's 'input_num = " & $input_num & "' is out of bounds: minimum input number is 1")
+]#
 
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
@@ -1785,5 +1787,8 @@ macro parse_block_typed*(typed_code_block : typed, build_statement : untyped, is
 
     #if is_def_block:
     #    error repr result
+
+    if is_perform_block:
+        error repr result
 
     #error repr result 

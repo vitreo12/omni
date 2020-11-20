@@ -21,13 +21,16 @@
 # SOFTWARE.
 
 import macros
+from omni_io import ins_buffers_list, params_buffers_list
     
 proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     var 
         let_section = nnkLetSection.newTree()
-        get_buffers = nnkCall.newTree(newIdentNode("get_buffers"))
+        lock_buffers = nnkCall.newTree(
+            newIdentNode("lock_buffers")
+        )
 
     let type_def = getImpl(t)
     
@@ -107,7 +110,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         let_section.add(ident_def_stmt)
     
     result.add(let_section)
-    result.add(get_buffers)
+    result.add(lock_buffers)
 
 #Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
 macro unpackUGenVariables*(t : typed) =
@@ -126,6 +129,163 @@ macro castInsOuts64*() =
             ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
             outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
+#buffers_list is a compile time array. This generates two templates (lock_buffers and unlock_buffers)
+#unlock_buffers is generated first because it's used in lock_buffers to unlock all buffers in case of error in locking one
+macro generate_lock_unlock_buffers*() : untyped =
+    result = nnkStmtList.newTree()
+
+    var 
+        unlock_buffers_body = nnkStmtList.newTree()
+        unlock_buffers_template = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("unlock_buffers")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("and"),
+                        newIdentNode("at_least_one_buffer"),
+                        nnkCall.newTree(
+                            newIdentNode("defined"),
+                            newIdentNode("multithreadBuffers")
+                        )
+                    ),
+                    unlock_buffers_body
+                    )
+                )
+            )
+        )
+        
+        lock_buffers_body = nnkStmtList.newTree()
+        lock_buffers_template = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("lock_buffers")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                        newIdentNode("at_least_one_buffer"),
+                        lock_buffers_body
+                    )
+                )
+            )
+        )
+
+    #Generate from input
+    for buffer in ins_buffers_list:
+        unlock_buffers_body.add(
+            nnkCall.newTree(
+                newIdentNode("unlock_buffer"),
+                buffer
+            )
+        )
+
+        lock_buffers_body.add(
+            nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkPrefix.newTree(
+                        newIdentNode("not"),
+                        nnkCall.newTree(
+                            newIdentNode("lock_buffer_input"),
+                            buffer,
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("ins_Nim"),
+                                    nnkDotExpr.newTree(
+                                        buffer,
+                                        newIdentNode("input_num")
+                                    )
+                                ),
+                                newLit(0)
+                            )
+                        )
+                    ),
+                    nnkStmtList.newTree(
+                        nnkForStmt.newTree(
+                            newIdentNode("audio_channel"),
+                            nnkPar.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode(".."),
+                                    newLit(0),
+                                    nnkInfix.newTree(
+                                        newIdentNode("-"),
+                                        newIdentNode("omni_outputs"),
+                                        newLit(1)
+                                    )
+                                )
+                            ),
+                            nnkStmtList.newTree(
+                                nnkForStmt.newTree(
+                                newIdentNode("audio_index"),
+                                nnkPar.newTree(
+                                    nnkInfix.newTree(
+                                        newIdentNode(".."),
+                                        newLit(0),
+                                        nnkInfix.newTree(
+                                            newIdentNode("-"),
+                                            newIdentNode("bufsize"),
+                                            newLit(1)
+                                        )
+                                    )
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkAsgn.newTree(
+                                        nnkBracketExpr.newTree(
+                                            nnkBracketExpr.newTree(
+                                                newIdentNode("outs_Nim"),
+                                                newIdentNode("audio_channel")
+                                            ),
+                                            newIdentNode("audio_index")
+                                        ),
+                                        newLit(0.0)
+                                    )
+                                )
+                                )
+                            )
+                        ),
+                        nnkCall.newTree(
+                            newIdentNode("unlock_buffers")
+                        ),
+                        nnkReturnStmt.newTree(
+                            newEmptyNode()
+                        )
+                    )
+                )
+            )
+        )
+
+    #Generate from param
+    for buffer in params_buffers_list:
+        error repr buffer
+
+    result.add(
+        unlock_buffers_template,
+        lock_buffers_template
+    )
+
+    #error repr result
+
 template perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / outs are not declared, declare them!
     when not declared(declared_inputs):
@@ -138,7 +298,13 @@ template perform_inner*(code_block : untyped) {.dirty.} =
     when not declared(init_block):
         init:
             discard
+
+    #Create lock_buffers and unlock_buffers templates
+    #unlock_buffers is generated first because it's used in lock_buffers to unlock all buffers in case of error in locking one
+    generate_lock_unlock_buffers()
     
+    #[
+    #dynamic unlock_buffers
     template unlock_buffers*() : untyped {.dirty.} =
         when at_least_one_buffer:
             when defined(multithreadBuffers):
@@ -147,19 +313,21 @@ template perform_inner*(code_block : untyped) {.dirty.} =
                         let buffer_to_unlock_123456789 = cast[Buffer](ugen_auto_buffer.allocs[i])
                         unlock_buffer(buffer_to_unlock_123456789)
 
-    template get_buffers*() : untyped {.dirty.} =
+    #dynamic unlock_buffers
+    template lock_buffers*() : untyped {.dirty.} =
         when at_least_one_buffer:
             let allocated_buffers123456789 = ugen_auto_buffer.num_allocs
             if allocated_buffers123456789 > 0:
                 for i in (0..allocated_buffers123456789-1):
                     let buffer_to_get_123456789 = cast[Buffer](ugen_auto_buffer.allocs[i])
-                    if not get_buffer(buffer_to_get_123456789, ins_Nim[buffer_to_get_123456789.input_num][0]):
-                        #print("ERROR: Omni: failed to get_buffer.")
+                    if not lock_buffer(buffer_to_get_123456789, ins_Nim[buffer_to_get_123456789.input_num][0]):
+                        #print("ERROR: Omni: failed to lock_buffer.")
                         for audio_channel in (0..omni_outputs-1):
                             for audio_index in (0..bufsize-1):
                                 outs_Nim[audio_channel][audio_index] = 0.0
                         unlock_buffers()
                         return
+    ]#
 
     #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(performBits32):

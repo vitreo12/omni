@@ -1,4 +1,9 @@
 import ../../omni_lang, macros
 
-init:
-    a = Buffer(1)
+#expandMacros:
+ins:
+    buf Buffer
+    buf2 Buffer
+
+sample:
+    out1 = 0.0

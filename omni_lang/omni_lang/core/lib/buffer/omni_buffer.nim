@@ -70,8 +70,8 @@ template len*(buffer : Buffer) : untyped {.dirty.} =
     buffer.length
 
 #Internal checking for structs. It works fine without redefining it for every newBufferInterface!
-proc checkValidity*(obj : Buffer, ugen_auto_buffer : ptr OmniAutoMem) : bool =
-    ugen_auto_buffer.registerChild(cast[pointer](obj))
+proc checkValidity*(obj : Buffer #[, ugen_auto_buffer : ptr OmniAutoMem]#) : bool =
+    #ugen_auto_buffer.registerChild(cast[pointer](obj))
     return true
 
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
@@ -264,7 +264,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("get_buffer") #must become get_buffer_in
+                        newIdentNode("lock_buffer_input")
                     ),
                     newEmptyNode(),
                     newEmptyNode(),
