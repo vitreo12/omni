@@ -23,7 +23,7 @@
 import macros, strutils, omni_type_checker
 
 #at_least_one_buffer is a compile time variable to use in the get_buffers/unlock_buffers templates in omni_perform
-var at_least_one_buffer* {.compileTime.} = false
+#var at_least_one_buffer* {.compileTime.} = false
 
 macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
     result = nnkStmtList.newTree()
@@ -53,14 +53,14 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                     newIdentNode("obj"),
                     t_type,
                     newEmptyNode()
-                ),
-                nnkIdentDefs.newTree(
+                )#,
+                #[ nnkIdentDefs.newTree(
                     newIdentNode("ugen_auto_buffer"),
                     nnkPtrTy.newTree(
                         newIdentNode("OmniAutoMem")
                     ),
                     newEmptyNode()
-                )
+                ) ]#
             ),
             nnkPragma.newTree(
                 newIdentNode("inline")
@@ -182,7 +182,6 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                     is_data = false
                     is_struct = false
 
-                
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
                     let type_name_str = type_name.strVal()
@@ -190,8 +189,8 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                         is_data = true
                         interim_type = data_content   
                     
-                    elif type_name_str == "Buffer" or type_name_str == "Buffer_struct_inner" or type_name_str == "Buffer_struct_export": 
-                        at_least_one_buffer = true
+                    #elif type_name_str == "Buffer" or type_name_str == "Buffer_struct_inner" or type_name_str == "Buffer_struct_export": 
+                    #    at_least_one_buffer = true
                 
                 elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
                     #Check for structs, otherwise, get out!
@@ -357,8 +356,8 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                                             newIdentNode("not"),
                                             nnkCall.newTree(
                                                 newIdentNode("checkValidity"),
-                                                index_entry,
-                                                newIdentNode("ugen_auto_buffer")
+                                                index_entry#,
+                                                #newIdentNode("ugen_auto_buffer")
                                             )
                                         ),
                                         nnkStmtList.newTree(
@@ -388,8 +387,8 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
         elif type_to_inspect_string.endsWith("_struct_inner") or type_to_inspect.isStruct():
             
             #Compile time setting of variable
-            if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_struct_inner" or type_to_inspect_string == "Buffer_struct_export":
-                at_least_one_buffer = true
+            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_struct_inner" or type_to_inspect_string == "Buffer_struct_export":
+            #    at_least_one_buffer = true
 
             proc_body.add(
                 nnkIfStmt.newTree(
@@ -401,8 +400,8 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                                 nnkDotExpr.newTree(
                                     newIdentNode("obj"),
                                     var_name_ident
-                                ),
-                                newIdentNode("ugen_auto_buffer")
+                                )#,
+                                #newIdentNode("ugen_auto_buffer")
                             )
                         ),
                         nnkStmtList.newTree(

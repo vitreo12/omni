@@ -64,7 +64,7 @@ proc Delay_struct_new_inner*[S : SomeNumber](size : S = int(0), samplerate : flo
     result.data = data
 
 #This is probably useless and can be removed :)
-proc checkValidity*(obj : Delay, ugen_auto_buffer : ptr OmniAutoMem) : bool =
+proc checkValidity*(obj : Delay #[, ugen_auto_buffer : ptr OmniAutoMem]#) : bool =
     return true
 
 #Read proc (uses cubic interp)
