@@ -24,6 +24,10 @@
         out2
     ```
 
+2) Introducing `params`:
+
+3) `Buffers` can only now be declared via `ins` or `params`.
+
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS
