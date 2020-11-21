@@ -198,11 +198,13 @@ macro generate_lock_unlock_buffers*() : untyped =
         )
 
     #Generate from input
-    for buffer in ins_buffers_list:
+    for buffer_name in ins_buffers_list:
+        let buffer_ident_node = newIdentNode(buffer_name)
+
         unlock_buffers_body.add(
             nnkCall.newTree(
                 newIdentNode("unlock_buffer"),
-                buffer
+                buffer_ident_node
             )
         )
 
@@ -213,12 +215,12 @@ macro generate_lock_unlock_buffers*() : untyped =
                         newIdentNode("not"),
                         nnkCall.newTree(
                             newIdentNode("lock_buffer_input"),
-                            buffer,
+                            buffer_ident_node,
                             nnkBracketExpr.newTree(
                                 nnkBracketExpr.newTree(
                                     newIdentNode("ins_Nim"),
                                     nnkDotExpr.newTree(
-                                        buffer,
+                                        buffer_ident_node,
                                         newIdentNode("input_num")
                                     )
                                 ),

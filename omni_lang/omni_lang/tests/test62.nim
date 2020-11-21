@@ -1,4 +1,5 @@
 import ../../omni_lang
+import macros except params
 
 #[ expandMacros:
     ins 2:
@@ -10,9 +11,11 @@ import ../../omni_lang
         amp
         buf Buffer ]#
 
-#expandMacros:
-params:
-    freq
+expandMacros:
+    params:
+        freq {440, 1, 22000}
+        amp
+        buf Buffer
 
 init:
     a = freq
