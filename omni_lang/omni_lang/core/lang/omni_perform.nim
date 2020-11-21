@@ -292,9 +292,12 @@ macro generate_lock_unlock_buffers*() : untyped =
     #error repr result
 
 template perform_inner*(code_block : untyped) {.dirty.} =
-    #If ins / outs are not declared, declare them!
+    #If ins / params / outs are not declared, declare them!
     when not declared(declared_inputs):
         ins 1
+
+    when not declared(declared_params):
+        omni_io.params 0
 
     when not declared(declared_outputs):
         outs 1

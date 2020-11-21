@@ -1117,9 +1117,11 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     if params_names_kind != nnkStmtList and params_names_kind != nnkStrLit and params_names_kind != nnkCommand and params_names_kind != nnkNilLit:
         error("params: Expected a block statement after the number of params")
 
-    #Always have at least one param
+    var zero_params = false
+    
     if params_number_VAL == 0:
         params_number_VAL = 1
+        zero_params = true
     elif params_number_VAL < 0:
         error("params: Expected a positive number for params number")
 
@@ -1219,7 +1221,7 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
             error("params: syntax not implemented yet")
 
     #params count mismatch
-    if statement_counter != params_number_VAL:
+    if not zero_params and statement_counter != params_number_VAL:
         error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter)
 
     #Remove trailing coma
@@ -1233,6 +1235,9 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
         defaults_mins_maxs = buildDefaultMinMaxArrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
         params_generate_set_templates = params_generate_set_templates()
         params_generate_unpack_templates = params_generate_unpack_templates()
+
+    if zero_params:
+        params_number_VAL = 0
     
     return quote do:
         const 

@@ -634,9 +634,12 @@ macro init*(code_block : untyped) : untyped =
     )
 
     return quote do:
-        #If ins / outs are not declared, declare them!
+        #If ins / params / outs are not declared, declare them!
         when not declared(declared_inputs):
             ins 1
+
+        when not declared(declared_params):
+            omni_io.params 0
 
         when not declared(declared_outputs):
             outs 1
