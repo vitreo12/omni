@@ -21,25 +21,20 @@
 # SOFTWARE.
 
 import macros
-import ../auto_mem/omni_auto_mem
 
 type
     Buffer_inherit* = object of RootObj
-        input_num*  : int      
+        inputNum*  : int      #in interface
+        name*      : cstring  #param interface
+        valid*     : bool     #buffer validity
+
         length*     : int
-        size*       : int
-        chans*      : int
+        channels*   : int
         samplerate* : float
 
     #Don't export these
     Buffer = ptr Buffer_inherit
     Buffer_struct_export = Buffer
-
-#[ 
-#no need for this, it's taken care of in addBufferIns / addBufferParams
-proc Buffer_struct_new_inner*[S : SomeInteger](input_num : S, buffer_interface : pointer, obj_type : typedesc[Buffer_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Buffer {.inline.} =
-    {.fatal: "No wrapper defined for 'Buffer'.".}
-]#
 
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
@@ -69,9 +64,16 @@ template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, ind
 template len*(buffer : Buffer) : untyped {.dirty.} =
     buffer.length
 
+#Alias for chans
+template chans*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.channels
+
+#Chans * length = size
+proc size*(buffer : Buffer) : int {.inline.} =
+    return buffer.channels * buffer.length
+
 #Internal checking for structs. It works fine without redefining it for every newBufferInterface!
-proc checkValidity*(obj : Buffer #[, ugen_auto_buffer : ptr OmniAutoMem]#) : bool =
-    #ugen_auto_buffer.registerChild(cast[pointer](obj))
+proc checkValidity*(obj : Buffer) : bool =
     return true
 
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
@@ -84,9 +86,13 @@ macro newBufferInterface*(code_block : untyped) : untyped =
     var 
         obj : NimNode
         init : NimNode
-        lockFromInput : NimNode
-        lockFromParam : NimNode
+        getFromInput : NimNode
+        getFromParam : NimNode
+        lockBuffer : NimNode
         unlockBuffer : NimNode
+        length : NimNode
+        samplerate : NimNode
+        channels : NimNode
         getter : NimNode
         setter : NimNode
 
@@ -192,11 +198,55 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                         newIdentNode("ugen_auto_mem"),
                         newIdentNode("registerChild")
                     ),
-                    newIdentNode("result")
+                    newIdentNode("buffer")
+                ),
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("inputNum")
+                    ),
+                    nnkInfix.newTree(
+                        newIdentNode("-"),
+                        nnkCall.newTree(
+                            newIdentNode("int"),
+                            newIdentNode("inputNum")
+                        ),
+                        nnkCall.newTree(
+                            newIdentNode("int"),
+                            newLit(1)
+                        )
+                    )
+                ),
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode("<"),
+                            nnkDotExpr.newTree(
+                                newIdentNode("buffer"),
+                                newIdentNode("inputNum")
+                            ),
+                            newLit(0)
+                        ),
+                        nnkStmtList.newTree(
+                            nnkAsgn.newTree(
+                                nnkDotExpr.newTree(
+                                    newIdentNode("buffer"),
+                                    newIdentNode("inputNum")
+                                ),
+                                newLit(0)
+                            )
+                        )
+                    )
+                ),
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("valid")
+                    ),
+                    newLit(false)
                 ),
                 statement_block,
-                nnkAsgn.newTree(
-                    newIdentNode("result"),
+                nnkReturnStmt.newTree(
                     newIdentNode("buffer")
                 )
             )
@@ -218,7 +268,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     nnkFormalParams.newTree(
                         newIdentNode("Buffer"),
                         nnkIdentDefs.newTree(
-                            newIdentNode("input_num"),
+                            newIdentNode("inputNum"),
                             newIdentNode("S"),
                             newEmptyNode()
                         ),
@@ -259,25 +309,25 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 )
             )
 
-        elif statement_name == "lockFromInput" or statement_name == "lock_from_input":
-            lockFromInput = nnkStmtList.newTree(
+        elif statement_name == "getFromInput" or statement_name == "get_from_input":
+            getFromInput = nnkStmtList.newTree(
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("lock_buffer_input")
+                        newIdentNode("get_buffer_from_input")
                     ),
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkFormalParams.newTree(
-                        newIdentNode("bool"),
+                        newIdentNode("void"),
                         nnkIdentDefs.newTree(
                             newIdentNode("buffer"),
                             newIdentNode("Buffer"),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("input_val"),
-                            newIdentNode("float32"),
+                            newIdentNode("inputVal"),
+                            newIdentNode("float"),
                             newEmptyNode()
                         )
                     ),
@@ -290,11 +340,138 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     )
                 )
             )
-        
-        elif statement_name == "lockFromParam" or statement_name == "lock_from_param":
-            lockFromParam = nnkStmtList.newTree(
+
+        elif statement_name == "getFromParam" or statement_name == "get_from_param":
+            getFromParam = nnkStmtList.newTree(
                 nnkDiscardStmt.newTree(
                     newEmptyNode()
+                )
+            )
+
+        elif statement_name == "lock":
+            lockBuffer = nnkStmtList.newTree(
+                nnkProcDef.newTree(
+                    nnkPostfix.newTree(
+                        newIdentNode("*"),
+                        newIdentNode("lock_buffer")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("void"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
+                        ),
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("inline")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        statement_block
+                    )
+                )
+            )
+
+        elif statement_name == "length" or statement_name == "len":
+            length = nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode("length"),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    statement_block
+                ),
+                nnkTemplateDef.newTree(
+                    newIdentNode("len"),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    statement_block
+                )
+            )
+
+        elif statement_name == "samplerate" or statement_name == "sampleRate":
+            samplerate = nnkTemplateDef.newTree(
+                newIdentNode("samplerate"),
+                newEmptyNode(),
+                newEmptyNode(),
+                nnkFormalParams.newTree(
+                    newIdentNode("untyped"),
+                    nnkIdentDefs.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("Buffer"),
+                        newEmptyNode()
+                    )
+                ),
+                nnkPragma.newTree(
+                    newIdentNode("dirty")
+                ),
+                newEmptyNode(),
+                statement_block
+            )
+
+        elif statement_name == "channels" or statement_name == "chans":
+            channels = nnkStmtList.newTree(
+                nnkTemplateDef.newTree(
+                    newIdentNode("channels"),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    statement_block
+                ),
+                nnkTemplateDef.newTree(
+                    newIdentNode("chans"),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    statement_block
                 )
             )
 
@@ -461,7 +638,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
             )
 
         else:
-            error "Invalid block name: '" & statement_name & "'. Valid names are: 'obj', 'init', 'lockFromInput', 'lockFromParam', 'unlockBuffer', 'getter', 'setter'"
+            error "Invalid block name: '" & statement_name & "'. Valid names are: 'obj', 'init', 'lockBuffer', 'getFromParam', 'unlockBuffer', 'getter', 'setter'"
 
     if obj == nil:
         error "newBufferInterface: Missing `obj`"
@@ -469,14 +646,28 @@ macro newBufferInterface*(code_block : untyped) : untyped =
     if init == nil:
         error "newBufferInterface: Missing `init`"
 
-    if lockFromInput == nil:
-        error "newBufferInterface: Missing `lockFromInput`"
+    if getFromInput == nil:
+        error "newBufferInterface: Missing `getFromInput`"
         
-    if lockFromParam == nil:
-        error "newBufferInterface: Missing `lockFromParam`"
-        
+    if getFromParam == nil:
+        error "newBufferInterface: Missing `getFromParam`"
+    
+    if lockBuffer == nil:
+        error "newBufferInterface: Missing `lock`"
+
     if unlockBuffer == nil:
-        error "newBufferInterface: Missing `unlockBuffer`"
+        error "newBufferInterface: Missing `unlock`"
+
+    #[
+    if length == nil:
+        error "newBufferInterface: Missing `length`"
+
+    if samplerate == nil:
+        error "newBufferInterface: Missing `samplerate`"
+
+    if channels == nil:
+        error "newBufferInterface: Missing `channels`"
+    ]#
         
     if getter == nil:
         error "newBufferInterface: Missing `getter`"
@@ -858,12 +1049,50 @@ macro newBufferInterface*(code_block : untyped) : untyped =
         )
         )
 
+    let size = nnkTemplateDef.newTree(
+        newIdentNode("size"),
+        newEmptyNode(),
+        newEmptyNode(),
+        nnkFormalParams.newTree(
+            newIdentNode("untyped"),
+            nnkIdentDefs.newTree(
+                newIdentNode("buffer"),
+                newIdentNode("Buffer"),
+                newEmptyNode()
+            )
+        ),
+        nnkPragma.newTree(
+            newIdentNode("dirty")
+        ),
+        newEmptyNode(),
+        nnkStmtList.newTree(
+            nnkInfix.newTree(
+                newIdentNode("*"),
+                nnkCall.newTree(
+                    newIdentNode("length"),
+                    newIdentNode("buffer")
+                ),
+                nnkCall.newTree(
+                    newIdentNode("channels"),
+                    newIdentNode("buffer")
+                )
+            )
+        )
+    )
+
     result.add(
         obj,
         init,
-        lockFromInput,
-        lockFromParam,
+        getFromInput,
+        getFromParam,
+        lockBuffer,
         unlockBuffer,
+        #[
+        length,
+        samplerate,
+        channels,
+        size,
+        ]#
         getter,
         setter,
         read_inner

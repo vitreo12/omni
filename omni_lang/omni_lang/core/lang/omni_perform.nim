@@ -209,23 +209,27 @@ macro generate_lock_unlock_buffers*() : untyped =
         )
 
         lock_buffers_body.add(
+            nnkCall.newTree(
+                newIdentNode("get_buffer_from_input"),
+                buffer_ident_node,
+                nnkBracketExpr.newTree(
+                    nnkBracketExpr.newTree(
+                        newIdentNode("ins_Nim"),
+                        nnkDotExpr.newTree(
+                            buffer_ident_node,
+                            newIdentNode("input_num")
+                        )
+                    ),
+                    newLit(0)
+                )
+            ),
             nnkIfStmt.newTree(
                 nnkElifBranch.newTree(
                     nnkPrefix.newTree(
                         newIdentNode("not"),
-                        nnkCall.newTree(
-                            newIdentNode("lock_buffer_input"),
+                        nnkDotExpr.newTree(
                             buffer_ident_node,
-                            nnkBracketExpr.newTree(
-                                nnkBracketExpr.newTree(
-                                    newIdentNode("ins_Nim"),
-                                    nnkDotExpr.newTree(
-                                        buffer_ident_node,
-                                        newIdentNode("input_num")
-                                    )
-                                ),
-                                newLit(0)
-                            )
+                            newIdentNode("valid")
                         )
                     ),
                     nnkStmtList.newTree(
@@ -279,6 +283,10 @@ macro generate_lock_unlock_buffers*() : untyped =
                         )
                     )
                 )
+            ),
+            nnkCall.newTree(
+                newIdentNode("lock_buffer"),
+                buffer_ident_node
             )
         )
 
@@ -291,7 +299,7 @@ macro generate_lock_unlock_buffers*() : untyped =
         lock_buffers_template
     )
 
-    #error repr result
+    error repr result
 
 template perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / params / outs are not declared, declare them!
