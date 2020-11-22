@@ -342,9 +342,34 @@ macro newBufferInterface*(code_block : untyped) : untyped =
             )
 
         elif statement_name == "getFromParam" or statement_name == "get_from_param":
-            getFromParam = nnkStmtList.newTree(
-                nnkDiscardStmt.newTree(
-                    newEmptyNode()
+            getFromInput = nnkStmtList.newTree(
+                nnkProcDef.newTree(
+                    nnkPostfix.newTree(
+                        newIdentNode("*"),
+                        newIdentNode("get_buffer_from_param")
+                    ),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("void"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
+                        ),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("paramVal"),
+                            newIdentNode("cstring"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("inline")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        statement_block
+                    )
                 )
             )
 

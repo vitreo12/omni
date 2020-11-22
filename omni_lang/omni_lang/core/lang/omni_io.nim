@@ -731,41 +731,44 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     let defaults_mins_maxs = buildDefaultMinMaxArrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
 
     return quote do:
-        const 
-            omni_inputs            {.inject.} = `ins_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-            omni_input_names_const {.inject.} = `ins_names_node`  #It's possible to insert NimNodes directly in the code block 
+        when not declared(declared_inputs):
+            const 
+                omni_inputs            {.inject.} = `ins_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                omni_input_names_const {.inject.} = `ins_names_node`  #It's possible to insert NimNodes directly in the code block 
 
-        let omni_input_names_let   {.inject.} = `ins_names_node`
+            let omni_input_names_let   {.inject.} = `ins_names_node`
 
-        #compile time variable if ins are defined
-        let declared_inputs {.inject, compileTime.} = true
+            #compile time variable if ins are defined
+            let declared_inputs {.inject, compileTime.} = true
 
-        #const statement for defaults / mins / maxs
-        `defaults_mins_maxs`
-        
-        #Generate procs for min/max
-        generate_inputs_templates(`ins_number_VAL`, 0, 1)
+            #const statement for defaults / mins / maxs
+            `defaults_mins_maxs`
+            
+            #Generate procs for min/max
+            generate_inputs_templates(`ins_number_VAL`, 0, 1)
 
-        #Generate arg aliases for in
-        generate_args_templates(`ins_number_VAL`)
+            #Generate arg aliases for in
+            generate_args_templates(`ins_number_VAL`)
 
-        #For in[i] access
-        proc get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, audio_index_loop : int = 0) : float =
-            let chan_int = int(chan)
-            if chan_int < omni_inputs:
-                return float(ins_Nim[chan_int][audio_index_loop])
-            else:
-                return 0.0
-        
-        #Export to C
-        proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
-            return int32(omni_inputs)
+            #For in[i] access
+            proc get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, audio_index_loop : int = 0) : float =
+                let chan_int = int(chan)
+                if chan_int < omni_inputs:
+                    return float(ins_Nim[chan_int][audio_index_loop])
+                else:
+                    return 0.0
+            
+            #Export to C
+            proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
+                return int32(omni_inputs)
 
-        proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-            return cast[ptr cchar](unsafeAddr(omni_input_names_let[0]))
+            proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_input_names_let[0]))
 
-        proc Omni_UGenInputDefaults() : ptr cfloat {.exportc: "Omni_UGenInputDefaults", dynlib.} =
-            return cast[ptr cfloat](omni_input_defaults_let.unsafeAddr)
+            proc Omni_UGenInputDefaults() : ptr cfloat {.exportc: "Omni_UGenInputDefaults", dynlib.} =
+                return cast[ptr cfloat](omni_input_defaults_let.unsafeAddr)
+        else:
+            {.fatal: "ins: Already defined once.".}
 
 macro ins*(args : varargs[untyped]) : untyped =
     var 
@@ -879,23 +882,26 @@ macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
     outs_names_node = newLit(outs_names_string)
 
     return quote do: 
-        const 
-            omni_outputs            {.inject.} = `outs_number_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
-            omni_output_names_const {.inject.} = `outs_names_node`  #It's possible to outsert NimNodes directly in the code block 
-        
-        let omni_output_names_let   {.inject.} = `outs_names_node`
+        when not declared(declared_outputs):
+            const 
+                omni_outputs            {.inject.} = `outs_number_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
+                omni_output_names_const {.inject.} = `outs_names_node`  #It's possible to outsert NimNodes directly in the code block 
+            
+            let omni_output_names_let   {.inject.} = `outs_names_node`
 
-        #compile time variable if outs are defined
-        let declared_outputs {.inject, compileTime.} = true
-        
-        #generate_outputs_templates(`outs_number_VAL`)
-        
-        #Export to C
-        proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
-            return int32(omni_outputs)
+            #compile time variable if outs are defined
+            let declared_outputs {.inject, compileTime.} = true
+            
+            #generate_outputs_templates(`outs_number_VAL`)
+            
+            #Export to C
+            proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
+                return int32(omni_outputs)
 
-        proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-            return cast[ptr cchar](unsafeAddr(omni_output_names_let[0]))
+            proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_output_names_let[0]))
+        else:
+            {.fatal: "outs: Already defined once.".}
 
 macro outs*(args : varargs[untyped]) : untyped =
     var 
@@ -1209,6 +1215,62 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
             
             #buffer param
             else:
+                var
+                    omni_ugen_setbufferparam_func_name = newIdentNode("Omni_UGenSetBufferParam_" & param_name)
+
+                    set_bufferparam_func_block = nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            nnkDotExpr.newTree(
+                                nnkDotExpr.newTree(
+                                    newIdentNode("ugen"),
+                                    newIdentNode("params_lock")
+                                ),
+                                newIdentNode("spin")
+                            ),
+                            nnkStmtList.newTree(
+                                nnkCall.newTree(
+                                    newIdentNode("get_buffer_from_param"),
+                                    nnkDotExpr.newTree(
+                                        newIdentNode("ugen"),
+                                        newIdentNode(param_name & "_param")
+                                    ),
+                                    newIdentNode("val")
+                                )
+                            )
+                        )
+                    )
+
+                    set_bufferparam_func = nnkProcDef.newTree(
+                        omni_ugen_setbufferparam_func_name,
+                        newEmptyNode(),
+                        newEmptyNode(),
+                        nnkFormalParams.newTree(
+                            newIdentNode("void"),
+                            nnkIdentDefs.newTree(
+                                newIdentNode("ugen"),
+                                nnkPtrTy.newTree(
+                                    newIdentNode("UGen")
+                                ),
+                                newEmptyNode()
+                            ),
+                            nnkIdentDefs.newTree(
+                                newIdentNode("val"),
+                                newIdentNode("cstring"),
+                                newEmptyNode()
+                            )
+                        ),
+                        nnkPragma.newTree(
+                            newIdentNode("exportc"),
+                            newIdentNode("dynlib")
+                        ),
+                        newEmptyNode(),
+                        set_bufferparam_func_block
+                    )
+
+                final_template_block.add(
+                    set_bufferparam_func
+                )
+                
                 setBufferParam_if.add(
                     nnkElifBranch.newTree(
                         nnkInfix.newTree(
@@ -1218,7 +1280,7 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
                         ),
                         nnkStmtList.newTree(
                             nnkCall.newTree(
-                                newIdentNode("Omni_UGenSetBufferParam_" & param_name),
+                               omni_ugen_setbufferparam_func_name,
                                 newIdentNode("ugen"),
                                 newIdentNode("val")
                             )
@@ -1561,33 +1623,36 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
         params_number_VAL = 0
     
     return quote do:
-        const 
-            omni_params            {.inject.}  = `params_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-            omni_param_names_const {.inject.}  = `params_names_node`  #It's possible to insert NimNodes directly in the code block 
+        when not declared(declared_params):
+            const 
+                omni_params            {.inject.}  = `params_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                omni_param_names_const {.inject.}  = `params_names_node`  #It's possible to insert NimNodes directly in the code block 
 
-        let omni_param_names_let   {.inject.}  = `params_names_node`
+            let omni_param_names_let   {.inject.}  = `params_names_node`
 
-        #compile time variable if params are defined
-        let declared_params {.inject, compileTime.} = true
+            #compile time variable if params are defined
+            let declared_params {.inject, compileTime.} = true
 
-        #const statement for defaults / mins / maxs
-        `defaults_mins_maxs`
+            #const statement for defaults / mins / maxs
+            `defaults_mins_maxs`
 
-        #Returns a template that generates all setParams procs. This must be called after UGen definition
-        `params_generate_set_templates`
+            #Returns a template that generates all setParams procs. This must be called after UGen definition
+            `params_generate_set_templates`
 
-        #Returns a template that generates the unpacking of params for perform block
-        `params_generate_unpack_templates`
+            #Returns a template that generates the unpacking of params for perform block
+            `params_generate_unpack_templates`
 
-        #Export to C
-        proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
-            return int32(omni_params)
+            #Export to C
+            proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
+                return int32(omni_params)
 
-        proc Omni_UGenParamNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib.} =
-            return cast[ptr cchar](unsafeAddr(omni_param_names_let[0]))
+            proc Omni_UGenParamNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_param_names_let[0]))
 
-        proc Omni_UGenParamDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
-            return cast[ptr cfloat](omni_param_defaults_let.unsafeAddr)
+            proc Omni_UGenParamDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
+                return cast[ptr cfloat](omni_param_defaults_let.unsafeAddr)
+        else:
+            {.fatal: "params: Already defined once.".}
 
 macro params*(args : varargs[untyped]) : untyped =
     var 
