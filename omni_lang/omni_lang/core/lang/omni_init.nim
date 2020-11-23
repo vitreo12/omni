@@ -776,6 +776,15 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
     )
+
+    #Add buffers_lock
+    var_names_and_types.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("buffers_lock"),
+            newIdentNode("AtomicFlag"),
+            newEmptyNode()
+        )
+    )
     
     #Add samplerate_let variable
     var_names_and_types.add(

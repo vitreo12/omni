@@ -36,6 +36,9 @@ var
     params_names_list*    {.compileTime.} : seq[string]
     params_defaults_list* {.compileTime.} : seq[float]
 
+var
+    buffers_names_list*   {.compileTime.} : seq[string]
+
 #Compile time array of buffers to unpack
 var 
     at_least_one_buffer*  {.compileTime.} = false
@@ -707,6 +710,9 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     min_vals[statement_counter] = min_val
                     max_vals[statement_counter] = max_val
 
+                else:
+                    error("ins: Invalid syntax: '" & $(repr(statement)) & "'")
+
                 statement_counter += 1
                     
         #Single "freq" {440, 0, 22000} OR "freq" on same line: ins 1, "freq" {440, 0, 22000}
@@ -1280,7 +1286,7 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
                         ),
                         nnkStmtList.newTree(
                             nnkCall.newTree(
-                               omni_ugen_setbufferparam_func_name,
+                                omni_ugen_setbufferparam_func_name,
                                 newIdentNode("ugen"),
                                 newIdentNode("val")
                             )
@@ -1299,16 +1305,21 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
             )
         )
 
-        setBufferParam_if.add(
-            nnkElse.newTree(
-                nnkStmtList.newTree(
-                    nnkCall.newTree(
-                        newIdentNode("omni_print"),
-                        newLit("ERROR: Omni_UGenSetBufferParam: invalid param name")
+        if params_buffers_list.len > 0:
+            setBufferParam_if.add(
+                nnkElse.newTree(
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("omni_print"),
+                            newLit("ERROR: Omni_UGenSetBufferParam: invalid param name")
+                        )
                     )
                 )
             )
-        )
+        else:
+            setBufferParam_block[0] = nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
     else:
         setParam_block[0] = nnkDiscardStmt.newTree(
             newEmptyNode()
@@ -1318,11 +1329,11 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
         )
 
     final_template_block.add(
-        setParam,
-        setBufferParam
+        setParam
+        #setBufferParam
     )
 
-    error repr result
+    #error repr result
 
 #Returns a template that unpacks params for perform block
 proc params_generate_unpack_templates() : NimNode {.compileTime.} =
@@ -1488,6 +1499,8 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
         max_vals     : seq[float]
 
     let params_names_kind = params_names.kind
+    
+    #error "ye"
 
     #Must be an int literal OR nnkStmtListExpr (for params: 1)
     if params_number.kind == nnkIntLit: 
@@ -1597,6 +1610,9 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                 elif statement_kind == nnkCurly:
                     error("params: can't only use default / min / max without a name.")
 
+                else:
+                    error("params: Invalid syntax: '" & $(repr(statement)) & "'")
+
                 statement_counter += 1
                     
         #Single "freq" {440, 0, 22000} OR "freq" on same line: params 1, "freq" {440, 0, 22000}
@@ -1689,3 +1705,173 @@ macro params*(args : varargs[untyped]) : untyped =
 
     return quote do:
         params_inner(`params_number`, `params_names`)
+
+proc buffers_generate_set_templates() : NimNode {.compileTime.} =
+    discard
+
+proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
+    discard
+
+macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped =
+    var 
+        buffers_number_VAL : int
+        buffers_names_string : string = ""
+        buffers_names_node : NimNode
+
+    let buffers_names_kind = buffers_names.kind
+
+    #Must be an int literal OR nnkStmtListExpr (for buffers: 1)
+    if buffers_number.kind == nnkIntLit: 
+        buffers_number_VAL = int(buffers_number.intVal)     
+    elif buffers_number.kind == nnkStmtListExpr:
+        buffers_number_VAL = int(buffers_number[0].intVal)    
+    else:
+        error("buffers: Expected the number of buffers to be expressed as an integer literal value")
+
+    if buffers_names_kind != nnkStmtList and buffers_names_kind != nnkStrLit and buffers_names_kind != nnkCommand and buffers_names_kind != nnkNilLit:
+        error("buffers: Expected a block statement after the number of buffers")
+
+    var zero_buffers = false
+    
+    if buffers_number_VAL == 0:
+        buffers_number_VAL = 1
+        zero_buffers = true
+    elif buffers_number_VAL < 0:
+        error("buffers: Expected a positive number for buffers number")
+
+    var statement_counter = 0
+
+    #This is for the buffers 1, "freq" case. (where "freq" is not viewed as varargs)
+    #buffer 2, "freq", "stmt" is covered in the other macro
+    if buffers_names_kind == nnkStrLit or buffers_names_kind == nnkIdent:
+        let buffer_name = buffers_names.strVal()
+        checkValidParamName(buffer_name)
+        buffers_names_string.add($buffer_name & ",")
+        buffers_names_list.add(buffer_name)
+        statement_counter = 1
+
+    #block case
+    else:
+        #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
+        if buffers_names_kind == nnkStmtList:
+            for statement in buffers_names.children():
+                let statement_kind = statement.kind
+
+                #"freq" / freq
+                if statement_kind == nnkStrLit or statement_kind == nnkIdent:
+                    let buffer_name = statement.strVal()
+                    checkValidParamName(buffer_name)
+                    buffers_names_string.add($buffer_name & ",")
+                    buffers_names_list.add(buffer_name)
+                
+                #"freq" {440, 0, 22000} OR "freq" {440 0 22000}
+                elif statement_kind == nnkCommand:
+                    assert statement.len == 2
+
+                    #The name of the buffer
+                    let 
+                        buffer_name_node = statement[0]
+                        buffer_name_node_kind = buffer_name_node.kind
+                    if buffer_name_node_kind != nnkStrLit and buffer_name_node_kind != nnkIdent:
+                        error("buffers: Expected buffer name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+
+                    let buffer_name = buffer_name_node.strVal()
+                    checkValidParamName(buffer_name)
+                    buffers_names_string.add($buffer_name & ",")
+                    buffers_names_list.add(buffer_name)
+
+                else:
+                    error("buffers: Invalid syntax: '" & $(repr(statement)) & "'")
+
+                statement_counter += 1
+                    
+        elif buffers_names_kind == nnkCommand:
+            error("buffers: syntax not implemented yet")
+
+    #buffers count mismatch
+    if not zero_buffers and statement_counter != buffers_number_VAL:
+        error("buffers: Expected " & $buffers_number_VAL & " buffer names, got " & $statement_counter)
+
+    #Remove trailing coma
+    if buffers_names_string.len > 1:
+        buffers_names_string = buffers_names_string[0..buffers_names_string.high-1]
+
+    #Assign to node
+    buffers_names_node = newLit(buffers_names_string)
+
+    let
+        #defaults_mins_maxs = buildDefaultMinMaxArrays(buffers_number_VAL, default_vals, buffers_names_string, true)
+        buffers_generate_set_templates = buffers_generate_set_templates()
+        buffers_generate_unpack_templates = buffers_generate_unpack_templates()
+
+    if zero_buffers:
+        buffers_number_VAL = 0
+
+    #error repr buffers_names_node
+    
+    return quote do:
+        when not declared(declared_buffers):
+            const 
+                omni_buffers            {.inject.}  = `buffers_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
+                omni_buffer_names_const {.inject.}  = `buffers_names_node`  #It's possible to insert NimNodes directly in the code block 
+
+            let omni_buffer_names_let   {.inject.}  = `buffers_names_node`
+
+            #compile time variable if buffers are defined
+            let declared_buffers {.inject, compileTime.} = true
+
+            #const statement for defaults / mins / maxs
+            #`defaults_mins_maxs`
+
+            #Returns a template that generates all setbuffers procs. This must be called after UGen definition
+            #`buffers_generate_set_templates`
+
+            #Returns a template that generates the unpacking of buffers for perform block
+            #`buffers_generate_unpack_templates`
+
+            #Export to C
+            proc Omni_UGenBuffers() : int32 {.exportc: "Omni_UGenBuffers", dynlib.} =
+                return int32(omni_buffers)
+
+            proc Omni_UGenBufferNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_buffer_names_let[0]))
+            
+            #[
+            proc Omni_UGenBufferDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_buffer_defaults_let[0]))
+            ]#
+        else:
+            {.fatal: "buffers: Already defined once.".}
+
+macro buffers*(args : varargs[untyped]) : untyped =
+    var 
+        buffers_number : int
+        buffers_names  : NimNode
+    
+    let args_first = args[0]
+
+    # buffers: ... (dynamic counting)
+    if args.len == 1:
+        if args_first.kind == nnkStmtList:
+            buffers_names = args_first
+            buffers_number = buffers_names.len
+        else:
+            error("buffers: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+    
+    # buffers 1: ...
+    elif args.len == 2:
+        if args_first.kind == nnkIntLit:
+            buffers_number = int(args_first.intVal)
+            let args_second = args[1]
+            if args_second.kind == nnkStmtList:
+                buffers_names = args_second
+            else:
+                error("buffers: invalid statement list: '" & repr(args_second) & "'.")
+        else:
+            error("buffers: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+
+    else:
+        error("buffers: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+
+    return quote do:
+        buffers_inner(`buffers_number`, `buffers_names`)

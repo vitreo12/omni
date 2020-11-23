@@ -24,9 +24,8 @@ import macros
 
 type
     Buffer_inherit* = object of RootObj
-        inputNum*  : int      #in interface
-        name*      : cstring  #param interface
-        valid*     : bool     #buffer validity
+        name*       : cstring
+        valid*      : bool
 
         length*     : int
         channels*   : int
