@@ -23,7 +23,7 @@
 import macros, strutils
 
 #Import the compile time list of float parameters to be added to UGen
-from omni_io import params_names_list, params_defaults_list
+from omni_io import params_names_list, params_defaults_list, buffers_names_list
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 when (NimMajor, NimMinor) < (1, 4):
@@ -477,6 +477,9 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 #Unpack params and set default values
                 unpack_params_init()
 
+                #Don't unpack buffers (they shouldn't be accessed in init)
+                #But just set default values if strings are provided!
+
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
@@ -739,6 +742,16 @@ macro build*(var_names : varargs[typed]) =
         var_names_and_types.add(
             nnkIdentDefs.newTree(
                 newIdentNode(param_name & "_param"),
+                getType(float),
+                newEmptyNode()
+            )
+        )
+
+    #Add buffers
+    for buffer_name in buffers_names_list:
+        var_names_and_types.add(
+            nnkIdentDefs.newTree(
+                newIdentNode(buffer_name & "_buffer"),
                 getType(float),
                 newEmptyNode()
             )

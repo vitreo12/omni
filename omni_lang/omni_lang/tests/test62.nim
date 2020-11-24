@@ -7,8 +7,13 @@ expandMacros:
         amp
 
     buffers:
-        buf
-        
+        buf1
+        buf2
+        buf3
+
+    sample:
+        out1 = 0
+
 #[ 
 init:
     a = freq

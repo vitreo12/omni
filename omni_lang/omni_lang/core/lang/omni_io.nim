@@ -42,8 +42,8 @@ var
 #Compile time array of buffers to unpack
 var 
     at_least_one_buffer*  {.compileTime.} = false
-    ins_buffers_list*     {.compileTime.} : seq[string]
-    params_buffers_list*  {.compileTime.} : seq[string]
+    #ins_buffers_list*     {.compileTime.} : seq[string]
+    #params_buffers_list*  {.compileTime.} : seq[string]
 
 proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
@@ -543,6 +543,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                 )
 
         #Buffer case. Just create a const that will be checked against at compile time
+        #[
         if min_val == BUFFER_FLOAT and max_val == BUFFER_FLOAT:
             #At least one buffer used
             at_least_one_buffer = true
@@ -570,6 +571,7 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                     newLit(true)
                 )
             )
+        ]#
 
     defaults_array_const.add(defaults_array_bracket)
     default_min_max_const_section.add(defaults_array_const)
@@ -988,40 +990,6 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
             setParam_block
         )
 
-        setBufferParam_if = nnkIfStmt.newTree()
-        setBufferParam_block = nnkStmtList.newTree(setBufferParam_if)
-        setBufferParam = nnkProcDef.newTree(
-            newIdentNode("Omni_UGenSetBufferParam"),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("void"),
-            nnkIdentDefs.newTree(
-                newIdentNode("ugen"),
-                nnkPtrTy.newTree(
-                    newIdentNode("UGen")
-                ),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("param"),
-                newIdentNode("cstring"),
-                newEmptyNode()
-            ),
-            nnkIdentDefs.newTree(
-                newIdentNode("val"),
-                newIdentNode("cstring"),
-                newEmptyNode()
-            )
-            ),
-            nnkPragma.newTree(
-                newIdentNode("exportc"),
-                newIdentNode("dynlib")
-            ),
-            newEmptyNode(),
-            setBufferParam_block
-        )
-    
     let 
         final_template_block = nnkStmtList.newTree()
         final_template = nnkTemplateDef.newTree(
@@ -1044,256 +1012,179 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
 
     if params_names_list.len > 0:
         for i, param_name in params_names_list:
-            #normal float param
-            if not(param_name in params_buffers_list):
-                var 
-                    omni_ugen_setparam_func_name = newIdentNode("Omni_UGenSetParam_" & param_name)
+            var 
+                omni_ugen_setparam_func_name = newIdentNode("Omni_UGenSetParam_" & param_name)
 
-                    set_param_spin = nnkCall.newTree(
-                        nnkDotExpr.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("ugen"),
-                                newIdentNode("params_lock")
-                            ),
-                            newIdentNode("spin")
-                        )
-                    )
-
-                    set_param_func_block = nnkStmtList.newTree(
-                        set_param_spin
-                    )
-
-                    set_param_func = nnkProcDef.newTree(
-                        omni_ugen_setparam_func_name,
-                        newEmptyNode(),
-                        newEmptyNode(),
-                        nnkFormalParams.newTree(
-                            newIdentNode("void"),
-                            nnkIdentDefs.newTree(
-                                newIdentNode("ugen"),
-                                nnkPtrTy.newTree(
-                                    newIdentNode("UGen")
-                                ),
-                                newEmptyNode()
-                            ),
-                            nnkIdentDefs.newTree(
-                                newIdentNode("val"),
-                                newIdentNode("float"),
-                                newEmptyNode()
-                            )
-                        ),
-                        nnkPragma.newTree(
-                            newIdentNode("exportc"),
-                            newIdentNode("dynlib")
-                        ),
-                        newEmptyNode(),
-                        set_param_func_block
-                    )
-
-                let 
-                    min_val = min_vals[i]
-                    max_val = max_vals[i]
-
-                var 
-                    set_min_val = false
-                    set_max_val = false
-
-                #if valid min_val, use it
-                if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
-                    let 
-                        min_val_lit = newFloatLitNode(min_val)
-                        
-                        min_val_assgn = nnkAsgn.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("ugen"),
-                                newIdentNode("freq_param")
-                            ),
-                            min_val_lit
-                        )
-                        
-                        min_val_elif_branch = nnkElifBranch.newTree(
-                            nnkInfix.newTree(
-                                newIdentNode("<"),
-                                newIdentNode("val"),
-                                min_val_lit,
-                            ),
-                            nnkStmtList.newTree(
-                                min_val_assgn
-                            )
-                        )
-                    
-                    set_param_spin.add(
-                        nnkIfStmt.newTree(
-                            min_val_elif_branch
-                        )
-                    )
-
-                    #keep adding to the if statement
-                    set_param_spin = set_param_spin[^1]
-
-                    set_min_val = true
-
-                #if valid max val, use it
-                if max_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
-                    let 
-                        max_val_lit = newFloatLitNode(max_val)
-                        
-                        max_val_assgn = nnkAsgn.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("ugen"),
-                                newIdentNode("freq_param")
-                            ),
-                            max_val_lit
-                        )
-                        
-                        max_val_elif_branch = nnkElifBranch.newTree(
-                            nnkInfix.newTree(
-                                newIdentNode(">"),
-                                newIdentNode("val"),
-                                max_val_lit,
-                            ),
-                            nnkStmtList.newTree(
-                                max_val_assgn
-                            )
-                        )
-
-                    #elif (continue from min_val)
-                    if set_min_val:
-                        set_param_spin.add(
-                            max_val_elif_branch
-                        )
-
-                    #if (no min_val specified)
-                    else:
-                        set_param_spin.add(
-                            nnkIfStmt.newTree(
-                                max_val_elif_branch
-                            )
-                        )
-
-                        #Keep adding to the if statement
-                        set_param_spin = set_param_spin[^1]
-                    
-                    set_max_val = true
-
-                let val_assgn = nnkAsgn.newTree(
+                set_param_spin = nnkCall.newTree(
                     nnkDotExpr.newTree(
-                        newIdentNode("ugen"),
-                        newIdentNode(param_name & "_param")
-                    ),
-                    newIdentNode("val")
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            newIdentNode("params_lock")
+                        ),
+                        newIdentNode("spin")
+                    )
                 )
 
-                #Else
-                if set_min_val or set_max_val:
-                    set_param_spin.add(
-                        nnkElse.newTree(
-                            val_assgn
+                set_param_func_block = nnkStmtList.newTree(
+                    set_param_spin
+                )
+
+                set_param_func = nnkProcDef.newTree(
+                    omni_ugen_setparam_func_name,
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("void"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("ugen"),
+                            nnkPtrTy.newTree(
+                                newIdentNode("UGen")
+                            ),
+                            newEmptyNode()
+                        ),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("val"),
+                            newIdentNode("float"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("exportc"),
+                        newIdentNode("dynlib")
+                    ),
+                    newEmptyNode(),
+                    set_param_func_block
+                )
+
+            let 
+                min_val = min_vals[i]
+                max_val = max_vals[i]
+
+            var 
+                set_min_val = false
+                set_max_val = false
+
+            #if valid min_val, use it
+            if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
+                let 
+                    min_val_lit = newFloatLitNode(min_val)
+                    
+                    min_val_assgn = nnkAsgn.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            newIdentNode("freq_param")
+                        ),
+                        min_val_lit
+                    )
+                    
+                    min_val_elif_branch = nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode("<"),
+                            newIdentNode("val"),
+                            min_val_lit,
+                        ),
+                        nnkStmtList.newTree(
+                            min_val_assgn
                         )
                     )
                 
-                #Assign directly
-                else:
-                    set_param_spin.add(
-                        val_assgn
+                set_param_spin.add(
+                    nnkIfStmt.newTree(
+                        min_val_elif_branch
                     )
-
-                final_template_block.add(
-                    set_param_func
                 )
 
-                setParam_if.add(
-                    nnkElifBranch.newTree(
+                #keep adding to the if statement
+                set_param_spin = set_param_spin[^1]
+
+                set_min_val = true
+
+            #if valid max val, use it
+            if max_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
+                let 
+                    max_val_lit = newFloatLitNode(max_val)
+                    
+                    max_val_assgn = nnkAsgn.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            newIdentNode("freq_param")
+                        ),
+                        max_val_lit
+                    )
+                    
+                    max_val_elif_branch = nnkElifBranch.newTree(
                         nnkInfix.newTree(
-                            newIdentNode("=="),
-                            newIdentNode("param"),
-                            newLit(param_name)
+                            newIdentNode(">"),
+                            newIdentNode("val"),
+                            max_val_lit,
                         ),
                         nnkStmtList.newTree(
-                            nnkCall.newTree(
-                                omni_ugen_setparam_func_name,
-                                newIdentNode("ugen"),
-                                newIdentNode("val")
-                            )
+                            max_val_assgn
                         )
+                    )
+
+                #elif (continue from min_val)
+                if set_min_val:
+                    set_param_spin.add(
+                        max_val_elif_branch
+                    )
+
+                #if (no min_val specified)
+                else:
+                    set_param_spin.add(
+                        nnkIfStmt.newTree(
+                            max_val_elif_branch
+                        )
+                    )
+
+                    #Keep adding to the if statement
+                    set_param_spin = set_param_spin[^1]
+                
+                set_max_val = true
+
+            let val_assgn = nnkAsgn.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode(param_name & "_param")
+                ),
+                newIdentNode("val")
+            )
+
+            #Else
+            if set_min_val or set_max_val:
+                set_param_spin.add(
+                    nnkElse.newTree(
+                        val_assgn
                     )
                 )
             
-            #buffer param
+            #Assign directly
             else:
-                var
-                    omni_ugen_setbufferparam_func_name = newIdentNode("Omni_UGenSetBufferParam_" & param_name)
+                set_param_spin.add(
+                    val_assgn
+                )
 
-                    set_bufferparam_func_block = nnkStmtList.newTree(
+            final_template_block.add(
+                set_param_func
+            )
+
+            setParam_if.add(
+                nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("=="),
+                        newIdentNode("param"),
+                        newLit(param_name)
+                    ),
+                    nnkStmtList.newTree(
                         nnkCall.newTree(
-                            nnkDotExpr.newTree(
-                                nnkDotExpr.newTree(
-                                    newIdentNode("ugen"),
-                                    newIdentNode("params_lock")
-                                ),
-                                newIdentNode("spin")
-                            ),
-                            nnkStmtList.newTree(
-                                nnkCall.newTree(
-                                    newIdentNode("get_buffer_from_param"),
-                                    nnkDotExpr.newTree(
-                                        newIdentNode("ugen"),
-                                        newIdentNode(param_name & "_param")
-                                    ),
-                                    newIdentNode("val")
-                                )
-                            )
-                        )
-                    )
-
-                    set_bufferparam_func = nnkProcDef.newTree(
-                        omni_ugen_setbufferparam_func_name,
-                        newEmptyNode(),
-                        newEmptyNode(),
-                        nnkFormalParams.newTree(
-                            newIdentNode("void"),
-                            nnkIdentDefs.newTree(
-                                newIdentNode("ugen"),
-                                nnkPtrTy.newTree(
-                                    newIdentNode("UGen")
-                                ),
-                                newEmptyNode()
-                            ),
-                            nnkIdentDefs.newTree(
-                                newIdentNode("val"),
-                                newIdentNode("cstring"),
-                                newEmptyNode()
-                            )
-                        ),
-                        nnkPragma.newTree(
-                            newIdentNode("exportc"),
-                            newIdentNode("dynlib")
-                        ),
-                        newEmptyNode(),
-                        set_bufferparam_func_block
-                    )
-
-                final_template_block.add(
-                    set_bufferparam_func
-                )
-                
-                setBufferParam_if.add(
-                    nnkElifBranch.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode("=="),
-                            newIdentNode("param"),
-                            newLit(param_name)
-                        ),
-                        nnkStmtList.newTree(
-                            nnkCall.newTree(
-                                omni_ugen_setbufferparam_func_name,
-                                newIdentNode("ugen"),
-                                newIdentNode("val")
-                            )
+                            omni_ugen_setparam_func_name,
+                            newIdentNode("ugen"),
+                            newIdentNode("val")
                         )
                     )
                 )
-
+            )
+        
         setParam_if.add(
             nnkElse.newTree(
                 nnkStmtList.newTree(
@@ -1305,32 +1196,13 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
             )
         )
 
-        if params_buffers_list.len > 0:
-            setBufferParam_if.add(
-                nnkElse.newTree(
-                    nnkStmtList.newTree(
-                        nnkCall.newTree(
-                            newIdentNode("omni_print"),
-                            newLit("ERROR: Omni_UGenSetBufferParam: invalid param name")
-                        )
-                    )
-                )
-            )
-        else:
-            setBufferParam_block[0] = nnkDiscardStmt.newTree(
-                newEmptyNode()
-            )
     else:
         setParam_block[0] = nnkDiscardStmt.newTree(
-            newEmptyNode()
-        )
-        setBufferParam_block[0] = nnkDiscardStmt.newTree(
             newEmptyNode()
         )
 
     final_template_block.add(
         setParam
-        #setBufferParam
     )
 
     #error repr result
@@ -1424,11 +1296,13 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
         )
 
         for i, param_name in params_names_list:
+            let param_name_param = newIdentNode(param_name & "_param")
+            
             unpack_init.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
                         newIdentNode("ugen"),
-                        newIdentNode(param_name & "_param")
+                        param_name_param
                     ),
                     newLit(
                         params_defaults_list[i]
@@ -1441,7 +1315,7 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
                         newEmptyNode(),
                         nnkDotExpr.newTree(
                             newIdentNode("ugen"),
-                            newIdentNode(param_name & "_param")
+                            param_name_param
                         )
                     )
                 )
@@ -1464,7 +1338,7 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
                         newEmptyNode(),
                         nnkDotExpr.newTree(
                             newIdentNode("ugen"),
-                            newIdentNode(param_name & "_param")
+                            param_name_param
                         )
                     )
                 )
@@ -1499,8 +1373,6 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
         max_vals     : seq[float]
 
     let params_names_kind = params_names.kind
-    
-    #error "ye"
 
     #Must be an int literal OR nnkStmtListExpr (for params: 1)
     if params_number.kind == nnkIntLit: 
@@ -1706,11 +1578,305 @@ macro params*(args : varargs[untyped]) : untyped =
     return quote do:
         params_inner(`params_number`, `params_names`)
 
+#buffers
+
 proc buffers_generate_set_templates() : NimNode {.compileTime.} =
-    discard
+    var
+        setBuffer_if = nnkIfStmt.newTree()
+        setBuffer_block = nnkStmtList.newTree(setBuffer_if)
+        setBuffer = nnkProcDef.newTree(
+            newIdentNode("Omni_UGenSetBuffer"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("void"),
+            nnkIdentDefs.newTree(
+                newIdentNode("ugen"),
+                nnkPtrTy.newTree(
+                    newIdentNode("UGen")
+                ),
+                newEmptyNode()
+            ),
+            nnkIdentDefs.newTree(
+                newIdentNode("param"),
+                newIdentNode("cstring"),
+                newEmptyNode()
+            ),
+            nnkIdentDefs.newTree(
+                newIdentNode("val"),
+                newIdentNode("cstring"),
+                newEmptyNode()
+            )
+            ),
+            nnkPragma.newTree(
+                newIdentNode("exportc"),
+                newIdentNode("dynlib")
+            ),
+            newEmptyNode(),
+            setBuffer_block
+        )
+
+    var 
+        final_template_block = nnkStmtList.newTree()
+        final_template = nnkTemplateDef.newTree(
+            newIdentNode("generate_buffers_procs"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            final_template_block
+        )
+
+    result = nnkStmtList.newTree(
+        final_template
+    )
+
+    if buffers_names_list.len > 0:
+        for buffer_name in buffers_names_list:
+            var
+                omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
+
+                set_buffer_func_block = nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            nnkDotExpr.newTree(
+                                newIdentNode("ugen"),
+                                newIdentNode("buffers_lock")
+                            ),
+                            newIdentNode("spin")
+                        ),
+                        nnkStmtList.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("omni_set_buffer_from_wrapper"),
+                                nnkDotExpr.newTree(
+                                    newIdentNode("ugen"),
+                                    newIdentNode(buffer_name & "_buffer")
+                                ),
+                                newIdentNode("val")
+                            )
+                        )
+                    )
+                )
+
+                set_buffer_func = nnkProcDef.newTree(
+                    omni_ugen_setbuffer_func_name,
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("void"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("ugen"),
+                            nnkPtrTy.newTree(
+                                newIdentNode("UGen")
+                            ),
+                            newEmptyNode()
+                        ),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("val"),
+                            newIdentNode("cstring"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("exportc"),
+                        newIdentNode("dynlib")
+                    ),
+                    newEmptyNode(),
+                    set_buffer_func_block
+                )
+
+            final_template_block.add(
+                set_buffer_func
+            )
+            
+            setBuffer_if.add(
+                nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("=="),
+                        newIdentNode("buffer"),
+                        newLit(buffer_name)
+                    ),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            omni_ugen_setbuffer_func_name,
+                            newIdentNode("ugen"),
+                            newIdentNode("val")
+                        )
+                    )
+                )
+            )
+
+        setBuffer_if.add(
+            nnkElse.newTree(
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("omni_print"),
+                        newLit("ERROR: Omni_UGenSetBuffer: invalid buffer name")
+                    )
+                )
+            )
+        )
+    else:
+        setBuffer_block[0] = nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
+
+    final_template_block.add(
+        setBuffer
+    )
+
+    #error repr result
 
 proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
-    discard
+    var 
+        init_block = nnkStmtList.newTree()
+        unpack_buffers_init = nnkTemplateDef.newTree(
+            newIdentNode("unpack_buffers_init"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            init_block
+        )
+        pre_init_block = nnkStmtList.newTree()
+        unpack_buffers_pre_init = nnkTemplateDef.newTree(
+            newIdentNode("unpack_buffers_pre_init"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            pre_init_block
+        )
+        perform_block = nnkStmtList.newTree()
+        unpack_buffers_perform = nnkTemplateDef.newTree(
+            newIdentNode("unpack_buffers_perform"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            perform_block
+        )
+
+    result = nnkStmtList.newTree(
+        unpack_buffers_init,
+        unpack_buffers_pre_init,
+        unpack_buffers_perform
+    )
+
+    if buffers_names_list.len > 0:
+        var 
+            unpack_init = nnkStmtList.newTree()
+            unpack_pre_init = nnkStmtList.newTree()
+            unpack_perform = nnkStmtList.newTree()
+
+        init_block.add(
+            nnkCall.newTree(
+                nnkDotExpr.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode("buffers_lock")
+                ),
+                newIdentNode("spin")
+                ),
+                unpack_init
+            )
+        )
+
+        pre_init_block.add(
+            unpack_pre_init
+        )
+
+        perform_block.add(
+            nnkCall.newTree(
+                nnkDotExpr.newTree(
+                nnkDotExpr.newTree(
+                    newIdentNode("ugen"),
+                    newIdentNode("buffers_lock")
+                ),
+                newIdentNode("spin")
+                ),
+                unpack_perform
+            )
+        )
+
+        for i, buffer_name in buffers_names_list:
+            let buffer_name_buffer = newIdentNode(buffer_name & "_buffer")
+            
+            unpack_init.add(
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(buffer_name),
+                        newEmptyNode(),
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            buffer_name_buffer
+                        )
+                    )
+                )
+            )
+
+            unpack_pre_init.add(
+                nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(buffer_name),
+                        newIdentNode("Buffer"),
+                        newEmptyNode()
+                    )
+                )
+            )
+
+            unpack_perform.add(
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(buffer_name),
+                        newEmptyNode(),
+                        nnkDotExpr.newTree(
+                            newIdentNode("ugen"),
+                            buffer_name_buffer
+                        )
+                    )
+                )
+            )
+    else:
+        init_block.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
+        pre_init_block.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
+        perform_block.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
+    error repr result
 
 macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped =
     var 
@@ -1732,10 +1898,14 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
         error("buffers: Expected a block statement after the number of buffers")
 
     var zero_buffers = false
-    
-    if buffers_number_VAL == 0:
+
+    if buffers_number_VAL > 0:
+        at_least_one_buffer = true
+
+    elif buffers_number_VAL == 0:
         buffers_number_VAL = 1
         zero_buffers = true
+    
     elif buffers_number_VAL < 0:
         error("buffers: Expected a positive number for buffers number")
 
@@ -1824,10 +1994,10 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
             #`defaults_mins_maxs`
 
             #Returns a template that generates all setbuffers procs. This must be called after UGen definition
-            #`buffers_generate_set_templates`
+            `buffers_generate_set_templates`
 
             #Returns a template that generates the unpacking of buffers for perform block
-            #`buffers_generate_unpack_templates`
+            `buffers_generate_unpack_templates`
 
             #Export to C
             proc Omni_UGenBuffers() : int32 {.exportc: "Omni_UGenBuffers", dynlib.} =
