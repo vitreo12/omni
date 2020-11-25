@@ -83,9 +83,9 @@ extern "C" {
     //Utilities
     OMNI_DLL_EXPORT extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);
 
-    /*************************/
-    /* Omni UGen functions */
-    /*************************/
+    /**********************/
+    /* UGen I/O functions */
+    /**********************/
 
     //Inputs
     OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
@@ -97,9 +97,18 @@ extern "C" {
     OMNI_DLL_EXPORT extern char*  Omni_UGenParamNames();
     OMNI_DLL_EXPORT extern float* Omni_UGenParamDefaults();
 
+    //Buffers
+    OMNI_DLL_EXPORT extern int    Omni_UGenBuffers();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenBufferNames();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenBufferDefaults();
+
     //Outputs
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();
     OMNI_DLL_EXPORT extern char*  Omni_UGenOutputNames();
+
+    /************************/
+    /* UGen audio functions */
+    /************************/
 
     //Alloc/Init. Returns NULL if fails to alloc/init
     OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins, int bufsize, double samplerate, void* buffer_interface);

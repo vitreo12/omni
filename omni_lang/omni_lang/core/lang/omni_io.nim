@@ -31,6 +31,9 @@ const
 
 const acceptedCharsForParamName* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
+#default name when not specifying default buffer value
+const OMNI_DEFAULT_NIL_BUFFER = "OMNI_DEFAULT_NIL_BUFFER"
+
 #Compile time arrays for params code generation
 var
     params_names_list*    {.compileTime.} : seq[string]
@@ -452,7 +455,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
     return (default_num, min_num, max_num)
 
-proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string, ins_or_params : bool = false) : NimNode {.compileTime.} =
+proc build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string, ins_or_params : bool = false) : NimNode {.compileTime.} =
     let default_vals_len = default_vals.len()
 
     #Find mismatch. Perhaps user hasn't defined def/min/max for some params
@@ -541,37 +544,6 @@ proc buildDefaultMinMaxArrays(num_of_inputs : int, default_vals : seq[float32], 
                         newLit(max_val)
                     )
                 )
-
-        #Buffer case. Just create a const that will be checked against at compile time
-        #[
-        if min_val == BUFFER_FLOAT and max_val == BUFFER_FLOAT:
-            #At least one buffer used
-            at_least_one_buffer = true
-
-            #Add to compile time buffers list
-            if ins_or_params == false:
-                ins_buffers_list.add(
-                    ins_names_seq[i]
-                )
-            else:
-                params_buffers_list.add(
-                    ins_names_seq[i]
-                )
-            
-            #Add to injected symbols
-            default_min_max_const_section.add(
-                nnkConstDef.newTree(
-                    nnkPragmaExpr.newTree(
-                        newIdentNode(in_or_param & $(i_plus_one) & "_buffer"),
-                        nnkPragma.newTree(
-                            newIdentNode("inject")
-                        )
-                    ),
-                    newEmptyNode(),
-                    newLit(true)
-                )
-            )
-        ]#
 
     defaults_array_const.add(defaults_array_bracket)
     default_min_max_const_section.add(defaults_array_const)
@@ -736,15 +708,15 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #Assign to node
     ins_names_node = newLit(ins_names_string)
 
-    let defaults_mins_maxs = buildDefaultMinMaxArrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
+    let defaults_mins_maxs = build_default_min_max_arrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
 
     return quote do:
         when not declared(declared_inputs):
             const 
-                omni_inputs            {.inject.} = `ins_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                omni_input_names_const {.inject.} = `ins_names_node`  #It's possible to insert NimNodes directly in the code block 
+                omni_inputs            {.inject.} = `ins_number_VAL`  
+                omni_input_names_const {.inject.} = `ins_names_node`  #Used for IO.txt
 
-            let omni_input_names_let   {.inject.} = `ins_names_node`
+            let omni_input_names_let   {.inject.} = `ins_names_node`  #Used as global in C export
 
             #compile time variable if ins are defined
             let declared_inputs {.inject, compileTime.} = true
@@ -892,10 +864,10 @@ macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
     return quote do: 
         when not declared(declared_outputs):
             const 
-                omni_outputs            {.inject.} = `outs_number_VAL` #{.inject.} acts just like Julia's esc(). backticks to outsert variable from macro's scope
-                omni_output_names_const {.inject.} = `outs_names_node`  #It's possible to outsert NimNodes directly in the code block 
+                omni_outputs            {.inject.} = `outs_number_VAL` 
+                omni_output_names_const {.inject.} = `outs_names_node` #Used for IO.txt
             
-            let omni_output_names_let   {.inject.} = `outs_names_node`
+            let omni_output_names_let   {.inject.} = `outs_names_node` #Used as global in C export
 
             #compile time variable if outs are defined
             let declared_outputs {.inject, compileTime.} = true
@@ -1503,7 +1475,7 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     params_names_node = newLit(params_names_string)
 
     let
-        defaults_mins_maxs = buildDefaultMinMaxArrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
+        defaults_mins_maxs = build_default_min_max_arrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
         params_generate_set_templates = params_generate_set_templates(min_vals, max_vals)
         params_generate_unpack_templates = params_generate_unpack_templates()
 
@@ -1513,10 +1485,10 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     return quote do:
         when not declared(declared_params):
             const 
-                omni_params            {.inject.}  = `params_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                omni_param_names_const {.inject.}  = `params_names_node`  #It's possible to insert NimNodes directly in the code block 
-
-            let omni_param_names_let   {.inject.}  = `params_names_node`
+                omni_params            {.inject.}  = `params_number_VAL`  
+                omni_param_names_const {.inject.}  = `params_names_node`  #Used for IO.txt 
+ 
+            let omni_param_names_let   {.inject.}  = `params_names_node`  #Used as global in C export
 
             #compile time variable if params are defined
             let declared_params {.inject, compileTime.} = true
@@ -1876,13 +1848,78 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             )
         )
 
-    error repr result
+    #error repr result
+
+proc buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
+    var
+        defaults_array_bracket = nnkBracket.newTree()
+        defaults_array_let = nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+                nnkPragmaExpr.newTree(
+                    newIdentNode("omni_buffer_defaults_let"),
+                    nnkPragma.newTree(
+                        newIdentNode("inject")
+                    )
+                ),
+                newEmptyNode(),
+                defaults_array_bracket
+            )
+        ) 
+        
+        generate_defaults_block = nnkStmtList.newTree()
+        generate_defaults = nnkTemplateDef.newTree(
+            newIdentNode("generate_buffers_defaults"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            generate_defaults_block
+        )
+
+    result = nnkStmtList.newTree(
+        defaults_array_let,
+        generate_defaults
+    )
+
+    if buffers_names_list.len > 0:
+        for i, buffer_name in buffers_names_list:
+            let 
+                buffer_default = buffers_default[i]
+                buffer_default_lit = newLit(buffer_default)
+
+            defaults_array_bracket.add(buffer_default_lit)
+
+            if buffer_default != OMNI_DEFAULT_NIL_BUFFER:
+                let omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
+                
+                generate_defaults_block.add(
+                    nnkCall.newTree(
+                        omni_ugen_setbuffer_func_name,
+                        newIdentNode("ugen"),
+                        
+                    )
+                )
+    else:
+        defaults_array_let[0][^1] = newLit("")
+        generate_defaults[^1] = nnkStmtList.newTree(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        )
+
+    #error repr result
 
 macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped =
     var 
         buffers_number_VAL : int
         buffers_names_string : string = ""
         buffers_names_node : NimNode
+        buffer_defaults : seq[string]
 
     let buffers_names_kind = buffers_names.kind
 
@@ -1911,13 +1948,13 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
 
     var statement_counter = 0
 
-    #This is for the buffers 1, "freq" case. (where "freq" is not viewed as varargs)
-    #buffer 2, "freq", "stmt" is covered in the other macro
-    if buffers_names_kind == nnkStrLit or buffers_names_kind == nnkIdent:
+    #This is for the buffers 1, buf case. (where buf is not viewed as varargs)
+    if buffers_names_kind == nnkIdent:
         let buffer_name = buffers_names.strVal()
         checkValidParamName(buffer_name)
         buffers_names_string.add($buffer_name & ",")
         buffers_names_list.add(buffer_name)
+        buffer_defaults.add(OMNI_DEFAULT_NIL_BUFFER)
         statement_counter = 1
 
     #block case
@@ -1927,28 +1964,39 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
             for statement in buffers_names.children():
                 let statement_kind = statement.kind
 
-                #"freq" / freq
-                if statement_kind == nnkStrLit or statement_kind == nnkIdent:
+                #buf
+                if statement_kind == nnkIdent:
                     let buffer_name = statement.strVal()
                     checkValidParamName(buffer_name)
                     buffers_names_string.add($buffer_name & ",")
                     buffers_names_list.add(buffer_name)
+                    buffer_defaults.add(OMNI_DEFAULT_NIL_BUFFER)
                 
-                #"freq" {440, 0, 22000} OR "freq" {440 0 22000}
+                #buf "buf1"
                 elif statement_kind == nnkCommand:
                     assert statement.len == 2
 
-                    #The name of the buffer
                     let 
                         buffer_name_node = statement[0]
                         buffer_name_node_kind = buffer_name_node.kind
-                    if buffer_name_node_kind != nnkStrLit and buffer_name_node_kind != nnkIdent:
-                        error("buffers: Expected buffer name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+                        buffer_default = statement[1]
+                        buffer_default_kind = buffer_default.kind
+                    
+                    if buffer_name_node_kind != nnkIdent:
+                        error("buffers: Expected Buffer name number " & $(statement_counter + 1) & " to be either an identifier.")
 
                     let buffer_name = buffer_name_node.strVal()
                     checkValidParamName(buffer_name)
                     buffers_names_string.add($buffer_name & ",")
                     buffers_names_list.add(buffer_name)
+
+                    if buffer_default_kind != nnkStrLit:
+                        error("buffers: Buffer '" & $buffer_name & "' to have a string literal as default value.")
+
+                    let buffer_default_name = buffer_default.strVal()
+                    if buffer_default_name == OMNI_DEFAULT_NIL_BUFFER:
+                        error("__OMNI_DEFAULT_NIL_BUFFER is reserved")
+                    buffer_defaults.add(buffer_default_name)
 
                 else:
                     error("buffers: Invalid syntax: '" & $(repr(statement)) & "'")
@@ -1970,28 +2018,55 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
     buffers_names_node = newLit(buffers_names_string)
 
     let
-        #defaults_mins_maxs = buildDefaultMinMaxArrays(buffers_number_VAL, default_vals, buffers_names_string, true)
+        buffer_generate_defaults = buffer_generate_defaults(buffer_defaults)
         buffers_generate_set_templates = buffers_generate_set_templates()
         buffers_generate_unpack_templates = buffers_generate_unpack_templates()
+    
+    var when_declared_buffer_interface : NimNode
 
     if zero_buffers:
         buffers_number_VAL = 0
-
-    #error repr buffers_names_node
+        when_declared_buffer_interface = nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
+    else:
+        when_declared_buffer_interface = nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkPrefix.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        newIdentNode("declared"),
+                        newIdentNode("Buffer")
+                    )
+                ),
+                nnkStmtList.newTree(
+                    nnkPragma.newTree(
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("fatal"),
+                            newLit("buffers: no \'Buffer\' interface provided. This must come from an omni wrapper.")
+                        )
+                    )
+                )
+            )
+        )
     
     return quote do:
         when not declared(declared_buffers):
+            #Check buffer interface
+            `when_declared_buffer_interface`
+            
+            #declare global vars
             const 
-                omni_buffers            {.inject.}  = `buffers_number_VAL`  #{.inject.} acts just like Julia's esc(). backticks to insert variable from macro's scope
-                omni_buffer_names_const {.inject.}  = `buffers_names_node`  #It's possible to insert NimNodes directly in the code block 
+                omni_buffers            {.inject.}  = `buffers_number_VAL`  
+                omni_buffer_names_const {.inject.}  = `buffers_names_node`  #Used for IO.txt 
 
-            let omni_buffer_names_let   {.inject.}  = `buffers_names_node`
+            let omni_buffer_names_let   {.inject.}  = `buffers_names_node`  #Used as global exported to C
 
             #compile time variable if buffers are defined
             let declared_buffers {.inject, compileTime.} = true
 
-            #const statement for defaults / mins / maxs
-            #`defaults_mins_maxs`
+            #Returns a const with default names and a template that calls the default init names (to be called in init)
+            `buffer_generate_defaults`
 
             #Returns a template that generates all setbuffers procs. This must be called after UGen definition
             `buffers_generate_set_templates`
@@ -2006,10 +2081,8 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
             proc Omni_UGenBufferNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib.} =
                 return cast[ptr cchar](unsafeAddr(omni_buffer_names_let[0]))
             
-            #[
             proc Omni_UGenBufferDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib.} =
                 return cast[ptr cchar](unsafeAddr(omni_buffer_defaults_let[0]))
-            ]#
         else:
             {.fatal: "buffers: Already defined once.".}
 
@@ -2022,7 +2095,9 @@ macro buffers*(args : varargs[untyped]) : untyped =
 
     # buffers: ... (dynamic counting)
     if args.len == 1:
-        if args_first.kind == nnkStmtList:
+        if args_first.kind == nnkIntLit:
+            buffers_number = int(args_first.intVal)
+        elif args_first.kind == nnkStmtList:
             buffers_names = args_first
             buffers_number = buffers_names.len
         else:

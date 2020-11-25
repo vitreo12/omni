@@ -7,12 +7,12 @@ expandMacros:
         amp
 
     buffers:
-        buf1
+        buf1 "def"
         buf2
-        buf3
+        buf3 "def1"
 
-    sample:
-        out1 = 0
+    #sample:
+    #    out1 = 0
 
 #[ 
 init:

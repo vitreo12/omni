@@ -27,12 +27,12 @@ from omni_io import params_names_list, params_defaults_list, buffers_names_list
 
 #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
 when (NimMajor, NimMinor) < (1, 4):
-    macro executeNewStatementAndBuildUGenObjectType(code_block : typed) : untyped =  
+    macro execute_build_statement_and_create_UGen_object(code_block : typed) : untyped =  
         discard
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
-macro unpackInsWithNames*(ins_names : typed, pre_init : typed = false) : untyped =
+macro unpack_ins_with_names*(ins_names : typed, pre_init : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
     let 
@@ -67,7 +67,7 @@ macro unpackInsWithNames*(ins_names : typed, pre_init : typed = false) : untyped
             )
 
         #Check for no {Buffer} on current in1, in2, etc...
-        #The {Buffer} case is handled in the "addBufferIns" macro
+        #The {Buffer} case is handled in the "add_buffers_ins" macro
         let when_statement = nnkWhenStmt.newTree(
             nnkElifBranch.newTree(
                 nnkPrefix.newTree(
@@ -374,7 +374,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
         )
     )
     
-    #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "executeNewStatementAndBuildUGenObjectType" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "build" macro
+    #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "execute_build_statement_and_create_UGen_object" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "build" macro
     let code_block_with_var_let_templates_and_call_to_build_macro = nnkStmtList.newTree(
         templates_for_constructor_var_declarations,
         templates_for_constructor_let_declarations,
@@ -399,10 +399,10 @@ macro init_inner*(code_block_stmt_list : untyped) =
         #These are variables declared in build, they won't be renamed in perform
         `perform_build_names_table_static`
             
-        #nim >= 1.4.0 doesn't require the typed call to executeNewStatementAndBuildUGenObjectType
+        #nim >= 1.4.0 doesn't require the typed call to execute_build_statement_and_create_UGen_object
         when (NimMajor, NimMinor) < (1, 4):
             #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
-            executeNewStatementAndBuildUGenObjectType(`code_block_with_var_let_templates_and_call_to_build_macro`)
+            execute_build_statement_and_create_UGen_object(`code_block_with_var_let_templates_and_call_to_build_macro`)
         else:
             `code_block_with_var_let_templates_and_call_to_build_macro`
 
@@ -472,7 +472,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
 
                 #Unpack the "ins" variable names
-                unpackInsWithNames(omni_input_names_const)
+                unpack_ins_with_names(omni_input_names_const)
 
                 #Unpack params and set default values
                 unpack_params_init()
@@ -533,7 +533,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                 var ugen_call_type   {.inject, noinit.} : typedesc[InitCall]
 
                 #Unpack the "ins" variable names
-                unpackInsWithNames(omni_input_names_const)
+                unpack_ins_with_names(omni_input_names_const)
 
                 #Unpack params and set default values
                 unpack_params_init()
@@ -566,7 +566,7 @@ macro init_inner*(code_block_stmt_list : untyped) =
                     return cast[pointer](nil)
 
 #Retrieve {Buffer} ins and pass them here (so that they will be declared as UGen members!)
-macro addBufferIns*(ins_names : typed) : untyped =
+macro add_buffers_ins*(ins_names : typed) : untyped =
     result = nnkStmtList.newTree()
 
     let ins_names_seq = ins_names.getImpl.strVal.split(',')
@@ -630,7 +630,7 @@ macro addBufferIns*(ins_names : typed) : untyped =
 macro init*(code_block : untyped) : untyped =
     let code_block_with_buffer_ins = nnkStmtList.newTree(
         nnkCall.newTree(
-            newIdentNode("addBufferIns"),
+            newIdentNode("add_buffers_ins"),
             newIdentNode("omni_input_names_const")
         ),
         code_block
@@ -642,7 +642,10 @@ macro init*(code_block : untyped) : untyped =
             ins 1
 
         when not declared(declared_params):
-            omni_io.params 0
+            omni_io.params 0 #not to be confused with macros' params
+
+        when not declared(declared_buffers):
+            buffers 0
 
         when not declared(declared_outputs):
             outs 1
@@ -668,7 +671,7 @@ macro init*(code_block : untyped) : untyped =
         let init_block {.inject, compileTime.} = true
 
         #Generate fictional let names for ins (so that parser won't complain when using them)
-        unpackInsWithNames(omni_input_names_const, true)
+        unpack_ins_with_names(omni_input_names_const, true)
 
         #Generate fictional let names for params (so that parser won't complain when using them)
         unpack_params_pre_init()
@@ -752,7 +755,7 @@ macro build*(var_names : varargs[typed]) =
         var_names_and_types.add(
             nnkIdentDefs.newTree(
                 newIdentNode(buffer_name & "_buffer"),
-                getType(float),
+                newIdentNode("Buffer"),
                 newEmptyNode()
             )
         )
@@ -767,19 +770,6 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
     )
-
-    #Add ugen_auto_buffer_let variable (ptr OmniAutoMem)
-    #[
-    var_names_and_types.add(
-        nnkIdentDefs.newTree(
-            newIdentNode("ugen_auto_buffer_let"),
-            nnkPtrTy.newTree(
-                newIdentNode("OmniAutoMem")
-            ),
-            newEmptyNode()
-        )
-    )
-    ]#
 
     #Add params_lock
     var_names_and_types.add(

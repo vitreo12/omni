@@ -120,6 +120,8 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
         lock_buffers,
         unpack_params
     )
+
+    #error repr result
     
 #Unpack the fields of the ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
 macro unpackUGenVariables*(t : typed) =
@@ -371,7 +373,7 @@ macro generate_lock_unlock_buffers*() : untyped =
         lock_buffers_template
     )
 
-    error repr result
+    #error repr result
 
 template perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / params / outs are not declared, declare them!
@@ -379,7 +381,10 @@ template perform_inner*(code_block : untyped) {.dirty.} =
         ins 1
 
     when not declared(declared_params):
-        omni_io.params 0
+        omni_io.params 0  #not to be confused with macros' params
+
+    when not declared(declared_buffers):
+        buffers 0
 
     when not declared(declared_outputs):
         outs 1

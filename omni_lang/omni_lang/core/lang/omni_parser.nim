@@ -77,7 +77,7 @@ proc parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
             nnkStmtList.newTree(
                 #Declare ins unpacking / variable names for the sample block
                 nnkCall.newTree(
-                    newIdentNode("unpackInsWithNames"),
+                    newIdentNode("unpack_ins_with_names"),
                     newIdentNode("omni_input_names_const")
                 ),
                 
@@ -939,7 +939,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
         
     var build_statement : NimNode
     if is_constructor_block:
-        #This will get rid of the first entry, which is the call to "addBufferIns". It will be
+        #This will get rid of the first entry, which is the call to "add_buffers_ins". It will be
         #added again as soon as the untyped parsing is completed
         code_block = code_block.last()
         
@@ -964,7 +964,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
     #Begin parsing
     parse_untyped_block_inner(code_block, declared_vars, is_constructor_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
-    #Add "addBufferIns" again (it's on the top position of the code_block_in statement)
+    #Add "add_buffers_ins" again (it's on the top position of the code_block_in statement)
     if is_constructor_block:
         code_block = nnkStmtList.newTree(
             code_block_in[0],
@@ -1021,7 +1021,7 @@ macro parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed :
 
             #Declare ins unpacking / variable names for the perform block
             nnkCall.newTree(
-                newIdentNode("unpackInsWithNames"),
+                newIdentNode("unpack_ins_with_names"),
                 newIdentNode("omni_input_names_const")
             ),
 
