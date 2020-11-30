@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 let omni_invalid_idents* {.compileTime.} = [
-    "Data", "Delay", "Buffer", "UGen"
+    "ugen", "UGen", "Data", "Delay", "Buffer", "UGen"
 ]
 
 let omni_invalid_ends_with* {.compileTime.} = [
@@ -31,8 +31,10 @@ let omni_invalid_ends_with* {.compileTime.} = [
 ]
 
 let omni_invalid_variable_names* {.compileTime.} = [
+    "ugen", "UGen",
     "ins", "inputs",
     "outs", "outputs",
+    "params",
     "init", "initialize", "initialise", "build",
     "perform", "sample",
     "sig", "sig32", "sig64",

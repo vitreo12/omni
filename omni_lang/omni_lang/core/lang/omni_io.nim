@@ -1792,25 +1792,26 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
         )
 
         for i, buffer_name in buffers_names_list:
-            let buffer_name_buffer = newIdentNode(buffer_name & "_buffer")
+            let 
+                buffer_name_ident = newIdentNode(buffer_name)
+                buffer_name_buffer = newIdentNode(buffer_name & "_buffer")
             
             unpack_init.add(
-                nnkLetSection.newTree(
-                    nnkIdentDefs.newTree(
-                        newIdentNode(buffer_name),
-                        newEmptyNode(),
-                        nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
-                            buffer_name_buffer
-                        )
+               nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("ugen"),
+                        buffer_name_buffer
+                    ),
+                    nnkCall.newTree(
+                        newIdentNode("omni_create_buffer_from_wrapper")
                     )
-                )
+               )
             )
 
             unpack_pre_init.add(
                 nnkVarSection.newTree(
                     nnkIdentDefs.newTree(
-                        newIdentNode(buffer_name),
+                        buffer_name_ident,
                         newIdentNode("Buffer"),
                         newEmptyNode()
                     )
@@ -1820,7 +1821,7 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             unpack_perform.add(
                 nnkLetSection.newTree(
                     nnkIdentDefs.newTree(
-                        newIdentNode(buffer_name),
+                        buffer_name_ident,
                         newEmptyNode(),
                         nnkDotExpr.newTree(
                             newIdentNode("ugen"),
@@ -1848,7 +1849,7 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             )
         )
 
-    #error repr result
+    error repr result
 
 proc buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
     var

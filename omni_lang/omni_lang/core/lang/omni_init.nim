@@ -675,7 +675,10 @@ macro init*(code_block : untyped) : untyped =
 
         #Generate fictional let names for params (so that parser won't complain when using them)
         unpack_params_pre_init()
-        
+
+        #Generate fictional var names for buffers (so that parser won't complain when using them)
+        #unpack_buffers_pre_init()
+
         #Actually parse the init block
         parse_block_untyped(`code_block_with_buffer_ins`, true)
 

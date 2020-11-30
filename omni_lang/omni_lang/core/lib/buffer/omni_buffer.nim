@@ -377,7 +377,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("lock_buffer")
+                        newIdentNode("omni_lock_buffer_from_wrapper")
                     ),
                     newEmptyNode(),
                     newEmptyNode(),

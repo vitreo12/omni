@@ -323,7 +323,7 @@ macro generate_lock_unlock_buffers*() : untyped =
 
             unlock_buffers_body.add(
                 nnkCall.newTree(
-                    newIdentNode("unlock_buffer"),
+                    newIdentNode("omni_unlock_buffer_from_wrapper"),
                     buffer_ident
                 )
             )
