@@ -27,19 +27,19 @@ import ../auto_mem/omni_auto_mem
 import ../math/omni_math
 
 type
-    Delay_struct_inner* = object
+    Delay_omni_struct_inner* = object
         mask  : int
         phase : int
         data  : Data[float]
 
-    Delay* = ptr Delay_struct_inner
+    Delay* = ptr Delay_omni_struct_inner
 
-    Delay_struct_export* = Delay
+    Delay_omni_struct_export* = Delay
 
-proc Delay_struct_new_inner*[S : SomeNumber](size : S = int(0), samplerate : float, obj_type : typedesc[Delay_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Delay {.inline.} =
+proc Delay_omni_struct_new_inner*[S : SomeNumber](size : S = int(0), samplerate : float, struct_type : typedesc[Delay_omni_struct_export], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
-    when ugen_call_type is PerformCall:
-        {.fatal: "attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct Delay'".}
+    when omni_call_type is Omni_PerformCall:
+        {.fatal: "Delay: attempting to allocate memory in the 'perform' or 'sample' blocks.".}
 
     #If size <= 0 (default), delay length will be samplerate
     var actual_size = int(size)
@@ -47,16 +47,16 @@ proc Delay_struct_new_inner*[S : SomeNumber](size : S = int(0), samplerate : flo
         actual_size = int(samplerate)
 
     #Allocate obj
-    result = cast[Delay](omni_alloc(culong(sizeof(Delay_struct_inner))))
+    result = cast[Delay](omni_alloc(culong(sizeof(Delay_omni_struct_inner))))
 
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(actual_size))
-        data  = Data_struct_new_inner(delay_length, G1=float, obj_type=Data_struct_export, ugen_auto_mem=ugen_auto_mem, ugen_call_type=ugen_call_type)
+        data  = Data_omni_struct_new_inner(delay_length, G1=float, struct_type=Data_omni_struct_export, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
         mask  = int(delay_length - 1)
 
-    #Register obj (data has already been registered in Data.struct_new_inner)
-    ugen_auto_mem.registerChild(result)
+    #Register obj (data has already been registered in Data.omni_struct_new_inner)
+    omni_auto_mem.omni_auto_mem_register_child(result)
 
     #Assign values
     result.mask = mask
@@ -64,7 +64,7 @@ proc Delay_struct_new_inner*[S : SomeNumber](size : S = int(0), samplerate : flo
     result.data = data
 
 #This is probably useless and can be removed :)
-proc checkValidity*(obj : Delay #[, ugen_auto_buffer : ptr OmniAutoMem]#) : bool =
+proc omni_check_struct_validity*(obj : Delay #[, ugen_auto_buffer : ptr Omni_AutoMem]#) : bool =
     return true
 
 #Read proc (uses cubic interp)

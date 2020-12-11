@@ -21,17 +21,17 @@
 # SOFTWARE.
 
 let omni_invalid_idents* {.compileTime.} = [
-    "ugen", "UGen", "Data", "Delay", "Buffer", "UGen"
+    "omni_ugen", "Omni_UGen", "Data", "Delay", "Buffer"
 ]
 
 let omni_invalid_ends_with* {.compileTime.} = [
-    "def_export", "def_dummy",
-    "module_inner",
-    "struct_inner", "struct_new_inner", "struct_export"
+    "omni_def_export", "omni_def_dummy",
+    "omni_module_inner",
+    "omni_struct_inner", "omni_struct_new_inner", "omni_struct_export"
 ]
 
 let omni_invalid_variable_names* {.compileTime.} = [
-    "ugen", "UGen",
+    "omni_ugen", "Omni_UGen",
     "ins", "inputs",
     "outs", "outputs",
     "params",

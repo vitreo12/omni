@@ -36,29 +36,29 @@ init:
   CONST2 int = 6
 
 suite "init: functions and templates exist":
-  test "perform_build_names_table":
-    check (declared(perform_build_names_table))
+  test "omni_perform_build_names_table":
+    check (declared(omni_perform_build_names_table))
 
-  test "generateTemplatesForPerformVarDeclarations":
-    check (declared(generateTemplatesForPerformVarDeclarations))
-    generateTemplatesForPerformVarDeclarations()
+  test "omni_generate_templates_for_perform_var_declarations":
+    check (declared(omni_generate_templates_for_perform_var_declarations))
+    omni_generate_templates_for_perform_var_declarations()
     check (declared(a))
     check (declared(b))
     check (declared(c))
     check (declared(CONST1))
     check (declared(CONST2))
 
-  test "UGen have correct fields":
-    check (declared(UGen))
-    check (typeof(UGen.a_var) is float)
-    check (typeof(UGen.b_var) is float)
-    check (typeof(UGen.c_var) is float)
-    check (typeof(UGen.d_var) is int)
-    check (typeof(UGen.CONST1_let) is float)
-    check (typeof(UGen.CONST2_let) is int)
-    check (typeof(UGen.samplerate_let) is float)
-    check (typeof(UGen.ugen_auto_mem_let) is ptr OmniAutoMem)
-    check (typeof(UGen.ugen_auto_buffer_let) is ptr OmniAutoMem)
+  test "Omni_UGen have correct fields":
+    check (declared(Omni_UGen))
+    check (typeof(Omni_UGen.a_var) is float)
+    check (typeof(Omni_UGen.b_var) is float)
+    check (typeof(Omni_UGen.c_var) is float)
+    check (typeof(Omni_UGen.d_var) is int)
+    check (typeof(Omni_UGen.CONST1_let) is float)
+    check (typeof(Omni_UGen.CONST2_let) is int)
+    check (typeof(Omni_UGen.samplerate_let) is float)
+    check (typeof(Omni_UGen.omni_auto_mem) is ptr Omni_AutoMem)
+    check (typeof(Omni_UGen.ugen_auto_buffer_let) is ptr Omni_AutoMem)
 
   test "Omni_UGenAlloc exists":
     check (declared(Omni_UGenAlloc))
@@ -76,32 +76,32 @@ suite "init: functions and templates exist":
     check (declared(Omni_UGenAllocInit64))
 
 suite "init: Omni_UGenAlloc + Omni_UGenInit64":
-  #After check of Omni_UGenAlloc, allocate one dummy ugen
+  #After check of Omni_UGenAlloc, allocate one dummy omni_ugen
   let 
     ugen_ptr_64 = Omni_UGenAlloc()
-    ugen_64 = cast[ptr UGen](ugen_ptr_64)
+    ugen_64 = cast[ptr Omni_UGen](ugen_ptr_64)
 
-  test "ugen_auto_mem is nil":
-    check (ugen_64.ugen_auto_mem_let == nil)
+  test "omni_auto_mem is nil":
+    check (ugen_64.omni_auto_mem == nil)
 
   test "ugen_auto_buffer is nil":
     check (ugen_64.ugen_auto_buffer_let == nil)
 
   alloc_ins_Nim(1)
 
-  #Init the ugen
+  #Init the omni_ugen
   let init_ugen = Omni_UGenInit64(ugen_ptr_64, ins_ptr_64, cint(test_bufsize), cdouble(test_samplerate), nil)
 
-  test "ugen init":
+  test "omni_ugen init":
     check (init_ugen == 1)
 
-  test "ugen_auto_mem is not nil":
-    check (ugen_64.ugen_auto_mem_let != nil)
+  test "omni_auto_mem is not nil":
+    check (ugen_64.omni_auto_mem != nil)
 
   test "ugen_auto_buffer is not nil":
     check (ugen_64.ugen_auto_buffer_let != nil)
 
-  test "ugen's field values":
+  test "omni_ugen's field values":
     check (ugen_64.a_var == 4.0)
     check (ugen_64.b_var == 1.0)
     check (ugen_64.c_var == 2.0)
@@ -116,32 +116,32 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
   Omni_UGenFree(ugen_ptr_64)
 
 suite "init: Omni_UGenAlloc + Omni_UGenInit32":
-  #After check of Omni_UGenAlloc, allocate one dummy ugen
+  #After check of Omni_UGenAlloc, allocate one dummy omni_ugen
   let 
     ugen_ptr_32 = Omni_UGenAlloc()
-    ugen_32 = cast[ptr UGen](ugen_ptr_32)
+    ugen_32 = cast[ptr Omni_UGen](ugen_ptr_32)
 
-  test "ugen_auto_mem is nil":
-    check (ugen_32.ugen_auto_mem_let == nil)
+  test "omni_auto_mem is nil":
+    check (ugen_32.omni_auto_mem == nil)
 
   test "ugen_auto_buffer is nil":
     check (ugen_32.ugen_auto_buffer_let == nil)
 
   alloc_ins_Nim(1)
 
-  #Init the ugen
+  #Init the omni_ugen
   let init_ugen = Omni_UGenInit32(ugen_ptr_32, ins_ptr_32, cint(test_bufsize), cdouble(test_samplerate), nil)
 
-  test "ugen init":
+  test "omni_ugen init":
     check (init_ugen == 1)
 
-  test "ugen_auto_mem is not nil":
-    check (ugen_32.ugen_auto_mem_let != nil)
+  test "omni_auto_mem is not nil":
+    check (ugen_32.omni_auto_mem != nil)
 
   test "ugen_auto_buffer is not nil":
     check (ugen_32.ugen_auto_buffer_let != nil)
 
-  test "ugen's field values":
+  test "omni_ugen's field values":
     check (ugen_32.a_var == 4.0)
     check (ugen_32.b_var == 1.0)
     check (ugen_32.c_var == 2.0)
@@ -161,18 +161,18 @@ suite "init: Omni_UGenAllocInit64":
   
   let 
     ugen_ptr_64 = Omni_UGenAllocInit64(ins_ptr_64, cint(test_bufsize), cdouble(test_samplerate), nil)
-    ugen_64 = cast[ptr UGen](ugen_ptr_64)
+    ugen_64 = cast[ptr Omni_UGen](ugen_ptr_64)
 
-  test "ugen init":
+  test "omni_ugen init":
     check (ugen_ptr_64 != nil)
 
-  test "ugen_auto_mem is not nil":
-    check (ugen_64.ugen_auto_mem_let != nil)
+  test "omni_auto_mem is not nil":
+    check (ugen_64.omni_auto_mem != nil)
 
   test "ugen_auto_buffer is not nil":
     check (ugen_64.ugen_auto_buffer_let != nil)
 
-  test "ugen's field values":
+  test "omni_ugen's field values":
     check (ugen_64.a_var == 4.0)
     check (ugen_64.b_var == 1.0)
     check (ugen_64.c_var == 2.0)
@@ -192,18 +192,18 @@ suite "init: Omni_UGenAllocInit32":
   
   let 
     ugen_ptr_32 = Omni_UGenAllocInit32(ins_ptr_32, cint(test_bufsize), cdouble(test_samplerate), nil)
-    ugen_32 = cast[ptr UGen](ugen_ptr_32)
+    ugen_32 = cast[ptr Omni_UGen](ugen_ptr_32)
 
-  test "ugen init":
+  test "omni_ugen init":
     check (ugen_ptr_32 != nil)
 
-  test "ugen_auto_mem is not nil":
-    check (ugen_32.ugen_auto_mem_let != nil)
+  test "omni_auto_mem is not nil":
+    check (ugen_32.omni_auto_mem != nil)
 
   test "ugen_auto_buffer is not nil":
     check (ugen_32.ugen_auto_buffer_let != nil)
 
-  test "ugen's field values":
+  test "omni_ugen's field values":
     check (ugen_32.a_var == 4.0)
     check (ugen_32.b_var == 1.0)
     check (ugen_32.c_var == 2.0)

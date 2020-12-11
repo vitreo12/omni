@@ -26,5 +26,5 @@ import macros
 #Basically, what's needed is to turn all newSymNode into newIdentNode.
 #Sym are already semantically checked, Idents are not...
 #Maybe just replace Syms with Idents instead? It would be much safer than this...
-proc typedToUntyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
+proc typed_to_untyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
     return parseStmt(code_block.repr())

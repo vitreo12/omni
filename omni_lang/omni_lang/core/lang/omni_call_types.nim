@@ -21,6 +21,6 @@
 # SOFTWARE.
 
 type
-    CallType*    = object of RootObj
-    InitCall*    = object of CallType
-    PerformCall* = object of CallType
+    Omni_CallType*    = object of RootObj
+    Omni_InitCall*    = object of Omni_CallType
+    Omni_PerformCall* = object of Omni_CallType

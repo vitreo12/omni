@@ -30,12 +30,12 @@ OMNI_DLL_EXPORT void Omni_InitGlobal(
         omni_print_debug_func_t* print_debug_func, 
         omni_print_str_func_t* print_str_func, 
         omni_print_float_func_t* print_float_func, 
-        omni_print_int_func_t* print_int_func,
-        omni_get_samplerate_func_t* get_samplerate_func, 
-        omni_get_bufsize_func_t* get_bufsize_func
+        omni_print_int_func_t* print_int_func
+        //omni_get_samplerate_func_t* get_samplerate_func, 
+        //omni_get_bufsize_func_t* get_bufsize_func
     )
 {
     Omni_InitAlloc(alloc_func, realloc_func, free_func);
     Omni_InitPrint(print_debug_func, print_str_func, print_float_func, print_int_func);
-    Omni_InitGetSamplerateGetBufsize(get_samplerate_func, get_bufsize_func);
+    //Omni_InitGetSamplerateGetBufsize(get_samplerate_func, get_bufsize_func);
 }

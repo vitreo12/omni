@@ -30,7 +30,7 @@ macro macroToNimCodeString*(body: typed) : untyped =
 #return a block of nim code as a parsed nim string
 template omniToNimString*(body : untyped) : string =
   macroToNimCodeString:
-    parse_block_untyped(body) 
+    omni_parse_block_untyped(body) 
 
 macro compareOmniNim_inner*(omni_parsed_code : typed, nim_code_block : typed) : untyped =
   let 
@@ -61,4 +61,4 @@ macro compareOmniNim*(code : untyped) : untyped =
   #echo repr omni_code
 
   return quote do:
-    compareOmniNim_inner(parse_block_untyped(`omni_code`), `nim_code`)
+    compareOmniNim_inner(omni_parse_block_untyped(`omni_code`), `nim_code`)

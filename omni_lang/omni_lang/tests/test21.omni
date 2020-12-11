@@ -18,13 +18,13 @@ struct C:
 
 proc checkObjDatasValidity(obj : A) : bool {.inline.} =
     print("A")
-    if not obj.data.checkDataValidity():
+    if not obj.data.omni_check_data_validity():
         return false
     
     #if Data[Data[Data[...]]]
     for i1 in (0..(obj.data.size)-1):
         let entry1 = obj.data[i1]
-        if not checkDataValidity(entry1):
+        if not omni_check_data_validity(entry1):
             return false
 
     return true
@@ -34,7 +34,7 @@ proc checkObjDatasValidity(obj : B) : bool {.inline.} =
     if not obj.a.checkObjDatasValidity():
         return false
     
-    if not obj.data.checkDataValidity():
+    if not obj.data.omni_check_data_validity():
         return false
 
     for i1 in (0..(obj.data.size)-1):
@@ -46,7 +46,7 @@ proc checkObjDatasValidity(obj : B) : bool {.inline.} =
 
 proc checkObjDatasValidity(obj : C) : bool {.inline.} =
     print("C")
-    if not obj.b.checkDataValidity():
+    if not obj.b.omni_check_data_validity():
         return false
 
     for i1 in (0..obj.b.size-1):

@@ -63,7 +63,7 @@ proc loop_unroll(code_block : NimNode, num : NimNode, index : NimNode) : NimNode
     #error repr result
 ]#
         
-proc loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
+proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
     if loop_block.kind == nnkCall:
         #loop(4, i)
         if loop_block.len == 4:

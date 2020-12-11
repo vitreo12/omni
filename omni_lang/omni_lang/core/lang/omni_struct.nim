@@ -22,7 +22,7 @@
 
 import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities
 
-const valid_struct_generics = [
+const omni_valid_struct_generics = [
     "int", "int32", "int64",
     "float", "float32", "float64",
     "signal", "signal32", "signal64",
@@ -30,15 +30,15 @@ const valid_struct_generics = [
 ]
 
 
-proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
+proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
     if statement.kind == nnkBracketExpr:
         let statement_ident = statement[0]
         if statement_ident.kind == nnkIdent or statement_ident.kind == nnkSym:
             let statement_ident_str = statement_ident.strVal()
             #Data, keep searching
-            if statement_ident_str == "Data" or statement_ident_str == "Data_struct_export":
+            if statement_ident_str == "Data" or statement_ident_str == "Data_omni_struct_export":
                 how_many_datas += 1
-                return find_data_bracket_bottom(statement[1], how_many_datas)
+                return omni_find_data_generics_bottom(statement[1], how_many_datas)
             else:
                 error("Invalid type: '" & repr(statement) & "'")
     
@@ -84,16 +84,16 @@ proc find_data_bracket_bottom(statement : NimNode, how_many_datas : var int) : N
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
-macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
-        type_section    = nnkTypeSection.newTree()       #the whole type section (both struct_inner and ptr)
+        type_section    = nnkTypeSection.newTree()       #the whole type section (both omni_struct_inner and ptr)
         obj_ty          = nnkObjectTy.newTree(
             newEmptyNode(),
             newEmptyNode()
         )
 
-        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_struct_inner
+        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_omni_struct_inner
 
     var
         untyped_counter = 0
@@ -104,7 +104,7 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_typ
     for field_typed in fields_typed:
         var 
             how_many_datas = 0
-            field_typed_to_signal_generics = find_data_bracket_bottom(field_typed, how_many_datas)
+            field_typed_to_signal_generics = omni_find_data_generics_bottom(field_typed, how_many_datas)
 
         #Keep the normal one if nil returned 
         if field_typed_to_signal_generics == nil:
@@ -148,13 +148,13 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_typ
     #Add the obj declaration (the nnkObjectTy) to the type declaration
     obj_type_def.add(obj_ty)
     
-    #Add the type declaration of Phasor_struct_inner to the type section
+    #Add the type declaration of Phasor_omni_struct_inner to the type section
     type_section.add(obj_type_def)
     
     #Add the type declaration of Phasor to type section
     type_section.add(ptr_type_def)
 
-    #Add the type declaration of Phasor_struct_export
+    #Add the type declaration of Phasor_omni_struct_export
     type_section.add(export_type_def)
 
     #Add the whole type section to result
@@ -167,14 +167,14 @@ macro declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_typ
         `final_stmt_list`
 
 #Check if a struct field contains generics
-proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
+proc omni_struct_untyped_or_typed_generics(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.compileTime.} =
     if var_type.kind == nnkBracketExpr:
         let var_type_ident = var_type[0]
         if var_type_ident.kind == nnkIdent:
             let var_type_ident_str = var_type_ident.strVal()
             #Data, keep searching
-            if var_type_ident_str == "Data" or var_type_ident_str == "Data_struct_export":
-                return untyped_or_typed(var_type[1], generics_seq)
+            if var_type_ident_str == "Data" or var_type_ident_str == "Data_omni_struct_export":
+                return omni_struct_untyped_or_typed_generics(var_type[1], generics_seq)
             
             #Normal bracket expr like Phasor[T] or Phasor[int]
             else:
@@ -182,12 +182,12 @@ proc untyped_or_typed(var_type : NimNode, generics_seq : seq[NimNode]) : bool {.
     
     #Bottom of the search
     elif var_type.kind == nnkIdent:
-        if (var_type.strVal() in valid_struct_generics) or (var_type in generics_seq):
+        if (var_type.strVal() in omni_valid_struct_generics) or (var_type in generics_seq):
             return true  
 
     return false 
 
-proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : NimNode, var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
+proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(statement : NimNode, var_name : NimNode, ptr_name : NimNode, generics_seq : seq[NimNode], checkValidTypes : NimNode) : void {.compileTime.} =
     let 
         var_name_str = var_name.strVal()
         ptr_name_str = ptr_name.strVal()
@@ -196,7 +196,7 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
         var already_looped = false
 
         #Check validity of structs that are not Datas
-        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_struct_export":
+        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_omni_struct_export":
             already_looped = true
             for index, entry in statement:
                 if index == 0:
@@ -206,15 +206,15 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
                     error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
                 
                 let entry_str = entry.strVal()
-                if (not (entry_str in valid_struct_generics)) and (not(entry in generics_seq)):
+                if (not (entry_str in omni_valid_struct_generics)) and (not(entry in generics_seq)):
                     error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
                 
-                add_to_checkValidTypes_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+                omni_execute_check_valid_types_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
                 if not(entry in generics_seq):
                     checkValidTypes.add(
                         nnkCall.newTree(
-                            newIdentNode("checkValidType_macro"),
+                            newIdentNode("omni_check_valid_type_macro"),
                             entry,
                             newLit(var_name_str), 
                             newLit(false),
@@ -226,13 +226,13 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
 
         if not already_looped:
             for entry in statement:
-                add_to_checkValidTypes_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
+                omni_execute_check_valid_types_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
                 if entry.kind == nnkIdent or entry.kind == nnkSym:
                     if not(entry in generics_seq):
                         checkValidTypes.add(
                             nnkCall.newTree(
-                                newIdentNode("checkValidType_macro"),
+                                newIdentNode("omni_check_valid_type_macro"),
                                 entry,
                                 newLit(var_name_str), 
                                 newLit(false),
@@ -247,7 +247,7 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
         if not(statement in generics_seq):
             checkValidTypes.add(
                 nnkCall.newTree(
-                    newIdentNode("checkValidType_macro"),
+                    newIdentNode("omni_check_valid_type_macro"),
                     statement,
                     newLit(var_name_str), 
                     newLit(false),
@@ -260,10 +260,10 @@ proc add_to_checkValidTypes_macro_and_check_struct_fields_generics(statement : N
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
-        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_struct_inner block
+        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_omni_struct_inner block
 
-        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_struct_inner block
-        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_struct_inner
+        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_omni_struct_inner block
+        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_omni_struct_inner
         
         export_type_def : NimNode
 
@@ -290,8 +290,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     if struct_name.kind == nnkBracketExpr:
         struct_name_str = struct_name[0].strVal()
         
-        obj_name = newIdentNode(struct_name_str & "_struct_inner")  #Phasor_struct_inner
-        export_name = newIdentNode(struct_name_str & "_struct_export")
+        obj_name = newIdentNode(struct_name_str & "_omni_struct_inner")  #Phasor_omni_struct_inner
+        export_name = newIdentNode(struct_name_str & "_omni_struct_export")
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -316,7 +316,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
         )
 
-        #Initialize them to be bracket expressions and add the "Phasor_struct_inner" and "Phasor" names to brackets
+        #Initialize them to be bracket expressions and add the "Phasor_omni_struct_inner" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(
             obj_name
         )
@@ -332,7 +332,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     
                 #If singular [T]
                 if child.len() == 0:
-                    ##Also add the name of the generic to the Phasor_struct_inner[T, Y...]
+                    ##Also add the name of the generic to the Phasor_omni_struct_inner[T, Y...]
                     obj_bracket_expr.add(child)
 
                     #Also add the name of the generic to the Phasor[T, Y...]
@@ -358,15 +358,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #Add generics to ptr type
         ptr_type_def.add(generics)
 
-        #Add the Phasor_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
+        #Add the Phasor_omni_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_bracket_expr)
 
     #No generics, just name of struct
     elif struct_name.kind == nnkIdent:
         struct_name_str = struct_name.strVal()
         
-        obj_name = newIdentNode(struct_name_str & "_struct_inner")              #Phasor_struct_inner
-        export_name = newIdentNode(struct_name_str & "_struct_export") 
+        obj_name = newIdentNode(struct_name_str & "_omni_struct_inner")              #Phasor_omni_struct_inner
+        export_name = newIdentNode(struct_name_str & "_omni_struct_export") 
         ptr_name = struct_name                                        #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -391,7 +391,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        #Add the Phasor_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
+        #Add the Phasor_omni_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_name)
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
@@ -403,12 +403,12 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #Detect invalid struct name
     if struct_name_str in omni_invalid_idents:
-        error("Trying to redefine in-build struct '" & struct_name_str & "'")
+        error("struct: Trying to redefine in-built struct '" & struct_name_str & "'")
 
     #Detect invalid ends with
     for invalid_ends_with in omni_invalid_ends_with:
         if struct_name_str.endsWith(invalid_ends_with):
-            error("struct names can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
+            error("struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
 
     #Loop over struct's body
     for code_stmt in code_block:
@@ -443,9 +443,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         var var_type_untyped_or_typed = false
 
-        var_type_untyped_or_typed = untyped_or_typed(var_type, generics_seq)
+        var_type_untyped_or_typed = omni_struct_untyped_or_typed_generics(var_type, generics_seq)
 
-        add_to_checkValidTypes_macro_and_check_struct_fields_generics(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
+        omni_execute_check_valid_types_macro_and_check_struct_fields_generics(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
 
         if var_type_untyped_or_typed:
             var_names.add(
@@ -466,10 +466,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
             fields_typed.add(var_type)
 
-    #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to declare_struct
+    #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to omni_declare_struct
     ptr_type_def.add(ptr_ty)
 
-    #Build the Phasor_struct_export out of the ptr
+    #Build the Phasor_omni_struct_export out of the ptr
     export_type_def = ptr_type_def.copy()
     export_type_def[0][1] = export_name
     export_type_def[^1] = export_type_def.last()[0]
@@ -482,19 +482,19 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #error repr export_type_def
 
-    #The init_struct macro, which will declare the "proc struct_new_inner ..." and the "template new ..."
-    let struct_create_init_proc_and_template = nnkCall.newTree(
-        newIdentNode("struct_create_init_proc_and_template"),
+    #The init_struct macro, which will declare the "proc omni_struct_new_inner ..." and the "template new ..."
+    let omni_struct_create_init_proc_and_template = nnkCall.newTree(
+        newIdentNode("omni_struct_create_init_proc_and_template"),
         ptr_name
     )
 
-    let findDatasAndStructs = nnkCall.newTree(
-        newIdentNode("findDatasAndStructs"),
+    let omni_find_structs_and_datas = nnkCall.newTree(
+        newIdentNode("omni_find_structs_and_datas"),
         ptr_name
     )
 
-    var declare_struct = nnkCall.newTree(
-        newIdentNode("declare_struct"),
+    var omni_declare_struct = nnkCall.newTree(
+        newIdentNode("omni_declare_struct"),
         obj_type_def,
         ptr_type_def,
         export_type_def,
@@ -503,20 +503,20 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     )
 
     for field_typed in fields_typed:
-        declare_struct.add(field_typed)
+        omni_declare_struct.add(field_typed)
 
     #error astGenRepr checkValidTypes
 
     return quote do:
         `checkValidTypes`
-        `declare_struct`
-        `struct_create_init_proc_and_template`
-        `findDatasAndStructs`
+        `omni_declare_struct`
+        `omni_struct_create_init_proc_and_template`
+        `omni_find_structs_and_datas`
 
-#Declare the "proc struct_new_inner ..." and the "template new ...", doing all sorts of type checks
-macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
+#Declare the "proc omni_struct_new_inner ..." and the "template new ...", doing all sorts of type checks
+macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     if ptr_struct_name.kind != nnkSym:
-        error("Invalid struct ptr symbol!")
+        error("strict: Invalid struct ptr symbol!")
 
     let 
         ptr_struct_type = ptr_struct_name.getType()
@@ -536,16 +536,16 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
         generics_ident_defs  = nnkStmtList.newTree()     #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
-        proc_def             = nnkProcDef.newTree()      #the struct_new_inner* proc
+        proc_def             = nnkProcDef.newTree()      #the omni_struct_new_inner* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
 
     #The name of the function with the asterisk, in case of supporting modules in the future
-    #proc Phasor_struct_new_inner
+    #proc Phasor_omni_struct_new_inner
     proc_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode(ptr_name & "_struct_new_inner")
+            newIdentNode(ptr_name & "_omni_struct_new_inner")
         ),
         newEmptyNode(),
         newEmptyNode()
@@ -556,7 +556,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         let obj_struct_name_ident = obj_struct_name[0]
         obj_struct_type = (obj_struct_name_ident).getTypeImpl()
 
-        #Initialize them to be bracket expressions and add the "Phasor_struct_inner" and "Phasor" names to brackets
+        #Initialize them to be bracket expressions and add the "Phasor_omni_struct_inner" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(obj_struct_name[0])
         ptr_bracket_expr = nnkBracketExpr.newTree(ptr_struct_name)
 
@@ -567,7 +567,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
 
             let new_G_generic_ident = newIdentNode("G" & $index)
 
-            ##Also add the name of the generic to the Phasor_struct_inner[T, Y...]
+            ##Also add the name of the generic to the Phasor_omni_struct_inner[T, Y...]
             obj_bracket_expr.add(new_G_generic_ident)
 
             #Also add the name of the generic to the Phasor[T, Y...]
@@ -598,23 +598,23 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
-    #This is the _struct_export. Don't put the generics in! They will fail some constructors otherwise
-    var struct_export_arg =  newIdentNode(ptr_struct_name.strVal() & "_struct_export")
+    #This is the _omni_struct_export. Don't put the generics in! They will fail some constructors otherwise
+    var omni_struct_export_arg =  newIdentNode(ptr_struct_name.strVal() & "_omni_struct_export")
 
-    #Add the when... check for ugen_call_type to see if user is trying to allocate memory in perform!
+    #Add the when... check for omni_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(
         nnkWhenStmt.newTree(
             nnkElifBranch.newTree(
                 nnkInfix.newTree(
                     newIdentNode("is"),
-                    newIdentNode("ugen_call_type"),
-                    newIdentNode("PerformCall")
+                    newIdentNode("omni_call_type"),
+                    newIdentNode("Omni_PerformCall")
                 ),
                 nnkStmtList.newTree(
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("attempting to allocate memory in the 'perform' or 'sample' blocks for 'struct " & ptr_name & "'")
+                            newLit(ptr_name & ": attempting to allocate memory in the 'perform' or 'sample' blocks")
                         )
                     )
                 )
@@ -666,11 +666,11 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             )
         )
 
-    #Add "registerChild(ugen_auto_mem, result)"
+    #Add "omni_auto_mem_register_child(omni_auto_mem, result)"
     proc_body.add(
         nnkCall.newTree(
-            newIdentNode("registerChild"),
-            newIdentNode("ugen_auto_mem"),
+            newIdentNode("omni_auto_mem_register_child"),
+            newIdentNode("omni_auto_mem"),
             newIdentNode("result")
         )
     )
@@ -697,7 +697,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         let field_type_without_generics_str = field_type_without_generics.strVal()
     
         let 
-            field_is_struct  = field_type_without_generics.isStruct()
+            field_is_struct  = field_type_without_generics.omni_is_struct()
             field_is_generic = generics_mapping.hasKey(field_type_without_generics_str)
         
         #Use the types without generics, as they are set before the generics are declared.
@@ -720,7 +720,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             #arg_field_type = newIdentNode("auto")
             arg_field_value = newIntLitNode(0)    
 
-        #Add to arg list for struct_new_inner proc
+        #Add to arg list for omni_struct_new_inner proc
         proc_formal_params.add(
             nnkIdentDefs.newTree(
                 field_name,
@@ -757,7 +757,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
             )
 
     # ===================== #
-    # STRUCT_NEW_INNER PROC  #
+    # omni_struct_new_inner PROC  #
     # ===================== #
 
     #Add generics
@@ -765,38 +765,38 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
         for generic_ident_defs in generics_ident_defs:
             proc_formal_params.add(generic_ident_defs)
 
-    #Add obj_type
+    #Add struct_type
     proc_formal_params.add(
         nnkIdentDefs.newTree(
-            newIdentNode("obj_type"),
+            newIdentNode("struct_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                struct_export_arg
+                omni_struct_export_arg
             ),
             newEmptyNode()
         )   
     )
     
-    #Add ugen_auto_mem : ptr OmniAutoMem argument
+    #Add omni_auto_mem : ptr Omni_AutoMem argument
     proc_formal_params.add(
         nnkIdentDefs.newTree(
-            newIdentNode("ugen_auto_mem"),
+            newIdentNode("omni_auto_mem"),
             nnkPtrTy.newTree(
-                newIdentNode("OmniAutoMem")
+                newIdentNode("Omni_AutoMem")
             ),
             newEmptyNode()
         )
     )
 
-    #Add ugen_call_type as last argument
+    #Add omni_call_type as last argument
     proc_formal_params.add(
         nnkIdentDefs.newTree(
-            newIdentNode("ugen_call_type"),
+            newIdentNode("omni_call_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                newIdentNode("CallType")
+                newIdentNode("Omni_CallType")
             ),
-            newIdentNode("InitCall")
+            newIdentNode("Omni_InitCall")
         )
     )
 
@@ -818,7 +818,7 @@ macro struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     final_stmt_list.add(proc_def)
 
     #Convert the typed statement to an untyped one
-    let final_stmt_list_untyped = typedToUntyped(final_stmt_list)
+    let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
 
     #error repr final_stmt_list_untyped
     

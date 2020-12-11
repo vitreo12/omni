@@ -53,8 +53,8 @@ extern "C" {
     typedef void   omni_print_int_func_t(int value);
 
     //Utilities
-    typedef double omni_get_samplerate_func_t();
-    typedef int    omni_get_bufsize_func_t();
+    //typedef double omni_get_samplerate_func_t();
+    //typedef int    omni_get_bufsize_func_t();
 
     /****************************/
     /* Initialization functions */
@@ -68,9 +68,9 @@ extern "C" {
         omni_print_debug_func_t* print_debug_func, 
         omni_print_str_func_t* print_str_func, 
         omni_print_float_func_t* print_float_func, 
-        omni_print_int_func_t* print_int_func,
-        omni_get_samplerate_func_t* get_samplerate_func, 
-        omni_get_bufsize_func_t* get_bufsize_func
+        omni_print_int_func_t* print_int_func
+        //omni_get_samplerate_func_t* get_samplerate_func, 
+        //omni_get_bufsize_func_t* get_bufsize_func
     );
 
     //Alloc
@@ -81,11 +81,11 @@ extern "C" {
     OMNI_DLL_EXPORT extern omni_print_debug_func_t* get_omni_print_debug_func();
 
     //Utilities
-    OMNI_DLL_EXPORT extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);
+    //OMNI_DLL_EXPORT extern void Omni_InitGetSamplerateGetBufsize(omni_get_samplerate_func_t* get_samplerate_func, omni_get_bufsize_func_t* get_bufsize_func);
 
-    /**********************/
-    /* UGen I/O functions */
-    /**********************/
+    /***************************/
+    /* Omni_UGen I/O functions */
+    /***************************/
 
     //Inputs
     OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
@@ -106,9 +106,9 @@ extern "C" {
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();
     OMNI_DLL_EXPORT extern char*  Omni_UGenOutputNames();
 
-    /************************/
-    /* UGen audio functions */
-    /************************/
+    /*****************************/
+    /* Omni_UGen audio functions */
+    /*****************************/
 
     //Alloc/Init. Returns NULL if fails to alloc/init
     OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins, int bufsize, double samplerate, void* buffer_interface);

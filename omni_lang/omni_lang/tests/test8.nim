@@ -1,32 +1,32 @@
 import ../../omni_lang
 
 type
-    UGen = object
-        auto_mem : ptr OmniAutoMem
+    Omni_UGen = object
+        auto_mem : ptr Omni_AutoMem
 
 
-proc newUGen() : ptr UGen =
+proc newUGen() : ptr Omni_UGen =
     var
-        ugen_ptr = alloc(culong(sizeof(UGen))) 
-        ugen     = cast[ptr UGen](ugen_ptr)
+        omni_ugen_ptr = alloc(culong(sizeof(Omni_UGen))) 
+        omni_ugen     = cast[ptr Omni_UGen](omni_ugen_ptr)
         
-    ugen.auto_mem = allocInitOmniAutoMem()
+    omni_ugen.auto_mem = omni_create_omni_auto_mem()
 
-    return ugen
+    return omni_ugen
 
-proc freeUGen(ugen : ptr UGen) : void =
+proc freeUGen(omni_ugen : ptr Omni_UGen) : void =
     
-    freeOmniAutoMem(ugen.auto_mem)
+    omni_auto_mem_free(omni_ugen.auto_mem)
     
-    let ugen_ptr = cast[pointer](ugen)
+    let omni_ugen_ptr = cast[pointer](omni_ugen)
 
-    dealloc(ugen_ptr)
+    dealloc(omni_ugen_ptr)
 
 # TEST
 
-var ugen = newUGen()
+var omni_ugen = newUGen()
 
-var data1 = Data.innerInit(100, 1, float, ugen.auto_mem)
-var data2 = Data.innerInit(100, 1, float, ugen.au)
+var data1 = Data.innerInit(100, 1, float, omni_ugen.auto_mem)
+var data2 = Data.innerInit(100, 1, float, omni_ugen.au)
 
-ugen.freeUGen()
+omni_ugen.freeUGen()

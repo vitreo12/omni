@@ -22,7 +22,7 @@
 
 import macros, strutils, omni_invalid
 
-macro def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
+macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
     var 
         proc_and_template = nnkStmtList.newTree()
 
@@ -38,7 +38,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         #template_proc_call : NimNode
         template_body_call = nnkCall.newTree()
 
-        proc_def_export : NimNode
+        proc_omni_def_export : NimNode
 
         generics : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()  
@@ -212,7 +212,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 #Add validity type checks to output. arg_name needs to be passed as a string literal.
                 checkValidTypes.add(
                     nnkCall.newTree(
-                        newIdentNode("checkValidType_macro"),
+                        newIdentNode("omni_check_valid_type_macro"),
                         arg_type_without_generics,
                         newLit(arg_name.strVal()), 
                         newLit(true),
@@ -277,7 +277,7 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 newEmptyNode()
             )
 
-        #Add samplerate / bufsize / ugen_auto_mem : ptr OmniAutoMem / ugen_call_type : CallType = InitCall
+        #Add samplerate / bufsize / omni_auto_mem : ptr Omni_AutoMem / omni_call_type : Omni_CallType = Omni_InitCall
         proc_formal_params.add(
             nnkIdentDefs.newTree(
                 newIdentNode("samplerate"),
@@ -292,20 +292,20 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
             ),
 
             nnkIdentDefs.newTree(
-                newIdentNode("ugen_auto_mem"),
+                newIdentNode("omni_auto_mem"),
                 nnkPtrTy.newTree(
-                    newIdentNode("OmniAutoMem")
+                    newIdentNode("Omni_AutoMem")
                 ),
                 newEmptyNode()
             ),
 
             nnkIdentDefs.newTree(
-                newIdentNode("ugen_call_type"),
+                newIdentNode("omni_call_type"),
                 nnkBracketExpr.newTree(
                     newIdentNode("typedesc"),
-                    newIdentNode("CallType")
+                    newIdentNode("Omni_CallType")
                 ),
-                newIdentNode("InitCall")
+                newIdentNode("Omni_InitCall")
             )
         )
 
@@ -320,10 +320,10 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
             newEmptyNode()
         )   
 
-        #Pass the proc body to the parse_block_untyped macro to parse it
+        #Pass the proc body to the omni_parse_block_untyped macro to parse it
         let proc_body = nnkStmtList.newTree(
             nnkCall.newTree(
-                newIdentNode("parse_block_untyped"),
+                newIdentNode("omni_parse_block_untyped"),
                 code_block,
                 newLit(false),
                 newLit(false),
@@ -341,19 +341,19 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
         # BUILD EXPORT PROC #
         # ================= #
 
-        proc_def_export = proc_def.copy()
-        #error astGenRepr proc_def_export
-        proc_def_export[4] = newEmptyNode() #remove inline pragma
-        proc_def_export[0][1] = newIdentNode(proc_name_str & "_def_export") #change name
+        proc_omni_def_export = proc_def.copy()
+        #error astGenRepr proc_omni_def_export
+        proc_omni_def_export[4] = newEmptyNode() #remove inline pragma
+        proc_omni_def_export[0][1] = newIdentNode(proc_name_str & "_omni_def_export") #change name
         
         #Can't remove these things because the generated code will be then == to the one generated in the dummy proc with a def with no args!!
-        #[ var proc_def_export_formal_params = proc_def_export[3]
-        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #delete ugen_call_type
-        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
-        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #table shifted, delete bufsize now
-        proc_def_export_formal_params.del(proc_def_export_formal_params.len - 1) #table shifted, delete samplerate now ]#
+        #[ var proc_omni_def_export_formal_params = proc_omni_def_export[3]
+        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #delete omni_call_type
+        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #table shifted, delete omni_auto_mem now
+        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #table shifted, delete bufsize now
+        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #table shifted, delete samplerate now ]#
         
-        proc_def_export[^1] = proc_name #template_body_call.copy()
+        proc_omni_def_export[^1] = proc_name #template_body_call.copy()
 
         # ============== #
         # BUILD TEMPLATE #
@@ -379,10 +379,10 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
                 newEmptyNode()
             )
 
-        #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are ugen_auto_mem and ugen_call_type
+        #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are omni_auto_mem and omni_call_type
         let template_formal_params = proc_formal_params.copy
-        template_formal_params.del(template_formal_params.len - 1) #delete ugen_call_type
-        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete ugen_auto_mem now
+        template_formal_params.del(template_formal_params.len - 1) #delete omni_call_type
+        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete omni_auto_mem now
         template_formal_params.del(template_formal_params.len - 1) #table shifted, delete bufsize now
         template_formal_params.del(template_formal_params.len - 1) #table shifted, delete samplerate now
         template_formal_params[0] = newIdentNode("untyped")
@@ -392,15 +392,15 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
             newEmptyNode()
         )
 
-        #Add samplerate / bufsize / ugen_auto_mem / ugen_call_type to template call
+        #Add samplerate / bufsize / omni_auto_mem / omni_call_type to template call
         template_body_call.add(
             newIdentNode("samplerate"),
             newIdentNode("bufsize"),
-            newIdentNode("ugen_auto_mem"),
-            newIdentNode("ugen_call_type")
+            newIdentNode("omni_auto_mem"),
+            newIdentNode("omni_call_type")
         )
         
-        #Add body (just call _inner proc, adding "ugen_auto_mem" and "ugen_call_type" at the end)
+        #Add body (just call _inner proc, adding "omni_auto_mem" and "omni_call_type" at the end)
         template_def.add(
             nnkStmtList.newTree(
                 template_body_call
@@ -416,12 +416,12 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
     #This dummy stuff is needed for nim to catch all the references to defs when using modules... Weird bug
     #Otherwise, proc won't overload and import on modules won't work correctly! Trust me, don't delete this!!!
-    #when not declared(""" & proc_name_str & """_def_dummy):
-    #    proc """ & proc_name_str & """_def_dummy*() = discard
-    #    proc """ & proc_name_str & """_def_export*() = discard
+    #when not declared(""" & proc_name_str & """_omni_def_dummy):
+    #    proc """ & proc_name_str & """_omni_def_dummy*() = discard
+    #    proc """ & proc_name_str & """_omni_def_export*() = discard
     let 
-        proc_dummy_name = newIdentNode(proc_name_str & "_def_dummy")
-        proc_dummy_export = newIdentNode(proc_name_str & "_def_export")
+        proc_dummy_name = newIdentNode(proc_name_str & "_omni_def_dummy")
+        proc_dummy_export = newIdentNode(proc_name_str & "_omni_def_export")
         proc_dummy = nnkWhenStmt.newTree(
             nnkElifBranch.newTree(
                 nnkPrefix.newTree(
@@ -474,12 +474,12 @@ macro def_inner*(function_signature : untyped, code_block : untyped, omni_curren
 
     proc_and_template.add(proc_dummy)
     proc_and_template.add(proc_def)
-    proc_and_template.add(proc_def_export)
+    proc_and_template.add(proc_omni_def_export)
     proc_and_template.add(template_def)
 
     #echo astGenRepr proc_def
 
-    #proc_and_template.add(template_def_export)
+    #proc_and_template.add(template_omni_def_export)
 
     #echo astGenRepr proc_and_template
     #echo astGenRepr proc_formal_params
@@ -498,7 +498,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     var temp_generics : seq[string]
 
     var call_def_inner = nnkCall.newTree(
-        newIdentNode("def_inner"),
+        newIdentNode("omni_def_inner"),
         function_signature,
         code_block,
         newIdentNode("omni_current_module_def"),

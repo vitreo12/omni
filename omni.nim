@@ -205,11 +205,11 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Set performBits flag
     if performBits == "32":
-        compile_command.add(" -d:performBits32")
+        compile_command.add(" -d:omni_perform32")
     elif performBits == "64":
-        compile_command.add(" -d:performBits64")
+        compile_command.add(" -d:omni_perform64")
     else:
-        compile_command.add(" -d:performBits32 -d:performBits64")
+        compile_command.add(" -d:omni_perform32 -d:omni_perform64")
 
     #Append additional imports. If any of these end with "_lang", don't import "omni_lang", as it means that there is a wrapper going on ("omnicollider_lang", "omnimax_lang", etc...)
     var import_omni_lang = true

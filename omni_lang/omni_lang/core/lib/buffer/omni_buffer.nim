@@ -33,31 +33,31 @@ type
 
     #Don't export these
     Buffer = ptr Buffer_inherit
-    Buffer_struct_export = Buffer
+    Buffer_omni_struct_export = Buffer
 
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
-    getter(buffer, 0, int(i), ugen_call_type)
+    getter(buffer, 0, int(i), omni_call_type)
     
 #more than 1 channel (i1 == channel, i2 == index)
 template `[]`*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2) : untyped {.dirty.} =
-    getter(buffer, int(i1), int(i2), ugen_call_type)
+    getter(buffer, int(i1), int(i2), omni_call_type)
 
 #1 channel
 template `[]=`*[I : SomeNumber, S : SomeNumber](buffer : Buffer, i : I, x : S) : untyped {.dirty.} =
-    setter(buffer, 0, int(i), x, ugen_call_type)
+    setter(buffer, 0, int(i), x, omni_call_type)
 
 #more than 1 channel (i1 == channel, i2 == index)
 template `[]=`*[I1 : SomeNumber, I2 : SomeNumber, S : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2, x : S) : untyped {.dirty.} =
-    setter(buffer, int(i1), int(i2), x, ugen_call_type)
+    setter(buffer, int(i1), int(i2), x, omni_call_type)
 
 #interp read
 template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
-    read_inner(buffer, index, ugen_call_type)
+    read_inner(buffer, index, omni_call_type)
 
 #interp read
 template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
-    read_inner(buffer, chan, index, ugen_call_type)
+    read_inner(buffer, chan, index, omni_call_type)
 
 #Alias for length
 template len*(buffer : Buffer) : untyped {.dirty.} =
@@ -72,7 +72,7 @@ proc size*(buffer : Buffer) : int {.inline.} =
     return buffer.channels * buffer.length
 
 #Internal checking for structs. It works fine without redefining it for every newBufferInterface!
-proc checkValidity*(obj : Buffer) : bool =
+proc omni_check_struct_validity*(obj : Buffer) : bool =
     return true
 
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
@@ -105,11 +105,11 @@ macro newBufferInterface*(code_block : untyped) : untyped =
 
         if statement_name == "obj":
             var 
-                buffer_struct_inner_rec_list = nnkRecList.newTree()
-                buffer_struct_inner = nnkTypeDef.newTree(
+                buffer_omni_struct_inner_rec_list = nnkRecList.newTree()
+                buffer_omni_struct_inner = nnkTypeDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("Buffer_struct_inner")
+                        newIdentNode("Buffer_omni_struct_inner")
                     ),
                     newEmptyNode(),
                     nnkObjectTy.newTree(
@@ -117,7 +117,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                         nnkOfInherit.newTree(
                             newIdentNode("Buffer_inherit")
                         ),
-                        buffer_struct_inner_rec_list
+                        buffer_omni_struct_inner_rec_list
                     )
                 )
             
@@ -128,11 +128,11 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     entry[1][0],
                     newEmptyNode()
                 )
-                buffer_struct_inner_rec_list.add(ident_def)
+                buffer_omni_struct_inner_rec_list.add(ident_def)
 
             obj = nnkStmtList.newTree(
                 nnkTypeSection.newTree(
-                    buffer_struct_inner,
+                    buffer_omni_struct_inner,
                     nnkTypeDef.newTree(
                         nnkPostfix.newTree(
                             newIdentNode("*"),
@@ -140,13 +140,13 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                         ),
                         newEmptyNode(),
                         nnkPtrTy.newTree(
-                            newIdentNode("Buffer_struct_inner")
+                            newIdentNode("Buffer_omni_struct_inner")
                         )
                     ),
                     nnkTypeDef.newTree(
                         nnkPostfix.newTree(
                             newIdentNode("*"),
-                            newIdentNode("Buffer_struct_export")
+                            newIdentNode("Buffer_omni_struct_export")
                         ),
                     newEmptyNode(),
                     newIdentNode("Buffer")
@@ -160,14 +160,14 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     nnkElifBranch.newTree(
                         nnkInfix.newTree(
                             newIdentNode("is"),
-                            newIdentNode("ugen_call_type"),
-                            newIdentNode("PerformCall")
+                            newIdentNode("omni_call_type"),
+                            newIdentNode("Omni_PerformCall")
                         ),
                         nnkStmtList.newTree(
                             nnkPragma.newTree(
                                 nnkExprColonExpr.newTree(
                                     newIdentNode("fatal"),
-                                    newLit("attempting to allocate memory in the 'perform' or 'sample' blocks for `struct Buffer`")
+                                    newLit("Buffer: attempting to allocate memory in the 'perform' or 'sample' blocks")
                                 )
                             )
                         )
@@ -185,7 +185,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                                     newIdentNode("culong"),
                                     nnkCall.newTree(
                                         newIdentNode("sizeof"),
-                                        newIdentNode("Buffer_struct_inner")
+                                        newIdentNode("Buffer_omni_struct_inner")
                                     )
                                 )
                             )
@@ -194,8 +194,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 ),
                 nnkCall.newTree(
                     nnkDotExpr.newTree(
-                        newIdentNode("ugen_auto_mem"),
-                        newIdentNode("registerChild")
+                        newIdentNode("omni_auto_mem"),
+                        newIdentNode("omni_auto_mem_register_child")
                     ),
                     newIdentNode("buffer")
                 ),
@@ -254,7 +254,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("Buffer_struct_new_inner")
+                        newIdentNode("Buffer_omni_struct_new_inner")
                     ),
                     newEmptyNode(),
                     nnkGenericParams.newTree(
@@ -277,27 +277,27 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("obj_type"),
+                            newIdentNode("struct_type"),
                             nnkBracketExpr.newTree(
                                 newIdentNode("typedesc"),
-                                newIdentNode("Buffer_struct_export")
+                                newIdentNode("Buffer_omni_struct_export")
                             ),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("ugen_auto_mem"),
+                            newIdentNode("omni_auto_mem"),
                             nnkPtrTy.newTree(
-                                newIdentNode("OmniAutoMem")
+                                newIdentNode("Omni_AutoMem")
                             ),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("ugen_call_type"),
+                            newIdentNode("omni_call_type"),
                             nnkBracketExpr.newTree(
                                 newIdentNode("typedesc"),
-                                newIdentNode("CallType")
+                                newIdentNode("Omni_CallType")
                             ),
-                            newIdentNode("InitCall")
+                            newIdentNode("Omni_InitCall")
                         )
                     ),
                     nnkPragma.newTree(
@@ -553,12 +553,12 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             newLit(0)
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("ugen_call_type"),
+                            newIdentNode("omni_call_type"),
                             nnkBracketExpr.newTree(
                             newIdentNode("typedesc"),
-                            newIdentNode("CallType")
+                            newIdentNode("Omni_CallType")
                             ),
-                            newIdentNode("InitCall")
+                            newIdentNode("Omni_InitCall")
                         )
                     ),
                     nnkPragma.newTree(
@@ -570,8 +570,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             nnkElifBranch.newTree(
                                 nnkInfix.newTree(
                                     newIdentNode("is"),
-                                    newIdentNode("ugen_call_type"),
-                                    newIdentNode("InitCall")
+                                    newIdentNode("omni_call_type"),
+                                    newIdentNode("Omni_InitCall")
                                 ),
                                 nnkStmtList.newTree(
                                     nnkPragma.newTree(
@@ -626,12 +626,12 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("ugen_call_type"),
+                            newIdentNode("omni_call_type"),
                             nnkBracketExpr.newTree(
                             newIdentNode("typedesc"),
-                            newIdentNode("CallType")
+                            newIdentNode("Omni_CallType")
                             ),
-                            newIdentNode("InitCall")
+                            newIdentNode("Omni_InitCall")
                         )
                     ),
                     nnkPragma.newTree(
@@ -643,8 +643,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             nnkElifBranch.newTree(
                                 nnkInfix.newTree(
                                     newIdentNode("is"),
-                                    newIdentNode("ugen_call_type"),
-                                    newIdentNode("InitCall")
+                                    newIdentNode("omni_call_type"),
+                                    newIdentNode("Omni_InitCall")
                                 ),
                                 nnkStmtList.newTree(
                                     nnkPragma.newTree(
@@ -700,8 +700,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
         error "newBufferInterface: Missing `setter`"
 
     #[
-        proc read_inner*[I : SomeNumber](buffer : Buffer, index : I, ugen_call_type : typedesc[CallType] = InitCall) : float {.inline.} =
-            when ugen_call_type is InitCall:
+        proc read_inner*[I : SomeNumber](buffer : Buffer, index : I, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
+            when omni_call_type is Omni_InitCall:
                 {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
 
             let buf_len = buffer.length
@@ -715,11 +715,11 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 index2 : int = (index1 + 1) mod buf_len
                 frac : float  = float(index) - float(index_int)
             
-            return float(linear_interp(frac, buffer.getter(0, index1, ugen_call_type), buffer.getter(0, index2, ugen_call_type)))
+            return float(linear_interp(frac, buffer.getter(0, index1, omni_call_type), buffer.getter(0, index2, omni_call_type)))
 
         #linear interp read (more than 1 channel) (i1 == channel, i2 == index)
-        proc read_inner*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2, ugen_call_type : typedesc[CallType] = InitCall) : float {.inline.} =
-            when ugen_call_type is InitCall:
+        proc read_inner*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
+            when omni_call_type is Omni_InitCall:
                 {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
 
             let buf_len = buffer.length
@@ -734,7 +734,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 index2 : int = (index1 + 1) mod buf_len
                 frac : float  = float(index) - float(index_int)
             
-            return float(linear_interp(frac, buffer.getter(chan_int, index1, ugen_call_type), buffer.getter(chan_int, index2, ugen_call_type)))
+            return float(linear_interp(frac, buffer.getter(chan_int, index1, omni_call_type), buffer.getter(chan_int, index2, omni_call_type)))
     ]#
     let read_inner = nnkStmtList.newTree(
         nnkProcDef.newTree(
@@ -763,12 +763,12 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 newEmptyNode()
             ),
             nnkIdentDefs.newTree(
-                newIdentNode("ugen_call_type"),
+                newIdentNode("omni_call_type"),
                 nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                newIdentNode("CallType")
+                newIdentNode("Omni_CallType")
                 ),
-                newIdentNode("InitCall")
+                newIdentNode("Omni_InitCall")
             )
             ),
             nnkPragma.newTree(
@@ -780,8 +780,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 nnkElifBranch.newTree(
                 nnkInfix.newTree(
                     newIdentNode("is"),
-                    newIdentNode("ugen_call_type"),
-                    newIdentNode("InitCall")
+                    newIdentNode("omni_call_type"),
+                    newIdentNode("Omni_InitCall")
                 ),
                 nnkStmtList.newTree(
                     nnkPragma.newTree(
@@ -879,7 +879,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newLit(0),
                     newIdentNode("index1"),
-                    newIdentNode("ugen_call_type")
+                    newIdentNode("omni_call_type")
                     ),
                     nnkCall.newTree(
                     nnkDotExpr.newTree(
@@ -888,7 +888,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newLit(0),
                     newIdentNode("index2"),
-                    newIdentNode("ugen_call_type")
+                    newIdentNode("omni_call_type")
                     )
                 )
                 )
@@ -931,12 +931,12 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 newEmptyNode()
             ),
             nnkIdentDefs.newTree(
-                newIdentNode("ugen_call_type"),
+                newIdentNode("omni_call_type"),
                 nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                newIdentNode("CallType")
+                newIdentNode("Omni_CallType")
                 ),
-                newIdentNode("InitCall")
+                newIdentNode("Omni_InitCall")
             )
             ),
             nnkPragma.newTree(
@@ -948,8 +948,8 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 nnkElifBranch.newTree(
                 nnkInfix.newTree(
                     newIdentNode("is"),
-                    newIdentNode("ugen_call_type"),
-                    newIdentNode("InitCall")
+                    newIdentNode("omni_call_type"),
+                    newIdentNode("Omni_InitCall")
                 ),
                 nnkStmtList.newTree(
                     nnkPragma.newTree(
@@ -1055,7 +1055,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newIdentNode("chan_int"),
                     newIdentNode("index1"),
-                    newIdentNode("ugen_call_type")
+                    newIdentNode("omni_call_type")
                     ),
                     nnkCall.newTree(
                     nnkDotExpr.newTree(
@@ -1064,7 +1064,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newIdentNode("chan_int"),
                     newIdentNode("index2"),
-                    newIdentNode("ugen_call_type")
+                    newIdentNode("omni_call_type")
                     )
                 )
                 )

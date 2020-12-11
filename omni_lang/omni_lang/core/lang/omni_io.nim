@@ -26,29 +26,25 @@ const omni_max_inputs_outputs_const* = 32
 
 #Some crazy numbers
 const 
-    RANDOM_FLOAT = -12312418241.1249124194
-    BUFFER_FLOAT = -13312418241.1249124194
+    OMNI_IN_RANDOM_FLOAT = -12312418241.1249124194
+    OMNI_BUFFER_RANDOM_FLOAT = -13312418241.1249124194
 
-const acceptedCharsForParamName* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
+const omni_accepted_chars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 #default name when not specifying default buffer value
 const OMNI_DEFAULT_NIL_BUFFER = "OMNI_DEFAULT_NIL_BUFFER"
 
 #Compile time arrays for params code generation
 var
-    params_names_list*    {.compileTime.} : seq[string]
-    params_defaults_list* {.compileTime.} : seq[float]
+    omni_params_names_list*    {.compileTime.} : seq[string]
+    omni_params_defaults_list* {.compileTime.} : seq[float]
 
-var
-    buffers_names_list*   {.compileTime.} : seq[string]
+var omni_buffers_names_list*   {.compileTime.} : seq[string]
 
 #Compile time array of buffers to unpack
-var 
-    at_least_one_buffer*  {.compileTime.} = false
-    #ins_buffers_list*     {.compileTime.} : seq[string]
-    #params_buffers_list*  {.compileTime.} : seq[string]
+var omni_at_least_one_buffer*  {.compileTime.} = false
 
-proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
+proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num = "in" & $index
         in_min = in_num & "_min"
@@ -132,7 +128,7 @@ proc generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
         )
     )
 
-proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
+proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num : string = "in" & $(index)
         in_num_min : string = in_num & "_min"
@@ -182,7 +178,7 @@ proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
                                     newIdentNode("ins_Nim"),
                                     newLit(index_minus_one)
                                 ),
-                                newIdentNode("audio_index_loop")
+                                newIdentNode("omni_audio_index")
                             )
                         )
                     ) 
@@ -207,7 +203,7 @@ proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
                                 newIdentNode("ins_Nim"),
                                 newLit(index_minus_one)
                             ),
-                            newIdentNode("audio_index_loop")
+                            newIdentNode("omni_audio_index")
                         )
                     )
                 )
@@ -215,7 +211,7 @@ proc generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
         )
     )
 
-proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
+proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num : string = "in" & $(index)
         in_num_min : string = in_num & "_min"
@@ -300,7 +296,7 @@ proc generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
 
 
 #Generate in1, in2, in3...etc templates
-macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, generate_min_max : typed = 0) : untyped =
+macro omni_generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, generate_min_max : typed = 0) : untyped =
     var final_statement = nnkStmtList.newTree()
 
     var 
@@ -310,19 +306,19 @@ macro generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, gen
 
     if generate_min_max == 1:
         for i in 1..num_of_inputs_VAL:
-            final_statement.add(generate_min_max_procs(i))
+            final_statement.add(omni_generate_min_max_procs(i))
 
     if generate_ar == 1:
         for i in 1..num_of_inputs_VAL:
-            final_statement.add(generate_ar_in_template(i))
+            final_statement.add(omni_generate_ar_in_template(i))
 
     else:
         for i in 1..num_of_inputs_VAL:
-            final_statement.add(generate_kr_in_template(i))
+            final_statement.add(omni_generate_kr_in_template(i))
     
     return final_statement
 
-macro generate_args_templates*(num_of_inputs : typed) : untyped =
+macro omni_generate_args_templates*(num_of_inputs : typed) : untyped =
     var 
         final_statement = nnkStmtList.newTree()
         num_of_inputs_VAL = num_of_inputs.intVal()
@@ -352,7 +348,7 @@ macro generate_args_templates*(num_of_inputs : typed) : untyped =
     return final_statement
 
 
-macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
+macro omni_generate_outputs_templates*(num_of_outputs : typed) : untyped =
     var 
         final_statement = nnkStmtList.newTree()
         num_of_outputs_VAL = num_of_outputs.intVal()
@@ -374,7 +370,7 @@ macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
                     newIdentNode("outs_Nim"),             #name of the outs buffer
                     newLit(int(i - 1))               #literal value
                 ),
-                newIdentNode("audio_index_loop") #name of the looping variable
+                newIdentNode("omni_audio_index") #name of the looping variable
             )
             )
         )
@@ -384,21 +380,21 @@ macro generate_outputs_templates*(num_of_outputs : typed) : untyped =
 
     return final_statement
 
-proc checkValidParamName(param_name : string) : void =
+proc omni_check_valid_name(param_name : string, which_call : string = "ins") : void =
     if param_name[0].isUpperAscii():
-        error("ins: input name '" & $param_name & "' must start with a lower case letter.")
+        error(which_call & ": input name '" & $param_name & "' must start with a lower case letter.")
 
     for individualChar in param_name:
-        if not (individualChar in acceptedCharsForParamName):
-            error("ins: Invalid character '" & $individualChar & $ "' in input name '" & $param_name & "'")
+        if not (individualChar in omni_accepted_chars):
+            error(which_call & ": Invalid character '" & $individualChar & $ "' in input name '" & $param_name & "'")
 
-proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tuple[defult : float, min : float, max : float] {.compileTime.} =
+proc omni_extract_default_min_max(default_min_max : NimNode, param_name : string) : tuple[defult : float, min : float, max : float] {.compileTime.} =
     let default_min_max_len = default_min_max.len()
 
     var 
         default_num : float = 0.0
-        min_num     : float = RANDOM_FLOAT
-        max_num     : float = RANDOM_FLOAT
+        min_num     : float = OMNI_IN_RANDOM_FLOAT
+        max_num     : float = OMNI_IN_RANDOM_FLOAT
 
     #Extract def / min / max values
     for index, value in default_min_max.pairs():
@@ -446,7 +442,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
         elif value_kind == nnkIdent:
             if value.strVal == "Buffer":
-                return (0.0, BUFFER_FLOAT, BUFFER_FLOAT)
+                return (0.0, OMNI_BUFFER_RANDOM_FLOAT, OMNI_BUFFER_RANDOM_FLOAT)
             else:
                 error("Invalid syntax for input \"" & $param_name & "\"")
 
@@ -455,7 +451,7 @@ proc extractDefaultMinMax(default_min_max : NimNode, param_name : string) : tupl
 
     return (default_num, min_num, max_num)
 
-proc build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string, ins_or_params : bool = false) : NimNode {.compileTime.} =
+proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string, ins_or_params : bool = false) : NimNode {.compileTime.} =
     let default_vals_len = default_vals.len()
 
     #Find mismatch. Perhaps user hasn't defined def/min/max for some params
@@ -472,9 +468,6 @@ proc build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float3
         in_or_param = "param"
         input_or_param = "param"
 
-    #Get the ins names as a seq to be indexed
-    var ins_names_seq = ins_names_string.split(',')
-    
     var 
         default_min_max_const_section = nnkConstSection.newTree()
         defaults_array_let_section = nnkLetSection.newTree()
@@ -513,11 +506,11 @@ proc build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float3
 
         #param
         if ins_or_params:
-            params_defaults_list.add(default_val)
+            omni_params_defaults_list.add(default_val)
 
         #Don't generate min max for param (will be calculated later)
         if not ins_or_params:
-            if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
+            if min_val != OMNI_IN_RANDOM_FLOAT and min_val != OMNI_BUFFER_RANDOM_FLOAT:
                 default_min_max_const_section.add(
                     nnkConstDef.newTree(
                         nnkPragmaExpr.newTree(
@@ -531,7 +524,7 @@ proc build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float3
                     )
                 )
 
-            if max_val != RANDOM_FLOAT and max_val != BUFFER_FLOAT:
+            if max_val != OMNI_IN_RANDOM_FLOAT and max_val != OMNI_BUFFER_RANDOM_FLOAT:
                 default_min_max_const_section.add(
                     nnkConstDef.newTree(
                         nnkPragmaExpr.newTree(
@@ -555,7 +548,7 @@ proc build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float3
     result.add(default_min_max_const_section)
     result.add(defaults_array_let_section)
 
-macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
+macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     var 
         ins_number_VAL : int
         ins_names_string : string = ""
@@ -594,8 +587,8 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #Fill them with a random float, but keep default's one to 0
     for i in 0..(ins_number_VAL-1):
         default_vals[i] = 0.0
-        min_vals[i] = RANDOM_FLOAT
-        max_vals[i] = RANDOM_FLOAT
+        min_vals[i] = OMNI_IN_RANDOM_FLOAT
+        max_vals[i] = OMNI_IN_RANDOM_FLOAT
 
     var statement_counter = 0
 
@@ -604,7 +597,7 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     if ins_names_kind == nnkStrLit or ins_names_kind == nnkIdent:
         let param_name = ins_names.strVal()
         
-        checkValidParamName(param_name)
+        omni_check_valid_name(param_name, "ins")
         
         ins_names_string.add($param_name & ",")
         statement_counter = 1
@@ -623,7 +616,7 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     #Buffer without param name ????
                     #if param_name == "Buffer":
 
-                    checkValidParamName(param_name)
+                    omni_check_valid_name(param_name, "ins")
                     
                     ins_names_string.add($param_name & ",")
                 
@@ -639,7 +632,7 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                         error("ins: Expected input name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
 
                     let param_name = param_name_node.strVal()
-                    checkValidParamName(param_name)
+                    omni_check_valid_name(param_name, "ins")
 
                     ins_names_string.add($param_name & ",")
                 
@@ -656,15 +649,15 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     #Ident, no curly brackets Buffer
                     if default_min_max_kind == nnkIdent:
                         if default_min_max.strVal == "Buffer":
-                            min_val = BUFFER_FLOAT
-                            max_val = BUFFER_FLOAT     
+                            min_val = OMNI_BUFFER_RANDOM_FLOAT
+                            max_val = OMNI_BUFFER_RANDOM_FLOAT     
                     elif default_min_max_kind == nnkCurly:
-                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, param_name)
 
                     #single number literal: wrap in curly brackets
                     elif default_min_max_kind == nnkIntLit or default_min_max_kind == nnkFloatLit:
                         let default_min_max_curly = nnkCurly.newTree(default_min_max)
-                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max_curly, param_name)
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name)
                     else:
                         error("ins: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
 
@@ -678,7 +671,7 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     
                     ins_names_string.add($param_name & ",")
 
-                    let (default_val, min_val, max_val) = extractDefaultMinMax(statement, param_name)
+                    let (default_val, min_val, max_val) = omni_extract_default_min_max(statement, param_name)
                     
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
@@ -708,10 +701,10 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #Assign to node
     ins_names_node = newLit(ins_names_string)
 
-    let defaults_mins_maxs = build_default_min_max_arrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
+    let defaults_mins_maxs = omni_build_default_min_max_arrays(ins_number_VAL, default_vals, min_vals, max_vals, ins_names_string)
 
     return quote do:
-        when not declared(declared_inputs):
+        when not declared(omni_declared_inputs):
             const 
                 omni_inputs            {.inject.} = `ins_number_VAL`  
                 omni_input_names_const {.inject.} = `ins_names_node`  #Used for IO.txt
@@ -719,22 +712,22 @@ macro ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
             let omni_input_names_let   {.inject.} = `ins_names_node`  #Used as global in C export
 
             #compile time variable if ins are defined
-            let declared_inputs {.inject, compileTime.} = true
+            let omni_declared_inputs {.inject, compileTime.} = true
 
             #const statement for defaults / mins / maxs
             `defaults_mins_maxs`
             
             #Generate procs for min/max
-            generate_inputs_templates(`ins_number_VAL`, 0, 1)
+            omni_generate_inputs_templates(`ins_number_VAL`, 0, 1)
 
             #Generate arg aliases for in
-            generate_args_templates(`ins_number_VAL`)
+            omni_generate_args_templates(`ins_number_VAL`)
 
             #For in[i] access
-            proc get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, audio_index_loop : int = 0) : float =
+            proc omni_get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, omni_audio_index : int = 0) : float =
                 let chan_int = int(chan)
                 if chan_int < omni_inputs:
-                    return float(ins_Nim[chan_int][audio_index_loop])
+                    return float(ins_Nim[chan_int][omni_audio_index])
                 else:
                     return 0.0
             
@@ -784,14 +777,14 @@ macro ins*(args : varargs[untyped]) : untyped =
         error("ins: invalid syntax: '" & repr(args) & "'. Too many arguments.")
 
     return quote do:
-        ins_inner(`ins_number`, `ins_names`)
+        omni_ins_inner(`ins_number`, `ins_names`)
 
 macro inputs*(args : varargs[untyped]) : untyped =
     return quote do:
         ins(args)
 
 #outs
-macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
+macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
     var 
         outs_number_VAL : int
         outs_names_string : string = ""
@@ -825,7 +818,7 @@ macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
         let param_name = outs_names.strVal()
         
         for individualChar in param_name:
-            if not (individualChar in acceptedCharsForParamName):
+            if not (individualChar in omni_accepted_chars):
                 error("outs: Invalid character " & $individualChar & $ " in output name " & $param_name)
         
         outs_names_string.add($param_name & ",")
@@ -841,7 +834,7 @@ macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
         
             let param_name = statement.strVal()
 
-            checkValidParamName(param_name)
+            omni_check_valid_name(param_name, "outs")
             
             outs_names_string.add($param_name & ",")
             statement_counter += 1
@@ -862,7 +855,7 @@ macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
     outs_names_node = newLit(outs_names_string)
 
     return quote do: 
-        when not declared(declared_outputs):
+        when not declared(omni_declared_outputs):
             const 
                 omni_outputs            {.inject.} = `outs_number_VAL` 
                 omni_output_names_const {.inject.} = `outs_names_node` #Used for IO.txt
@@ -870,9 +863,9 @@ macro outs_inner*(outs_number : typed, outs_names : untyped = nil) : untyped =
             let omni_output_names_let   {.inject.} = `outs_names_node` #Used as global in C export
 
             #compile time variable if outs are defined
-            let declared_outputs {.inject, compileTime.} = true
+            let omni_declared_outputs {.inject, compileTime.} = true
             
-            #generate_outputs_templates(`outs_number_VAL`)
+            #omni_generate_outputs_templates(`outs_number_VAL`)
             
             #Export to C
             proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
@@ -917,7 +910,7 @@ macro outs*(args : varargs[untyped]) : untyped =
         error("outs: invalid syntax: '" & repr(args) & "'. Too many arguments.")
 
     return quote do:
-        outs_inner(`outs_number`, `outs_names`)
+        omni_outs_inner(`outs_number`, `outs_names`)
 
 macro outputs*(args : varargs[untyped]) : untyped =
     return quote do:
@@ -926,7 +919,7 @@ macro outputs*(args : varargs[untyped]) : untyped =
 #params
 
 #Returns a template that generates all set procs, including setParam
-proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
+proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[float]) : NimNode {.compileTime.} =
     var
         setParam_if = nnkIfStmt.newTree()
         setParam_block = nnkStmtList.newTree(setParam_if)
@@ -937,9 +930,9 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
             nnkFormalParams.newTree(
                 newIdentNode("void"),
             nnkIdentDefs.newTree(
-                newIdentNode("ugen"),
+                newIdentNode("omni_ugen"),
                 nnkPtrTy.newTree(
-                    newIdentNode("UGen")
+                    newIdentNode("Omni_UGen")
                 ),
                 newEmptyNode()
             ),
@@ -982,16 +975,16 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
         final_template
     )
 
-    if params_names_list.len > 0:
-        for i, param_name in params_names_list:
+    if omni_params_names_list.len > 0:
+        for i, param_name in omni_params_names_list:
             var 
                 omni_ugen_setparam_func_name = newIdentNode("Omni_UGenSetParam_" & param_name)
 
                 set_param_spin = nnkCall.newTree(
                     nnkDotExpr.newTree(
                         nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
-                            newIdentNode("params_lock")
+                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_params_lock")
                         ),
                         newIdentNode("spin")
                     )
@@ -1008,9 +1001,9 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
                     nnkFormalParams.newTree(
                         newIdentNode("void"),
                         nnkIdentDefs.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             nnkPtrTy.newTree(
-                                newIdentNode("UGen")
+                                newIdentNode("Omni_UGen")
                             ),
                             newEmptyNode()
                         ),
@@ -1037,13 +1030,13 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
                 set_max_val = false
 
             #if valid min_val, use it
-            if min_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
+            if min_val != OMNI_IN_RANDOM_FLOAT and min_val != OMNI_BUFFER_RANDOM_FLOAT:
                 let 
                     min_val_lit = newFloatLitNode(min_val)
                     
                     min_val_assgn = nnkAsgn.newTree(
                         nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             newIdentNode("freq_param")
                         ),
                         min_val_lit
@@ -1072,13 +1065,13 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
                 set_min_val = true
 
             #if valid max val, use it
-            if max_val != RANDOM_FLOAT and min_val != BUFFER_FLOAT:
+            if max_val != OMNI_IN_RANDOM_FLOAT and min_val != OMNI_BUFFER_RANDOM_FLOAT:
                 let 
                     max_val_lit = newFloatLitNode(max_val)
                     
                     max_val_assgn = nnkAsgn.newTree(
                         nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             newIdentNode("freq_param")
                         ),
                         max_val_lit
@@ -1116,7 +1109,7 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
 
             let val_assgn = nnkAsgn.newTree(
                 nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
+                    newIdentNode("omni_ugen"),
                     newIdentNode(param_name & "_param")
                 ),
                 newIdentNode("val")
@@ -1150,7 +1143,7 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
                     nnkStmtList.newTree(
                         nnkCall.newTree(
                             omni_ugen_setparam_func_name,
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             newIdentNode("val")
                         )
                     )
@@ -1180,11 +1173,11 @@ proc params_generate_set_templates(min_vals : seq[float], max_vals : seq[float])
     #error repr result
 
 #Returns a template that unpacks params for perform block
-proc params_generate_unpack_templates() : NimNode {.compileTime.} =
+proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
     var 
         init_block = nnkStmtList.newTree()
-        unpack_params_init = nnkTemplateDef.newTree(
-            newIdentNode("unpack_params_init"),
+        omni_unpack_params_init = nnkTemplateDef.newTree(
+            newIdentNode("omni_unpack_params_init"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1197,8 +1190,8 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
             init_block
         )
         pre_init_block = nnkStmtList.newTree()
-        unpack_params_pre_init = nnkTemplateDef.newTree(
-            newIdentNode("unpack_params_pre_init"),
+        omni_unpack_params_pre_init = nnkTemplateDef.newTree(
+            newIdentNode("omni_unpack_params_pre_init"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1226,12 +1219,12 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
         )
 
     result = nnkStmtList.newTree(
-        unpack_params_init,
-        unpack_params_pre_init,
+        omni_unpack_params_init,
+        omni_unpack_params_pre_init,
         unpack_params_perform
     )
 
-    if params_names_list.len > 0:
+    if omni_params_names_list.len > 0:
         var 
             unpack_init = nnkStmtList.newTree()
             unpack_pre_init = nnkStmtList.newTree()
@@ -1241,8 +1234,8 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
             nnkCall.newTree(
                 nnkDotExpr.newTree(
                 nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
-                    newIdentNode("params_lock")
+                    newIdentNode("omni_ugen"),
+                    newIdentNode("omni_params_lock")
                 ),
                 newIdentNode("spin")
                 ),
@@ -1258,8 +1251,8 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
             nnkCall.newTree(
                 nnkDotExpr.newTree(
                 nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
-                    newIdentNode("params_lock")
+                    newIdentNode("omni_ugen"),
+                    newIdentNode("omni_params_lock")
                 ),
                 newIdentNode("spin")
                 ),
@@ -1267,17 +1260,17 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
             )
         )
 
-        for i, param_name in params_names_list:
+        for i, param_name in omni_params_names_list:
             let param_name_param = newIdentNode(param_name & "_param")
             
             unpack_init.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
-                        newIdentNode("ugen"),
+                        newIdentNode("omni_ugen"),
                         param_name_param
                     ),
                     newLit(
-                        params_defaults_list[i]
+                        omni_params_defaults_list[i]
                     )
                 ),
 
@@ -1286,7 +1279,7 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
                         newIdentNode(param_name),
                         newEmptyNode(),
                         nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             param_name_param
                         )
                     )
@@ -1309,7 +1302,7 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
                         newIdentNode(param_name),
                         newEmptyNode(),
                         nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             param_name_param
                         )
                     )
@@ -1334,7 +1327,7 @@ proc params_generate_unpack_templates() : NimNode {.compileTime.} =
             )
         )
 
-macro params_inner*(params_number : typed, params_names : untyped) : untyped =
+macro omni_params_inner*(params_number : typed, params_names : untyped) : untyped =
     var 
         params_number_VAL : int
         params_names_string : string = ""
@@ -1373,8 +1366,8 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     #Fill them with a random float, but keep default's one to 0
     for i in 0..(params_number_VAL-1):
         default_vals[i] = 0.0
-        min_vals[i] = RANDOM_FLOAT
-        max_vals[i] = RANDOM_FLOAT
+        min_vals[i] = OMNI_IN_RANDOM_FLOAT
+        max_vals[i] = OMNI_IN_RANDOM_FLOAT
 
     var statement_counter = 0
 
@@ -1383,7 +1376,7 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     if params_names_kind == nnkStrLit or params_names_kind == nnkIdent:
         let param_name = params_names.strVal()
         
-        checkValidParamName(param_name)
+        omni_check_valid_name(param_name, "params")
         
         params_names_string.add($param_name & ",")
         statement_counter = 1
@@ -1399,10 +1392,10 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                 if statement_kind == nnkStrLit or statement_kind == nnkIdent:
                     let param_name = statement.strVal()
 
-                    checkValidParamName(param_name)
+                    omni_check_valid_name(param_name, "params")
                     
                     params_names_string.add($param_name & ",")
-                    params_names_list.add(param_name)
+                    omni_params_names_list.add(param_name)
                 
                 #"freq" {440, 0, 22000} OR "freq" {440 0 22000}
                 elif statement_kind == nnkCommand:
@@ -1416,10 +1409,10 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                         error("params: Expected param name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
 
                     let param_name = param_name_node.strVal()
-                    checkValidParamName(param_name)
+                    omni_check_valid_name(param_name, "params")
 
                     params_names_string.add($param_name & ",")
-                    params_names_list.add(param_name)
+                    omni_params_names_list.add(param_name)
                 
                     #The list of { } or Buffer
                     let 
@@ -1434,15 +1427,15 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
                     #Ident, no curly brackets Buffer
                     if default_min_max_kind == nnkIdent:
                         if default_min_max.strVal == "Buffer":
-                            min_val = BUFFER_FLOAT
-                            max_val = BUFFER_FLOAT     
+                            min_val = OMNI_BUFFER_RANDOM_FLOAT
+                            max_val = OMNI_BUFFER_RANDOM_FLOAT     
                     elif default_min_max_kind == nnkCurly:
-                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max, param_name)
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, param_name)
 
                     #single number literal: wrap in curly brackets
                     elif default_min_max_kind == nnkIntLit or default_min_max_kind == nnkFloatLit:
                         let default_min_max_curly = nnkCurly.newTree(default_min_max)
-                        (default_val, min_val, max_val) = extractDefaultMinMax(default_min_max_curly, param_name)
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name)
                     else:
                         error("ins: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
 
@@ -1475,15 +1468,15 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
     params_names_node = newLit(params_names_string)
 
     let
-        defaults_mins_maxs = build_default_min_max_arrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
-        params_generate_set_templates = params_generate_set_templates(min_vals, max_vals)
-        params_generate_unpack_templates = params_generate_unpack_templates()
+        defaults_mins_maxs = omni_build_default_min_max_arrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
+        omni_params_generate_set_templates = omni_params_generate_set_templates(min_vals, max_vals)
+        omni_params_generate_unpack_templates = omni_params_generate_unpack_templates()
 
     if zero_params:
         params_number_VAL = 0
     
     return quote do:
-        when not declared(declared_params):
+        when not declared(omni_declared_params):
             const 
                 omni_params            {.inject.}  = `params_number_VAL`  
                 omni_param_names_const {.inject.}  = `params_names_node`  #Used for IO.txt 
@@ -1491,16 +1484,16 @@ macro params_inner*(params_number : typed, params_names : untyped) : untyped =
             let omni_param_names_let   {.inject.}  = `params_names_node`  #Used as global in C export
 
             #compile time variable if params are defined
-            let declared_params {.inject, compileTime.} = true
+            let omni_declared_params {.inject, compileTime.} = true
 
             #const statement for defaults / mins / maxs
             `defaults_mins_maxs`
 
-            #Returns a template that generates all setParams procs. This must be called after UGen definition
-            `params_generate_set_templates`
+            #Returns a template that generates all setParams procs. This must be called after Omni_UGen definition
+            `omni_params_generate_set_templates`
 
             #Returns a template that generates the unpacking of params for perform block
-            `params_generate_unpack_templates`
+            `omni_params_generate_unpack_templates`
 
             #Export to C
             proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
@@ -1548,11 +1541,11 @@ macro params*(args : varargs[untyped]) : untyped =
         error("params: invalid syntax: '" & repr(args) & "'. Too many arguments.")
 
     return quote do:
-        params_inner(`params_number`, `params_names`)
+        omni_params_inner(`params_number`, `params_names`)
 
 #buffers
 
-proc buffers_generate_set_templates() : NimNode {.compileTime.} =
+proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
     var
         setBuffer_if = nnkIfStmt.newTree()
         setBuffer_block = nnkStmtList.newTree(setBuffer_if)
@@ -1563,9 +1556,9 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
             nnkFormalParams.newTree(
                 newIdentNode("void"),
             nnkIdentDefs.newTree(
-                newIdentNode("ugen"),
+                newIdentNode("omni_ugen"),
                 nnkPtrTy.newTree(
-                    newIdentNode("UGen")
+                    newIdentNode("Omni_UGen")
                 ),
                 newEmptyNode()
             ),
@@ -1608,8 +1601,8 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
         final_template
     )
 
-    if buffers_names_list.len > 0:
-        for buffer_name in buffers_names_list:
+    if omni_buffers_names_list.len > 0:
+        for buffer_name in omni_buffers_names_list:
             var
                 omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
 
@@ -1617,8 +1610,8 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
                     nnkCall.newTree(
                         nnkDotExpr.newTree(
                             nnkDotExpr.newTree(
-                                newIdentNode("ugen"),
-                                newIdentNode("buffers_lock")
+                                newIdentNode("omni_ugen"),
+                                newIdentNode("omni_buffers_lock")
                             ),
                             newIdentNode("spin")
                         ),
@@ -1626,7 +1619,7 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
                             nnkCall.newTree(
                                 newIdentNode("omni_set_buffer_from_wrapper"),
                                 nnkDotExpr.newTree(
-                                    newIdentNode("ugen"),
+                                    newIdentNode("omni_ugen"),
                                     newIdentNode(buffer_name & "_buffer")
                                 ),
                                 newIdentNode("val")
@@ -1642,9 +1635,9 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
                     nnkFormalParams.newTree(
                         newIdentNode("void"),
                         nnkIdentDefs.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             nnkPtrTy.newTree(
-                                newIdentNode("UGen")
+                                newIdentNode("Omni_UGen")
                             ),
                             newEmptyNode()
                         ),
@@ -1676,7 +1669,7 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
                     nnkStmtList.newTree(
                         nnkCall.newTree(
                             omni_ugen_setbuffer_func_name,
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             newIdentNode("val")
                         )
                     )
@@ -1704,7 +1697,7 @@ proc buffers_generate_set_templates() : NimNode {.compileTime.} =
 
     #error repr result
 
-proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
+proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
     var 
         init_block = nnkStmtList.newTree()
         unpack_buffers_init = nnkTemplateDef.newTree(
@@ -1755,7 +1748,7 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
         unpack_buffers_perform
     )
 
-    if buffers_names_list.len > 0:
+    if omni_buffers_names_list.len > 0:
         var 
             unpack_init = nnkStmtList.newTree()
             unpack_pre_init = nnkStmtList.newTree()
@@ -1765,8 +1758,8 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             nnkCall.newTree(
                 nnkDotExpr.newTree(
                 nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
-                    newIdentNode("buffers_lock")
+                    newIdentNode("omni_ugen"),
+                    newIdentNode("omni_buffers_lock")
                 ),
                 newIdentNode("spin")
                 ),
@@ -1782,8 +1775,8 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             nnkCall.newTree(
                 nnkDotExpr.newTree(
                 nnkDotExpr.newTree(
-                    newIdentNode("ugen"),
-                    newIdentNode("buffers_lock")
+                    newIdentNode("omni_ugen"),
+                    newIdentNode("omni_buffers_lock")
                 ),
                 newIdentNode("spin")
                 ),
@@ -1791,7 +1784,7 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             )
         )
 
-        for i, buffer_name in buffers_names_list:
+        for i, buffer_name in omni_buffers_names_list:
             let 
                 buffer_name_ident = newIdentNode(buffer_name)
                 buffer_name_buffer = newIdentNode(buffer_name & "_buffer")
@@ -1799,7 +1792,7 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             unpack_init.add(
                nnkAsgn.newTree(
                     nnkDotExpr.newTree(
-                        newIdentNode("ugen"),
+                        newIdentNode("omni_ugen"),
                         buffer_name_buffer
                     ),
                     nnkCall.newTree(
@@ -1824,7 +1817,7 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
                         buffer_name_ident,
                         newEmptyNode(),
                         nnkDotExpr.newTree(
-                            newIdentNode("ugen"),
+                            newIdentNode("omni_ugen"),
                             buffer_name_buffer
                         )
                     )
@@ -1849,9 +1842,9 @@ proc buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             )
         )
 
-    error repr result
+    #error repr result
 
-proc buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
+proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
     var
         defaults_array_bracket = nnkBracket.newTree()
         defaults_array_let = nnkLetSection.newTree(
@@ -1887,8 +1880,8 @@ proc buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compile
         generate_defaults
     )
 
-    if buffers_names_list.len > 0:
-        for i, buffer_name in buffers_names_list:
+    if omni_buffers_names_list.len > 0:
+        for i, buffer_name in omni_buffers_names_list:
             let 
                 buffer_default = buffers_default[i]
                 buffer_default_lit = newLit(buffer_default)
@@ -1901,7 +1894,7 @@ proc buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compile
                 generate_defaults_block.add(
                     nnkCall.newTree(
                         omni_ugen_setbuffer_func_name,
-                        newIdentNode("ugen"),
+                        newIdentNode("omni_ugen"),
                         
                     )
                 )
@@ -1915,7 +1908,7 @@ proc buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compile
 
     #error repr result
 
-macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped =
+macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped =
     var 
         buffers_number_VAL : int
         buffers_names_string : string = ""
@@ -1938,7 +1931,7 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
     var zero_buffers = false
 
     if buffers_number_VAL > 0:
-        at_least_one_buffer = true
+        omni_at_least_one_buffer = true
 
     elif buffers_number_VAL == 0:
         buffers_number_VAL = 1
@@ -1952,9 +1945,9 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
     #This is for the buffers 1, buf case. (where buf is not viewed as varargs)
     if buffers_names_kind == nnkIdent:
         let buffer_name = buffers_names.strVal()
-        checkValidParamName(buffer_name)
+        omni_check_valid_name(buffer_name, "buffers")
         buffers_names_string.add($buffer_name & ",")
-        buffers_names_list.add(buffer_name)
+        omni_buffers_names_list.add(buffer_name)
         buffer_defaults.add(OMNI_DEFAULT_NIL_BUFFER)
         statement_counter = 1
 
@@ -1968,9 +1961,9 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
                 #buf
                 if statement_kind == nnkIdent:
                     let buffer_name = statement.strVal()
-                    checkValidParamName(buffer_name)
+                    omni_check_valid_name(buffer_name, "buffers")
                     buffers_names_string.add($buffer_name & ",")
-                    buffers_names_list.add(buffer_name)
+                    omni_buffers_names_list.add(buffer_name)
                     buffer_defaults.add(OMNI_DEFAULT_NIL_BUFFER)
                 
                 #buf "buf1"
@@ -1987,16 +1980,16 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
                         error("buffers: Expected Buffer name number " & $(statement_counter + 1) & " to be either an identifier.")
 
                     let buffer_name = buffer_name_node.strVal()
-                    checkValidParamName(buffer_name)
+                    omni_check_valid_name(buffer_name, "buffers")
                     buffers_names_string.add($buffer_name & ",")
-                    buffers_names_list.add(buffer_name)
+                    omni_buffers_names_list.add(buffer_name)
 
                     if buffer_default_kind != nnkStrLit:
-                        error("buffers: Buffer '" & $buffer_name & "' to have a string literal as default value.")
+                        error("buffers: Buffer '" & $buffer_name & "' must have a string literal as default value.")
 
                     let buffer_default_name = buffer_default.strVal()
                     if buffer_default_name == OMNI_DEFAULT_NIL_BUFFER:
-                        error("__OMNI_DEFAULT_NIL_BUFFER is reserved")
+                        error("buffers: the '" & OMNI_DEFAULT_NIL_BUFFER & "' name is reserved")
                     buffer_defaults.add(buffer_default_name)
 
                 else:
@@ -2019,9 +2012,9 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
     buffers_names_node = newLit(buffers_names_string)
 
     let
-        buffer_generate_defaults = buffer_generate_defaults(buffer_defaults)
-        buffers_generate_set_templates = buffers_generate_set_templates()
-        buffers_generate_unpack_templates = buffers_generate_unpack_templates()
+        omni_buffer_generate_defaults = omni_buffer_generate_defaults(buffer_defaults)
+        omni_buffers_generate_set_templates = omni_buffers_generate_set_templates()
+        omni_buffers_generate_unpack_templates = omni_buffers_generate_unpack_templates()
     
     var when_declared_buffer_interface : NimNode
 
@@ -2044,7 +2037,7 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("buffers: no \'Buffer\' interface provided. This must come from an omni wrapper.")
+                            newLit("buffers: no \'Buffer\' interface provided. This must come from an Omni wrapper.")
                         )
                     )
                 )
@@ -2052,7 +2045,7 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
         )
     
     return quote do:
-        when not declared(declared_buffers):
+        when not declared(omni_declared_buffers):
             #Check buffer interface
             `when_declared_buffer_interface`
             
@@ -2064,16 +2057,16 @@ macro buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped 
             let omni_buffer_names_let   {.inject.}  = `buffers_names_node`  #Used as global exported to C
 
             #compile time variable if buffers are defined
-            let declared_buffers {.inject, compileTime.} = true
+            let omni_declared_buffers {.inject, compileTime.} = true
 
             #Returns a const with default names and a template that calls the default init names (to be called in init)
-            `buffer_generate_defaults`
+            `omni_buffer_generate_defaults`
 
-            #Returns a template that generates all setbuffers procs. This must be called after UGen definition
-            `buffers_generate_set_templates`
+            #Returns a template that generates all setbuffers procs. This must be called after Omni_UGen definition
+            `omni_buffers_generate_set_templates`
 
             #Returns a template that generates the unpacking of buffers for perform block
-            `buffers_generate_unpack_templates`
+            `omni_buffers_generate_unpack_templates`
 
             #Export to C
             proc Omni_UGenBuffers() : int32 {.exportc: "Omni_UGenBuffers", dynlib.} =
@@ -2120,4 +2113,4 @@ macro buffers*(args : varargs[untyped]) : untyped =
         error("buffers: invalid syntax: '" & repr(args) & "'. Too many arguments.")
 
     return quote do:
-        buffers_inner(`buffers_number`, `buffers_names`)
+        omni_buffers_inner(`buffers_number`, `buffers_names`)

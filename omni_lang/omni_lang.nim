@@ -69,3 +69,7 @@ export omni_math
 
 import omni_lang/core/lib/math/omni_tables
 export omni_tables
+
+#stdlib
+import omni_lang/core/lib/stdlib/omni_stdlib
+export omni_stdlib
