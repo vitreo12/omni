@@ -25,13 +25,15 @@ let omni_invalid_idents* {.compileTime.} = [
 ]
 
 let omni_invalid_ends_with* {.compileTime.} = [
-    "omni_def_export", "omni_def_dummy",
-    "omni_module_inner",
-    "omni_struct_inner", "omni_struct_new", "omni_struct_export"
+    "omni_min_max",
+    "omni_def", "omni_def_export", "omni_def_dummy",
+    "omni_module",
+    "omni_struct", "omni_struct_new", "omni_struct_export"
 ]
 
 let omni_invalid_variable_names* {.compileTime.} = [
     "omni_ugen", "Omni_UGen",
+    "omni_auto_mem", "omni_params_lock", "omni_buffers_lock",
     "ins", "inputs",
     "outs", "outputs",
     "params",

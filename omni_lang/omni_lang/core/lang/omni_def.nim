@@ -124,12 +124,12 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #Add template and proc names
         template_name = proc_name
 
-        #OmniDef_moduleName_procName121241231 (if needing a unique identifier for any reason)
-        #let proc_name_sym = genSym(ident="OmniDef_" & current_module.strVal() & "_" & proc_name_str)
+        #moduleName_procName_omni_def121241231 (if needing a unique identifier for any reason)
+        #let proc_name_sym = genSym(ident=current_module.strVal() & "_" & proc_name_str & "_omni_def)
         #proc_name = parseStmt(repr(proc_name_sym))[0]
 
-        #new name for proc_name: OmniDef_moduleName_procName
-        proc_name = newIdentNode("OmniDef_" & current_module.strVal() & "_" & proc_name_str)
+        #new name for proc_name: moduleName_procName_omni_def
+        proc_name = newIdentNode(current_module.strVal() & "_" & proc_name_str & "_omni_def")
         
         #This is for the WIP generics defs: https://github.com/vitreo12/omni/issues/118
         #[ if generics.len > 0:

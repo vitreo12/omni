@@ -23,12 +23,12 @@
 import macros, os, strutils, tables, omni_invalid, omni_macros_utilities
 
 #type
-#    ImportMe1 = ImportMe_omni_module_inner.ImportMe_omni_struct_export
+#    ImportMe1 = ImportMe_omni_module.ImportMe_omni_struct_export
 #type
 #    ImportMe1_omni_struct_export = ImportMe1
 #
-#proc ImportMe1_new_omni_struct_inner(struct_type : typedesc[ImportMe1_omni_struct_export], ...) : ImportMe1 {.inline.} =
-#    return ImportMe_omni_module_inner.ImportMe_new_omni_struct_inner(....)
+#proc ImportMe1_new_omni_struct(omni_struct_type : typedesc[ImportMe1_omni_struct_export], ...) : ImportMe1 {.inline.} =
+#    return ImportMe_omni_module.ImportMe_new_omni_struct(....)
 
 proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_typed_constructor : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
@@ -75,7 +75,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
         struct_untyped_formal_params = stuct_untyped_constuctor_impl[3]
 
     var 
-        #can copy from old impl, they are typed symbols anyway! Only thing to change is the first arg, struct_type
+        #can copy from old impl, they are typed symbols anyway! Only thing to change is the first arg, omni_struct_type
         new_struct_formal_params = struct_untyped_formal_params
 
         old_struct_constructor = nnkDotExpr.newTree(
@@ -144,12 +144,12 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     else:
         new_struct_formal_params[0] = struct_new_name_ident
 
-    #Change name in struct_type argument (third last)
+    #Change name in omni_struct_type argument (third last)
     new_struct_formal_params[^3][1][1] = struct_new_name_export_ident
 
-    #Add struct_type, omni_auto_mem and omni_call_type etc...
+    #Add omni_struct_type, omni_auto_mem and omni_call_type etc...
     new_struct_call.add(
-        newIdentNode("struct_type"),
+        newIdentNode("omni_struct_type"),
         newIdentNode("omni_auto_mem"),
         newIdentNode("omni_call_type"),
     )
@@ -266,10 +266,10 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
             else:
                 arg_type_str = arg_type[0].strVal()
             
-            #ImportMe -> ImportMe_omni_module_inner.ImportMe_omni_struct_export
+            #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_export
             #[ let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
-                if inner_type[0].strVal().endsWith("_omni_struct_inner"):
+                if inner_type[0].strVal().endsWith("_omni_struct"):
                     #is this needed? Os is arg_type enough since it's a symbol?
                     let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_export")[0]
             
@@ -519,19 +519,19 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
         else:
             error "use: Invalid path syntax: " & repr(path)
 
-        let omni_module_inner = newIdentNode(import_name_without_extension & "_omni_module_inner")
+        let omni_module = newIdentNode(import_name_without_extension & "_omni_module")
 
         result.add(
             nnkImportStmt.newTree(
                 nnkInfix.newTree(
                     newIdentNode("as"),
                     real_path,
-                    omni_module_inner
+                    omni_module
                 )
             ),
             
             nnkExportStmt.newTree(
-                omni_module_inner
+                omni_module
             )
         )
 
@@ -599,20 +599,20 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
     else:
         error "use: Invalid path syntax: " & repr(path)
 
-    let import_name_omni_module_inner = newIdentNode(import_name_without_extension & "_omni_module_inner")
+    let import_name_omni_module = newIdentNode(import_name_without_extension & "_omni_module")
 
     #Add import
     import_stmt.add(
         nnkInfix.newTree(
             newIdentNode("as"),
             real_path,
-            import_name_omni_module_inner
+            import_name_omni_module
         )
     )
 
     #Add export
     export_stmt.add(
-        import_name_omni_module_inner
+        import_name_omni_module
     )
 
     #Need to be before all the generate_new_module_bindings_for_struct_or_def_calls
@@ -636,7 +636,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 var generate_new_module_bindings_for_struct_or_def_call = nnkCall.newTree(
                     newIdentNode("omni_generate_new_module_bindings_for_struct_or_def"),
-                    import_name_omni_module_inner,
+                    import_name_omni_module,
                 )
 
                 #Add excepts: first entry of infix
@@ -653,17 +653,17 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                     let 
                         struct_dot_expr = nnkDotExpr.newTree(
-                            import_name_omni_module_inner,
+                            import_name_omni_module,
                             infix_first_val_omni_struct_export
                         )
 
                         struct_constructor_dot_expr = nnkDotExpr.newTree(
-                            import_name_omni_module_inner,
+                            import_name_omni_module,
                             infix_first_val_omni_struct_new
                         )
 
                         def_dot_expr = nnkDotExpr.newTree(
-                            import_name_omni_module_inner,
+                            import_name_omni_module,
                             newIdentNode(infix_first_val.strVal() & "_omni_def_export")
                         )
 
@@ -767,6 +767,8 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
         )
 
         result = omni_use_inner(paths)
+
+    error astGenRepr result
 
 #use Path
 #OR

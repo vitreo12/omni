@@ -60,7 +60,7 @@ proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} 
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode(in_num & "_min_max")         
+                        newIdentNode(in_num & "_omni_min_max")         
                     ),
                     newEmptyNode(),
                     nnkGenericParams.newTree(

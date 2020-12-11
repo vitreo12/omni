@@ -25,18 +25,18 @@ import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
 import ../print/omni_print
 import ../math/omni_math
-from ../stdlib/omni_stdlib import cubic_interp
+from   ../stdlib/omni_stdlib import cubic_interp
+
+type ArrayPtr[T] = ptr UncheckedArray[T]
 
 type
-    ArrayPtr[T] = ptr UncheckedArray[T]
-
-    Data_omni_struct_inner*[T] = object
+    Data_omni_struct*[T] = object
         data    : ArrayPtr[T]
         length  : int
         chans   : int
-        length_X_chans : int
+        size    : int
 
-    Data*[T] = ptr Data_omni_struct_inner[T]
+    Data*[T] = ptr Data_omni_struct[T]
 
     Data_omni_struct_export*[T] = Data[T]
      
@@ -47,7 +47,7 @@ const
     #bounds_error = "WARNING: Omni: DatTrying to access out of bounds Data."
 
 #Constructor interface: Data
-proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], struct_type : typedesc[Data_omni_struct_export], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
+proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], omni_struct_type : typedesc[Data_omni_struct_export], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
     #Trying to allocate in perform block! nonono
     when omni_call_type is Omni_PerformCall:
         {.fatal: "Data: attempting to allocate memory in the `perform` or `sample` blocks".}
@@ -64,27 +64,27 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
         print(chans_error)
         real_chans = 1
 
-    let size_data_obj = sizeof(Data_omni_struct_inner[G1])
+    let size_data_obj = sizeof(Data_omni_struct[G1])
 
     #Actual object, assigned to result
     result = cast[Data[G1]](omni_alloc(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 
-        length_X_chans     = real_length * real_chans
-        size_data_type     = sizeof(G1)
-        total_size_culong  = culong(size_data_type * length_X_chans)
-        data               = cast[ArrayPtr[G1]](omni_alloc0(total_size_culong))
+        size              = real_length * real_chans
+        size_data_type    = sizeof(G1)
+        total_size_culong = culong(size_data_type * size)
+        data              = cast[ArrayPtr[G1]](omni_alloc0(total_size_culong))
 
     #Register both the Data object and its data to the automatic memory management
     omni_auto_mem.omni_auto_mem_register_child(result)
     omni_auto_mem.omni_auto_mem_register_child(data)
     
     #Fill the object layout
-    result.data           = data
-    result.chans          = real_chans
-    result.length         = real_length
-    result.length_X_chans = length_X_chans
+    result.data   = data
+    result.chans  = real_chans
+    result.length = real_length
+    result.size   = size
 
 proc omni_check_data_validity*[T](data : Data[T]) : bool =
     when T isnot SomeNumber:
@@ -128,7 +128,7 @@ proc getter[T](data : Data[T], channel : int = 0, index : int = 0) : T {.inline.
     else:
         actual_index = (index * chans) + channel
     
-    if actual_index >= 0 and actual_index < data.length_X_chans:
+    if actual_index >= 0 and actual_index < data.size:
         return data.data[actual_index]
     
     when T is SomeNumber:
@@ -193,7 +193,7 @@ proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : 
     else:
         actual_index = (index * chans) + channel
     
-    if actual_index >= 0 and actual_index < data.length_X_chans:
+    if actual_index >= 0 and actual_index < data.size:
         when T is SomeNumber and Y is SomeNumber:
             data.data[actual_index] = T(x)
         elif T is Y:
@@ -213,11 +213,14 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
 # INFOS #
 #########
 
-proc len*[T](data : Data[T]) : int =
+proc length*[T](data : Data[T]) : int {.inline.} =
     return data.length
 
-proc size*[T](data : Data[T]) : int =
-    return data.length_X_chans
+proc len*[T](data : Data[T]) : int {.inline.} =
+    return data.length
 
-proc chans*[T](data : Data[T]) : int =
+proc chans*[T](data : Data[T]) : int {.inline.} =
     return data.chans
+
+proc size*[T](data : Data[T]) : int {.inline.} =
+    return data.size
