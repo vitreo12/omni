@@ -23,11 +23,11 @@
 import macros, os, strutils, tables, omni_invalid, omni_macros_utilities
 
 #type
-#    ImportMe1 = ImportMe_omni_module.ImportMe_omni_struct_alias
+#    ImportMe1 = ImportMe_omni_module.ImportMe_omni_struct_ptr
 #type
-#    ImportMe1_omni_struct_alias = ImportMe1
+#    ImportMe1_omni_struct_ptr = ImportMe1
 #
-#proc ImportMe1_new_omni_struct(omni_struct_type : typedesc[ImportMe1_omni_struct_alias], ...) : ImportMe1 {.inline.} =
+#proc ImportMe1_new_omni_struct(omni_struct_type : typedesc[ImportMe1_omni_struct_ptr], ...) : ImportMe1 {.inline.} =
 #    return ImportMe_omni_module.ImportMe_new_omni_struct(....)
 
 proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_typed_constructor : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
@@ -58,9 +58,9 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     let 
         struct_new_name_str = struct_new_name.strVal()
         struct_new_name_ident = newIdentNode(struct_new_name_str)
-        struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_omni_struct_alias")
+        struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_omni_struct_ptr")
         struct_new_name_omni_struct_new_ident = newIdentNode(struct_new_name_str & "_omni_struct_new")
-        old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_omni_struct_alias")
+        old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_omni_struct_ptr")
 
     #put generics again if needed
     var 
@@ -165,7 +165,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
         )
     )
 
-    let new_omni_struct_alias = nnkTypeSection.newTree(
+    let new_omni_struct_ptr = nnkTypeSection.newTree(
         nnkTypeDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
@@ -196,7 +196,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
 
     result.add(
         new_struct,
-        new_omni_struct_alias,
+        new_omni_struct_ptr,
         new_omni_struct_new
     )
 
@@ -266,12 +266,12 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
             else:
                 arg_type_str = arg_type[0].strVal()
             
-            #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_alias
+            #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_ptr
             #[ let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
                 if inner_type[0].strVal().endsWith("_omni_struct"):
                     #is this needed? Os is arg_type enough since it's a symbol?
-                    let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_alias")[0]
+                    let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_ptr")[0]
             
                     #error astGenRepr new_arg_type  ]#
 
@@ -643,18 +643,18 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                 if infix_first_val.kind == nnkIdent:
                     let 
                         infix_first_val_str = infix_first_val.strVal()
-                        infix_first_val_omni_struct_alias = newIdentNode(infix_first_val_str & "_omni_struct_alias")
+                        infix_first_val_omni_struct_ptr = newIdentNode(infix_first_val_str & "_omni_struct_ptr")
                         infix_first_val_omni_struct_new = newIdentNode(infix_first_val_str & "_omni_struct_new")
                     
                     import_stmt.add(infix_first_val)
-                    import_stmt.add(infix_first_val_omni_struct_alias)
+                    import_stmt.add(infix_first_val_omni_struct_ptr)
                     export_stmt.add(infix_first_val)
-                    export_stmt.add(infix_first_val_omni_struct_alias)
+                    export_stmt.add(infix_first_val_omni_struct_ptr)
 
                     let 
                         struct_dot_expr = nnkDotExpr.newTree(
                             import_name_omni_module,
-                            infix_first_val_omni_struct_alias
+                            infix_first_val_omni_struct_ptr
                         )
 
                         struct_constructor_dot_expr = nnkDotExpr.newTree(

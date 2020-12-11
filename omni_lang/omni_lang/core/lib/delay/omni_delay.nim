@@ -35,9 +35,9 @@ type
 
     Delay* = ptr Delay_omni_struct
 
-    Delay_omni_struct_alias* = Delay
+    Delay_omni_struct_ptr* = Delay
 
-proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, omni_struct_type : typedesc[Delay_omni_struct_alias], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
+proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, omni_struct_type : typedesc[Delay_omni_struct_ptr], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when omni_call_type is Omni_PerformCall:
         {.fatal: "Delay: attempting to allocate memory in the 'perform' or 'sample' blocks.".}
@@ -53,7 +53,7 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(actual_size))
-        data  = Data_omni_struct_new(delay_length, G1=float, omni_struct_type=Data_omni_struct_alias, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
+        data  = Data_omni_struct_new(delay_length, G1=float, omni_struct_type=Data_omni_struct_ptr, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
         mask  = int(delay_length - 1)
 
     #Register obj (data has already been registered in Data.omni_struct_new)

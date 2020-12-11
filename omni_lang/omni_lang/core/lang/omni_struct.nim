@@ -35,7 +35,7 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
         if statement_ident.kind == nnkIdent or statement_ident.kind == nnkSym:
             let statement_ident_str = statement_ident.strVal()
             #Data, keep searching
-            if statement_ident_str == "Data" or statement_ident_str == "Data_omni_struct_alias":
+            if statement_ident_str == "Data" or statement_ident_str == "Data_omni_struct_ptr":
                 how_many_datas += 1
                 return omni_find_data_generics_bottom(statement[1], how_many_datas)
             else:
@@ -153,7 +153,7 @@ macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias
     #Add the type declaration of Phasor to type section
     type_section.add(ptr_type_def)
 
-    #Add the type declaration of Phasor_omni_struct_alias
+    #Add the type declaration of Phasor_omni_struct_ptr
     type_section.add(alias_type_def)
 
     #Add the whole type section to result
@@ -172,7 +172,7 @@ proc omni_struct_untyped_or_typed_generics(var_type : NimNode, generics_seq : se
         if var_type_ident.kind == nnkIdent:
             let var_type_ident_str = var_type_ident.strVal()
             #Data, keep searching
-            if var_type_ident_str == "Data" or var_type_ident_str == "Data_omni_struct_alias":
+            if var_type_ident_str == "Data" or var_type_ident_str == "Data_omni_struct_ptr":
                 return omni_struct_untyped_or_typed_generics(var_type[1], generics_seq)
             
             #Normal bracket expr like Phasor[T] or Phasor[int]
@@ -195,7 +195,7 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
         var already_looped = false
 
         #Check validity of structs that are not Datas
-        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_omni_struct_alias":
+        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_omni_struct_ptr":
             already_looped = true
             for index, entry in statement:
                 if index == 0:
@@ -290,7 +290,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         struct_name_str = struct_name[0].strVal()
         
         obj_name = newIdentNode(struct_name_str & "_omni_struct")  #Phasor_omni_struct
-        alias_name = newIdentNode(struct_name_str & "_omni_struct_alias")
+        alias_name = newIdentNode(struct_name_str & "_omni_struct_ptr")
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -365,7 +365,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         struct_name_str = struct_name.strVal()
         
         obj_name = newIdentNode(struct_name_str & "_omni_struct")              #Phasor_omni_struct
-        alias_name = newIdentNode(struct_name_str & "_omni_struct_alias") 
+        alias_name = newIdentNode(struct_name_str & "_omni_struct_ptr") 
         ptr_name = struct_name                                        #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -468,7 +468,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to omni_declare_struct
     ptr_type_def.add(ptr_ty)
 
-    #Build the Phasor_omni_struct_alias out of the ptr
+    #Build the Phasor_omni_struct_ptr out of the ptr
     alias_type_def = ptr_type_def.copy()
     alias_type_def[0][1] = alias_name
     alias_type_def[^1] = alias_type_def.last()[0]
@@ -597,8 +597,8 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
-    #This is the _omni_struct_alias. Don't put the generics in! They will fail some constructors otherwise
-    var omni_struct_alias_arg =  newIdentNode(ptr_struct_name.strVal() & "_omni_struct_alias")
+    #This is the _omni_struct_ptr. Don't put the generics in! They will fail some constructors otherwise
+    var omni_struct_ptr_arg =  newIdentNode(ptr_struct_name.strVal() & "_omni_struct_ptr")
 
     #Add the when... check for omni_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(
@@ -770,7 +770,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             newIdentNode("omni_struct_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                omni_struct_alias_arg
+                omni_struct_ptr_arg
             ),
             newEmptyNode()
         )   

@@ -38,7 +38,7 @@ type
 
     Data*[T] = ptr Data_omni_struct[T]
 
-    Data_omni_struct_alias*[T] = Data[T]
+    Data_omni_struct_ptr*[T] = Data[T]
      
 #Having the strings as const as --gc:none is used
 const
@@ -47,7 +47,7 @@ const
     #bounds_error = "WARNING: Omni: DatTrying to access out of bounds Data."
 
 #Constructor interface: Data
-proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], omni_struct_type : typedesc[Data_omni_struct_alias], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
+proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], omni_struct_type : typedesc[Data_omni_struct_ptr], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
     #Trying to allocate in perform block! nonono
     when omni_call_type is Omni_PerformCall:
         {.fatal: "Data: attempting to allocate memory in the `perform` or `sample` blocks".}
