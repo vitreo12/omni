@@ -175,7 +175,7 @@ proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.}
                             newIdentNode(in_num_min_max),
                             nnkBracketExpr.newTree(
                                 nnkBracketExpr.newTree(
-                                    newIdentNode("ins_Nim"),
+                                    newIdentNode("omni_ins_ptr"),
                                     newLit(index_minus_one)
                                 ),
                                 newIdentNode("omni_audio_index")
@@ -200,7 +200,7 @@ proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.}
                         buffer_fatal,
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
-                                newIdentNode("ins_Nim"),
+                                newIdentNode("omni_ins_ptr"),
                                 newLit(index_minus_one)
                             ),
                             newIdentNode("omni_audio_index")
@@ -258,7 +258,7 @@ proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.}
                             newIdentNode(in_num_min_max),
                             nnkBracketExpr.newTree(
                                 nnkBracketExpr.newTree(
-                                    newIdentNode("ins_Nim"),
+                                    newIdentNode("omni_ins_ptr"),
                                     newLit(index_minus_one)
                                 ),
                                 newLit(0)
@@ -283,7 +283,7 @@ proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.}
                         buffer_fatal,
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
-                                newIdentNode("ins_Nim"),
+                                newIdentNode("omni_ins_ptr"),
                                 newLit(index_minus_one)
                             ),
                             newLit(0)
@@ -367,7 +367,7 @@ macro omni_generate_outputs_templates*(num_of_outputs : typed) : untyped =
             nnkStmtList.newTree(
             nnkBracketExpr.newTree(
                 nnkBracketExpr.newTree(
-                    newIdentNode("outs_Nim"),             #name of the outs buffer
+                    newIdentNode("omni_outs_ptr"),             #name of the outs buffer
                     newLit(int(i - 1))               #literal value
                 ),
                 newIdentNode("omni_audio_index") #name of the looping variable
@@ -724,10 +724,10 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
             omni_generate_args_templates(`ins_number_VAL`)
 
             #For in[i] access
-            proc omni_get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](ins_Nim : T, chan : Y, omni_audio_index : int = 0) : float =
+            proc omni_get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](omni_ins_ptr : T, chan : Y, omni_audio_index : int = 0) : float =
                 let chan_int = int(chan)
                 if chan_int < omni_inputs:
-                    return float(ins_Nim[chan_int][omni_audio_index])
+                    return float(omni_ins_ptr[chan_int][omni_audio_index])
                 else:
                     return 0.0
             
@@ -1204,8 +1204,8 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
             pre_init_block
         )
         perform_block = nnkStmtList.newTree()
-        unpack_params_perform = nnkTemplateDef.newTree(
-            newIdentNode("unpack_params_perform"),
+        omni_unpack_params_perform = nnkTemplateDef.newTree(
+            newIdentNode("omni_unpack_params_perform"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1221,7 +1221,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
     result = nnkStmtList.newTree(
         omni_unpack_params_init,
         omni_unpack_params_pre_init,
-        unpack_params_perform
+        omni_unpack_params_perform
     )
 
     if omni_params_names_list.len > 0:
@@ -1728,8 +1728,8 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             pre_init_block
         )
         perform_block = nnkStmtList.newTree()
-        unpack_buffers_perform = nnkTemplateDef.newTree(
-            newIdentNode("unpack_buffers_perform"),
+        omni_unpack_buffers_perform = nnkTemplateDef.newTree(
+            newIdentNode("omni_unpack_buffers_perform"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1745,7 +1745,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
     result = nnkStmtList.newTree(
         unpack_buffers_init,
         unpack_buffers_pre_init,
-        unpack_buffers_perform
+        omni_unpack_buffers_perform
     )
 
     if omni_buffers_names_list.len > 0:

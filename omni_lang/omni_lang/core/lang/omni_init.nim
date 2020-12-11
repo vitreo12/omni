@@ -449,7 +449,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 
                 let 
                     omni_ugen        {.inject.} : ptr Omni_UGen = cast[ptr Omni_UGen](omni_ugen_ptr)     
-                    ins_Nim          {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
+                    omni_ins_ptr          {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
                     bufsize          {.inject.} : int           = int(bufsize_in)
                     samplerate       {.inject.} : float         = float(samplerate_in)
                     buffer_interface {.inject.} : pointer       = buffer_interface_in
@@ -510,7 +510,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
 
                 let 
                     omni_ugen        {.inject.} : ptr Omni_UGen  = cast[ptr Omni_UGen](omni_ugen_ptr)     
-                    ins_Nim          {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
+                    omni_ins_ptr          {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
                     bufsize          {.inject.} : int            = int(bufsize_in)
                     samplerate       {.inject.} : float          = float(samplerate_in)
                     buffer_interface {.inject.} : pointer        = buffer_interface_in
@@ -589,7 +589,7 @@ macro init*(code_block : untyped) : untyped =
         var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
         #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
-        let ins_Nim            {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
+        let omni_ins_ptr            {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
 
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once

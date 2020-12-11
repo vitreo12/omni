@@ -54,7 +54,7 @@ suite "ins: defaults":
     check (declared(in1)); check (declared(in2)); check (declared(in3)); check (declared(in4)); check (declared(in5))
     check (declared(arg1)); check (declared(arg2)); check (declared(arg3)); check (declared(arg4)); check (declared(arg5))
 
-  #Check the values in ins_Nim
+  #Check the values in omni_ins_ptr
   test "templates values":
     check (in1 == 0.75); check (in2 == 0.75); check (in3 == 0.75); check (in4 == 0.75); check (in5 == 0.75)
     check (arg1 == 0.75); check (arg2 == 0.75); check (arg3 == 0.75); check (arg4 == 0.75); check (arg5 == 0.75)
@@ -62,11 +62,11 @@ suite "ins: defaults":
   #Check omni_get_dynamic_input
   test "omni_get_dynamic_input":
     check (declared(omni_get_dynamic_input))
-    check (omni_get_dynamic_input(ins_Nim, 0, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 1, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 2, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 3, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 4, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 0, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 1, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 2, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 3, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 4, 0) == 0.75)
   
   #Check C exported functions
   test "exported C functions":

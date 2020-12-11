@@ -23,21 +23,22 @@
 import macros, strutils
 from omni_io import omni_buffers_names_list
     
-proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
+proc omni_unpack_ugen_fields_inner(t : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     var 
         let_section = nnkLetSection.newTree()
         unpack_params = nnkCall.newTree(
-            newIdentNode("unpack_params_perform")
+            newIdentNode("omni_unpack_params_perform")
         )
         unpack_buffers = nnkCall.newTree(
-            newIdentNode("unpack_buffers_perform")
+            newIdentNode("omni_unpack_buffers_perform")
         )
-        lock_buffers = nnkCall.newTree(
-            newIdentNode("lock_buffers")
+        omni_lock_buffers = nnkCall.newTree(
+            newIdentNode("omni_lock_buffers")
         )
 
+    #t is the Omni_UGen
     let type_def = getImpl(t)
     
     #[
@@ -69,7 +70,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
             
             #If a struct is declared as var, it's an error! This should be fixed to still allow to do it.
             if var_name_string.endsWith("var"):
-                error($(var_name_string[0 .. len(var_name_string) - 5]) & " is declared as \"var\". This is not allowed for structs. Use \"let\" instead.")
+                error($(var_name_string[0 .. len(var_name_string) - 5]) & " is declared as 'var'. This is not allowed for structs. Use 'let' instead.")
                 
             ident_def_stmt = nnkIdentDefs.newTree(
                 newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings
@@ -117,7 +118,7 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     result.add(
         let_section,
         unpack_buffers,
-        lock_buffers,
+        omni_lock_buffers,
         unpack_params
     )
 
@@ -125,22 +126,22 @@ proc unpackUGenVariablesProc(t : NimNode) : NimNode {.compileTime.} =
     
 #Unpack the fields of the omni_ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
 macro omni_unpack_ugen_fields*(t : typed) =
-    return unpackUGenVariablesProc(t)
+    return omni_unpack_ugen_fields_inner(t)
 
 #Simply cast the inputs from SC in a indexable form in Nim
 macro omni_cast_ins_outs32*() =
     return quote do:
         let 
-            ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
-            outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
+            omni_ins_ptr  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
+            omni_outs_ptr {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
 
 macro omni_cast_ins_outs64*() =
     return quote do:
         let 
-            ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
-            outs_Nim {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
+            omni_ins_ptr  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
+            omni_outs_ptr {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
-macro generate_lock_unlock_buffers*() : untyped =
+macro omni_generate_lock_unlock_buffers*() : untyped =
     result = nnkStmtList.newTree()
 
     var 
@@ -148,7 +149,7 @@ macro generate_lock_unlock_buffers*() : untyped =
         unlock_buffers_template = nnkTemplateDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("unlock_buffers")
+                newIdentNode("omni_unlock_buffers")
             ),
             newEmptyNode(),
             newEmptyNode(),
@@ -167,7 +168,7 @@ macro generate_lock_unlock_buffers*() : untyped =
                         newIdentNode("omni_at_least_one_buffer"),
                         nnkCall.newTree(
                             newIdentNode("defined"),
-                            newIdentNode("multithreadBuffers")
+                            newIdentNode("omni_multithread_buffers")
                         )
                     ),
                     unlock_buffers_body
@@ -178,7 +179,7 @@ macro generate_lock_unlock_buffers*() : untyped =
 
         silence = nnkStmtList.newTree(
             nnkForStmt.newTree(
-                newIdentNode("audio_channel"),
+                newIdentNode("omni_audio_channel"),
                 nnkPar.newTree(
                     nnkInfix.newTree(
                         newIdentNode(".."),
@@ -192,7 +193,7 @@ macro generate_lock_unlock_buffers*() : untyped =
                 ),
                 nnkStmtList.newTree(
                     nnkForStmt.newTree(
-                    newIdentNode("audio_index"),
+                    newIdentNode("omni_audio_index"),
                     nnkPar.newTree(
                         nnkInfix.newTree(
                             newIdentNode(".."),
@@ -208,10 +209,10 @@ macro generate_lock_unlock_buffers*() : untyped =
                         nnkAsgn.newTree(
                             nnkBracketExpr.newTree(
                                 nnkBracketExpr.newTree(
-                                    newIdentNode("outs_Nim"),
-                                    newIdentNode("audio_channel")
+                                    newIdentNode("omni_outs_ptr"),
+                                    newIdentNode("omni_audio_channel")
                                 ),
-                                newIdentNode("audio_index")
+                                newIdentNode("omni_audio_index")
                             ),
                             newFloatLitNode(0.0)
                         )
@@ -241,7 +242,7 @@ macro generate_lock_unlock_buffers*() : untyped =
                 nnkStmtList.newTree(
                     silence,
                     nnkCall.newTree(
-                        newIdentNode("unlock_buffers")
+                        newIdentNode("omni_unlock_buffers")
                     ),
                     nnkCall.newTree(
                         newIdentNode("release"),
@@ -301,7 +302,7 @@ macro generate_lock_unlock_buffers*() : untyped =
         lock_buffers_template = nnkTemplateDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("lock_buffers")
+                newIdentNode("omni_lock_buffers")
             ),
             newEmptyNode(),
             newEmptyNode(),
@@ -380,7 +381,7 @@ macro generate_lock_unlock_buffers*() : untyped =
 
     #error repr result
 
-template perform_inner*(code_block : untyped) {.dirty.} =
+template omni_perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / params / outs are not declared, declare them!
     when not declared(omni_declared_inputs):
         ins 1
@@ -399,9 +400,9 @@ template perform_inner*(code_block : untyped) {.dirty.} =
         init:
             discard
 
-    #Create lock_buffers and unlock_buffers templates
-    #unlock_buffers is generated first because it's used in lock_buffers to unlock all buffers in case of error in locking one
-    generate_lock_unlock_buffers()
+    #Create omni_lock_buffers and omni_unlock_buffers templates
+    #omni_unlock_buffers is generated first because it's used in omni_lock_buffers to unlock all buffers in case of error in locking one
+    omni_generate_lock_unlock_buffers()
 
     #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(omni_perform32):
@@ -410,7 +411,7 @@ template perform_inner*(code_block : untyped) {.dirty.} =
             var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
 
             #standard perform block
-            when declared(perform_block):
+            when declared(omni_declared_perform):
                 omni_parse_block_untyped(code_block, false, true, bits_32_or_64_typed = false)
             
             #sample block without perform
@@ -418,8 +419,8 @@ template perform_inner*(code_block : untyped) {.dirty.} =
                 omni_parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = false)
 
             #UNLOCK buffers when multithread buffers are used
-            when defined(multithreadBuffers):
-                unlock_buffers()
+            when defined(omni_multithread_buffers):
+                omni_unlock_buffers()
 
     when defined(omni_perform64):
         proc Omni_UGenPerform64*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
@@ -427,7 +428,7 @@ template perform_inner*(code_block : untyped) {.dirty.} =
             var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
 
             #standard perform block
-            when declared(perform_block):
+            when declared(omni_declared_perform):
                 omni_parse_block_untyped(code_block, false, true, bits_32_or_64_typed = true)
             
             #sample block without perform
@@ -435,11 +436,11 @@ template perform_inner*(code_block : untyped) {.dirty.} =
                 omni_parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = true)
 
             #UNLOCK buffers when multithread buffers are used
-            when defined(multithreadBuffers):
-                unlock_buffers()
+            when defined(omni_multithread_buffers):
+                omni_unlock_buffers()
 
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
-    when defined(writeIO):
+    when defined(omni_write_IO):
         import os
         
         #static == compile time block
@@ -456,17 +457,17 @@ template perform_inner*(code_block : untyped) {.dirty.} =
 
             #this has been passed in as command argument with -d:tempDir
             let fullPathToNewFolder = getTempDir()
-            writeFile($fullPathToNewFolder & "IO.txt", text)
+            writeFile($fullPathToNewFolder & "omni_IO.txt", text)
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "omni_ugen".
 template perform*(code_block : untyped) {.dirty.} =
-    let perform_block {.compileTime.} = true
-    perform_inner(code_block)
+    let omni_declared_perform {.compileTime.} = true
+    omni_perform_inner(code_block)
 
 #Run perform inner, but directly to the for loop
 template sample*(code_block : untyped) {.dirty.} =
-    when not declared(perform_block):
-        perform_inner(code_block)
+    when not declared(omni_declared_perform):
+        omni_perform_inner(code_block)
     else:
         static:
             error("sample: there already is a 'perform' block declared.")

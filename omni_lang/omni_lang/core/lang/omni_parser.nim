@@ -716,7 +716,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                     nnkStmtList.newTree(
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
-                                newIdentNode("outs_Nim"),
+                                newIdentNode("omni_outs_ptr"),
                                 nnkCall.newTree(
                                     newIdentNode("int"),
                                     bracket_index
@@ -728,7 +728,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                 ),
                 nnkElseExpr.newTree(
                     nnkBracketExpr.newTree(
-                        newIdentNode("outs_Nim"),
+                        newIdentNode("omni_outs_ptr"),
                         nnkCall.newTree(
                             newIdentNode("int"),
                             bracket_index
@@ -816,7 +816,7 @@ proc omni_parse_untyped_brackets(statement : NimNode, level : var int, declared_
             
             parsed_statement = nnkCall.newTree(
                 newIdentNode("omni_get_dynamic_input"),
-                newIdentNode("ins_Nim"),
+                newIdentNode("omni_ins_ptr"),
                 bracket_val,
                 omni_audio_index
             )
