@@ -78,7 +78,7 @@ proc omni_parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
                 #Declare ins unpacking / variable names for the sample block
                 nnkCall.newTree(
                     newIdentNode("omni_unpack_ins_var_names"),
-                    newIdentNode("omni_input_names_const")
+                    newIdentNode("omni_inputs_names_const")
                 ),
                 
                 #Actually append the sample block
@@ -148,10 +148,10 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
 
     var 
         omni_struct_export_name = newIdentNode(proc_call_ident_str & "_omni_struct_export")
-        proc_call_ident_omni_struct_new_inner = newIdentNode(proc_call_ident_str & "_omni_struct_new_inner")
+        proc_call_ident_omni_struct_new = newIdentNode(proc_call_ident_str & "_omni_struct_new")
 
     var proc_new_call =  nnkCall.newTree(
-        proc_call_ident_omni_struct_new_inner,
+        proc_call_ident_omni_struct_new,
     )
 
     var explicit_generics = false
@@ -232,7 +232,7 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
         nnkElifExpr.newTree(
             nnkCall.newTree(
                 newIdentNode("declared"),
-                proc_call_ident_omni_struct_new_inner
+                proc_call_ident_omni_struct_new
             ),
             nnkStmtList.newTree(
                 proc_new_call
@@ -889,7 +889,7 @@ proc ommni_parse_untyped_block_inner(code_block : NimNode, declared_vars : var s
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false, extra_data : untyped = nil) : untyped =
+macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false, extra_data : untyped = nil) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -901,7 +901,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
         declared_vars : seq[string]
 
     let 
-        is_init_block = is_constructor_block_typed.boolVal()
+        is_init_block = is_init_block_typed.boolVal()
         is_perform_block = is_perform_block_typed.boolVal()
         is_sample_block = is_sample_block_typed.boolVal()
         is_def_block = is_def_block_typed.boolVal()
@@ -941,7 +941,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
     if is_init_block:
         #This will get rid of the first entry, which is the call to "add_buffers_ins". It will be
         #added again as soon as the untyped parsing is completed
-        code_block = code_block.last()
+        #code_block = code_block.last()
         
         #Remove "build" statement from the block before all syntactic analysis.
         #This is needed for this to work:
@@ -964,12 +964,14 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
     #Begin parsing
     ommni_parse_untyped_block_inner(code_block, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
+    #[
     #Add "add_buffers_ins" again (it's on the top position of the code_block_in statement)
     if is_init_block:
         code_block = nnkStmtList.newTree(
             code_block_in[0],
             code_block
         )
+    ]#
 
     #Add all stuff relative to initialization for perform function:
     #[
@@ -980,19 +982,19 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
         let omni_ugen = cast[ptr Omni_UGen](omni_ugen_ptr)
 
         #cast ins and outs
-        castInsOuts()
+        omni_cast_ins_outs()
 
         #Unpack the variables at compile time. It will also expand on any Buffer types.
         omni_unpack_ugen_fields(Omni_UGen)
     ]#
     if is_perform_block:
-        var castInsOuts_call = nnkCall.newTree()
+        var omni_cast_ins_outs_call = nnkCall.newTree()
 
         #true == 64, false == 32
         if bits_32_or_64:
-            castInsOuts_call.add(newIdentNode("castInsOuts64"))
+            omni_cast_ins_outs_call.add(newIdentNode("omni_cast_ins_outs64"))
         else:
-            castInsOuts_call.add(newIdentNode("castInsOuts32"))
+            omni_cast_ins_outs_call.add(newIdentNode("omni_cast_ins_outs32"))
 
         code_block = nnkStmtList.newTree(
             nnkCall.newTree(
@@ -1012,7 +1014,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
                 )
             ),
             
-            castInsOuts_call,
+            omni_cast_ins_outs_call,
             
             nnkCall.newTree(
                 newIdentNode("omni_unpack_ugen_fields"),
@@ -1022,7 +1024,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
             #Declare ins unpacking / variable names for the perform block
             nnkCall.newTree(
                 newIdentNode("omni_unpack_ins_var_names"),
-                newIdentNode("omni_input_names_const")
+                newIdentNode("omni_inputs_names_const")
             ),
 
             #Re-add code_block
@@ -1044,7 +1046,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        omni_parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_def_block_typed`)
+        omni_parse_block_typed(`final_block`, `build_statement`, `is_init_block_typed`, `is_perform_block_typed`, `is_def_block_typed`)
 
 # ============================== #
 # Stage 2: Typed code generation #
@@ -1114,8 +1116,8 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
                     assgn_right
                 )
 
-        #If a omni_struct_new_inner call, figure out generics from the struct_type argument!
-        elif function_name.endsWith("_omni_struct_new_inner"):
+        #If a omni_struct_new call, figure out generics from the struct_type argument!
+        elif function_name.endsWith("_omni_struct_new"):
             discard
 
             #[ #struct_type is the third last argument, retrieve it
@@ -1709,7 +1711,7 @@ proc omni_parse_typed_block_inner(code_block : NimNode, is_init_block : bool = f
 
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
+macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_init_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -1718,9 +1720,11 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
         inner_block = nnkStmtList.newTree(inner_block)
     
     let 
-        is_init_block = is_constructor_block_typed.strVal() == "true"
+        is_init_block = is_init_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
         is_def_block = is_def_block_typed.strVal() == "true"
+
+    #error repr inner_block
 
     omni_parse_typed_block_inner(inner_block, is_init_block, is_perform_block, is_def_block)
 
@@ -1734,7 +1738,6 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
 
     #if constructor block, run the omni_init_inner macro on the resulting block.
     if is_init_block:
-
         #error repr result
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
@@ -1757,7 +1760,7 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
     #if is_def_block:
     #    error repr result
 
-    if is_perform_block:
-        error repr result
+    #if is_perform_block:
+    #    error repr result
 
     #error repr result 

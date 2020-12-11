@@ -5,17 +5,17 @@ type
     Type2[T] = object
         t1 : Type1[T]
 
-proc omni_struct_new_inner[T](obj : typedesc[Type1[T]], a : auto) : Type1[T] =
+proc omni_struct_new[T](obj : typedesc[Type1[T]], a : auto) : Type1[T] =
     return Type1[T](a : T(a))
 
 template struct_new[T](obj : typedesc[Type1[T]], a : T = 0.0) : untyped =
-    omni_struct_new_inner(Type1[T], a)
+    omni_struct_new(Type1[T], a)
 
-proc omni_struct_new_inner[T](obj : typedesc[Type2[T]], t1 : auto) : Type2[T] =
+proc omni_struct_new[T](obj : typedesc[Type2[T]], t1 : auto) : Type2[T] =
     return Type2[T](t1 : t1)
 
 template struct_new[T](obj : typedesc[Type2[T]], t1 : Type1[T]) : untyped =
-    omni_struct_new_inner(Type2[T], t1)
+    omni_struct_new(Type2[T], t1)
 
 let t1 = Type1[int].struct_new()
 let t2 = Type2.struct_new(t1)

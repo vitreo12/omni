@@ -27,7 +27,7 @@ let omni_invalid_idents* {.compileTime.} = [
 let omni_invalid_ends_with* {.compileTime.} = [
     "omni_def_export", "omni_def_dummy",
     "omni_module_inner",
-    "omni_struct_inner", "omni_struct_new_inner", "omni_struct_export"
+    "omni_struct_inner", "omni_struct_new", "omni_struct_export"
 ]
 
 let omni_invalid_variable_names* {.compileTime.} = [

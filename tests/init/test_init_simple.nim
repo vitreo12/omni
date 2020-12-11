@@ -58,8 +58,7 @@ suite "init: functions and templates exist":
     check (typeof(Omni_UGen.CONST2_let) is int)
     check (typeof(Omni_UGen.samplerate_let) is float)
     check (typeof(Omni_UGen.omni_auto_mem) is ptr Omni_AutoMem)
-    check (typeof(Omni_UGen.ugen_auto_buffer_let) is ptr Omni_AutoMem)
-
+    
   test "Omni_UGenAlloc exists":
     check (declared(Omni_UGenAlloc))
   
@@ -84,9 +83,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
   test "omni_auto_mem is nil":
     check (ugen_64.omni_auto_mem == nil)
 
-  test "ugen_auto_buffer is nil":
-    check (ugen_64.ugen_auto_buffer_let == nil)
-
   alloc_ins_Nim(1)
 
   #Init the omni_ugen
@@ -97,9 +93,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
 
   test "omni_auto_mem is not nil":
     check (ugen_64.omni_auto_mem != nil)
-
-  test "ugen_auto_buffer is not nil":
-    check (ugen_64.ugen_auto_buffer_let != nil)
 
   test "omni_ugen's field values":
     check (ugen_64.a_var == 4.0)
@@ -124,9 +117,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit32":
   test "omni_auto_mem is nil":
     check (ugen_32.omni_auto_mem == nil)
 
-  test "ugen_auto_buffer is nil":
-    check (ugen_32.ugen_auto_buffer_let == nil)
-
   alloc_ins_Nim(1)
 
   #Init the omni_ugen
@@ -137,9 +127,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit32":
 
   test "omni_auto_mem is not nil":
     check (ugen_32.omni_auto_mem != nil)
-
-  test "ugen_auto_buffer is not nil":
-    check (ugen_32.ugen_auto_buffer_let != nil)
 
   test "omni_ugen's field values":
     check (ugen_32.a_var == 4.0)
@@ -169,9 +156,6 @@ suite "init: Omni_UGenAllocInit64":
   test "omni_auto_mem is not nil":
     check (ugen_64.omni_auto_mem != nil)
 
-  test "ugen_auto_buffer is not nil":
-    check (ugen_64.ugen_auto_buffer_let != nil)
-
   test "omni_ugen's field values":
     check (ugen_64.a_var == 4.0)
     check (ugen_64.b_var == 1.0)
@@ -199,9 +183,6 @@ suite "init: Omni_UGenAllocInit32":
 
   test "omni_auto_mem is not nil":
     check (ugen_32.omni_auto_mem != nil)
-
-  test "ugen_auto_buffer is not nil":
-    check (ugen_32.ugen_auto_buffer_let != nil)
 
   test "omni_ugen's field values":
     check (ugen_32.a_var == 4.0)

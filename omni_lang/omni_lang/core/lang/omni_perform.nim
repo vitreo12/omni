@@ -128,13 +128,13 @@ macro omni_unpack_ugen_fields*(t : typed) =
     return unpackUGenVariablesProc(t)
 
 #Simply cast the inputs from SC in a indexable form in Nim
-macro castInsOuts32*() =
+macro omni_cast_ins_outs32*() =
     return quote do:
         let 
             ins_Nim  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
             outs_Nim {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
 
-macro castInsOuts64*() =
+macro omni_cast_ins_outs64*() =
     return quote do:
         let 
             ins_Nim  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
@@ -439,7 +439,7 @@ template perform_inner*(code_block : untyped) {.dirty.} =
         
         #static == compile time block
         static:
-            var text = $omni_inputs & "\n" & $omni_input_names_const & "\n" 
+            var text = $omni_inputs & "\n" & $omni_inputs_names_const & "\n" 
             
             for index, default_val in omni_input_defaults_const:
                 if index == (omni_inputs - 1):
@@ -447,7 +447,7 @@ template perform_inner*(code_block : untyped) {.dirty.} =
                     break
                 text.add($default_val & ",")
 
-            text.add($omni_outputs & "\n" & omni_output_names_const)
+            text.add($omni_outputs & "\n" & omni_outputs_names_const)
 
             #this has been passed in as command argument with -d:tempDir
             let fullPathToNewFolder = getTempDir()

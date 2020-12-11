@@ -254,7 +254,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("Buffer_omni_struct_new_inner")
+                        newIdentNode("Buffer_omni_struct_new")
                     ),
                     newEmptyNode(),
                     nnkGenericParams.newTree(

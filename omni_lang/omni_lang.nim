@@ -56,8 +56,8 @@ import omni_lang/core/lib/print/omni_print
 export omni_print
 
 #Utilities (get samplerate/bufsize)
-import omni_lang/core/lib/utilities/omni_utilities
-export omni_utilities
+#import omni_lang/core/lib/utilities/omni_utilities
+#export omni_utilities
 
 #Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
 import omni_lang/core/lib/init/omni_init_global

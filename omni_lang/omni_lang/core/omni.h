@@ -89,22 +89,22 @@ extern "C" {
 
     //Inputs
     OMNI_DLL_EXPORT extern int    Omni_UGenInputs();
-    OMNI_DLL_EXPORT extern char*  Omni_UGenInputNames();
-    OMNI_DLL_EXPORT extern float* Omni_UGenInputDefaults();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenInputsNames();
+    OMNI_DLL_EXPORT extern float* Omni_UGenInputsDefaults();
 
     //Params
     OMNI_DLL_EXPORT extern int    Omni_UGenParams();
-    OMNI_DLL_EXPORT extern char*  Omni_UGenParamNames();
-    OMNI_DLL_EXPORT extern float* Omni_UGenParamDefaults();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenParamsNames();
+    OMNI_DLL_EXPORT extern float* Omni_UGenParamsDefaults();
 
     //Buffers
     OMNI_DLL_EXPORT extern int    Omni_UGenBuffers();
-    OMNI_DLL_EXPORT extern char*  Omni_UGenBufferNames();
-    OMNI_DLL_EXPORT extern char*  Omni_UGenBufferDefaults();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenBuffersNames();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenBuffersDefaults();
 
     //Outputs
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();
-    OMNI_DLL_EXPORT extern char*  Omni_UGenOutputNames();
+    OMNI_DLL_EXPORT extern char*  Omni_UGenOutputsNames();
 
     /*****************************/
     /* Omni_UGen audio functions */

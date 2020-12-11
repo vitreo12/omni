@@ -287,7 +287,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
         for let_declaration in let_declarations:
             if let_declaration == build_macro_var_name:
                 #Replace the input to the "build" macro to be "variableName_let"
-                let new_let_declaration = newIdentNode($(let_declaration.strVal()) & "_let")
+                let new_let_declaration = newIdentNode(let_declaration.strVal() & "_let")
 
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_let_declaration
@@ -387,8 +387,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
-
     #error repr alloc_ugen
+
+    #error repr code_block_with_var_let_templates_and_call_to_build_macro
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
@@ -466,7 +467,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
                 #Unpack the "ins" variable names
-                omni_unpack_ins_var_names(omni_input_names_const)
+                omni_unpack_ins_var_names(omni_inputs_names_const)
 
                 #Unpack params and set default values
                 omni_unpack_params_init()
@@ -527,7 +528,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
                 #Unpack the "ins" variable names
-                omni_unpack_ins_var_names(omni_input_names_const)
+                omni_unpack_ins_var_names(omni_inputs_names_const)
 
                 #Unpack params and set default values
                 omni_unpack_params_init()
@@ -597,9 +598,9 @@ macro add_buffers_ins*(ins_names : typed) : untyped =
             newIdentNode(in_name),
             newEmptyNode(),
 
-            #Buffer_omni_struct_new_inner(Buffer_omni_struct_export, 0, buffer_interface, omni_auto_mem, omni_call_type)
+            #Buffer_omni_struct_new(Buffer_omni_struct_export, 0, buffer_interface, omni_auto_mem, omni_call_type)
             nnkCall.newTree(
-                newIdentNode("Buffer_omni_struct_new_inner"),
+                newIdentNode("Buffer_omni_struct_new"),
                 newLit(i_plus_one), #Buffer(1) is first input, not Buffer(0)
                 newIdentNode("buffer_interface"),
                 newIdentNode("Buffer_omni_struct_export"),
@@ -624,15 +625,15 @@ macro add_buffers_ins*(ins_names : typed) : untyped =
 ]#
 
 macro init*(code_block : untyped) : untyped =
+    #[
     let code_block_with_buffer_ins = nnkStmtList.newTree(
-        #[
         nnkCall.newTree(
             newIdentNode("add_buffers_ins"),
-            newIdentNode("omni_input_names_const")
+            newIdentNode("omni_inputs_names_const")
         ),
-        ]#
         code_block
     )
+    ]#
 
     return quote do:
         #If ins / params / outs are not declared, declare them!
@@ -669,7 +670,7 @@ macro init*(code_block : untyped) : untyped =
         let omni_declared_init {.inject, compileTime.} = true
 
         #Generate fictional let names for ins (so that parser won't complain when using them)
-        omni_unpack_ins_var_names(omni_input_names_const, true)
+        omni_unpack_ins_var_names(omni_inputs_names_const, true)
 
         #Generate fictional let names for params (so that parser won't complain when using them)
         omni_unpack_params_pre_init()
@@ -678,7 +679,8 @@ macro init*(code_block : untyped) : untyped =
         #unpack_buffers_pre_init()
 
         #Actually parse the init block
-        omni_parse_block_untyped(`code_block_with_buffer_ins`, true)
+        omni_parse_block_untyped(`code_block`, true)
+        #omni_parse_block_untyped(`code_block_with_buffer_ins`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
@@ -718,28 +720,27 @@ macro build*(var_names : varargs[typed]) =
     var var_names_and_types = nnkRecList.newTree()
 
     for var_name in var_names:
-        let var_type = var_name.getTypeImpl()
+        let 
+            var_type = var_name.getTypeImpl()
+            var_type_kind = var_type.kind
 
-        var var_name_and_type = nnkIdentDefs.newTree()
-        var_name_and_type.add(
-            newIdentNode(var_name.strVal())
+        #var name is a sym, need it as ident to free it from all type infos it had
+        let var_name_ident =  newIdentNode(var_name.strVal())
+
+        var var_name_and_type = nnkIdentDefs.newTree(
+           var_name_ident
         )
 
-        #object type
-        if var_type.kind == nnkObjectTy:
-            let fully_parametrized_object = var_name.getImpl()[2][0] #Extract the BracketExpr that represents the "MyObject[T, Y, ...]" syntax from the type.
-            var_name_and_type.add(fully_parametrized_object)
-
-        #ref object type, they are not supported!
-        elif var_type.kind == nnkRefTy:
-            error("\"" & $var_name & "\"" & " is a ref object. ref objects are not supported.")
-        
-        #builtin type, expressed here as a nnkSym
+        #builtin or ptr (struct) type.
+        if var_type_kind == nnkSym or var_type_kind == nnkIdent or var_type_kind == nnkPtrTy:
+            var_name_and_type.add(
+                var_type,
+                newEmptyNode()
+            )
         else:
-            var_name_and_type.add(var_type)
+            error("Omni_UGen: can't build Omni_UGen, invalid type '" & repr(var_type) & "'")
 
-        var_name_and_type.add(
-            newEmptyNode(),
+        var_names_and_types.add(
             var_name_and_type
         )
 

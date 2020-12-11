@@ -38,10 +38,10 @@ suite "outs: names":
 
   #Check empty name
   test "output names":
-    check (omni_output_names_const == "freq,phase,amp,mul,add")
-    check (omni_output_names_let == "freq,phase,amp,mul,add") 
+    check (omni_outputs_names_const == "freq,phase,amp,mul,add")
+    check (omni_outputs_names_let == "freq,phase,amp,mul,add") 
 
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenOutputs() == int32(5))
-    check (cast[cstring](Omni_UGenOutputNames()) == "freq,phase,amp,mul,add")
+    check (cast[cstring](Omni_UGenOutputsNames()) == "freq,phase,amp,mul,add")
