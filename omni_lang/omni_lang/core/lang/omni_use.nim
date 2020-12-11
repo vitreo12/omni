@@ -687,7 +687,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 nnkPragma.newTree(
                                     nnkExprColonExpr.newTree(
                                         newIdentNode("fatal"),
-                                        newLit("Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
+                                        newLit("use: Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
                                     )
                                 )
                             )
@@ -712,7 +712,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 nnkPragma.newTree(
                                     nnkExprColonExpr.newTree(
                                         newIdentNode("fatal"),
-                                        newLit("Undefined constructor '" & infix_first_val_omni_struct_new_inner.strVal() & "' in '" & repr(statement) & "'")
+                                        newLit("use: Undefined constructor '" & infix_first_val_omni_struct_new_inner.strVal() & "' in '" & repr(statement) & "'")
                                     )
                                 )
                             )
