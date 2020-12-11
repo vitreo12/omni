@@ -29,14 +29,13 @@ const omni_valid_struct_generics = [
     "sig", "sig32", "sig64"
 ]
 
-
 proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var int) : NimNode {.compileTime.} =
     if statement.kind == nnkBracketExpr:
         let statement_ident = statement[0]
         if statement_ident.kind == nnkIdent or statement_ident.kind == nnkSym:
             let statement_ident_str = statement_ident.strVal()
             #Data, keep searching
-            if statement_ident_str == "Data" or statement_ident_str == "Data_omni_struct_export":
+            if statement_ident_str == "Data" or statement_ident_str == "Data_omni_struct_alias":
                 how_many_datas += 1
                 return omni_find_data_generics_bottom(statement[1], how_many_datas)
             else:
@@ -84,7 +83,7 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
-macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
         type_section    = nnkTypeSection.newTree()       #the whole type section (both omni_struct and ptr)
@@ -154,8 +153,8 @@ macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, expor
     #Add the type declaration of Phasor to type section
     type_section.add(ptr_type_def)
 
-    #Add the type declaration of Phasor_omni_struct_export
-    type_section.add(export_type_def)
+    #Add the type declaration of Phasor_omni_struct_alias
+    type_section.add(alias_type_def)
 
     #Add the whole type section to result
     final_stmt_list.add(type_section)
@@ -173,7 +172,7 @@ proc omni_struct_untyped_or_typed_generics(var_type : NimNode, generics_seq : se
         if var_type_ident.kind == nnkIdent:
             let var_type_ident_str = var_type_ident.strVal()
             #Data, keep searching
-            if var_type_ident_str == "Data" or var_type_ident_str == "Data_omni_struct_export":
+            if var_type_ident_str == "Data" or var_type_ident_str == "Data_omni_struct_alias":
                 return omni_struct_untyped_or_typed_generics(var_type[1], generics_seq)
             
             #Normal bracket expr like Phasor[T] or Phasor[int]
@@ -196,7 +195,7 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
         var already_looped = false
 
         #Check validity of structs that are not Datas
-        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_omni_struct_export":
+        if statement[0].strVal() != "Data" and statement[0].strVal() != "Data_omni_struct_alias":
             already_looped = true
             for index, entry in statement:
                 if index == 0:
@@ -265,7 +264,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_omni_struct block
         ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_omni_struct
         
-        export_type_def : NimNode
+        alias_type_def : NimNode
 
         generics_seq : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()        #Check that types fed to struct are correct omni types
@@ -273,7 +272,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
         obj_name : NimNode
         ptr_name : NimNode
-        export_name : NimNode
+        alias_name : NimNode
 
         generics = nnkGenericParams.newTree()          #If generics are present in struct definition
 
@@ -291,7 +290,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         struct_name_str = struct_name[0].strVal()
         
         obj_name = newIdentNode(struct_name_str & "_omni_struct")  #Phasor_omni_struct
-        export_name = newIdentNode(struct_name_str & "_omni_struct_export")
+        alias_name = newIdentNode(struct_name_str & "_omni_struct_alias")
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
@@ -366,14 +365,14 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         struct_name_str = struct_name.strVal()
         
         obj_name = newIdentNode(struct_name_str & "_omni_struct")              #Phasor_omni_struct
-        export_name = newIdentNode(struct_name_str & "_omni_struct_export") 
+        alias_name = newIdentNode(struct_name_str & "_omni_struct_alias") 
         ptr_name = struct_name                                        #Phasor
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
             error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
         
-        #Add name to obj_type_def. Needs to be exported for proper working!
+        #Add name to obj_type_def. Needs to be aliased for proper working!
         obj_type_def.add(
             nnkPostfix.newTree(
                 newIdentNode("*"),
@@ -469,18 +468,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to omni_declare_struct
     ptr_type_def.add(ptr_ty)
 
-    #Build the Phasor_omni_struct_export out of the ptr
-    export_type_def = ptr_type_def.copy()
-    export_type_def[0][1] = export_name
-    export_type_def[^1] = export_type_def.last()[0]
+    #Build the Phasor_omni_struct_alias out of the ptr
+    alias_type_def = ptr_type_def.copy()
+    alias_type_def[0][1] = alias_name
+    alias_type_def[^1] = alias_type_def.last()[0]
 
     #Generics
-    if export_type_def.last().kind == nnkBracketExpr:
-        export_type_def[^1][0] = ptr_name
+    if alias_type_def.last().kind == nnkBracketExpr:
+        alias_type_def[^1][0] = ptr_name
     else:
-        export_type_def[^1] = ptr_name
+        alias_type_def[^1] = ptr_name
 
-    #error repr export_type_def
+    #error repr alias_type_def
 
     #The init_struct macro, which will declare the "proc omni_struct_new ..." and the "template new ..."
     let omni_struct_create_init_proc_and_template = nnkCall.newTree(
@@ -497,7 +496,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         newIdentNode("omni_declare_struct"),
         obj_type_def,
         ptr_type_def,
-        export_type_def,
+        alias_type_def,
         var_names,
         fields_untyped
     )
@@ -598,8 +597,8 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
     #Add Phasor[T, Y] return type
     proc_formal_params.add(ptr_bracket_expr)
 
-    #This is the _omni_struct_export. Don't put the generics in! They will fail some constructors otherwise
-    var omni_struct_export_arg =  newIdentNode(ptr_struct_name.strVal() & "_omni_struct_export")
+    #This is the _omni_struct_alias. Don't put the generics in! They will fail some constructors otherwise
+    var omni_struct_alias_arg =  newIdentNode(ptr_struct_name.strVal() & "_omni_struct_alias")
 
     #Add the when... check for omni_call_type to see if user is trying to allocate memory in perform!
     proc_body.add(
@@ -771,7 +770,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             newIdentNode("omni_struct_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
-                omni_struct_export_arg
+                omni_struct_alias_arg
             ),
             newEmptyNode()
         )   

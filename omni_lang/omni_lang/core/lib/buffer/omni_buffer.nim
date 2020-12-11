@@ -33,7 +33,7 @@ type
 
     #Don't export these
     Buffer = ptr Buffer_inherit
-    Buffer_omni_struct_export = Buffer
+    Buffer_omni_struct_alias = Buffer
 
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
@@ -146,7 +146,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     nnkTypeDef.newTree(
                         nnkPostfix.newTree(
                             newIdentNode("*"),
-                            newIdentNode("Buffer_omni_struct_export")
+                            newIdentNode("Buffer_omni_struct_alias")
                         ),
                     newEmptyNode(),
                     newIdentNode("Buffer")
@@ -280,7 +280,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             newIdentNode("omni_struct_type"),
                             nnkBracketExpr.newTree(
                                 newIdentNode("typedesc"),
-                                newIdentNode("Buffer_omni_struct_export")
+                                newIdentNode("Buffer_omni_struct_alias")
                             ),
                             newEmptyNode()
                         ),

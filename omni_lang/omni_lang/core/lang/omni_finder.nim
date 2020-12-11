@@ -130,7 +130,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
         let var_name_ident = newIdentNode(var_name.strVal())
 
         #Found a data
-        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_omni_struct" or type_to_inspect_string == "Data_omni_struct_export":
+        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_omni_struct" or type_to_inspect_string == "Data_omni_struct_alias":
             if var_type.kind != nnkBracketExpr:
                 continue
 
@@ -181,11 +181,11 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
                     let type_name_str = type_name.strVal()
-                    if type_name_str == "Data" or type_name_str == "Data_omni_struct" or type_name_str == "Data_omni_struct_export":
+                    if type_name_str == "Data" or type_name_str == "Data_omni_struct" or type_name_str == "Data_omni_struct_alias":
                         is_data = true
                         interim_type = data_content   
                     
-                    #elif type_name_str == "Buffer" or type_name_str == "Buffer_omni_struct" or type_name_str == "Buffer_omni_struct_export": 
+                    #elif type_name_str == "Buffer" or type_name_str == "Buffer_omni_struct" or type_name_str == "Buffer_omni_struct_alias": 
                     #    omni_at_least_one_buffer = true
                 
                 elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
@@ -383,7 +383,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
         elif type_to_inspect_string.endsWith("_omni_struct") or type_to_inspect.omni_is_struct():
             
             #Compile time setting of variable
-            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_omni_struct" or type_to_inspect_string == "Buffer_omni_struct_export":
+            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_omni_struct" or type_to_inspect_string == "Buffer_omni_struct_alias":
             #    omni_at_least_one_buffer = true
 
             proc_body.add(

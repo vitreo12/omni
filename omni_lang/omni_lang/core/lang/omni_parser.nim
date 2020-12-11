@@ -147,7 +147,7 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
     var proc_call_ident_str = proc_call_ident.strVal()
 
     var 
-        omni_struct_export_name = newIdentNode(proc_call_ident_str & "_omni_struct_export")
+        omni_struct_alias_name = newIdentNode(proc_call_ident_str & "_omni_struct_alias")
         proc_call_ident_omni_struct_new = newIdentNode(proc_call_ident_str & "_omni_struct_new")
 
     var proc_new_call =  nnkCall.newTree(
@@ -166,7 +166,7 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
 
             #Look for Data[int](10) OR Phasor[int]() syntax
             if arg_temp.kind == nnkBracketExpr:
-                omni_struct_export_name = arg_temp
+                omni_struct_alias_name = arg_temp
                 explicit_generics = true
 
             #Continue in any case: the ident name it's already been added
@@ -184,7 +184,7 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
     
     #Add the named generics!
     if explicit_generics:
-        for i, generic_val in omni_struct_export_name:
+        for i, generic_val in omni_struct_alias_name:
             if i == 0:
                 continue
 
@@ -199,7 +199,7 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
     proc_new_call.add(
         nnkExprEqExpr.newTree(
             newIdentNode("omni_struct_type"),
-            omni_struct_export_name
+            omni_struct_alias_name
         ),
 
         nnkExprEqExpr.newTree(
@@ -1129,11 +1129,11 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
             
                 if struct_impl.kind != nnkNilLit:
                     #Need to offset in order to find starting argument potition of generics.
-                    #-2 is to take in account _struc_new_inner name in parsed_statement and _omni_struct_export name in omni_struct_type
+                    #-2 is to take in account _struc_new_inner name in parsed_statement and _omni_struct_alias name in omni_struct_type
                     let parsed_statement_offset = parsed_statement.len - omni_struct_type.len - 2
 
                     for i, generic_type in omni_struct_type:
-                        #Skip _omni_struct_export name
+                        #Skip _omni_struct_alias name
                         if i == 0:
                             continue
 
@@ -1497,7 +1497,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                 let check_data_first_entry = check_data[0]
                 if check_data_first_entry.kind == nnkSym:
                     let check_data_first_entry_str = check_data_first_entry.strVal()
-                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_omni_struct_export":
+                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_omni_struct_alias":
                         is_data = true
             elif check_data.kind == nnkPtrTy:
                 let check_data_first_entry = check_data[0]
@@ -1599,7 +1599,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                 let check_data_first_entry = check_data[0]
                 if check_data_first_entry.kind == nnkSym:
                     let check_data_first_entry_str = check_data_first_entry.strVal()
-                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_omni_struct_export":
+                    if check_data_first_entry_str == "Data" or check_data_first_entry_str == "Data_omni_struct_alias":
                         is_data = true
             elif check_data.kind == nnkPtrTy:
                 let check_data_first_entry = check_data[0]

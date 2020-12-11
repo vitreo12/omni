@@ -61,7 +61,7 @@ proc omni_is_struct*(var_type : NimNode) : bool {.compileTime.} =
 
     if type_tree_kind == nnkSym:
         let type_tree_str = type_tree.strVal()
-        if type_tree_str.endsWith("_omni_struct") or type_tree_str.endsWith("_omni_struct_export"):
+        if type_tree_str.endsWith("_omni_struct") or type_tree_str.endsWith("_omni_struct_alias"):
             return true
 
     elif type_tree_kind == nnkBracketExpr or type_tree_kind == nnkPtrTy:
@@ -80,7 +80,7 @@ proc omni_is_struct*(var_type : NimNode) : bool {.compileTime.} =
             if type_inner_str == "typeDesc":
                 return omni_is_struct(type_tree[1])
 
-            elif type_inner_str.endsWith("_omni_struct") or type_inner_str.endsWith("_omni_struct_export"):
+            elif type_inner_str.endsWith("_omni_struct") or type_inner_str.endsWith("_omni_struct_alias"):
                 return true
     
     return false
