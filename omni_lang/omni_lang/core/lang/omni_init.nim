@@ -387,7 +387,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
-
+    error repr code_block_with_var_let_templates_and_call_to_build_macro
     #error repr alloc_ugen
 
     result = quote do:

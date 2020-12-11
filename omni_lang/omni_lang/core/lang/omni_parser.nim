@@ -889,7 +889,7 @@ proc ommni_parse_untyped_block_inner(code_block : NimNode, declared_vars : var s
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false, extra_data : untyped = nil) : untyped =
+macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, bits_32_or_64_typed : typed = false, extra_data : untyped = nil) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -901,7 +901,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
         declared_vars : seq[string]
 
     let 
-        is_init_block = is_constructor_block_typed.boolVal()
+        is_init_block = is_init_block_typed.boolVal()
         is_perform_block = is_perform_block_typed.boolVal()
         is_sample_block = is_sample_block_typed.boolVal()
         is_def_block = is_def_block_typed.boolVal()
@@ -1044,7 +1044,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_constructor_block_ty
     #Run the actual macro to subsitute structs with let statements
     return quote do:
         #Need to run through an evaluation in order to get the typed information of the block:
-        omni_parse_block_typed(`final_block`, `build_statement`, `is_constructor_block_typed`, `is_perform_block_typed`, `is_def_block_typed`)
+        omni_parse_block_typed(`final_block`, `build_statement`, `is_init_block_typed`, `is_perform_block_typed`, `is_def_block_typed`)
 
 # ============================== #
 # Stage 2: Typed code generation #
@@ -1709,7 +1709,7 @@ proc omni_parse_typed_block_inner(code_block : NimNode, is_init_block : bool = f
 
 
 #This allows to check for types of the variables and look for structs to declare them as let instead of var
-macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_constructor_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
+macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untyped, is_init_block_typed : typed = false, is_perform_block_typed : typed = false, is_def_block_typed : typed = false) : untyped =
     #Extract the body of the block: [0] is an emptynode
     var inner_block = typed_code_block[1].copy()
 
@@ -1718,7 +1718,7 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
         inner_block = nnkStmtList.newTree(inner_block)
     
     let 
-        is_init_block = is_constructor_block_typed.strVal() == "true"
+        is_init_block = is_init_block_typed.strVal() == "true"
         is_perform_block = is_perform_block_typed.strVal() == "true"
         is_def_block = is_def_block_typed.strVal() == "true"
 
@@ -1727,7 +1727,7 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
     #Will return an untyped code block!
     result = typed_to_untyped(inner_block)
 
-    #error repr result
+    error repr result
 
     #if is_def_block:
     #    error repr result
