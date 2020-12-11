@@ -41,13 +41,13 @@ suite "ins: names":
 
   #Check empty name
   test "input names":
-    check (omni_input_names_const == "freq,phase,amp,mul,add")
-    check (omni_input_names_let == "freq,phase,amp,mul,add") 
+    check (omni_inputs_names_const == "freq,phase,amp,mul,add")
+    check (omni_inputs_names_let == "freq,phase,amp,mul,add") 
 
   #Check default values
   test "default values":
-    check (omni_input_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
-    check (omni_defaults_let   == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
+    check (omni_inputs_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
+    check (omni_inputs_defaults_let   == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
 
   #Check that the templates exist
   test "templates exist":
@@ -71,9 +71,9 @@ suite "ins: names":
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenInputs() == int32(5))
-    check (cast[cstring](Omni_UGenInputNames()) == "freq,phase,amp,mul,add")
+    check (cast[cstring](Omni_UGenInputsNames()) == "freq,phase,amp,mul,add")
     
-    let defaultsArray = cast[ptr UncheckedArray[cfloat]](Omni_UGenDefaults())
+    let defaultsArray = cast[ptr UncheckedArray[cfloat]](Omni_UGenInputsDefaults())
     check (defaultsArray != nil)
     check (defaultsArray[0] == 0.0'f32)
     check (defaultsArray[1] == 0.0'f32)

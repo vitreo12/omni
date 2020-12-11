@@ -462,18 +462,18 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
 
     var 
         in_or_param = "in"
-        input_or_param = "input"
+        inputs_or_params = "inputs"
 
     if ins_or_params == true:
         in_or_param = "param"
-        input_or_param = "param"
+        inputs_or_params = "params"
 
     var 
         default_min_max_const_section = nnkConstSection.newTree()
         defaults_array_let_section = nnkLetSection.newTree()
         defaults_array_const = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("omni_" & input_or_param & "_defaults_const"),
+                newIdentNode("omni_" & inputs_or_params & "_defaults_const"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -482,7 +482,7 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
         )
         defaults_array_let = nnkIdentDefs.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("omni_" & input_or_param & "_defaults_let"),
+                newIdentNode("omni_" & inputs_or_params & "_defaults_let"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -707,9 +707,9 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         when not declared(omni_declared_inputs):
             const 
                 omni_inputs            {.inject.} = `ins_number_VAL`  
-                omni_input_names_const {.inject.} = `ins_names_node`  #Used for IO.txt
+                omni_inputs_names_const {.inject.} = `ins_names_node`  #Used for IO.txt
 
-            let omni_input_names_let   {.inject.} = `ins_names_node`  #Used as global in C export
+            let omni_inputs_names_let   {.inject.} = `ins_names_node`  #Used as global in C export
 
             #compile time variable if ins are defined
             let omni_declared_inputs {.inject, compileTime.} = true
@@ -735,11 +735,11 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
             proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib.} =
                 return int32(omni_inputs)
 
-            proc Omni_UGenInputNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_input_names_let[0]))
+            proc Omni_UGenInputsNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_inputs_names_let[0]))
 
-            proc Omni_UGenInputDefaults() : ptr cfloat {.exportc: "Omni_UGenInputDefaults", dynlib.} =
-                return cast[ptr cfloat](omni_input_defaults_let.unsafeAddr)
+            proc Omni_UGenInputsDefaults() : ptr cfloat {.exportc: "Omni_UGenInputDefaults", dynlib.} =
+                return cast[ptr cfloat](omni_inputs_defaults_let.unsafeAddr)
         else:
             {.fatal: "ins: Already defined once.".}
 
@@ -857,10 +857,10 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
     return quote do: 
         when not declared(omni_declared_outputs):
             const 
-                omni_outputs            {.inject.} = `outs_number_VAL` 
-                omni_output_names_const {.inject.} = `outs_names_node` #Used for IO.txt
+                omni_outputs             {.inject.} = `outs_number_VAL` 
+                omni_outputs_names_const {.inject.} = `outs_names_node` #Used for IO.txt
             
-            let omni_output_names_let   {.inject.} = `outs_names_node` #Used as global in C export
+            let omni_outputs_names_let   {.inject.} = `outs_names_node` #Used as global in C export
 
             #compile time variable if outs are defined
             let omni_declared_outputs {.inject, compileTime.} = true
@@ -871,8 +871,8 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
             proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib.} =
                 return int32(omni_outputs)
 
-            proc Omni_UGenOutputNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_output_names_let[0]))
+            proc Omni_UGenOutputsNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_outputs_names_let[0]))
         else:
             {.fatal: "outs: Already defined once.".}
 
@@ -1478,10 +1478,10 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
     return quote do:
         when not declared(omni_declared_params):
             const 
-                omni_params            {.inject.}  = `params_number_VAL`  
-                omni_param_names_const {.inject.}  = `params_names_node`  #Used for IO.txt 
+                omni_params             {.inject.}  = `params_number_VAL`  
+                omni_params_names_const {.inject.}  = `params_names_node`  #Used for IO.txt 
  
-            let omni_param_names_let   {.inject.}  = `params_names_node`  #Used as global in C export
+            let omni_params_names_let   {.inject.}  = `params_names_node`  #Used as global in C export
 
             #compile time variable if params are defined
             let omni_declared_params {.inject, compileTime.} = true
@@ -1499,11 +1499,11 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
             proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
                 return int32(omni_params)
 
-            proc Omni_UGenParamNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_param_names_let[0]))
+            proc Omni_UGenParamsNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_params_names_let[0]))
 
-            proc Omni_UGenParamDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
-                return cast[ptr cfloat](omni_param_defaults_let.unsafeAddr)
+            proc Omni_UGenParamsDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
+                return cast[ptr cfloat](omni_params_defaults_let.unsafeAddr)
         else:
             {.fatal: "params: Already defined once.".}
 
@@ -1850,7 +1850,7 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
         defaults_array_let = nnkLetSection.newTree(
             nnkIdentDefs.newTree(
                 nnkPragmaExpr.newTree(
-                    newIdentNode("omni_buffer_defaults_let"),
+                    newIdentNode("omni_buffers_defaults_let"),
                     nnkPragma.newTree(
                         newIdentNode("inject")
                     )
@@ -2051,10 +2051,10 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             
             #declare global vars
             const 
-                omni_buffers            {.inject.}  = `buffers_number_VAL`  
-                omni_buffer_names_const {.inject.}  = `buffers_names_node`  #Used for IO.txt 
+                omni_buffers             {.inject.}  = `buffers_number_VAL`  
+                omni_buffers_names_const {.inject.}  = `buffers_names_node`  #Used for IO.txt 
 
-            let omni_buffer_names_let   {.inject.}  = `buffers_names_node`  #Used as global exported to C
+            let omni_buffers_names_let   {.inject.}  = `buffers_names_node`  #Used as global exported to C
 
             #compile time variable if buffers are defined
             let omni_declared_buffers {.inject, compileTime.} = true
@@ -2072,11 +2072,11 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             proc Omni_UGenBuffers() : int32 {.exportc: "Omni_UGenBuffers", dynlib.} =
                 return int32(omni_buffers)
 
-            proc Omni_UGenBufferNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_buffer_names_let[0]))
+            proc Omni_UGenBuffersNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_buffers_names_let[0]))
             
-            proc Omni_UGenBufferDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_buffer_defaults_let[0]))
+            proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib.} =
+                return cast[ptr cchar](unsafeAddr(omni_buffers_defaults_let[0]))
         else:
             {.fatal: "buffers: Already defined once.".}
 

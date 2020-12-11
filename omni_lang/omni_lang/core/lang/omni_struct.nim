@@ -482,7 +482,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
     #error repr export_type_def
 
-    #The init_struct macro, which will declare the "proc omni_struct_new_inner ..." and the "template new ..."
+    #The init_struct macro, which will declare the "proc omni_struct_new ..." and the "template new ..."
     let omni_struct_create_init_proc_and_template = nnkCall.newTree(
         newIdentNode("omni_struct_create_init_proc_and_template"),
         ptr_name
@@ -513,7 +513,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         `omni_struct_create_init_proc_and_template`
         `omni_find_structs_and_datas`
 
-#Declare the "proc omni_struct_new_inner ..." and the "template new ...", doing all sorts of type checks
+#Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
 macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     if ptr_struct_name.kind != nnkSym:
         error("strict: Invalid struct ptr symbol!")
@@ -536,16 +536,16 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
         generics_ident_defs  = nnkStmtList.newTree()     #These are all the generics that will be set to be T : SomeNumber, instead of just T
 
-        proc_def             = nnkProcDef.newTree()      #the omni_struct_new_inner* proc
+        proc_def             = nnkProcDef.newTree()      #the omni_struct_new* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
 
     #The name of the function with the asterisk, in case of supporting modules in the future
-    #proc Phasor_omni_struct_new_inner
+    #proc Phasor_omni_struct_new
     proc_def.add(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode(ptr_name & "_omni_struct_new_inner")
+            newIdentNode(ptr_name & "_omni_struct_new")
         ),
         newEmptyNode(),
         newEmptyNode()
@@ -720,7 +720,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             #arg_field_type = newIdentNode("auto")
             arg_field_value = newIntLitNode(0)    
 
-        #Add to arg list for omni_struct_new_inner proc
+        #Add to arg list for omni_struct_new proc
         proc_formal_params.add(
             nnkIdentDefs.newTree(
                 field_name,
@@ -757,7 +757,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             )
 
     # ===================== #
-    # omni_struct_new_inner PROC  #
+    # omni_struct_new PROC  #
     # ===================== #
 
     #Add generics

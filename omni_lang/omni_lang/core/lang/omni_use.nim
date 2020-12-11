@@ -59,7 +59,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
         struct_new_name_str = struct_new_name.strVal()
         struct_new_name_ident = newIdentNode(struct_new_name_str)
         struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_omni_struct_export")
-        struct_new_name_omni_struct_new_inner_ident = newIdentNode(struct_new_name_str & "_omni_struct_new_inner")
+        struct_new_name_omni_struct_new_ident = newIdentNode(struct_new_name_str & "_omni_struct_new")
         old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_omni_struct_export")
 
     #put generics again if needed
@@ -80,7 +80,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
 
         old_struct_constructor = nnkDotExpr.newTree(
             module_name,
-            newIdentNode(struct_typed_name_str & "_omni_struct_new_inner")
+            newIdentNode(struct_typed_name_str & "_omni_struct_new")
         )
 
     #call to old struct
@@ -179,10 +179,10 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     #Copy the old func's body? Not really needed
     #return_stmt = stuct_typed_constuctor_impl[^1]
 
-    var new_omni_struct_new_inner = nnkProcDef.newTree(
+    var new_omni_struct_new = nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            struct_new_name_omni_struct_new_inner_ident
+            struct_new_name_omni_struct_new_ident
         ),
         newEmptyNode(),
         newEmptyNode(),
@@ -197,7 +197,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     result.add(
         new_struct,
         new_omni_struct_export,
-        new_omni_struct_new_inner
+        new_omni_struct_new
     )
 
     #error astGenRepr new_struct
@@ -644,7 +644,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     let 
                         infix_first_val_str = infix_first_val.strVal()
                         infix_first_val_omni_struct_export = newIdentNode(infix_first_val_str & "_omni_struct_export")
-                        infix_first_val_omni_struct_new_inner = newIdentNode(infix_first_val_str & "_omni_struct_new_inner")
+                        infix_first_val_omni_struct_new = newIdentNode(infix_first_val_str & "_omni_struct_new")
                     
                     import_stmt.add(infix_first_val)
                     import_stmt.add(infix_first_val_omni_struct_export)
@@ -659,7 +659,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                         struct_constructor_dot_expr = nnkDotExpr.newTree(
                             import_name_omni_module_inner,
-                            infix_first_val_omni_struct_new_inner
+                            infix_first_val_omni_struct_new
                         )
 
                         def_dot_expr = nnkDotExpr.newTree(
@@ -712,7 +712,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 nnkPragma.newTree(
                                     nnkExprColonExpr.newTree(
                                         newIdentNode("fatal"),
-                                        newLit("use: Undefined constructor '" & infix_first_val_omni_struct_new_inner.strVal() & "' in '" & repr(statement) & "'")
+                                        newLit("use: Undefined constructor '" & infix_first_val_omni_struct_new.strVal() & "' in '" & repr(statement) & "'")
                                     )
                                 )
                             )
