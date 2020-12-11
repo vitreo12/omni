@@ -941,7 +941,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
     if is_init_block:
         #This will get rid of the first entry, which is the call to "add_buffers_ins". It will be
         #added again as soon as the untyped parsing is completed
-        code_block = code_block.last()
+        #code_block = code_block.last()
         
         #Remove "build" statement from the block before all syntactic analysis.
         #This is needed for this to work:
@@ -964,12 +964,14 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
     #Begin parsing
     ommni_parse_untyped_block_inner(code_block, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
+    #[
     #Add "add_buffers_ins" again (it's on the top position of the code_block_in statement)
     if is_init_block:
         code_block = nnkStmtList.newTree(
             code_block_in[0],
             code_block
         )
+    ]#
 
     #Add all stuff relative to initialization for perform function:
     #[
@@ -1722,20 +1724,21 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
         is_perform_block = is_perform_block_typed.strVal() == "true"
         is_def_block = is_def_block_typed.strVal() == "true"
 
+    #error repr inner_block
+
     omni_parse_typed_block_inner(inner_block, is_init_block, is_perform_block, is_def_block)
 
     #Will return an untyped code block!
     result = typed_to_untyped(inner_block)
 
-    error repr result
+    #error repr result
 
     #if is_def_block:
     #    error repr result
 
     #if constructor block, run the omni_init_inner macro on the resulting block.
     if is_init_block:
-
-        #error repr result
+        error repr result
 
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.
@@ -1757,7 +1760,7 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
     #if is_def_block:
     #    error repr result
 
-    if is_perform_block:
-        error repr result
+    #if is_perform_block:
+    #    error repr result
 
     #error repr result 

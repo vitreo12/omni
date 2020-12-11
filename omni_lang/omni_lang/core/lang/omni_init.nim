@@ -287,7 +287,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
         for let_declaration in let_declarations:
             if let_declaration == build_macro_var_name:
                 #Replace the input to the "build" macro to be "variableName_let"
-                let new_let_declaration = newIdentNode($(let_declaration.strVal()) & "_let")
+                let new_let_declaration = newIdentNode(let_declaration.strVal() & "_let")
 
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_let_declaration
@@ -387,8 +387,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
     #echo astGenRepr call_to_build_macro
     #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
 
-    error repr code_block_with_var_let_templates_and_call_to_build_macro
     #error repr alloc_ugen
+
+    #error repr code_block_with_var_let_templates_and_call_to_build_macro
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
@@ -624,15 +625,15 @@ macro add_buffers_ins*(ins_names : typed) : untyped =
 ]#
 
 macro init*(code_block : untyped) : untyped =
+    #[
     let code_block_with_buffer_ins = nnkStmtList.newTree(
-        #[
         nnkCall.newTree(
             newIdentNode("add_buffers_ins"),
             newIdentNode("omni_input_names_const")
         ),
-        ]#
         code_block
     )
+    ]#
 
     return quote do:
         #If ins / params / outs are not declared, declare them!
@@ -678,7 +679,8 @@ macro init*(code_block : untyped) : untyped =
         #unpack_buffers_pre_init()
 
         #Actually parse the init block
-        omni_parse_block_untyped(`code_block_with_buffer_ins`, true)
+        omni_parse_block_untyped(`code_block`, true)
+        #omni_parse_block_untyped(`code_block_with_buffer_ins`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
