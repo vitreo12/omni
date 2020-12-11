@@ -25,6 +25,7 @@ import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
 import ../print/omni_print
 import ../math/omni_math
+from ../stdlib/omni_stdlib import cubic_interp
 
 type
     ArrayPtr[T] = ptr UncheckedArray[T]

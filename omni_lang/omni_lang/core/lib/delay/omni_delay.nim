@@ -25,6 +25,7 @@ import ../alloc/omni_alloc
 import ../data/omni_data
 import ../auto_mem/omni_auto_mem
 import ../math/omni_math
+from ../stdlib/omni_stdlib import cubic_interp
 
 type
     Delay_omni_struct_inner* = object
