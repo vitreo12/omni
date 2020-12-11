@@ -1,4 +1,9 @@
 import ../../omni_lang
+import macros
+
+expandMacros:
+    struct Something:
+        a
 
 init:
     a float = 0.0

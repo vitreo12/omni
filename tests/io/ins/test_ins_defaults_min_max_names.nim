@@ -51,22 +51,24 @@ suite "ins: names + defaults + min/max":
 
   #Check min values
   test "min/max values":
-    check (in1_min == -20000.0); check (in2_min == 0.0); check (in3_min == 0.0); check (in4_min == 0.5); check (in5_min == -0.1)
-    check (in1_max == 20000.0); check (in2_max == 1.0); check (in3_max == 1.0); check (in4_max == 2.35); check (in5_max == 10000.0)
+    check (in1_omni_min == -20000.0); check (in2_omni_min == 0.0); check (in3_omni_min == 0.0); check (in4_omni_min == 0.5); check (in5_omni_min == -0.1)
+    check (in1_omni_max == 20000.0); check (in2_omni_max == 1.0); check (in3_omni_max == 1.0); check (in4_omni_max == 2.35); check (in5_omni_max == 10000.0)
 
   #Check min_max functions
   test "min_max functions":
-    check (in1_min_max(-30000.0) == -20000.0); check (in1_min_max(30000.0) == 20000.0)
-    check (in2_min_max(-0.2) == 0.0); check (in2_min_max(1.1) == 1.0)
-    check (in4_min_max(3.0) == 2.35)
-    check (in5_min_max(-0.11) == -0.1);
+    check (in1_omni_min_max(-30000.0) == -20000.0); 
+    check (in1_omni_min_max(30000.0) == 20000.0)
+    check (in2_omni_min_max(-0.2) == 0.0); 
+    check (in2_omni_min_max(1.1) == 1.0)
+    check (in4_omni_min_max(3.0) == 2.35)
+    check (in5_omni_min_max(-0.11) == -0.1);
 
   #Check that the templates exist
   test "templates exist":
     check (declared(in1)); check (declared(in2)); check (declared(in3)); check (declared(in4)); check (declared(in5))
     check (declared(arg1)); check (declared(arg2)); check (declared(arg3)); check (declared(arg4)); check (declared(arg5))
 
-  #Check the values in ins_Nim
+  #Check the values in omni_ins_ptr
   test "templates values":
     check (in1 == 0.75); check (in2 == 0.75); check (in3 == 0.75); check (in4 == 0.75); check (in5 == 0.75)
     check (arg1 == 0.75); check (arg2 == 0.75); check (arg3 == 0.75); check (arg4 == 0.75); check (arg5 == 0.75)
@@ -74,11 +76,11 @@ suite "ins: names + defaults + min/max":
   #Check omni_get_dynamic_input
   test "omni_get_dynamic_input":
     check (declared(omni_get_dynamic_input))
-    check (omni_get_dynamic_input(ins_Nim, 0, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 1, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 2, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 3, 0) == 0.75)
-    check (omni_get_dynamic_input(ins_Nim, 4, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 0, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 1, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 2, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 3, 0) == 0.75)
+    check (omni_get_dynamic_input(omni_ins_ptr, 4, 0) == 0.75)
   
   #Check C exported functions
   test "exported C functions":

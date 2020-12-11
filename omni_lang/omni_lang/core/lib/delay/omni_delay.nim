@@ -25,19 +25,19 @@ import ../alloc/omni_alloc
 import ../data/omni_data
 import ../auto_mem/omni_auto_mem
 import ../math/omni_math
-from ../stdlib/omni_stdlib import cubic_interp
+from   ../stdlib/omni_stdlib import cubic_interp
 
 type
-    Delay_omni_struct_inner* = object
+    Delay_omni_struct* = object
         mask  : int
         phase : int
         data  : Data[float]
 
-    Delay* = ptr Delay_omni_struct_inner
+    Delay* = ptr Delay_omni_struct
 
     Delay_omni_struct_export* = Delay
 
-proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, struct_type : typedesc[Delay_omni_struct_export], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
+proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, omni_struct_type : typedesc[Delay_omni_struct_export], omni_auto_mem : ptr Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when omni_call_type is Omni_PerformCall:
         {.fatal: "Delay: attempting to allocate memory in the 'perform' or 'sample' blocks.".}
@@ -48,12 +48,12 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
         actual_size = int(samplerate)
 
     #Allocate obj
-    result = cast[Delay](omni_alloc(culong(sizeof(Delay_omni_struct_inner))))
+    result = cast[Delay](omni_alloc(culong(sizeof(Delay_omni_struct))))
 
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(actual_size))
-        data  = Data_omni_struct_new(delay_length, G1=float, struct_type=Data_omni_struct_export, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
+        data  = Data_omni_struct_new(delay_length, G1=float, omni_struct_type=Data_omni_struct_export, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
         mask  = int(delay_length - 1)
 
     #Register obj (data has already been registered in Data.omni_struct_new)
@@ -64,8 +64,8 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
     result.phase = 0
     result.data = data
 
-#This is probably useless and can be removed :)
-proc omni_check_struct_validity*(obj : Delay #[, ugen_auto_buffer : ptr Omni_AutoMem]#) : bool =
+#As any other struct
+proc omni_check_struct_validity*(obj : Delay) : bool =
     return true
 
 #Read proc (uses cubic interp)
@@ -85,3 +85,13 @@ proc read*[Y : SomeNumber](delay : Delay, delay_time : Y) : float {.inline.} =
 proc write*[Y : SomeNumber](delay : Delay, val : Y) : void {.inline.} =
     delay.data[delay.phase] = float(val)
     delay.phase = (delay.phase + 1) and delay.mask
+
+#Infos
+proc len*(delay : Delay) : int {.inline.} =
+    return delay.data.len
+
+proc length*(delay : Delay) : int {.inline.} =
+    return delay.data.len
+
+proc size*(delay : Delay) : int {.inline.} =
+    return delay.data.len

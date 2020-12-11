@@ -105,11 +105,11 @@ macro newBufferInterface*(code_block : untyped) : untyped =
 
         if statement_name == "obj":
             var 
-                buffer_omni_struct_inner_rec_list = nnkRecList.newTree()
-                buffer_omni_struct_inner = nnkTypeDef.newTree(
+                buffer_omni_struct_rec_list = nnkRecList.newTree()
+                buffer_omni_struct = nnkTypeDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
-                        newIdentNode("Buffer_omni_struct_inner")
+                        newIdentNode("Buffer_omni_struct")
                     ),
                     newEmptyNode(),
                     nnkObjectTy.newTree(
@@ -117,7 +117,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                         nnkOfInherit.newTree(
                             newIdentNode("Buffer_inherit")
                         ),
-                        buffer_omni_struct_inner_rec_list
+                        buffer_omni_struct_rec_list
                     )
                 )
             
@@ -128,11 +128,11 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                     entry[1][0],
                     newEmptyNode()
                 )
-                buffer_omni_struct_inner_rec_list.add(ident_def)
+                buffer_omni_struct_rec_list.add(ident_def)
 
             obj = nnkStmtList.newTree(
                 nnkTypeSection.newTree(
-                    buffer_omni_struct_inner,
+                    buffer_omni_struct,
                     nnkTypeDef.newTree(
                         nnkPostfix.newTree(
                             newIdentNode("*"),
@@ -140,7 +140,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                         ),
                         newEmptyNode(),
                         nnkPtrTy.newTree(
-                            newIdentNode("Buffer_omni_struct_inner")
+                            newIdentNode("Buffer_omni_struct")
                         )
                     ),
                     nnkTypeDef.newTree(
@@ -185,7 +185,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                                     newIdentNode("culong"),
                                     nnkCall.newTree(
                                         newIdentNode("sizeof"),
-                                        newIdentNode("Buffer_omni_struct_inner")
+                                        newIdentNode("Buffer_omni_struct")
                                     )
                                 )
                             )
@@ -277,7 +277,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("struct_type"),
+                            newIdentNode("omni_struct_type"),
                             nnkBracketExpr.newTree(
                                 newIdentNode("typedesc"),
                                 newIdentNode("Buffer_omni_struct_export")

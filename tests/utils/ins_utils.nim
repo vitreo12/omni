@@ -21,12 +21,12 @@
 # SOFTWARE.
 
 template alloc_ins_Nim*(n : int) : untyped =
-  let ins_Nim {.inject.} = cast[CDoublePtrPtr](system.alloc(sizeof(CDoublePtr) * n))
+  let omni_ins_ptr {.inject.} = cast[CDoublePtrPtr](system.alloc(sizeof(CDoublePtr) * n))
   for i in 0..(n-1):
-    ins_Nim[i] = cast[CDoublePtr](system.alloc(sizeof(float)))
-    ins_Nim[i][0] = 0.75 #Whatever value
+    omni_ins_ptr[i] = cast[CDoublePtr](system.alloc(sizeof(float)))
+    omni_ins_ptr[i][0] = 0.75 #Whatever value
 
 template dealloc_ins_Nim*(n : int) : untyped =
   for i in 0..(n-1):
-    system.dealloc(cast[pointer](ins_Nim[i]))
-  system.dealloc(cast[pointer](ins_Nim))
+    system.dealloc(cast[pointer](omni_ins_ptr[i]))
+  system.dealloc(cast[pointer](omni_ins_ptr))

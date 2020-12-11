@@ -449,7 +449,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 
                 let 
                     omni_ugen        {.inject.} : ptr Omni_UGen = cast[ptr Omni_UGen](omni_ugen_ptr)     
-                    ins_Nim          {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
+                    omni_ins_ptr          {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
                     bufsize          {.inject.} : int           = int(bufsize_in)
                     samplerate       {.inject.} : float         = float(samplerate_in)
                     buffer_interface {.inject.} : pointer       = buffer_interface_in
@@ -510,7 +510,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
 
                 let 
                     omni_ugen        {.inject.} : ptr Omni_UGen  = cast[ptr Omni_UGen](omni_ugen_ptr)     
-                    ins_Nim          {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
+                    omni_ins_ptr          {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
                     bufsize          {.inject.} : int            = int(bufsize_in)
                     samplerate       {.inject.} : float          = float(samplerate_in)
                     buffer_interface {.inject.} : pointer        = buffer_interface_in
@@ -560,81 +560,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                         Omni_UGenFree(omni_ugen_ptr)
                     return cast[pointer](nil)
 
-#[
-#Retrieve {Buffer} ins and pass them here (so that they will be declared as Omni_UGen members!)
-macro add_buffers_ins*(ins_names : typed) : untyped =
-    result = nnkStmtList.newTree()
-
-    let ins_names_seq = ins_names.getImpl.strVal.split(',')
-
-    for i, in_name in ins_names_seq:
-        let 
-            i_plus_one = i + 1
-            in_number_name = ("in" & $(i_plus_one))
-        
-        var
-            ident_defs = nnkIdentDefs.newTree()
-            when_Buffer_var_statement = nnkWhenStmt.newTree(
-                nnkElifBranch.newTree(
-                    nnkCall.newTree(
-                        newIdentNode("declared"),
-                        newIdentNode("Buffer")
-                    ),
-                    nnkVarSection.newTree(
-                        ident_defs
-                    )
-                ),
-                nnkElse.newTree(
-                    nnkPragma.newTree(
-                        nnkExprColonExpr.newTree(
-                            newIdentNode("fatal"),
-                            newLit("No wrapper interface defined for 'Buffer'. Can't declare variable '" & in_name & "' at '" & in_number_name & "'.")
-                        )
-                    )
-                )
-            )
-
-        ident_defs.add(
-            newIdentNode(in_name),
-            newEmptyNode(),
-
-            #Buffer_omni_struct_new(Buffer_omni_struct_export, 0, buffer_interface, omni_auto_mem, omni_call_type)
-            nnkCall.newTree(
-                newIdentNode("Buffer_omni_struct_new"),
-                newLit(i_plus_one), #Buffer(1) is first input, not Buffer(0)
-                newIdentNode("buffer_interface"),
-                newIdentNode("Buffer_omni_struct_export"),
-                newIdentNode("omni_auto_mem"),
-                newIdentNode("omni_call_type")
-            )
-        )
-
-        let when_statement = nnkWhenStmt.newTree(
-            nnkElifBranch.newTree(
-                nnkCall.newTree(
-                    newIdentNode("declared"),
-                    newIdentNode(in_number_name & "_buffer")
-                ),
-                nnkStmtList.newTree(
-                    when_Buffer_var_statement
-                )
-            )
-        )
-
-        result.add(when_statement)
-]#
-
 macro init*(code_block : untyped) : untyped =
-    #[
-    let code_block_with_buffer_ins = nnkStmtList.newTree(
-        nnkCall.newTree(
-            newIdentNode("add_buffers_ins"),
-            newIdentNode("omni_inputs_names_const")
-        ),
-        code_block
-    )
-    ]#
-
     return quote do:
         #If ins / params / outs are not declared, declare them!
         when not declared(omni_declared_inputs):
@@ -663,7 +589,7 @@ macro init*(code_block : untyped) : untyped =
         var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
         #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
-        let ins_Nim            {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
+        let omni_ins_ptr            {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
 
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
@@ -680,7 +606,6 @@ macro init*(code_block : untyped) : untyped =
 
         #Actually parse the init block
         omni_parse_block_untyped(`code_block`, true)
-        #omni_parse_block_untyped(`code_block_with_buffer_ins`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =

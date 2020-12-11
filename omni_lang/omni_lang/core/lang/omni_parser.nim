@@ -111,16 +111,16 @@ macro Buffer_check_input_num*(input_num_typed : typed, omni_inputs_typed : typed
 
 #Find struct calls in a nnkCall and replace them with .new calls.
 #To do so, pass a function call here. What is prduced is a when statement that checks
-#if the function name + "_omni_struct_inner" is declared, meaning it's a struct constructor the user is trying to call.
+#if the function name + "_omni_struct" is declared, meaning it's a struct constructor the user is trying to call.
 #This also covers the Phasor.new() syntax, as the name of the class' only callable function is struct_new anyway.
 #e.g.
-# Phasor(0.0)  -> when declared(Phasor_omni_struct_inner): Phasor.struct_new(0.0) else: Phasor(0.0)
-# myFunc(0.0)  -> when declared(myFunc_omni_struct_inner): myFunc.struct_new(0.0) else: myFunc(0.0)
-# Phasor.new() -> when declared(Phasor_omni_struct_inner): Phasor.struct_new() else: Phasor.new()
+# Phasor(0.0)  -> when declared(Phasor_omni_struct): Phasor.struct_new(0.0) else: Phasor(0.0)
+# myFunc(0.0)  -> when declared(myFunc_omni_struct): myFunc.struct_new(0.0) else: myFunc(0.0)
+# Phasor.new() -> when declared(Phasor_omni_struct): Phasor.struct_new() else: Phasor.new()
 
 # ALSO GENERICS: (Data has a different behaviour)
-# Phasor[float]() -> when declared(Phasor_omni_struct_inner) : Phasor[float].struct_new() else: Phasor[float]()
-# Data[int](10) -> when declared(Data_omni_struct_inner) : Data.struct_new(10, dataType=int) else: Data[int](10)
+# Phasor[float]() -> when declared(Phasor_omni_struct) : Phasor[float].struct_new() else: Phasor[float]()
+# Data[int](10) -> when declared(Data_omni_struct) : Data.struct_new(10, dataType=int) else: Data[int](10)
 proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileTime.} =
     if statement.kind != nnkCall:
         return statement
@@ -195,10 +195,10 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
                 )
             )
 
-    #Now prepend struct_type, omni_auto_mem and omni_call_type with named access!
+    #Now prepend omni_struct_type, omni_auto_mem and omni_call_type with named access!
     proc_new_call.add(
         nnkExprEqExpr.newTree(
-            newIdentNode("struct_type"),
+            newIdentNode("omni_struct_type"),
             omni_struct_export_name
         ),
 
@@ -716,7 +716,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                     nnkStmtList.newTree(
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
-                                newIdentNode("outs_Nim"),
+                                newIdentNode("omni_outs_ptr"),
                                 nnkCall.newTree(
                                     newIdentNode("int"),
                                     bracket_index
@@ -728,7 +728,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                 ),
                 nnkElseExpr.newTree(
                     nnkBracketExpr.newTree(
-                        newIdentNode("outs_Nim"),
+                        newIdentNode("omni_outs_ptr"),
                         nnkCall.newTree(
                             newIdentNode("int"),
                             bracket_index
@@ -816,7 +816,7 @@ proc omni_parse_untyped_brackets(statement : NimNode, level : var int, declared_
             
             parsed_statement = nnkCall.newTree(
                 newIdentNode("omni_get_dynamic_input"),
-                newIdentNode("ins_Nim"),
+                newIdentNode("omni_ins_ptr"),
                 bracket_val,
                 omni_audio_index
             )
@@ -1116,23 +1116,23 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
                     assgn_right
                 )
 
-        #If a omni_struct_new call, figure out generics from the struct_type argument!
+        #If a omni_struct_new call, figure out generics from the omni_struct_type argument!
         elif function_name.endsWith("_omni_struct_new"):
             discard
 
-            #[ #struct_type is the third last argument, retrieve it
-            var struct_type = parsed_statement[^3]
+            #[ #omni_struct_type is the third last argument, retrieve it
+            var omni_struct_type = parsed_statement[^3]
 
             #Ok, some generics input from user. Attach it to the func call
-            if struct_type.kind == nnkBracketExpr:
-                let struct_impl = struct_type[0].getImpl()
+            if omni_struct_type.kind == nnkBracketExpr:
+                let struct_impl = omni_struct_type[0].getImpl()
             
                 if struct_impl.kind != nnkNilLit:
                     #Need to offset in order to find starting argument potition of generics.
-                    #-2 is to take in account _struc_new_inner name in parsed_statement and _omni_struct_export name in struct_type
-                    let parsed_statement_offset = parsed_statement.len - struct_type.len - 2
+                    #-2 is to take in account _struc_new_inner name in parsed_statement and _omni_struct_export name in omni_struct_type
+                    let parsed_statement_offset = parsed_statement.len - omni_struct_type.len - 2
 
-                    for i, generic_type in struct_type:
+                    for i, generic_type in omni_struct_type:
                         #Skip _omni_struct_export name
                         if i == 0:
                             continue
@@ -1142,7 +1142,7 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
         #Check type of all arguments for other function calls (not array access related) 
         #Ignore function ending in _min_max (the one used for input min/max conditional) OR omni_get_dynamic_input
         #THIS IS NOT SAFE! min_max could be assigned by user to another def
-        elif parsed_statement.len > 1 and not(function_name.endsWith("_min_max")) and not(function_name == "omni_get_dynamic_input"):
+        elif parsed_statement.len > 1 and not(function_name.endsWith("_omni_min_max")) and not(function_name == "omni_get_dynamic_input"):
             for i, arg in parsed_statement.pairs():
                 #ignore i == 0 (the function_name)
                 if i == 0:
@@ -1503,7 +1503,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                 let check_data_first_entry = check_data[0]
                 if check_data_first_entry.kind == nnkBracketExpr:
                     if check_data_first_entry[0].kind == nnkSym:
-                        if check_data_first_entry[0].strVal() == "Data_omni_struct_inner":
+                        if check_data_first_entry[0].strVal() == "Data_omni_struct":
                             is_data = true
 
             if is_data:
@@ -1605,7 +1605,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                 let check_data_first_entry = check_data[0]
                 if check_data_first_entry.kind == nnkBracketExpr:
                     if check_data_first_entry[0].kind == nnkSym:
-                        if check_data_first_entry[0].strVal() == "Data_omni_struct_inner":
+                        if check_data_first_entry[0].strVal() == "Data_omni_struct":
                             is_data = true
             
             if is_data:

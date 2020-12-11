@@ -87,13 +87,13 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
 macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, export_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
-        type_section    = nnkTypeSection.newTree()       #the whole type section (both omni_struct_inner and ptr)
+        type_section    = nnkTypeSection.newTree()       #the whole type section (both omni_struct and ptr)
         obj_ty          = nnkObjectTy.newTree(
             newEmptyNode(),
             newEmptyNode()
         )
 
-        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_omni_struct_inner
+        rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_omni_struct
 
     var
         untyped_counter = 0
@@ -148,7 +148,7 @@ macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, expor
     #Add the obj declaration (the nnkObjectTy) to the type declaration
     obj_type_def.add(obj_ty)
     
-    #Add the type declaration of Phasor_omni_struct_inner to the type section
+    #Add the type declaration of Phasor_omni_struct to the type section
     type_section.add(obj_type_def)
     
     #Add the type declaration of Phasor to type section
@@ -260,10 +260,10 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
-        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_omni_struct_inner block
+        obj_type_def    = nnkTypeDef.newTree()           #the Phasor_omni_struct block
 
-        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_omni_struct_inner block
-        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_omni_struct_inner
+        ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_omni_struct block
+        ptr_ty          = nnkPtrTy.newTree()             #the ptr type expressing ptr Phasor_omni_struct
         
         export_type_def : NimNode
 
@@ -290,7 +290,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     if struct_name.kind == nnkBracketExpr:
         struct_name_str = struct_name[0].strVal()
         
-        obj_name = newIdentNode(struct_name_str & "_omni_struct_inner")  #Phasor_omni_struct_inner
+        obj_name = newIdentNode(struct_name_str & "_omni_struct")  #Phasor_omni_struct
         export_name = newIdentNode(struct_name_str & "_omni_struct_export")
         ptr_name = struct_name[0]                                     #Phasor
 
@@ -316,7 +316,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
         )
 
-        #Initialize them to be bracket expressions and add the "Phasor_omni_struct_inner" and "Phasor" names to brackets
+        #Initialize them to be bracket expressions and add the "Phasor_omni_struct" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(
             obj_name
         )
@@ -332,7 +332,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     
                 #If singular [T]
                 if child.len() == 0:
-                    ##Also add the name of the generic to the Phasor_omni_struct_inner[T, Y...]
+                    ##Also add the name of the generic to the Phasor_omni_struct[T, Y...]
                     obj_bracket_expr.add(child)
 
                     #Also add the name of the generic to the Phasor[T, Y...]
@@ -358,14 +358,14 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #Add generics to ptr type
         ptr_type_def.add(generics)
 
-        #Add the Phasor_omni_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
+        #Add the Phasor_omni_struct[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_bracket_expr)
 
     #No generics, just name of struct
     elif struct_name.kind == nnkIdent:
         struct_name_str = struct_name.strVal()
         
-        obj_name = newIdentNode(struct_name_str & "_omni_struct_inner")              #Phasor_omni_struct_inner
+        obj_name = newIdentNode(struct_name_str & "_omni_struct")              #Phasor_omni_struct
         export_name = newIdentNode(struct_name_str & "_omni_struct_export") 
         ptr_name = struct_name                                        #Phasor
 
@@ -391,7 +391,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             newEmptyNode()
         )
 
-        #Add the Phasor_omni_struct_inner[T, Y] to ptr_ty, for object that the pointer points at.
+        #Add the Phasor_omni_struct[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_name)
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
@@ -556,7 +556,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         let obj_struct_name_ident = obj_struct_name[0]
         obj_struct_type = (obj_struct_name_ident).getTypeImpl()
 
-        #Initialize them to be bracket expressions and add the "Phasor_omni_struct_inner" and "Phasor" names to brackets
+        #Initialize them to be bracket expressions and add the "Phasor_omni_struct" and "Phasor" names to brackets
         obj_bracket_expr = nnkBracketExpr.newTree(obj_struct_name[0])
         ptr_bracket_expr = nnkBracketExpr.newTree(ptr_struct_name)
 
@@ -567,7 +567,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
             let new_G_generic_ident = newIdentNode("G" & $index)
 
-            ##Also add the name of the generic to the Phasor_omni_struct_inner[T, Y...]
+            ##Also add the name of the generic to the Phasor_omni_struct[T, Y...]
             obj_bracket_expr.add(new_G_generic_ident)
 
             #Also add the name of the generic to the Phasor[T, Y...]
@@ -765,10 +765,10 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         for generic_ident_defs in generics_ident_defs:
             proc_formal_params.add(generic_ident_defs)
 
-    #Add struct_type
+    #Add omni_struct_type
     proc_formal_params.add(
         nnkIdentDefs.newTree(
-            newIdentNode("struct_type"),
+            newIdentNode("omni_struct_type"),
             nnkBracketExpr.newTree(
                 newIdentNode("typedesc"),
                 omni_struct_export_arg
