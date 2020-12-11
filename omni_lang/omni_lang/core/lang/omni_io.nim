@@ -47,8 +47,8 @@ var omni_at_least_one_buffer*  {.compileTime.} = false
 proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num = "in" & $index
-        in_min = in_num & "_min"
-        in_max = in_num & "_max"
+        in_min = in_num & "_omni_min"
+        in_max = in_num & "_omni_max"
     
     return nnkWhenStmt.newTree(
         nnkElifBranch.newTree(
@@ -131,26 +131,9 @@ proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} 
 proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num : string = "in" & $(index)
-        in_num_min : string = in_num & "_min"
+        in_num_min : string = in_num & "_omni_min"
         in_num_min_max  : string = in_num_min & "_max"
         index_minus_one : int = int(index) - 1
-
-    let buffer_fatal = nnkWhenStmt.newTree(
-        nnkElifBranch.newTree(
-            nnkCall.newTree(
-                newIdentNode("declared"),
-                newIdentNode(in_num & "_buffer")
-            ),
-            nnkStmtList.newTree(
-                nnkPragma.newTree(
-                    nnkExprColonExpr.newTree(
-                        newIdentNode("fatal"),
-                        newLit("Can\'t access " & in_num & ", it\'s a Buffer input.")
-                    )
-                )
-            )
-        )
-    )
 
     #Generate template if proc for min max is defined
     return nnkWhenStmt.newTree(
@@ -170,7 +153,6 @@ proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.}
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        buffer_fatal,
                         nnkCall.newTree(
                             newIdentNode(in_num_min_max),
                             nnkBracketExpr.newTree(
@@ -197,7 +179,6 @@ proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.}
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        buffer_fatal,
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
                                 newIdentNode("omni_ins_ptr"),
@@ -214,26 +195,9 @@ proc omni_generate_ar_in_template(index : SomeInteger) : NimNode {.compileTime.}
 proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.} =
     let 
         in_num : string = "in" & $(index)
-        in_num_min : string = in_num & "_min"
+        in_num_min : string = in_num & "_omni_min"
         in_num_min_max  : string = in_num_min & "_max"
         index_minus_one : int = int(index) - 1
-
-    let buffer_fatal = nnkWhenStmt.newTree(
-        nnkElifBranch.newTree(
-            nnkCall.newTree(
-                newIdentNode("declared"),
-                newIdentNode(in_num & "_buffer")
-            ),
-            nnkStmtList.newTree(
-                nnkPragma.newTree(
-                    nnkExprColonExpr.newTree(
-                        newIdentNode("fatal"),
-                        newLit("Can\'t access " & in_num & ", it\'s a Buffer input.")
-                    )
-                )
-            )
-        )
-    )
 
     #Generate template if proc for min max is defined
     return nnkWhenStmt.newTree(
@@ -253,7 +217,6 @@ proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.}
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        buffer_fatal,
                         nnkCall.newTree(
                             newIdentNode(in_num_min_max),
                             nnkBracketExpr.newTree(
@@ -280,7 +243,6 @@ proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.}
                     newEmptyNode(),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        buffer_fatal,
                         nnkBracketExpr.newTree(
                             nnkBracketExpr.newTree(
                                 newIdentNode("omni_ins_ptr"),
@@ -514,7 +476,7 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
                 default_min_max_const_section.add(
                     nnkConstDef.newTree(
                         nnkPragmaExpr.newTree(
-                            newIdentNode(in_or_param & $(i_plus_one) & "_min"),
+                            newIdentNode(in_or_param & $(i_plus_one) & "_omni_min"),
                             nnkPragma.newTree(
                                 newIdentNode("inject")
                             )
@@ -528,7 +490,7 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
                 default_min_max_const_section.add(
                     nnkConstDef.newTree(
                         nnkPragmaExpr.newTree(
-                            newIdentNode(in_or_param & $(i_plus_one) & "_max"),
+                            newIdentNode(in_or_param & $(i_plus_one) & "_omni_max"),
                             nnkPragma.newTree(
                                 newIdentNode("inject")
                             )
