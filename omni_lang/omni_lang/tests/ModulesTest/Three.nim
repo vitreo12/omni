@@ -1,17 +1,12 @@
 import ../../../omni_lang
-import macros
 
-#macro t(body : typed) =
-#    error astGenRepr body
+use One:
+    someFunc as someFunc1
+    Something as Something1
 
-expandMacros:
-    use One:
-        someFunc as someFunc1
-        Something as Something1
-
-    use Two:
-        Something as Something2
-        someFunc as someFunc2
+use Two:
+    Something as Something2
+    someFunc as someFunc2
 
 init:
     one = Something1()

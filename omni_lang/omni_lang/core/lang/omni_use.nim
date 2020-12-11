@@ -768,8 +768,6 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
         result = omni_use_inner(paths)
 
-    error astGenRepr result
-
 #use Path
 #OR
 #use Path1, Path2, Path3

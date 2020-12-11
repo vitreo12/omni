@@ -233,6 +233,7 @@ macro generate_lock_unlock_buffers*() : untyped =
                 )
             )
         )
+
         lock_buffer_str : string
         lock_buffer_if = nnkIfStmt.newTree(
             nnkElifBranch.newTree(
@@ -255,10 +256,12 @@ macro generate_lock_unlock_buffers*() : untyped =
                 )
             )
         )
+
         lock_buffers_stmt = nnkStmtList.newTree(
             valid_buffer_if,
             lock_buffer_if
         )
+
         lock_buffers_acquire = nnkElifBranch.newTree(
             nnkCall.newTree(
                 newIdentNode("acquire"),
@@ -278,6 +281,7 @@ macro generate_lock_unlock_buffers*() : untyped =
                 )
             )
         )
+
         lock_buffers_if = nnkIfStmt.newTree(
             lock_buffers_acquire,
             nnkElse.newTree(
@@ -288,11 +292,12 @@ macro generate_lock_unlock_buffers*() : untyped =
                     )
                 )
             )
-
         )
+
         lock_buffers_body = nnkStmtList.newTree(
             lock_buffers_if
         )
+
         lock_buffers_template = nnkTemplateDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
@@ -364,7 +369,7 @@ macro generate_lock_unlock_buffers*() : untyped =
             newEmptyNode()
         )
 
-        unlock_buffers_body[0] = nnkDiscardStmt.newTree(
+        unlock_buffers_body = nnkDiscardStmt.newTree(
             newEmptyNode()
         )
 
