@@ -286,9 +286,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                         ),
                         nnkIdentDefs.newTree(
                             newIdentNode("omni_auto_mem"),
-                            nnkPtrTy.newTree(
-                                newIdentNode("Omni_AutoMem")
-                            ),
+                            newIdentNode("Omni_AutoMem"),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(

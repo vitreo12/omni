@@ -1016,7 +1016,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
             
             nnkCall.newTree(
                 newIdentNode("omni_unpack_ugen_fields"),
-                newIdentNode("Omni_UGen_struct")
+                newIdentNode("Omni_UGen_impl")
             ),
 
             #Declare ins unpacking / variable names for the perform block

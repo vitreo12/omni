@@ -350,8 +350,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                             newIdentNode("not"),
                                             nnkCall.newTree(
                                                 newIdentNode("omni_check_struct_validity"),
-                                                index_entry#,
-                                                #newIdentNode("ugen_auto_buffer")
+                                                index_entry
                                             )
                                         ),
                                         nnkStmtList.newTree(

@@ -28,15 +28,17 @@ const Omni_AutoMemSize = 50
 type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**
 
-    Omni_AutoMem_struct* = object
+    #use Omni_AutoMem_impl and not _omni_struct because _omni_struct is 
+    #reserved for the `struct` handling
+    Omni_AutoMem_impl* = object
         num_allocs* : int
         allocs*     : C_void_ptr_ptr 
     
-    Omni_AutoMem* = ptr Omni_AutoMem_struct
+    Omni_AutoMem* = ptr Omni_AutoMem_impl
 
 proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
     let 
-        auto_mem_ptr = omni_alloc(culong(sizeof(Omni_AutoMem_struct))) 
+        auto_mem_ptr = omni_alloc(culong(sizeof(Omni_AutoMem_impl))) 
         auto_mem = cast[Omni_AutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):

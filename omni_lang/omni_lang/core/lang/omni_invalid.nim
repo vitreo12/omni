@@ -39,6 +39,7 @@ let omni_invalid_variable_names* {.compileTime.} = [
     "ins", "inputs",
     "outs", "outputs",
     "params",
+    "buffers",
     "init", "initialize", "initialise", "build",
     "perform", "sample",
     "sig", "sig32", "sig64",

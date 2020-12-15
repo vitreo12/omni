@@ -382,7 +382,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
             #allocation of "omni_ugen" variable
             let 
-                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen_struct)))
+                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen_impl)))
                 omni_ugen     {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
 
             if isNil(omni_ugen_ptr):
@@ -535,8 +535,6 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                         Omni_UGenFree(omni_ugen_ptr)
                     return cast[pointer](nil)
 
-    #error repr result
-
 macro init*(code_block : untyped) : untyped =
     return quote do:
         #If ins / params / outs are not declared, declare them!
@@ -558,15 +556,15 @@ macro init*(code_block : untyped) : untyped =
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 
-            bufsize            {.inject.} : int                = 0
-            samplerate         {.inject.} : float              = 0.0
-            buffer_interface   {.inject.} : pointer            = nil
+            bufsize            {.inject.} : int            = 0
+            samplerate         {.inject.} : float          = 0.0
+            buffer_interface   {.inject.} : pointer        = nil
             omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
         
         var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
         #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
-        let omni_ins_ptr            {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
+        let omni_ins_ptr       {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
 
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
@@ -597,13 +595,13 @@ macro initialise*(code_block : untyped) : untyped =
 #This macro should in theory just work with the "build(a, b)" syntax, but for other syntaxes, the constructor macro correctly builds
 #a correct call to "build(a, b)" instead of "build: \n a \n b" or "build a b" by extracting the nnkIdents from the other calls and 
 #building a correct "build(a, b)" syntax out of them.
-macro build*(var_names : varargs[typed]) =    
+macro build*(var_names : varargs[typed]) = 
+    result = nnkTypeSection.newTree()   
+
     var 
-        final_type = nnkTypeSection.newTree()
-        
         final_typedef = nnkTypeDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("Omni_UGen_struct"),
+                newIdentNode("Omni_UGen_impl"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -611,6 +609,8 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
 
+        #use Omni_UGen_impl and not _omni_struct because _omni_struct is 
+        #reserved for the `struct` handling
         ptr_typedef = nnkTypeDef.newTree(
             nnkPragmaExpr.newTree(
                 newIdentNode("Omni_UGen"),
@@ -620,7 +620,7 @@ macro build*(var_names : varargs[typed]) =
             ),
             newEmptyNode(),
             nnkPtrTy.newTree(
-                newIdentNode("Omni_UGen_struct")
+                newIdentNode("Omni_UGen_impl")
             )
         )
 
@@ -631,7 +631,7 @@ macro build*(var_names : varargs[typed]) =
     
     final_typedef.add(final_obj)
     
-    final_type.add(
+    result.add(
         final_typedef,
         ptr_typedef
     )
@@ -726,4 +726,4 @@ macro build*(var_names : varargs[typed]) =
     #Add to final obj
     final_obj.add(var_names_and_types)
 
-    return final_type
+    #error repr result
