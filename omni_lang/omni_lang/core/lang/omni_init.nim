@@ -382,7 +382,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
             #allocation of "omni_ugen" variable
             let 
-                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen_impl)))
+                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen_struct)))
                 omni_ugen     {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
 
             if isNil(omni_ugen_ptr):
@@ -601,7 +601,7 @@ macro build*(var_names : varargs[typed]) =
     var 
         final_typedef = nnkTypeDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("Omni_UGen_impl"),
+                newIdentNode("Omni_UGen_struct"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -609,7 +609,7 @@ macro build*(var_names : varargs[typed]) =
             newEmptyNode()
         )
 
-        #use Omni_UGen_impl and not _omni_struct because _omni_struct is 
+        #use Omni_UGen_struct and not _omni_struct because _omni_struct is 
         #reserved for the `struct` handling
         ptr_typedef = nnkTypeDef.newTree(
             nnkPragmaExpr.newTree(
@@ -620,7 +620,7 @@ macro build*(var_names : varargs[typed]) =
             ),
             newEmptyNode(),
             nnkPtrTy.newTree(
-                newIdentNode("Omni_UGen_impl")
+                newIdentNode("Omni_UGen_struct")
             )
         )
 
