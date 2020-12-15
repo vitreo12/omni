@@ -28,3 +28,7 @@ import macros
 #Maybe just replace Syms with Idents instead? It would be much safer than this...
 proc typed_to_untyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
     return parseStmt(code_block.repr())
+
+#Use it in place of expandMacros
+macro omni_debug_macros*(code : typed) =
+    error $(code.toStrLit)

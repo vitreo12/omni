@@ -920,7 +920,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
     let 
         final_template_block = nnkStmtList.newTree()
         final_template = nnkTemplateDef.newTree(
-            newIdentNode("generate_params_procs"),
+            newIdentNode("omni_generate_params_procs"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1626,7 +1626,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
     var 
         final_template_block = nnkStmtList.newTree()
         final_template = nnkTemplateDef.newTree(
-            newIdentNode("generate_buffers_procs"),
+            newIdentNode("omni_generate_buffers_procs"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1659,7 +1659,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                         ),
                         nnkStmtList.newTree(
                             nnkCall.newTree(
-                                newIdentNode("omni_set_buffer_from_wrapper"),
+                                newIdentNode("omni_set_buffer"),
                                 nnkDotExpr.newTree(
                                     newIdentNode("omni_ugen"),
                                     newIdentNode(buffer_name & "_omni_buffer")
@@ -1743,7 +1743,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
     var 
         init_block = nnkStmtList.newTree()
         unpack_buffers_init = nnkTemplateDef.newTree(
-            newIdentNode("unpack_buffers_init"),
+            newIdentNode("omni_unpack_buffers_init"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1757,7 +1757,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
         )
         pre_init_block = nnkStmtList.newTree()
         unpack_buffers_pre_init = nnkTemplateDef.newTree(
-            newIdentNode("unpack_buffers_pre_init"),
+            newIdentNode("omni_unpack_buffers_pre_init"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1797,16 +1797,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
             unpack_perform = nnkStmtList.newTree()
 
         init_block.add(
-            nnkCall.newTree(
-                nnkDotExpr.newTree(
-                nnkDotExpr.newTree(
-                    newIdentNode("omni_ugen"),
-                    newIdentNode("omni_buffers_lock")
-                ),
-                newIdentNode("spin")
-                ),
-                unpack_init
-            )
+            unpack_init
         )
 
         pre_init_block.add(
@@ -1814,16 +1805,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
         )
 
         perform_block.add(
-            nnkCall.newTree(
-                nnkDotExpr.newTree(
-                nnkDotExpr.newTree(
-                    newIdentNode("omni_ugen"),
-                    newIdentNode("omni_buffers_lock")
-                ),
-                newIdentNode("spin")
-                ),
-                unpack_perform
-            )
+            unpack_perform
         )
 
         for i, buffer_name in omni_buffers_names_list:
@@ -1838,7 +1820,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
                         buffer_name_buffer
                     ),
                     nnkCall.newTree(
-                        newIdentNode("omni_create_buffer_from_wrapper")
+                        newIdentNode("omni_create_buffer")
                     )
                )
             )
@@ -1904,7 +1886,7 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
         
         generate_defaults_block = nnkStmtList.newTree()
         generate_defaults = nnkTemplateDef.newTree(
-            newIdentNode("generate_buffers_defaults"),
+            newIdentNode("omni_set_buffers_defaults"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -1937,7 +1919,7 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                     nnkCall.newTree(
                         omni_ugen_setbuffer_func_name,
                         newIdentNode("omni_ugen"),
-                        
+                        buffer_default_lit
                     )
                 )
     else:
@@ -1947,6 +1929,253 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                 newEmptyNode()
             )
         )
+
+    #error repr result
+
+proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
+    result = nnkStmtList.newTree()
+
+    var 
+        unlock_buffers_body = nnkStmtList.newTree()
+        unlock_buffers_template = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("omni_unlock_buffers")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("and"),
+                        newIdentNode("omni_at_least_one_buffer"),
+                        nnkCall.newTree(
+                            newIdentNode("defined"),
+                            newIdentNode("omni_multithread_buffers")
+                        )
+                    ),
+                    unlock_buffers_body
+                    )
+                )
+            )
+        )
+
+        silence = nnkStmtList.newTree(
+            nnkForStmt.newTree(
+                newIdentNode("omni_audio_channel"),
+                nnkPar.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode(".."),
+                        newLit(0),
+                        nnkInfix.newTree(
+                            newIdentNode("-"),
+                            newIdentNode("omni_outputs"),
+                            newLit(1)
+                        )
+                    )
+                ),
+                nnkStmtList.newTree(
+                    nnkForStmt.newTree(
+                    newIdentNode("omni_audio_index"),
+                    nnkPar.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode(".."),
+                            newLit(0),
+                            nnkInfix.newTree(
+                                newIdentNode("-"),
+                                newIdentNode("bufsize"),
+                                newLit(1)
+                            )
+                        )
+                    ),
+                    nnkStmtList.newTree(
+                        nnkAsgn.newTree(
+                            nnkBracketExpr.newTree(
+                                nnkBracketExpr.newTree(
+                                    newIdentNode("omni_outs_ptr"),
+                                    newIdentNode("omni_audio_channel")
+                                ),
+                                newIdentNode("omni_audio_index")
+                            ),
+                            newFloatLitNode(0.0)
+                        )
+                    )
+                    )
+                )
+            )
+        )
+        
+        valid_buffer_str : string
+        valid_buffer_if = nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+                newEmptyNode(), #this will be replaced  
+                nnkStmtList.newTree(
+                    silence,
+                    nnkReturnStmt.newTree(
+                        newEmptyNode()
+                    ),
+                    nnkCall.newTree(
+                        newIdentNode("release"),
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_buffers_lock")
+                        )
+                    )
+                )
+            )
+        )
+
+        lock_buffer_str : string
+        lock_buffer_if = nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+                newEmptyNode(), #this will be replaced  
+                nnkStmtList.newTree(
+                    silence,
+                    nnkCall.newTree(
+                        newIdentNode("omni_unlock_buffers")
+                    ),
+                    nnkCall.newTree(
+                        newIdentNode("release"),
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_buffers_lock")
+                        )
+                    ),
+                    nnkReturnStmt.newTree(
+                        newEmptyNode()
+                    )
+                )
+            )
+        )
+
+        lock_buffers_stmt = nnkStmtList.newTree(
+            valid_buffer_if,
+            lock_buffer_if
+        )
+
+        lock_buffers_acquire = nnkElifBranch.newTree(
+            nnkCall.newTree(
+                newIdentNode("acquire"),
+                nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    newIdentNode("omni_buffers_lock")
+                )
+            ),
+            nnkStmtList.newTree(
+                lock_buffers_stmt,
+                nnkCall.newTree(
+                    newIdentNode("release"),
+                    nnkDotExpr.newTree(
+                        newIdentNode("omni_ugen"),
+                        newIdentNode("omni_buffers_lock")
+                    )
+                )
+            )
+        )
+
+        lock_buffers_if = nnkIfStmt.newTree(
+            lock_buffers_acquire,
+            nnkElse.newTree(
+                nnkStmtList.newTree(
+                    silence,
+                    nnkReturnStmt.newTree(
+                        newEmptyNode()
+                    )
+                )
+            )
+        )
+
+        lock_buffers_body = nnkStmtList.newTree(
+            lock_buffers_if
+        )
+
+        lock_buffers_template = nnkTemplateDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("omni_lock_buffers")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                        newIdentNode("omni_at_least_one_buffer"),
+                        lock_buffers_body
+                    )
+                )
+            )
+        )
+
+    if omni_buffers_names_list.len > 0:
+        for i, buffer_name in omni_buffers_names_list:
+            let buffer_ident = newIdentNode(buffer_name)
+
+            unlock_buffers_body.add(
+                nnkCall.newTree(
+                    newIdentNode("omni_unlock_buffer"),
+                    buffer_ident
+                )
+            )
+
+            if omni_buffers_names_list.len == 1:
+                #just one not(buf.valid)
+                valid_buffer_if[0] = nnkElifBranch.newTree(
+                        nnkPrefix.newTree(
+                            newIdentNode("not"),
+                            nnkDotExpr.newTree(
+                                buffer_ident,
+                                newIdentNode("valid")
+                            )
+                        ) 
+                    )  
+            else:
+                #I'm lazy. not gonna do the "or" infix business, gonna use parseStmt later
+                if i == 0:
+                    valid_buffer_str = "(not " & buffer_name & ".valid) or " 
+                    lock_buffer_str = "(not omni_lock_buffer(" & buffer_name & ")) or " 
+                else:
+                    valid_buffer_str.add("(not " & buffer_name & ".valid) or ")
+                    lock_buffer_str.add("(not omni_lock_buffer(" & buffer_name & ")) or ")
+
+                #remove last " or"
+                if i == (omni_buffers_names_list.len - 1):
+                    valid_buffer_str = valid_buffer_str[0..valid_buffer_str.len - 5]
+                    lock_buffer_str  = lock_buffer_str[0..lock_buffer_str.len - 5]
+        
+        #Parse the not(buf.valid) or not(buf2.valid) ...etc..
+        valid_buffer_if[0][0] = parseStmt(valid_buffer_str)[0]
+
+        #Parse the not(lock_buffer(buf)) or not(lock_buffer(buf2)) ...etc..
+        lock_buffer_if[0][0] = parseStmt(lock_buffer_str)[0]
+
+    else:
+        lock_buffers_body[0] = nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
+
+        unlock_buffers_body = nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
+
+    result.add(
+        unlock_buffers_template,
+        lock_buffers_template
+    )
 
     #error repr result
 
@@ -2057,6 +2286,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
         omni_buffer_generate_defaults = omni_buffer_generate_defaults(buffer_defaults)
         omni_buffers_generate_set_templates = omni_buffers_generate_set_templates()
         omni_buffers_generate_unpack_templates = omni_buffers_generate_unpack_templates()
+        omni_generate_lock_unlock_buffers = omni_generate_lock_unlock_buffers()
     
     var when_declared_buffer_interface : NimNode
 
@@ -2089,7 +2319,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     return quote do:
         when not declared(omni_declared_buffers):
             #Check buffer interface
-            `when_declared_buffer_interface`
+            #`when_declared_buffer_interface`
             
             #declare global vars
             const 
@@ -2109,6 +2339,10 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
 
             #Returns a template that generates the unpacking of buffers for perform block
             `omni_buffers_generate_unpack_templates`
+
+            #Create omni_lock_buffers and omni_unlock_buffers templates
+            #omni_unlock_buffers is generated first because it's used in omni_lock_buffers to unlock all buffers in case of error in locking one
+            `omni_generate_lock_unlock_buffers`
 
             #Export to C
             proc Omni_UGenBuffers() : int32 {.exportc: "Omni_UGenBuffers", dynlib.} =

@@ -25,14 +25,15 @@ import macros, strutils
 #Import the compile time list of float parameters to be added to Omni_UGen
 from omni_io import omni_params_names_list, omni_params_defaults_list, omni_buffers_names_list
 
-#being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
+#Not needed with nim >= 1.4
 when (NimMajor, NimMinor) < (1, 4):
+    #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
     macro omni_execute_build_statement_and_create_ugen_obj(code_block : typed) : untyped =  
         discard
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
-macro omni_unpack_ins_var_names*(ins_names : typed, pre_init : typed = false) : untyped =
+macro omni_unpack_ins_init*(ins_names : typed, pre_init : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
     let 
@@ -86,7 +87,7 @@ macro omni_unpack_ins_var_names*(ins_names : typed, pre_init : typed = false) : 
         result.add(when_statement)
 
 #This has been correctly parsed!
-macro omni_init_inner*(code_block_stmt_list : untyped) =
+macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     #Extract the actual parsed code_block from the nnkStmtList
     let code_block = code_block_stmt_list[0]
 
@@ -105,7 +106,6 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
 
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
-        alloc_ugen : NimNode
         assign_ugen_fields = nnkStmtList.newTree()
 
         new_call_provided = false
@@ -236,7 +236,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
     
     #No call to "build" provided. Build one from all the var and let declarations!
     else:
-        call_to_build_macro = nnkCall.newTree(newIdentNode("build"))
+        call_to_build_macro = nnkCall.newTree(
+            newIdentNode("build")
+        )
         
         for let_decl_ident in let_declarations:
             call_to_build_macro.add(let_decl_ident)
@@ -292,34 +294,12 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_let_declaration
 
-    #First statement of the constructor is the allocation of the "omni_ugen" variable. 
-    #[
-        dumpAstGen:
-            var omni_ugen: ptr Omni_UGen = cast[ptr Omni_UGen](alloc0(sizeof(Omni_UGen)))
-    ]#
-    alloc_ugen = nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-            newIdentNode("omni_ugen"),
-            nnkPtrTy.newTree(
-                newIdentNode("Omni_UGen")
-            ),
-            nnkCast.newTree(
-                nnkPtrTy.newTree(
-                    newIdentNode("Omni_UGen")
-                ),
-                nnkCall.newTree(
-                    newIdentNode("omni_alloc"),
-                    nnkCall.newTree(
-                        newIdentNode("culong"),
-                            nnkCall.newTree(
-                                newIdentNode("sizeof"),
-                                newIdentNode("Omni_UGen")
-                        )
-                    )                 
-                )
+    if templates_for_perform_var_declarations.len == 0:
+        templates_for_perform_var_declarations.add(
+            nnkDiscardStmt.newTree(
+                newEmptyNode()
             )
         )
-    )
 
     #build the omni_ugen.a = a, omni_ugen.b = b constructs
     for index, var_name in call_to_build_macro:
@@ -382,15 +362,6 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
         call_to_build_macro
     )
 
-    #error repr perform_build_names_table_static
-
-    #echo astGenRepr call_to_build_macro
-    #echo astGenRepr code_block_with_var_let_templates_and_call_to_build_macro
-
-    #error repr alloc_ugen
-
-    #error repr code_block_with_var_let_templates_and_call_to_build_macro
-
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "omni_generate_templates_for_perform_var_declarations()" macro
@@ -410,10 +381,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
             #allocation of "omni_ugen" variable
-            `alloc_ugen`
-
-            #Return omni_ugen as void ptr
-            let omni_ugen_ptr = cast[pointer](omni_ugen)
+            let 
+                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen)))
+                omni_ugen     {.inject.} = cast[ptr Omni_UGen](omni_ugen_ptr)
 
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: could not allocate memory")
@@ -423,7 +393,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
             return omni_ugen_ptr
         
         #Define Omni_UGenFree
-        proc Omni_UGenFree*(omni_ugen_ptr : pointer) : void {.exportc: "Omni_UGenFree", dynlib.} =
+        proc Omni_UGenFree*(omni_ugen_ptr {.inject.} : pointer) : void {.exportc: "Omni_UGenFree", dynlib.} =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: invalid omni_ugen_ptr to free.")
                 return
@@ -431,7 +401,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
             when defined(omni_debug):
                 print("Calling Omni_UGen's destructor")
             
-            let omni_ugen = cast[ptr Omni_UGen](omni_ugen_ptr)
+            let omni_ugen {.inject.} = cast[ptr Omni_UGen](omni_ugen_ptr)
             
             if not isNil(omni_ugen.omni_auto_mem):
                 omni_auto_mem_free(omni_ugen.omni_auto_mem)
@@ -442,14 +412,14 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
         omni_find_structs_and_datas(Omni_UGen, true)
         
         when defined(omni_perform32):
-            proc Omni_UGenInit32*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
+            proc Omni_UGenInit32*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cfloat, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
                 if isNil(omni_ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return 0
                 
                 let 
                     omni_ugen        {.inject.} : ptr Omni_UGen = cast[ptr Omni_UGen](omni_ugen_ptr)     
-                    omni_ins_ptr          {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
+                    omni_ins_ptr     {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
                     bufsize          {.inject.} : int           = int(bufsize_in)
                     samplerate       {.inject.} : float         = float(samplerate_in)
                     buffer_interface {.inject.} : pointer       = buffer_interface_in
@@ -467,13 +437,14 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
                 #Unpack the "ins" variable names
-                omni_unpack_ins_var_names(omni_inputs_names_const)
+                omni_unpack_ins_init(omni_inputs_names_const)
 
                 #Unpack params and set default values
                 omni_unpack_params_init()
 
-                #Don't unpack buffers (they shouldn't be accessed in init)
-                #But just set default values if strings are provided!
+                #Unpack and init buffers
+                omni_unpack_buffers_init()
+                omni_set_buffers_defaults()
 
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
@@ -493,8 +464,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 
                 return 1
 
-            proc Omni_UGenAllocInit32*(ins_ptr : ptr ptr cfloat, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
-                let omni_ugen_ptr = Omni_UGenAlloc()
+            proc Omni_UGenAllocInit32*(ins_ptr {.inject.} : ptr ptr cfloat, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
+                let omni_ugen_ptr {.inject.} = Omni_UGenAlloc()
                 if Omni_UGenInit32(omni_ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
                     return omni_ugen_ptr
                 else:
@@ -503,14 +474,14 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                     return cast[pointer](nil)
 
         when defined(omni_perform64):
-            proc Omni_UGenInit64*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
+            proc Omni_UGenInit64*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cdouble, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
                 if isNil(omni_ugen_ptr):
                     print("ERROR: Omni: build: invalid omni object")
                     return 0
 
                 let 
                     omni_ugen        {.inject.} : ptr Omni_UGen  = cast[ptr Omni_UGen](omni_ugen_ptr)     
-                    omni_ins_ptr          {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
+                    omni_ins_ptr     {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
                     bufsize          {.inject.} : int            = int(bufsize_in)
                     samplerate       {.inject.} : float          = float(samplerate_in)
                     buffer_interface {.inject.} : pointer        = buffer_interface_in
@@ -528,11 +499,15 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
                 #Unpack the "ins" variable names
-                omni_unpack_ins_var_names(omni_inputs_names_const)
+                omni_unpack_ins_init(omni_inputs_names_const)
 
                 #Unpack params and set default values
                 omni_unpack_params_init()
-        
+
+                #Unpack and init buffers
+                omni_unpack_buffers_init()
+                omni_set_buffers_defaults()
+
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
                 `templates_for_constructor_var_declarations`
 
@@ -551,14 +526,16 @@ macro omni_init_inner*(code_block_stmt_list : untyped) =
                 
                 return 1
 
-            proc Omni_UGenAllocInit64*(ins_ptr : ptr ptr cdouble, bufsize_in : cint, samplerate_in : cdouble, buffer_interface_in : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
-                let omni_ugen_ptr = Omni_UGenAlloc()
+            proc Omni_UGenAllocInit64*(ins_ptr {.inject.} : ptr ptr cdouble, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
+                let omni_ugen_ptr {.inject.} = Omni_UGenAlloc()
                 if Omni_UGenInit64(omni_ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
                     return omni_ugen_ptr
                 else:
                     if not isNil(omni_ugen_ptr):
                         Omni_UGenFree(omni_ugen_ptr)
                     return cast[pointer](nil)
+
+    #error repr result
 
 macro init*(code_block : untyped) : untyped =
     return quote do:
@@ -596,13 +573,13 @@ macro init*(code_block : untyped) : untyped =
         let omni_declared_init {.inject, compileTime.} = true
 
         #Generate fictional let names for ins (so that parser won't complain when using them)
-        omni_unpack_ins_var_names(omni_inputs_names_const, true)
+        omni_unpack_ins_init(omni_inputs_names_const, true)
 
         #Generate fictional let names for params (so that parser won't complain when using them)
         omni_unpack_params_pre_init()
 
         #Generate fictional var names for buffers (so that parser won't complain when using them)
-        #unpack_buffers_pre_init()
+        #omni_unpack_buffers_pre_init()
 
         #Actually parse the init block
         omni_parse_block_untyped(`code_block`, true)

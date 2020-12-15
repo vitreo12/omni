@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 import macros, strutils
-from omni_io import omni_buffers_names_list
     
 proc omni_unpack_ugen_fields_inner(t : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
@@ -122,264 +121,20 @@ proc omni_unpack_ugen_fields_inner(t : NimNode) : NimNode {.compileTime.} =
         unpack_params
     )
 
-    #error repr result
-    
-#Unpack the fields of the omni_ugen. Objects will be passed as unsafeAddr, to get their direct pointers. What about other inbuilt types other than floats, however??n
+#Unpack the fields of the omni_ugen. t is Omni_UGen here.
 macro omni_unpack_ugen_fields*(t : typed) =
     return omni_unpack_ugen_fields_inner(t)
 
 #Simply cast the inputs from SC in a indexable form in Nim
-macro omni_cast_ins_outs32*() =
-    return quote do:
-        let 
-            omni_ins_ptr  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
-            omni_outs_ptr {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
+template omni_cast_ins_outs32*() : untyped {.dirty.} =
+    let 
+        omni_ins_ptr  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
+        omni_outs_ptr {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
 
-macro omni_cast_ins_outs64*() =
-    return quote do:
-        let 
-            omni_ins_ptr  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
-            omni_outs_ptr {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
-
-macro omni_generate_lock_unlock_buffers*() : untyped =
-    result = nnkStmtList.newTree()
-
-    var 
-        unlock_buffers_body = nnkStmtList.newTree()
-        unlock_buffers_template = nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("omni_unlock_buffers")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
-            ),
-            nnkPragma.newTree(
-                newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-                nnkWhenStmt.newTree(
-                    nnkElifBranch.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode("and"),
-                        newIdentNode("omni_at_least_one_buffer"),
-                        nnkCall.newTree(
-                            newIdentNode("defined"),
-                            newIdentNode("omni_multithread_buffers")
-                        )
-                    ),
-                    unlock_buffers_body
-                    )
-                )
-            )
-        )
-
-        silence = nnkStmtList.newTree(
-            nnkForStmt.newTree(
-                newIdentNode("omni_audio_channel"),
-                nnkPar.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode(".."),
-                        newLit(0),
-                        nnkInfix.newTree(
-                            newIdentNode("-"),
-                            newIdentNode("omni_outputs"),
-                            newLit(1)
-                        )
-                    )
-                ),
-                nnkStmtList.newTree(
-                    nnkForStmt.newTree(
-                    newIdentNode("omni_audio_index"),
-                    nnkPar.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode(".."),
-                            newLit(0),
-                            nnkInfix.newTree(
-                                newIdentNode("-"),
-                                newIdentNode("bufsize"),
-                                newLit(1)
-                            )
-                        )
-                    ),
-                    nnkStmtList.newTree(
-                        nnkAsgn.newTree(
-                            nnkBracketExpr.newTree(
-                                nnkBracketExpr.newTree(
-                                    newIdentNode("omni_outs_ptr"),
-                                    newIdentNode("omni_audio_channel")
-                                ),
-                                newIdentNode("omni_audio_index")
-                            ),
-                            newFloatLitNode(0.0)
-                        )
-                    )
-                    )
-                )
-            )
-        )
-        
-        valid_buffer_str : string
-        valid_buffer_if = nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-                newEmptyNode(), #this will be replaced  
-                nnkStmtList.newTree(
-                    silence,
-                    nnkReturnStmt.newTree(
-                        newEmptyNode()
-                    )
-                )
-            )
-        )
-
-        lock_buffer_str : string
-        lock_buffer_if = nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-                newEmptyNode(), #this will be replaced  
-                nnkStmtList.newTree(
-                    silence,
-                    nnkCall.newTree(
-                        newIdentNode("omni_unlock_buffers")
-                    ),
-                    nnkCall.newTree(
-                        newIdentNode("release"),
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("omni_buffers_lock")
-                        )
-                    ),
-                    nnkReturnStmt.newTree(
-                        newEmptyNode()
-                    )
-                )
-            )
-        )
-
-        lock_buffers_stmt = nnkStmtList.newTree(
-            valid_buffer_if,
-            lock_buffer_if
-        )
-
-        lock_buffers_acquire = nnkElifBranch.newTree(
-            nnkCall.newTree(
-                newIdentNode("acquire"),
-                nnkDotExpr.newTree(
-                    newIdentNode("omni_ugen"),
-                    newIdentNode("omni_buffers_lock")
-                )
-            ),
-            nnkStmtList.newTree(
-                lock_buffers_stmt,
-                nnkCall.newTree(
-                    newIdentNode("release"),
-                    nnkDotExpr.newTree(
-                        newIdentNode("omni_ugen"),
-                        newIdentNode("omni_buffers_lock")
-                    )
-                )
-            )
-        )
-
-        lock_buffers_if = nnkIfStmt.newTree(
-            lock_buffers_acquire,
-            nnkElse.newTree(
-                nnkStmtList.newTree(
-                    silence,
-                    nnkReturnStmt.newTree(
-                        newEmptyNode()
-                    )
-                )
-            )
-        )
-
-        lock_buffers_body = nnkStmtList.newTree(
-            lock_buffers_if
-        )
-
-        lock_buffers_template = nnkTemplateDef.newTree(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                newIdentNode("omni_lock_buffers")
-            ),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
-            ),
-            nnkPragma.newTree(
-                newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            nnkStmtList.newTree(
-                nnkWhenStmt.newTree(
-                    nnkElifBranch.newTree(
-                        newIdentNode("omni_at_least_one_buffer"),
-                        lock_buffers_body
-                    )
-                )
-            )
-        )
-
-    if omni_buffers_names_list.len > 0:
-        for i, buffer_name in omni_buffers_names_list:
-            let buffer_ident = newIdentNode(buffer_name)
-
-            unlock_buffers_body.add(
-                nnkCall.newTree(
-                    newIdentNode("omni_unlock_buffer_from_wrapper"),
-                    buffer_ident
-                )
-            )
-
-            if omni_buffers_names_list.len == 1:
-                #just one not(buf.valid)
-                valid_buffer_if[0] = nnkElifBranch.newTree(
-                        nnkPrefix.newTree(
-                            newIdentNode("not"),
-                            nnkDotExpr.newTree(
-                                buffer_ident,
-                                newIdentNode("valid")
-                            )
-                        ) 
-                    )  
-            else:
-                #I'm lazy. not gonna do the "or" infix business, gonna use parseStmt later
-                if i == 0:
-                    valid_buffer_str = "(not " & buffer_name & ".valid) or " 
-                    lock_buffer_str = "(not lock_buffer(" & buffer_name & ")) or " 
-                else:
-                    valid_buffer_str.add("(not " & buffer_name & ".valid) or ")
-                    lock_buffer_str.add("(not lock_buffer(" & buffer_name & ")) or ")
-
-                #remove last " or"
-                if i == (omni_buffers_names_list.len - 1):
-                    valid_buffer_str = valid_buffer_str[0..valid_buffer_str.len - 5]
-                    lock_buffer_str  = lock_buffer_str[0..lock_buffer_str.len - 5]
-        
-        #Parse the not(buf.valid) or not(buf2.valid) ...etc..
-        valid_buffer_if[0][0] = parseStmt(valid_buffer_str)[0]
-
-        #Parse the not(lock_buffer(buf)) or not(lock_buffer(buf2)) ...etc..
-        lock_buffer_if[0][0] = parseStmt(lock_buffer_str)[0]
-
-    else:
-        lock_buffers_body[0] = nnkDiscardStmt.newTree(
-            newEmptyNode()
-        )
-
-        unlock_buffers_body = nnkDiscardStmt.newTree(
-            newEmptyNode()
-        )
-
-    result.add(
-        unlock_buffers_template,
-        lock_buffers_template
-    )
-
-    #error repr result
+template omni_cast_ins_outs64*() : untyped {.dirty.} =
+    let 
+        omni_ins_ptr  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
+        omni_outs_ptr {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
 
 template omni_perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / params / outs are not declared, declare them!
@@ -399,10 +154,6 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
     when not declared(omni_declared_init):
         init:
             discard
-
-    #Create omni_lock_buffers and omni_unlock_buffers templates
-    #omni_unlock_buffers is generated first because it's used in omni_lock_buffers to unlock all buffers in case of error in locking one
-    omni_generate_lock_unlock_buffers()
 
     #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(omni_perform32):
