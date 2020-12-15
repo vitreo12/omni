@@ -23,10 +23,10 @@
 import atomics
 export atomics
 
-proc acquire*(lock : var AtomicFlag) : bool {.inline.} =
-    return not(lock.testAndSet(moAcquire))
+template acquire*(lock : var AtomicFlag) : bool =
+    not(lock.testAndSet(moAcquire))
 
-proc release*(lock : var AtomicFlag) : void {.inline.} =
+template release*(lock : var AtomicFlag) : void =
     lock.clear(moRelease)
 
 template spin*(lock: var AtomicFlag, body: untyped) : untyped =

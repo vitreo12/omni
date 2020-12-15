@@ -74,7 +74,7 @@ macro omni_unpack_ins_var_names*(ins_names : typed, pre_init : typed = false) : 
                     newIdentNode("not"),
                     nnkCall.newTree(
                         newIdentNode("declared"),
-                        newIdentNode(in_number_name & "_buffer")
+                        newIdentNode(in_number_name & "_omni_buffer")
                     )
                 ),
                 nnkStmtList.newTree(
@@ -673,8 +673,12 @@ macro build*(var_names : varargs[typed]) =
     for param_name in omni_params_names_list:
         var_names_and_types.add(
             nnkIdentDefs.newTree(
-                newIdentNode(param_name & "_param"),
-                getType(float),
+                newIdentNode(param_name & "_omni_param"),
+                nnkBracketExpr.newTree(
+                    newIdentNode("array"),
+                    newLit(2),
+                    newIdentNode("float")
+                ),
                 newEmptyNode()
             )
         )
@@ -683,7 +687,7 @@ macro build*(var_names : varargs[typed]) =
     for buffer_name in omni_buffers_names_list:
         var_names_and_types.add(
             nnkIdentDefs.newTree(
-                newIdentNode(buffer_name & "_buffer"),
+                newIdentNode(buffer_name & "_omni_buffer"),
                 newIdentNode("Buffer"),
                 newEmptyNode()
             )
