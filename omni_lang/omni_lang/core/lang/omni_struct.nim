@@ -776,7 +776,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         )   
     )
     
-    #Add omni_auto_mem : ptr Omni_AutoMem argument
+    #Add omni_auto_mem : Omni_AutoMem argument
     proc_formal_params.add(
         nnkIdentDefs.newTree(
             newIdentNode("omni_auto_mem"),

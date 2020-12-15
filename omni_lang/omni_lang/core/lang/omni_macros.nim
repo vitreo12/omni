@@ -52,3 +52,7 @@ export omni_use
 
 import omni_loop
 export omni_loop
+
+#Needed for omni_debug_macros
+from omni_macros_utilities import omni_debug_macros
+export omni_debug_macros

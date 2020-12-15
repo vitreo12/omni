@@ -979,7 +979,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
         omni_generate_templates_for_perform_var_declarations()
 
         #Cast the void* to Omni_UGen*
-        let omni_ugen = cast[ptr Omni_UGen](omni_ugen_ptr)
+        let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)
 
         #cast ins and outs
         omni_cast_ins_outs()
@@ -1006,9 +1006,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
                     newIdentNode("omni_ugen"),
                     newEmptyNode(),
                     nnkCast.newTree(
-                        nnkPtrTy.newTree(
-                            newIdentNode("Omni_UGen")
-                        ),
+                        newIdentNode("Omni_UGen"),
                         newIdentNode("omni_ugen_ptr")
                     )
                 )
@@ -1018,7 +1016,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
             
             nnkCall.newTree(
                 newIdentNode("omni_unpack_ugen_fields"),
-                newIdentNode("Omni_UGen")
+                newIdentNode("Omni_UGen_struct")
             ),
 
             #Declare ins unpacking / variable names for the perform block

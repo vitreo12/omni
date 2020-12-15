@@ -2,19 +2,19 @@ import ../../omni_lang
 
 type
     Omni_UGen = object
-        auto_mem : ptr Omni_AutoMem
+        auto_mem : Omni_AutoMem
 
 
-proc newUGen() : ptr Omni_UGen =
+proc newUGen() : Omni_UGen =
     var
         omni_ugen_ptr = alloc(culong(sizeof(Omni_UGen))) 
-        omni_ugen     = cast[ptr Omni_UGen](omni_ugen_ptr)
+        omni_ugen     = cast[Omni_UGen](omni_ugen_ptr)
         
     omni_ugen.auto_mem = omni_create_omni_auto_mem()
 
     return omni_ugen
 
-proc freeUGen(omni_ugen : ptr Omni_UGen) : void =
+proc freeUGen(omni_ugen : Omni_UGen) : void =
     
     omni_auto_mem_free(omni_ugen.auto_mem)
     

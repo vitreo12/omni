@@ -57,7 +57,7 @@ suite "init: functions and templates exist":
     check (typeof(Omni_UGen.CONST1_let) is float)
     check (typeof(Omni_UGen.CONST2_let) is int)
     check (typeof(Omni_UGen.samplerate_let) is float)
-    check (typeof(Omni_UGen.omni_auto_mem) is ptr Omni_AutoMem)
+    check (typeof(Omni_UGen.omni_auto_mem) is Omni_AutoMem)
     
   test "Omni_UGenAlloc exists":
     check (declared(Omni_UGenAlloc))
@@ -78,7 +78,7 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit64":
   #After check of Omni_UGenAlloc, allocate one dummy omni_ugen
   let 
     ugen_ptr_64 = Omni_UGenAlloc()
-    ugen_64 = cast[ptr Omni_UGen](ugen_ptr_64)
+    ugen_64 = cast[Omni_UGen](ugen_ptr_64)
 
   test "omni_auto_mem is nil":
     check (ugen_64.omni_auto_mem == nil)
@@ -112,7 +112,7 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit32":
   #After check of Omni_UGenAlloc, allocate one dummy omni_ugen
   let 
     ugen_ptr_32 = Omni_UGenAlloc()
-    ugen_32 = cast[ptr Omni_UGen](ugen_ptr_32)
+    ugen_32 = cast[Omni_UGen](ugen_ptr_32)
 
   test "omni_auto_mem is nil":
     check (ugen_32.omni_auto_mem == nil)
@@ -148,7 +148,7 @@ suite "init: Omni_UGenAllocInit64":
   
   let 
     ugen_ptr_64 = Omni_UGenAllocInit64(ins_ptr_64, cint(test_bufsize), cdouble(test_samplerate), nil)
-    ugen_64 = cast[ptr Omni_UGen](ugen_ptr_64)
+    ugen_64 = cast[Omni_UGen](ugen_ptr_64)
 
   test "omni_ugen init":
     check (ugen_ptr_64 != nil)
@@ -176,7 +176,7 @@ suite "init: Omni_UGenAllocInit32":
   
   let 
     ugen_ptr_32 = Omni_UGenAllocInit32(ins_ptr_32, cint(test_bufsize), cdouble(test_samplerate), nil)
-    ugen_32 = cast[ptr Omni_UGen](ugen_ptr_32)
+    ugen_32 = cast[Omni_UGen](ugen_ptr_32)
 
   test "omni_ugen init":
     check (ugen_ptr_32 != nil)

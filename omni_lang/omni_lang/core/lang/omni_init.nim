@@ -382,8 +382,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
             #allocation of "omni_ugen" variable
             let 
-                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen)))
-                omni_ugen     {.inject.} = cast[ptr Omni_UGen](omni_ugen_ptr)
+                omni_ugen_ptr {.inject.} = omni_alloc(culong(sizeof(Omni_UGen_struct)))
+                omni_ugen     {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
 
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: could not allocate memory")
@@ -401,7 +401,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             when defined(omni_debug):
                 print("Calling Omni_UGen's destructor")
             
-            let omni_ugen {.inject.} = cast[ptr Omni_UGen](omni_ugen_ptr)
+            let omni_ugen {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
             
             if not isNil(omni_ugen.omni_auto_mem):
                 omni_auto_mem_free(omni_ugen.omni_auto_mem)
@@ -418,7 +418,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     return 0
                 
                 let 
-                    omni_ugen        {.inject.} : ptr Omni_UGen = cast[ptr Omni_UGen](omni_ugen_ptr)     
+                    omni_ugen        {.inject.} : Omni_UGen     = cast[Omni_UGen](omni_ugen_ptr)     
                     omni_ins_ptr     {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
                     bufsize          {.inject.} : int           = int(bufsize_in)
                     samplerate       {.inject.} : float         = float(samplerate_in)
@@ -431,7 +431,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     print("ERROR: Omni: could not allocate auto_mem")
                     return 0
 
-                let omni_auto_mem    {.inject.} : ptr Omni_AutoMem = omni_ugen.omni_auto_mem
+                let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
 
                 #Needed to be passed to all defs
                 var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
@@ -480,7 +480,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     return 0
 
                 let 
-                    omni_ugen        {.inject.} : ptr Omni_UGen  = cast[ptr Omni_UGen](omni_ugen_ptr)     
+                    omni_ugen        {.inject.} : Omni_UGen      = cast[Omni_UGen](omni_ugen_ptr)     
                     omni_ins_ptr     {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
                     bufsize          {.inject.} : int            = int(bufsize_in)
                     samplerate       {.inject.} : float          = float(samplerate_in)
@@ -493,7 +493,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     print("ERROR: Omni: could not allocate auto_mem")
                     return 0
 
-                let omni_auto_mem    {.inject.} : ptr Omni_AutoMem = omni_ugen.omni_auto_mem
+                let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
 
                 #Needed to be passed to all defs
                 var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
@@ -561,7 +561,7 @@ macro init*(code_block : untyped) : untyped =
             bufsize            {.inject.} : int                = 0
             samplerate         {.inject.} : float              = 0.0
             buffer_interface   {.inject.} : pointer            = nil
-            omni_auto_mem      {.inject.} : ptr Omni_AutoMem   = nil
+            omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
         
         var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
@@ -603,12 +603,25 @@ macro build*(var_names : varargs[typed]) =
         
         final_typedef = nnkTypeDef.newTree(
             nnkPragmaExpr.newTree(
-                newIdentNode("Omni_UGen"),
+                newIdentNode("Omni_UGen_struct"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
             ),
             newEmptyNode()
+        )
+
+        ptr_typedef = nnkTypeDef.newTree(
+            nnkPragmaExpr.newTree(
+                newIdentNode("Omni_UGen"),
+                nnkPragma.newTree(
+                    newIdentNode("inject")
+                )
+            ),
+            newEmptyNode(),
+            nnkPtrTy.newTree(
+                newIdentNode("Omni_UGen_struct")
+            )
         )
 
         final_obj  = nnkObjectTy.newTree(
@@ -617,7 +630,11 @@ macro build*(var_names : varargs[typed]) =
         )
     
     final_typedef.add(final_obj)
-    final_type.add(final_typedef)
+    
+    final_type.add(
+        final_typedef,
+        ptr_typedef
+    )
     
     var var_names_and_types = nnkRecList.newTree()
 
@@ -670,13 +687,11 @@ macro build*(var_names : varargs[typed]) =
             )
         )
 
-    #Add omni_auto_mem variable (ptr Omni_AutoMem)
+    #Add omni_auto_mem variable (Omni_AutoMem)
     var_names_and_types.add(
         nnkIdentDefs.newTree(
             newIdentNode("omni_auto_mem"),
-            nnkPtrTy.newTree(
-                newIdentNode("Omni_AutoMem")
-            ),
+            newIdentNode("Omni_AutoMem"),
             newEmptyNode()
         )
     )
@@ -710,7 +725,5 @@ macro build*(var_names : varargs[typed]) =
 
     #Add to final obj
     final_obj.add(var_names_and_types)
-
-    #error repr final_obj
 
     return final_type

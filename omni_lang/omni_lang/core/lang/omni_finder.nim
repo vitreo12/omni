@@ -30,9 +30,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     
     #Omni_UGen (top)
     if is_ugen_bool:
-        t_type = nnkPtrTy.newTree(
-            newIdentNode("Omni_UGen")
-        )
+        t_type = newIdentNode("Omni_UGen")
 
     #struct     
     else:

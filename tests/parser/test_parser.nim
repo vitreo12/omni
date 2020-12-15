@@ -35,7 +35,7 @@ struct Test3:
 
 #Dummy vars. Only checking correct parsing here
 var 
-  omni_auto_mem = cast[ptr Omni_AutoMem](0) 
+  omni_auto_mem = cast[Omni_AutoMem](0) 
   omni_call_type : typedesc[Omni_InitCall]
 
 suite "parser: variable declarations":

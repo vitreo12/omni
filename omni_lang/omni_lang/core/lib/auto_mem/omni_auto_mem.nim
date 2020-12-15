@@ -28,29 +28,31 @@ const Omni_AutoMemSize = 50
 type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**
 
-    Omni_AutoMem* = object
+    Omni_AutoMem_struct* = object
         num_allocs* : int
         allocs*     : C_void_ptr_ptr 
+    
+    Omni_AutoMem* = ptr Omni_AutoMem_struct
 
-proc omni_create_omni_auto_mem*() : ptr Omni_AutoMem {.inline.} =
+proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
     let 
-        auto_mem_ptr = omni_alloc(culong(sizeof(Omni_AutoMem))) 
-        auto_mem = cast[ptr Omni_AutoMem](auto_mem_ptr)
+        auto_mem_ptr = omni_alloc(culong(sizeof(Omni_AutoMem_struct))) 
+        auto_mem = cast[Omni_AutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):
-        return auto_mem     #This already is cast[ptr Omni_AutoMem](nil)
+        return auto_mem     #This already is cast[Omni_AutoMem](nil)
 
     let auto_mem_allocs_ptr = omni_alloc0(culong(sizeof(pointer) * Omni_AutoMemSize))
     
     if isNil(auto_mem_allocs_ptr):
         omni_free(auto_mem_ptr)
-        return cast[ptr Omni_AutoMem](nil)
+        return cast[Omni_AutoMem](nil)
 
     auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
     auto_mem.num_allocs = 0
     return auto_mem
 
-proc omni_auto_mem_register_child*(auto_mem : ptr Omni_AutoMem, child : pointer) : void {.inline.} =
+proc omni_auto_mem_register_child*(auto_mem : Omni_AutoMem, child : pointer) : void {.inline.} =
     if isNil(auto_mem):
         return
 
@@ -74,7 +76,7 @@ proc omni_auto_mem_register_child*(auto_mem : ptr Omni_AutoMem, child : pointer)
         let auto_mem_allocs_ptr = omni_realloc(cast[pointer](auto_mem.allocs), culong(sizeof(pointer) * new_length))
         auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
 
-proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : ptr Omni_AutoMem, index : T) : void {.inline.} =
+proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : Omni_AutoMem, index : T) : void {.inline.} =
     if isNil(auto_mem):
         return
 
@@ -93,7 +95,7 @@ proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : ptr Omni_AutoMem, i
     auto_mem.allocs[index] = cast[pointer](nil) #reset previus entry with nil ptr
     auto_mem.num_allocs -= 1
 
-proc omni_auto_mem_remove_children*(auto_mem : ptr Omni_AutoMem) : void {.inline.} =
+proc omni_auto_mem_remove_children*(auto_mem : Omni_AutoMem) : void {.inline.} =
     if isNil(auto_mem):
         return
 
@@ -108,7 +110,7 @@ proc omni_auto_mem_remove_children*(auto_mem : ptr Omni_AutoMem) : void {.inline
     #Reset count
     auto_mem.num_allocs = 0
 
-proc omni_auto_mem_free*(auto_mem : ptr Omni_AutoMem, free_children : bool = true) : void {.inline.} =
+proc omni_auto_mem_free*(auto_mem : Omni_AutoMem, free_children : bool = true) : void {.inline.} =
     if isNil(auto_mem):
         return
 

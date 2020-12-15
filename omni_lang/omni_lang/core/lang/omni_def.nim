@@ -277,7 +277,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 newEmptyNode()
             )
 
-        #Add samplerate / bufsize / omni_auto_mem : ptr Omni_AutoMem / omni_call_type : Omni_CallType = Omni_InitCall
+        #Add samplerate / bufsize / omni_auto_mem : Omni_AutoMem / omni_call_type : Omni_CallType = Omni_InitCall
         proc_formal_params.add(
             nnkIdentDefs.newTree(
                 newIdentNode("samplerate"),
@@ -293,9 +293,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
             nnkIdentDefs.newTree(
                 newIdentNode("omni_auto_mem"),
-                nnkPtrTy.newTree(
-                    newIdentNode("Omni_AutoMem")
-                ),
+                newIdentNode("Omni_AutoMem"),
                 newEmptyNode()
             ),
 

@@ -218,6 +218,7 @@ template perform*(code_block : untyped) {.dirty.} =
 #Run perform inner, but directly to the for loop
 template sample*(code_block : untyped) {.dirty.} =
     when not declared(omni_declared_perform):
+        let omni_declared_sample {.compileTime.} = true
         omni_perform_inner(code_block)
     else:
         static:

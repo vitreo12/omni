@@ -893,9 +893,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 newIdentNode("void"),
             nnkIdentDefs.newTree(
                 newIdentNode("omni_ugen"),
-                nnkPtrTy.newTree(
-                    newIdentNode("Omni_UGen")
-                ),
+                newIdentNode("Omni_UGen"),
                 newEmptyNode()
             ),
             nnkIdentDefs.newTree(
@@ -964,9 +962,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                         newIdentNode("void"),
                         nnkIdentDefs.newTree(
                             newIdentNode("omni_ugen"),
-                            nnkPtrTy.newTree(
-                                newIdentNode("Omni_UGen")
-                            ),
+                            newIdentNode("Omni_UGen"),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
@@ -1599,9 +1595,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                 newIdentNode("void"),
             nnkIdentDefs.newTree(
                 newIdentNode("omni_ugen"),
-                nnkPtrTy.newTree(
-                    newIdentNode("Omni_UGen")
-                ),
+                newIdentNode("Omni_UGen"),
                 newEmptyNode()
             ),
             nnkIdentDefs.newTree(
@@ -1678,9 +1672,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                         newIdentNode("void"),
                         nnkIdentDefs.newTree(
                             newIdentNode("omni_ugen"),
-                            nnkPtrTy.newTree(
-                                newIdentNode("Omni_UGen")
-                            ),
+                            newIdentNode("Omni_UGen"),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
