@@ -31,6 +31,16 @@ when (NimMajor, NimMinor) < (1, 4):
     macro omni_execute_build_statement_and_create_ugen_obj(code_block : typed) : untyped =  
         discard
 
+macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
+    result = nnkStmtList.newTree()
+
+    #Remove everything that is not a type def. 
+    #This means, just leave the Omni_UGen declaration
+    for statement in code_block:
+        let statement_kind = statement.kind
+        if statement_kind == nnkTypeSection:
+            result.add(statement)
+
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
 macro omni_unpack_ins_init*(ins_names : typed, pre_init : typed = false) : untyped =
@@ -97,24 +107,24 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         var_declarations : seq[NimNode]
 
         templates_for_perform_var_declarations     = nnkStmtList.newTree()
-        templates_for_constructor_var_declarations = nnkStmtList.newTree()
-        templates_for_constructor_let_declarations = nnkStmtList.newTree()
-        perform_build_names_table_static_stmt      = nnkStmtList.newTree()
-        perform_build_names_table_static           = nnkStaticStmt.newTree(
-            perform_build_names_table_static_stmt
+        templates_for_init_var_declarations = nnkStmtList.newTree()
+        templates_for_init_let_declarations = nnkStmtList.newTree()
+        omni_perform_build_names_table_static_stmt      = nnkStmtList.newTree()
+        omni_perform_build_names_table_static           = nnkStaticStmt.newTree(
+            omni_perform_build_names_table_static_stmt
         )
 
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
         assign_ugen_fields = nnkStmtList.newTree()
 
-        new_call_provided = false
+        build_call_provided = false
     
     #Look if "build" macro call is the last statement in the block.
     let code_block_last = code_block.last()
     if code_block_last.kind == nnkCall or code_block_last.kind == nnkCommand:
         if code_block_last[0].strVal() == "build":
-            new_call_provided = true
+            build_call_provided = true
 
     #[
         REDUCE ALL THESE FOR LOOPS IN A BETTER WAY!!
@@ -157,7 +167,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     )
                 )
 
-                templates_for_constructor_var_declarations.add(constructor_var_template)
+                templates_for_init_var_declarations.add(constructor_var_template)
         
         #let statements
         elif statement.kind == nnkLetSection:
@@ -194,10 +204,10 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     )
                 )
 
-                templates_for_constructor_let_declarations.add(constructor_let_template)
+                templates_for_init_let_declarations.add(constructor_let_template)
     
     #If provided a call to the "build" macro at last position:
-    if new_call_provided:
+    if build_call_provided:
         call_to_build_macro = code_block.last()
 
         var temp_call_to_build_macro = nnkCall.newTree()
@@ -216,20 +226,20 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         if call_to_build_macro.kind == nnkCall or call_to_build_macro.kind == nnkCommand:
             
             #nnkCommand can recursively represent elements in nnkCommand trees. Unpack all the nnkIdents and append them to the temp_call_to_build_macro variable.
-            proc recursive_unpack_of_commands(input : NimNode) : void =    
+            proc recursive_unpack_commands(input : NimNode) : void =    
                 for input_children in input:
                     if input_children.kind == nnkStmtList or input_children.kind == nnkCommand:
-                        recursive_unpack_of_commands(input_children)
+                        recursive_unpack_commands(input_children)
                     else:
                         temp_call_to_build_macro.add(input_children)
 
             #Unpack the elements and add them to temp_call_to_build_macro, which is a nnkCall tree.
-            recursive_unpack_of_commands(call_to_build_macro)
+            recursive_unpack_commands(call_to_build_macro)
             
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
         else:
-            error("'build': invalid syntax.")
+            error("build: invalid syntax: '" & repr(call_to_build_macro) & "'")
 
         #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
         code_block.del(code_block.len() - 1)
@@ -327,7 +337,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 newIdentNode(var_name_str)
             )
 
-            perform_build_names_table_static_stmt.add(
+            omni_perform_build_names_table_static_stmt.add(
                 nnkStmtList.newTree(
                     nnkCall.newTree(
                         nnkDotExpr.newTree(
@@ -356,9 +366,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     
     #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "omni_execute_build_statement_and_create_ugen_obj" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "build" macro
     let code_block_with_var_let_templates_and_call_to_build_macro = nnkStmtList.newTree(
-        templates_for_constructor_var_declarations,
-        templates_for_constructor_let_declarations,
         code_block,
+        templates_for_init_var_declarations,
+        templates_for_init_let_declarations,
         call_to_build_macro
     )
 
@@ -369,14 +379,14 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             `templates_for_perform_var_declarations`
 
         #These are variables declared in build, they won't be renamed in perform
-        `perform_build_names_table_static`
+        `omni_perform_build_names_table_static`
             
         #nim >= 1.4.0 doesn't require the typed call to omni_execute_build_statement_and_create_ugen_obj
         when (NimMajor, NimMinor) < (1, 4):
             #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
-            omni_execute_build_statement_and_create_ugen_obj(`code_block_with_var_let_templates_and_call_to_build_macro`)
+            omni_clenup_build_statement_scope(omni_execute_build_statement_and_create_ugen_obj(`code_block_with_var_let_templates_and_call_to_build_macro`))
         else:
-            `code_block_with_var_let_templates_and_call_to_build_macro`
+            omni_clenup_build_statement_scope(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
@@ -447,10 +457,10 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 omni_set_buffers_defaults()
 
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                `templates_for_constructor_var_declarations`
+                `templates_for_init_var_declarations`
 
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                `templates_for_constructor_let_declarations`
+                `templates_for_init_let_declarations`
                 
                 #Actual body of the constructor
                 `code_block`
@@ -509,10 +519,10 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 omni_set_buffers_defaults()
 
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                `templates_for_constructor_var_declarations`
+                `templates_for_init_var_declarations`
 
                 #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                `templates_for_constructor_let_declarations`
+                `templates_for_init_let_declarations`
                 
                 #Actual body of the constructor
                 `code_block`
