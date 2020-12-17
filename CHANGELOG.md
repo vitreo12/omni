@@ -1,6 +1,8 @@
 ## 0.3.0
 
-1) New `ins` and `outs` mechanism: dynamic counting of IO:
+1) Deprecate `nim < 1.4`.
+
+2) New `ins` and `outs` mechanism: dynamic counting of IO:
 
     ```nim
     ins 2
@@ -24,9 +26,9 @@
         out2
     ```
 
-2) Introducing `params`:
+3) Introducing `params`:
 
-3) `Buffers` can only now be declared via `ins` or `params`.
+4) Introducing `buffers`:
 
 ## 0.2.3
 
