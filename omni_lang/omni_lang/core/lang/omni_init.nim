@@ -25,12 +25,6 @@ import macros, strutils
 #Import the compile time list of float parameters to be added to Omni_UGen
 from omni_io import omni_params_names_list, omni_params_defaults_list, omni_buffers_names_list
 
-#Not needed with nim >= 1.4
-when (NimMajor, NimMinor) < (1, 4):
-    #being the argument typed, the code_block is semantically executed after parsing, making it to return the correct result out of the "build" statement
-    macro omni_execute_build_statement_and_create_ugen_obj(code_block : typed) : untyped =  
-        discard
-
 macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
     result = nnkStmtList.newTree()
 
@@ -380,13 +374,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
         #These are variables declared in build, they won't be renamed in perform
         `omni_perform_build_names_table_static`
-            
-        #nim >= 1.4.0 doesn't require the typed call to omni_execute_build_statement_and_create_ugen_obj
-        when (NimMajor, NimMinor) < (1, 4):
-            #With a macro with typed argument, I can just pass in the block of code and it is semantically evaluated. I just need then to extract the result of the "build" statement
-            omni_clenup_build_statement_scope(omni_execute_build_statement_and_create_ugen_obj(`code_block_with_var_let_templates_and_call_to_build_macro`))
-        else:
-            omni_clenup_build_statement_scope(`code_block_with_var_let_templates_and_call_to_build_macro`)
+
+        #This only returns the Omni_UGen declaration to scope    
+        omni_clenup_build_statement_scope(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
