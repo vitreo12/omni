@@ -71,19 +71,19 @@ template chans*(buffer : Buffer) : untyped {.dirty.} =
 proc size*(buffer : Buffer) : int {.inline.} =
     return buffer.channels * buffer.length
 
-#Internal checking for structs. It works fine without redefining it for every newBufferInterface!
+#Internal checking for structs. It works fine without redefining it for every omniNewBufferInterface!
 proc omni_check_struct_validity*(obj : Buffer) : bool =
     return true
 
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
-macro newBufferInterface*(code_block : untyped) : untyped =
+macro omniNewBufferInterface*(code_block : untyped) : untyped =
     if code_block.kind != nnkStmtList:
-        error "Invalid syntax for newBufferInterface. It must be a statement list."
+        error "omniNewBufferInterface: Invalid syntax. It must be a statement list."
     
     result = nnkStmtList.newTree()
 
     var 
-        obj : NimNode
+        struct : NimNode
         init : NimNode
         getFromInput : NimNode
         getFromParam : NimNode
@@ -97,13 +97,13 @@ macro newBufferInterface*(code_block : untyped) : untyped =
 
     for statement in code_block:
         if statement.kind != nnkCall or statement.len > 2:
-            error "Invalid statement: '" & repr(statement) & "'. It must be a code block."
+            error "omniNewBufferInterface: Invalid statement: '" & repr(statement) & "'. It must be a code block."
 
         let 
             statement_name = statement[0].strVal()
             statement_block = statement[1]
 
-        if statement_name == "obj":
+        if statement_name == "struct":
             var 
                 buffer_omni_struct_rec_list = nnkRecList.newTree()
                 buffer_omni_struct = nnkTypeDef.newTree(
@@ -130,7 +130,7 @@ macro newBufferInterface*(code_block : untyped) : untyped =
                 )
                 buffer_omni_struct_rec_list.add(ident_def)
 
-            obj = nnkStmtList.newTree(
+            struct = nnkStmtList.newTree(
                 nnkTypeSection.newTree(
                     buffer_omni_struct,
                     nnkTypeDef.newTree(
@@ -660,42 +660,42 @@ macro newBufferInterface*(code_block : untyped) : untyped =
             )
 
         else:
-            error "Invalid block name: '" & statement_name & "'. Valid names are: 'obj', 'init', 'lockBuffer', 'getFromParam', 'unlockBuffer', 'getter', 'setter'"
+            error "omniNewBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'lock', 'unlock', 'getter', 'setter'"
 
-    if obj == nil:
-        error "newBufferInterface: Missing `obj`"
+    if struct == nil:
+        error "omniNewBufferInterface: Missing `struct`"
 
     if init == nil:
-        error "newBufferInterface: Missing `init`"
+        error "omniNewBufferInterface: Missing `init`"
 
-    if getFromInput == nil:
-        error "newBufferInterface: Missing `getFromInput`"
+    #[ if getFromInput == nil:
+        error "omniNewBufferInterface: Missing `getFromInput`"
         
     if getFromParam == nil:
-        error "newBufferInterface: Missing `getFromParam`"
+        error "omniNewBufferInterface: Missing `getFromParam`" ]#
     
     if lockBuffer == nil:
-        error "newBufferInterface: Missing `lock`"
+        error "omniNewBufferInterface: Missing `lock`"
 
     if unlockBuffer == nil:
-        error "newBufferInterface: Missing `unlock`"
+        error "omniNewBufferInterface: Missing `unlock`"
 
     #[
     if length == nil:
-        error "newBufferInterface: Missing `length`"
+        error "omniNewBufferInterface: Missing `length`"
 
     if samplerate == nil:
-        error "newBufferInterface: Missing `samplerate`"
+        error "omniNewBufferInterface: Missing `samplerate`"
 
     if channels == nil:
-        error "newBufferInterface: Missing `channels`"
+        error "omniNewBufferInterface: Missing `channels`"
     ]#
         
     if getter == nil:
-        error "newBufferInterface: Missing `getter`"
+        error "omniNewBufferInterface: Missing `getter`"
         
     if setter == nil:
-        error "newBufferInterface: Missing `setter`"
+        error "omniNewBufferInterface: Missing `setter`"
 
     #[
         proc read_inner*[I : SomeNumber](buffer : Buffer, index : I, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
@@ -1103,18 +1103,16 @@ macro newBufferInterface*(code_block : untyped) : untyped =
     )
 
     result.add(
-        obj,
+        struct,
         init,
-        getFromInput,
-        getFromParam,
+        #[ getFromInput,
+        getFromParam, ]#
         lockBuffer,
         unlockBuffer,
-        #[
-        length,
+        #[ length,
         samplerate,
         channels,
-        size,
-        ]#
+        size, ]#
         getter,
         setter,
         read_inner
