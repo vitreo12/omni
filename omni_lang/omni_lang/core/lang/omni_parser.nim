@@ -992,9 +992,13 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
 
         #true == 64, false == 32
         if bits_32_or_64:
-            omni_cast_ins_outs_call.add(newIdentNode("omni_cast_ins_outs64"))
+            omni_cast_ins_outs_call.add(
+                newIdentNode("omni_cast_ins_outs64")
+            )
         else:
-            omni_cast_ins_outs_call.add(newIdentNode("omni_cast_ins_outs32"))
+            omni_cast_ins_outs_call.add(
+                newIdentNode("omni_cast_ins_outs32")
+            )
 
         code_block = nnkStmtList.newTree(
             nnkCall.newTree(

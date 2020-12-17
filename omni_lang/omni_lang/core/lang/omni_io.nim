@@ -1653,7 +1653,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                         ),
                         nnkStmtList.newTree(
                             nnkCall.newTree(
-                                newIdentNode("omni_set_buffer"),
+                                newIdentNode("omni_update_buffer"),
                                 nnkDotExpr.newTree(
                                     newIdentNode("omni_ugen"),
                                     newIdentNode(buffer_name & "_omni_buffer")
@@ -1812,7 +1812,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
                         buffer_name_buffer
                     ),
                     nnkCall.newTree(
-                        newIdentNode("omni_create_buffer")
+                        newIdentNode("omni_init_buffer")
                     )
                )
             )

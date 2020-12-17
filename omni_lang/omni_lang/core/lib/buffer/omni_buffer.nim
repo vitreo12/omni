@@ -31,7 +31,7 @@ type
         channels*   : int
         samplerate* : float
 
-    #Don't export these
+    #Don't export these, they are just needed here to define some common operations on Buffers
     Buffer = ptr Buffer_inherit
     Buffer_omni_struct_ptr = Buffer
 
@@ -75,6 +75,23 @@ proc size*(buffer : Buffer) : int {.inline.} =
 proc omni_check_struct_validity*(obj : Buffer) : bool =
     return true
 
+#[
+omniNewBufferInterface:
+    struct:
+    
+    init:
+
+    update:
+
+    lock:
+
+    unlock:
+
+    getter:
+
+    setter:
+
+]#
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
 macro omniNewBufferInterface*(code_block : untyped) : untyped =
     if code_block.kind != nnkStmtList:
@@ -85,8 +102,7 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
     var 
         struct : NimNode
         init : NimNode
-        getFromInput : NimNode
-        getFromParam : NimNode
+        update : NimNode
         lockBuffer : NimNode
         unlockBuffer : NimNode
         length : NimNode
@@ -306,8 +322,8 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
                 )
             )
 
-        elif statement_name == "getFromInput" or statement_name == "get_from_input":
-            getFromInput = nnkStmtList.newTree(
+        elif statement_name == "update":
+            update = nnkStmtList.newTree(
                 nnkProcDef.newTree(
                     nnkPostfix.newTree(
                         newIdentNode("*"),
@@ -325,38 +341,6 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
                         nnkIdentDefs.newTree(
                             newIdentNode("inputVal"),
                             newIdentNode("float"),
-                            newEmptyNode()
-                        )
-                    ),
-                    nnkPragma.newTree(
-                        newIdentNode("inline")
-                    ),
-                    newEmptyNode(),
-                    nnkStmtList.newTree(
-                        statement_block
-                    )
-                )
-            )
-
-        elif statement_name == "getFromParam" or statement_name == "get_from_param":
-            getFromInput = nnkStmtList.newTree(
-                nnkProcDef.newTree(
-                    nnkPostfix.newTree(
-                        newIdentNode("*"),
-                        newIdentNode("get_buffer_from_param")
-                    ),
-                    newEmptyNode(),
-                    newEmptyNode(),
-                    nnkFormalParams.newTree(
-                        newIdentNode("void"),
-                        nnkIdentDefs.newTree(
-                            newIdentNode("buffer"),
-                            newIdentNode("Buffer"),
-                            newEmptyNode()
-                        ),
-                        nnkIdentDefs.newTree(
-                            newIdentNode("paramVal"),
-                            newIdentNode("cstring"),
                             newEmptyNode()
                         )
                     ),
@@ -668,11 +652,8 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
     if init == nil:
         error "omniNewBufferInterface: Missing `init`"
 
-    #[ if getFromInput == nil:
-        error "omniNewBufferInterface: Missing `getFromInput`"
-        
-    if getFromParam == nil:
-        error "omniNewBufferInterface: Missing `getFromParam`" ]#
+    if update == nil:
+        error "omniNewBufferInterface: Missing `update`"
     
     if lockBuffer == nil:
         error "omniNewBufferInterface: Missing `lock`"
@@ -1105,8 +1086,7 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
     result.add(
         struct,
         init,
-        #[ getFromInput,
-        getFromParam, ]#
+        update,
         lockBuffer,
         unlockBuffer,
         #[ length,
