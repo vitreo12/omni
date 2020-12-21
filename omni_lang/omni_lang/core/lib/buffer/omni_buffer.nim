@@ -37,27 +37,27 @@ type
 
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
-    getter(buffer, 0, int(i), omni_call_type)
+    omni_get_value_buffer(buffer, 0, int(i), omni_call_type)
     
 #more than 1 channel (i1 == channel, i2 == index)
 template `[]`*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2) : untyped {.dirty.} =
-    getter(buffer, int(i1), int(i2), omni_call_type)
+    omni_get_value_buffer(buffer, int(i1), int(i2), omni_call_type)
 
 #1 channel
 template `[]=`*[I : SomeNumber, S : SomeNumber](buffer : Buffer, i : I, x : S) : untyped {.dirty.} =
-    setter(buffer, 0, int(i), x, omni_call_type)
+    omni_set_value_buffer(buffer, 0, int(i), x, omni_call_type)
 
 #more than 1 channel (i1 == channel, i2 == index)
 template `[]=`*[I1 : SomeNumber, I2 : SomeNumber, S : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2, x : S) : untyped {.dirty.} =
-    setter(buffer, int(i1), int(i2), x, omni_call_type)
+    omni_set_value_buffer(buffer, int(i1), int(i2), x, omni_call_type)
 
 #interp read
 template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
-    read_inner(buffer, index, omni_call_type)
+    omni_read_value_buffer(buffer, index, omni_call_type)
 
 #interp read
 template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
-    read_inner(buffer, chan, index, omni_call_type)
+    omni_read_value_buffer(buffer, chan, index, omni_call_type)
 
 #Alias for length
 template len*(buffer : Buffer) : untyped {.dirty.} =
@@ -679,7 +679,7 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
         error "omniNewBufferInterface: Missing `setter`"
 
     #[
-        proc read_inner*[I : SomeNumber](buffer : Buffer, index : I, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
+        proc omni_read_value_buffer*[I : SomeNumber](buffer : Buffer, index : I, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
             when omni_call_type is Omni_InitCall:
                 {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
 
@@ -697,7 +697,7 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
             return float(linear_interp(frac, buffer.getter(0, index1, omni_call_type), buffer.getter(0, index2, omni_call_type)))
 
         #linear interp read (more than 1 channel) (i1 == channel, i2 == index)
-        proc read_inner*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
+        proc omni_read_value_buffer*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
             when omni_call_type is Omni_InitCall:
                 {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
 
@@ -715,11 +715,11 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
             
             return float(linear_interp(frac, buffer.getter(chan_int, index1, omni_call_type), buffer.getter(chan_int, index2, omni_call_type)))
     ]#
-    let read_inner = nnkStmtList.newTree(
+    let omni_read_value_buffer = nnkStmtList.newTree(
         nnkProcDef.newTree(
             nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("read_inner")
+            newIdentNode("omni_read_value_buffer")
             ),
             newEmptyNode(),
             nnkGenericParams.newTree(
@@ -877,7 +877,7 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
         nnkProcDef.newTree(
             nnkPostfix.newTree(
             newIdentNode("*"),
-            newIdentNode("read_inner")
+            newIdentNode("omni_read_value_buffer")
             ),
             newEmptyNode(),
             nnkGenericParams.newTree(
@@ -1095,5 +1095,5 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
         size, ]#
         getter,
         setter,
-        read_inner
+        omni_read_value_buffer
     )
