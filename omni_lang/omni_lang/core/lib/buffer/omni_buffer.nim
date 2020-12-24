@@ -71,12 +71,12 @@ template chans*(buffer : Buffer) : untyped {.dirty.} =
 proc size*(buffer : Buffer) : int {.inline.} =
     return buffer.channels * buffer.length
 
-#Internal checking for structs. It works fine without redefining it for every omniNewBufferInterface!
+#Internal checking for structs. It works fine without redefining it for every omniBufferInterface!
 proc omni_check_struct_validity*(obj : Buffer) : bool =
     return true
 
 #[
-omniNewBufferInterface:
+omniBufferInterface:
     struct:
     
     init:
@@ -92,10 +92,68 @@ omniNewBufferInterface:
     setter:
 
 ]#
+
+proc declare_struct(statement_block : NimNode = nil) : NimNode {.compileTime.} =
+    var 
+        buffer_omni_struct_rec_list = nnkRecList.newTree()
+        buffer_omni_struct = nnkTypeDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("Buffer_omni_struct")
+            ),
+            newEmptyNode(),
+            nnkObjectTy.newTree(
+                newEmptyNode(),
+                nnkOfInherit.newTree(
+                    newIdentNode("Buffer_inherit")
+                ),
+                buffer_omni_struct_rec_list
+            )
+        )
+    
+    if statement_block.len > 0:
+        for entry in statement_block:
+            assert entry.len == 2
+            let ident_def = nnkIdentDefs.newTree(
+                entry[0],
+                entry[1][0],
+                newEmptyNode()
+            )
+            
+            buffer_omni_struct_rec_list.add(ident_def)
+    else:
+        buffer_omni_struct_rec_list = newEmptyNode()
+
+    result = nnkStmtList.newTree(
+        nnkTypeSection.newTree(
+            buffer_omni_struct,
+            nnkTypeDef.newTree(
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    newIdentNode("Buffer")
+                ),
+                newEmptyNode(),
+                nnkPtrTy.newTree(
+                    newIdentNode("Buffer_omni_struct")
+                )
+            ),
+            nnkTypeDef.newTree(
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    newIdentNode("Buffer_omni_struct_ptr")
+                ),
+            newEmptyNode(),
+            newIdentNode("Buffer")
+            )
+        )
+    )
+
+    error astGenRepr result
+
 #This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
-macro omniNewBufferInterface*(code_block : untyped) : untyped =
+macro omniBufferInterface*(code_block : untyped) : untyped =
     if code_block.kind != nnkStmtList:
-        error "omniNewBufferInterface: Invalid syntax. It must be a statement list."
+        error "omniBufferInterface: Invalid syntax. It must be a statement list."
     
     result = nnkStmtList.newTree()
 
@@ -113,64 +171,19 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
 
     for statement in code_block:
         if statement.kind != nnkCall or statement.len > 2:
-            error "omniNewBufferInterface: Invalid statement: '" & repr(statement) & "'. It must be a code block."
+            error "omniBufferInterface: Invalid statement: '" & repr(statement) & "'. It must be a code block."
 
         let 
             statement_name = statement[0].strVal()
             statement_block = statement[1]
 
         if statement_name == "struct":
-            var 
-                buffer_omni_struct_rec_list = nnkRecList.newTree()
-                buffer_omni_struct = nnkTypeDef.newTree(
-                    nnkPostfix.newTree(
-                        newIdentNode("*"),
-                        newIdentNode("Buffer_omni_struct")
-                    ),
-                    newEmptyNode(),
-                    nnkObjectTy.newTree(
-                        newEmptyNode(),
-                        nnkOfInherit.newTree(
-                            newIdentNode("Buffer_inherit")
-                        ),
-                        buffer_omni_struct_rec_list
-                    )
-                )
-            
-            for entry in statement_block:
-                assert entry.len == 2
-                let ident_def = nnkIdentDefs.newTree(
-                    entry[0],
-                    entry[1][0],
-                    newEmptyNode()
-                )
-                buffer_omni_struct_rec_list.add(ident_def)
-
-            struct = nnkStmtList.newTree(
-                nnkTypeSection.newTree(
-                    buffer_omni_struct,
-                    nnkTypeDef.newTree(
-                        nnkPostfix.newTree(
-                            newIdentNode("*"),
-                            newIdentNode("Buffer")
-                        ),
-                        newEmptyNode(),
-                        nnkPtrTy.newTree(
-                            newIdentNode("Buffer_omni_struct")
-                        )
-                    ),
-                    nnkTypeDef.newTree(
-                        nnkPostfix.newTree(
-                            newIdentNode("*"),
-                            newIdentNode("Buffer_omni_struct_ptr")
-                        ),
-                    newEmptyNode(),
-                    newIdentNode("Buffer")
-                    )
-                )
-            )
+            struct = declare_struct(statement_block)
 
         elif statement_name == "init":
+            if struct == nil:
+                struct = declare_struct()
+
             var init_body = nnkStmtList.newTree(
                 nnkWhenStmt.newTree(
                     nnkElifBranch.newTree(
@@ -644,39 +657,39 @@ macro omniNewBufferInterface*(code_block : untyped) : untyped =
             )
 
         else:
-            error "omniNewBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'lock', 'unlock', 'getter', 'setter'"
+            error "omniBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'lock', 'unlock', 'getter', 'setter'"
 
     if struct == nil:
-        error "omniNewBufferInterface: Missing `struct`"
+        error "omniBufferInterface: Missing `struct`"
 
     if init == nil:
-        error "omniNewBufferInterface: Missing `init`"
+        error "omniBufferInterface: Missing `init`"
 
     if update == nil:
-        error "omniNewBufferInterface: Missing `update`"
+        error "omniBufferInterface: Missing `update`"
     
     if lockBuffer == nil:
-        error "omniNewBufferInterface: Missing `lock`"
+        error "omniBufferInterface: Missing `lock`"
 
     if unlockBuffer == nil:
-        error "omniNewBufferInterface: Missing `unlock`"
+        error "omniBufferInterface: Missing `unlock`"
 
     #[
     if length == nil:
-        error "omniNewBufferInterface: Missing `length`"
+        error "omniBufferInterface: Missing `length`"
 
     if samplerate == nil:
-        error "omniNewBufferInterface: Missing `samplerate`"
+        error "omniBufferInterface: Missing `samplerate`"
 
     if channels == nil:
-        error "omniNewBufferInterface: Missing `channels`"
+        error "omniBufferInterface: Missing `channels`"
     ]#
         
     if getter == nil:
-        error "omniNewBufferInterface: Missing `getter`"
+        error "omniBufferInterface: Missing `getter`"
         
     if setter == nil:
-        error "omniNewBufferInterface: Missing `setter`"
+        error "omniBufferInterface: Missing `setter`"
 
     #[
         proc omni_read_value_buffer*[I : SomeNumber](buffer : Buffer, index : I, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline.} =
