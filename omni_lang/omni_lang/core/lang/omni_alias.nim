@@ -20,42 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#DSL macros
-import omni_io
-import omni_init
-import omni_struct
-import omni_parser
-import omni_def
-import omni_perform
-export omni_io, omni_init, omni_parser, omni_def, omni_struct, omni_perform
-
-#Needed for def's arg parsing
-import omni_type_checker
-export omni_type_checker
-
-#Needed for retrieval of Datas and structs in a struct
-import omni_finder
-export omni_finder
-
-#Utilities
-import omni_locks
-export omni_locks
-
-import omni_types
-export omni_types
-
-import omni_call_types
-export omni_call_types
-
-import omni_use
-export omni_use
-
-import omni_loop
-export omni_loop
-
-import omni_alias
-export omni_alias
-
-#Needed for omni_debug_macros
-from omni_macros_utilities import omni_debug_macros
-export omni_debug_macros
+#Simple template to generate aliases for variables
+template `:=`*(what : untyped, with : untyped) : untyped =
+    template what() : untyped {.dirty.} =
+        with
