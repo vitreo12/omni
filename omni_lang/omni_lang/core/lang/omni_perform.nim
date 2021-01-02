@@ -103,7 +103,7 @@ proc omni_unpack_ugen_fields_inner(t : NimNode) : NimNode {.compileTime.} =
             #sampleRate will be then be normally accessed as an immutable inside the perform/sample statements.
             elif var_name_string.endsWith("_let"):
                 ident_def_stmt = nnkIdentDefs.newTree(
-                    newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),        #name of the variable WITHOUT "_let"
+                    newIdentNode(var_name_string[0 .. len(var_name_string) - 5]), #name of the variable WITHOUT "_let"
                     newEmptyNode(),
                     nnkDotExpr.newTree(
                         newIdentNode("omni_ugen"),

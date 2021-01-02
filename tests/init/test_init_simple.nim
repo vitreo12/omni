@@ -23,9 +23,7 @@
 import unittest
 import ../../omni_lang/omni_lang
 import ../utils/init_utils
-#import macros
 
-#expandMacros:
 init:
   a float = 0.0
   b = 1.0
@@ -45,8 +43,6 @@ suite "init: functions and templates exist":
     check (declared(a))
     check (declared(b))
     check (declared(c))
-    check (declared(CONST1))
-    check (declared(CONST2))
 
   test "Omni_UGen have correct fields":
     check (declared(Omni_UGen))

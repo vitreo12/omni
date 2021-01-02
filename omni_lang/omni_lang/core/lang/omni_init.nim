@@ -30,15 +30,16 @@ macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
 
     #Only return the type def, this means, just return the Omni_UGen declaration.
     #This is the last statement in the code_block
-    result.add(code_block[^1])
+    result.add(code_block[3])
     
-    #Also, look for the := aliases declared by the user (these are templates)
-    #This will allow to have them declared also for the sample block, is they are declared in init
-    let user_code_block = code_block[0]
+    #Look for user-defined aliases (:=) inside user's code block.
+    let user_code_block = code_block[2]
     for statement in user_code_block:
         let statement_kind = statement.kind
         if statement_kind == nnkTemplateDef:
-            result.add(statement) 
+            result.add(statement)
+
+    #error repr result
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
@@ -106,10 +107,10 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         var_declarations : seq[NimNode]
 
         templates_for_perform_var_declarations     = nnkStmtList.newTree()
-        templates_for_init_var_declarations = nnkStmtList.newTree()
-        templates_for_init_let_declarations = nnkStmtList.newTree()
-        omni_perform_build_names_table_static_stmt      = nnkStmtList.newTree()
-        omni_perform_build_names_table_static           = nnkStaticStmt.newTree(
+        templates_for_init_var_declarations        = nnkStmtList.newTree()
+        templates_for_init_let_declarations        = nnkStmtList.newTree()
+        omni_perform_build_names_table_static_stmt = nnkStmtList.newTree()
+        omni_perform_build_names_table_static      = nnkStaticStmt.newTree(
             omni_perform_build_names_table_static_stmt
         )
 
@@ -365,9 +366,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     
     #Prepend to the code block the declaration of the templates for name mangling, in order for the typed block in the "omni_execute_build_statement_and_create_ugen_obj" macro to correctly mangle the "_var" and "_let" named variables, before sending the result to the "build" macro
     let code_block_with_var_let_templates_and_call_to_build_macro = nnkStmtList.newTree(
-        code_block,
         templates_for_init_var_declarations,
         templates_for_init_let_declarations,
+        code_block,
         call_to_build_macro
     )
 
@@ -380,7 +381,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         #These are variables declared in build, they won't be renamed in perform
         `omni_perform_build_names_table_static`
 
-        #This only returns the Omni_UGen declaration to scope    
+        #This only returns the Omni_UGen declaration to scope, together with aliases (:= declarations) 
         omni_clenup_build_statement_scope(`code_block_with_var_let_templates_and_call_to_build_macro`)
 
         #This is just allocating memory, not running constructor
