@@ -28,12 +28,17 @@ from omni_io import omni_params_names_list, omni_params_defaults_list, omni_buff
 macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
     result = nnkStmtList.newTree()
 
-    #Remove everything that is not a type def. 
-    #This means, just leave the Omni_UGen declaration
-    for statement in code_block:
+    #Only return the type def, this means, just return the Omni_UGen declaration.
+    #This is the last statement in the code_block
+    result.add(code_block[^1])
+    
+    #Also, look for the := aliases declared by the user (these are templates)
+    #This will allow to have them declared also for the sample block, is they are declared in init
+    let user_code_block = code_block[0]
+    for statement in user_code_block:
         let statement_kind = statement.kind
-        if statement_kind == nnkTypeSection:
-            result.add(statement)
+        if statement_kind == nnkTemplateDef:
+            result.add(statement) 
 
 #the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
 #in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)

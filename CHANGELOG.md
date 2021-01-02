@@ -30,6 +30,21 @@
 
 4) Introducing `buffers`:
 
+5) Introducing `:=`:
+    
+    ```nim
+    struct Something:
+        data Data
+
+    init:
+        something = Something(Data())
+
+    sample:
+        bubu := something.data
+        out1 = bubu[0]
+        bubu[0] = in1
+    ```
+
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS
