@@ -65,8 +65,16 @@ proc loop_unroll(code_block : NimNode, num : NimNode, index : NimNode) : NimNode
         
 proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
     if loop_block.kind == nnkCall:
+        #loop: ... infinite loop
+        if loop_block.len == 2:
+            let code_block = loop_block[1]
+            return nnkWhileStmt.newTree(
+                newIdentNode("true"),
+                code_block
+            )
+
         #loop(4, i)
-        if loop_block.len == 4:
+        elif loop_block.len == 4:
             let 
                 num = loop_block[1]
                 num_kind = num.kind

@@ -30,7 +30,7 @@
 
 4) Introducing `buffers`:
 
-5) Introducing `:=`:
+5) Introducing `:=` for aliases:
     
     ```nim
     struct Something:
@@ -38,11 +38,19 @@
 
     init:
         something = Something(Data())
+        bubu := something.data
 
     sample:
-        bubu := something.data
         out1 = bubu[0]
         bubu[0] = in1
+    ```
+
+6) `loop` now supports infinite loops:
+
+    ```nim
+    init:
+        loop:
+            print "hanging forever"
     ```
 
 ## 0.2.3
