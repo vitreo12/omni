@@ -77,7 +77,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
 
     #Check GcMem. --warningAsError doesn't work correctly, as it would print error even when there is not!
     if msg.contains("GcMem"):
-        printError("Trying to allocate memory through Nim's GC. This is not allowed in Omni. Use 'Data' for all your allocations.")
+        printError("Trying to allocate memory through Nim's Garbage Collector. This is not allowed in Omni. Use 'Data' for all your allocations.")
         return true
 
     return false
@@ -291,9 +291,9 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
-                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader)
+                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader, exportIO)
             else:
-                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader) > 0:
+                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader, exportIO) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -305,7 +305,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader) > 0:
+                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, define, importModule, performBits, exportHeader, exportIO) > 0:
                             return 1
 
         else:
