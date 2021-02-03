@@ -33,8 +33,11 @@ let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020 Francesco Cameli"
 #Path to omni_lang
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
-#Extension for static lib (should be .lib for Windows, but .a works aswell)
-const static_lib_extension = ".a"
+#Extension for static lib
+when defined(Linux) or defined(MacOSX) or defined(MacOS):
+    const static_lib_extension = ".a"
+when defined(Windows):
+    const static_lib_extension = ".lib"
 
 #Extensions for shared lib
 when defined(Linux):
@@ -80,7 +83,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
     return false
 
 #Actual compiler
-proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32/64", exportHeader : bool = true) : int =
+proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[],  performBits : string = "32/64", exportHeader : bool = true, exportIO : bool = false) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -133,7 +136,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         lib_nim = "staticLib"
         lib_extension = static_lib_extension
     else:
-        printError("Invalid -lib argument: \"" & $lib & "\". Use \"shared\" to build a shared library, or \"static\" to build a static one.")
+        printError("Invalid --lib argument: \"" & $lib & "\". Use 'shared' to build a shared library, or 'static' to build a static one.")
         return 1
 
     #Set output name:
@@ -221,6 +224,9 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     if import_omni_lang:
         compile_command.add(" --import:omni_lang")
 
+    if exportIO:
+        compile_command.add(" -d:omni_write_io -d:tempDir:\"" & $outDirFullPath & "\"")
+
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
 
@@ -242,7 +248,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     
     #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
     when not defined(Windows):
-        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")               # -q == silent output
+        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")            # -q == silent output
     else:
         let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
         if fileExists("$null"):
@@ -271,7 +277,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true) : int =
+proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler,  define : seq[string] = @[], importModule  : seq[string] = @[], performBits : string = "32/64", exportHeader : bool = true, exportIO : bool = false) : int =
     #no files provided, print --version
     if files.len == 0:
         echo version_flag
@@ -318,7 +324,9 @@ dispatch(
     short={
         "version" : 'v',
         "outName" : 'n',
-        "performBits" : 'b'
+        "performBits" : 'b',
+        "importModule" : 'm',
+        "exportIO" : 'i'
     },
     
     help={
@@ -330,6 +338,7 @@ dispatch(
         "define" : "Define additional symbols for the intermediate nim compiler.",
         "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
         "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are \"32\", \"64\" or \"32/64\".",
-        "exportHeader" : "Export the \"omni.h\" header file together with the compiled lib."
+        "exportHeader" : "Export the \"omni.h\" header file together with the compiled lib.",
+        "exportIO" : "Export the \"omni_io.txt\" file together with the compiled lib."
     }
 )

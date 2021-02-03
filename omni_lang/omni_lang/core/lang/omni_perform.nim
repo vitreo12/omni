@@ -191,24 +191,41 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
                 omni_unlock_buffers()
 
     #Write IO infos to txt file... This should be fine here in perform, as any omni file must provide a perform block to be compiled.
-    when defined(omni_write_IO):
+    when defined(omni_write_io):
         import os
         
         #static == compile time block
         static:
+            #ins
             var text = $omni_inputs & "\n" & $omni_inputs_names_const & "\n" 
-            
-            for index, default_val in omni_input_defaults_const:
-                if index == (omni_inputs - 1):
+            for index, default_val in omni_inputs_defaults_const:
+                if omni_inputs == 0 or index == (omni_inputs - 1):
                     text.add($default_val & "\n") 
                     break
                 text.add($default_val & ",")
 
+            #params
+            text.add($omni_params & "\n" & $omni_params_names_const & "\n")
+            for index, default_val in omni_params_defaults_const:
+                if omni_params == 0 or index == (omni_params - 1):
+                    text.add($default_val & "\n") 
+                    break
+                text.add($default_val & ",")
+
+            #buffers
+            text.add($omni_buffers & "\n" & $omni_buffers_names_const & "\n")
+            for index, default_val in omni_buffers_defaults_const:
+                if omni_buffers == 0 or index == (omni_buffers - 1):
+                    text.add($default_val & "\n") 
+                    break
+                text.add($default_val & ",")
+
+            #outs
             text.add($omni_outputs & "\n" & omni_outputs_names_const)
 
             #this has been passed in as command argument with -d:tempDir
             let fullPathToNewFolder = getTempDir()
-            writeFile($fullPathToNewFolder & "omni_IO.txt", text)
+            writeFile($fullPathToNewFolder & "omni_io.txt", text)
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "omni_ugen".
 template perform*(code_block : untyped) {.dirty.} =

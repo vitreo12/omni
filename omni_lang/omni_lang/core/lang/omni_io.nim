@@ -32,7 +32,9 @@ const
 const omni_accepted_chars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 #default name when not specifying default buffer value
-const OMNI_DEFAULT_NIL_BUFFER = "OMNI_DEFAULT_NIL_BUFFER"
+const
+    OMNI_NIL = "NIL" 
+    OMNI_DEFAULT_NIL_BUFFER = "NIL"
 
 #Compile time arrays for params code generation
 var
@@ -1511,6 +1513,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
         omni_params_generate_unpack_templates = omni_params_generate_unpack_templates()
 
     if zero_params:
+        params_names_node = newLit(OMNI_NIL)
         params_number_VAL = 0
     
     return quote do:
@@ -1874,7 +1877,20 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                 newEmptyNode(),
                 defaults_array_bracket
             )
-        ) 
+        )
+
+        defaults_array_const = nnkConstSection.newTree(
+            nnkConstDef.newTree(
+                nnkPragmaExpr.newTree(
+                    newIdentNode("omni_buffers_defaults_const"),
+                    nnkPragma.newTree(
+                        newIdentNode("inject")
+                    )
+                ),
+                newEmptyNode(),
+                defaults_array_bracket
+            )
+        )
         
         generate_defaults_block = nnkStmtList.newTree()
         generate_defaults = nnkTemplateDef.newTree(
@@ -1893,6 +1909,7 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
 
     result = nnkStmtList.newTree(
         defaults_array_let,
+        defaults_array_const,
         generate_defaults
     )
 
@@ -1915,7 +1932,11 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                     )
                 )
     else:
-        defaults_array_let[0][^1] = newLit("")
+        let nil_array = nnkBracket.newTree(
+            newLit(OMNI_NIL)
+        )
+        defaults_array_let[0][^1] = nil_array
+        defaults_array_const[0][^1] = nil_array
         generate_defaults[^1] = nnkStmtList.newTree(
             nnkDiscardStmt.newTree(
                 newEmptyNode()
@@ -2251,7 +2272,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                         error("buffers: Buffer '" & $buffer_name & "' must have a string literal as default value.")
 
                     let buffer_default_name = buffer_default.strVal()
-                    if buffer_default_name == OMNI_DEFAULT_NIL_BUFFER:
+                    if buffer_default_name == OMNI_DEFAULT_NIL_BUFFER or buffer_default_name == OMNI_NIL:
                         error("buffers: the '" & OMNI_DEFAULT_NIL_BUFFER & "' name is reserved")
                     buffer_defaults.add(buffer_default_name)
 
@@ -2284,6 +2305,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
 
     if zero_buffers:
         buffers_number_VAL = 0
+        buffers_names_node = newLit(OMNI_NIL)
         when_declared_buffer_interface = nnkDiscardStmt.newTree(
             newEmptyNode()
         )
@@ -2301,7 +2323,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("buffers: no \'Buffer\' interface provided. This must come from an Omni wrapper.")
+                            newLit("buffers: no 'Buffer' interface provided. This must come from an Omni wrapper.")
                         )
                     )
                 )
@@ -2311,7 +2333,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     return quote do:
         when not declared(omni_declared_buffers):
             #Check buffer interface
-            #`when_declared_buffer_interface`
+            `when_declared_buffer_interface`
             
             #declare global vars
             const 

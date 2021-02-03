@@ -66,6 +66,10 @@
         return 0.5
     ```
 
+8) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
+
+9) CLI's `--importModule` flag is now shortened with `-m`.
+
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS
