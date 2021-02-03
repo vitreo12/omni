@@ -53,6 +53,19 @@
             print "hanging forever"
     ```
 
+7) `def` can now be used without arguments, if needed:
+
+    ```nim
+    def something:
+        return 0.5
+
+    def something2 float:
+        return 0.5
+
+    def something3 float:
+        return 0.5
+    ```
+
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS

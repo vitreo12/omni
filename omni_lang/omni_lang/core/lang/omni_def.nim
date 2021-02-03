@@ -24,6 +24,9 @@ import macros, strutils, omni_invalid
 
 macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
     var 
+        function_signature = function_signature #allows modification in case of "def a:" without explicit call
+        function_signature_kind = function_signature.kind
+
         proc_and_template = nnkStmtList.newTree()
 
         proc_def = nnkProcDef.newTree()
@@ -41,9 +44,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         proc_omni_def_export : NimNode
 
         generics : seq[NimNode]
-        checkValidTypes = nnkStmtList.newTree()  
-    
-    let function_signature_kind = function_signature.kind
+        checkValidTypes = nnkStmtList.newTree()   
 
     #module where def is defined
     let current_module = omni_current_module_def.owner
@@ -51,6 +52,13 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
     if current_module.kind != nnkSym and current_module.kind != nnkIdent:
         error ("def " & repr(function_signature) & ": can't retrieve its current module")
 
+    #def a:
+    if function_signature_kind == nnkIdent:
+        function_signature = nnkCall.newTree(
+            function_signature
+        )
+        function_signature_kind = nnkCall
+    
     if function_signature_kind == nnkCommand or function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall or function_signature_kind == nnkInfix:
         
         var name_with_args : NimNode
@@ -75,10 +83,21 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             name_with_args   = function_signature[1]
             proc_return_type = function_signature[2]
 
-        let first_statement = name_with_args[0]
-        
+        var first_statement : NimNode
+
+        #support for def a: instead of def a():
+        if name_with_args.kind == nnkIdent:
+            first_statement = name_with_args
+            name_with_args  = nnkCall.newTree(
+                name_with_args
+            )
+        else:
+            first_statement = name_with_args[0]
+
+        let first_statement_kind = first_statement.kind
+
         #Generics
-        if first_statement.kind == nnkBracketExpr:
+        if first_statement_kind == nnkBracketExpr:
             #template_proc_call = nnkBracketExpr.newTree()
 
             for index, entry in first_statement.pairs():
@@ -104,7 +123,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 #template_proc_call.add(entry)
         
         #No Generics
-        elif first_statement.kind == nnkIdent:
+        elif first_statement_kind == nnkIdent:
             proc_name = first_statement
 
         #Perhaps at least support `+` in the future (nnkAccQuoted)
@@ -116,10 +135,10 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
         for invalid_ends_with in omni_invalid_ends_with:
             if proc_name_str.endsWith(invalid_ends_with):
-                error("def names can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
+                error("def: Can't define a def that ends with '" & invalid_ends_with & "': it's reserved for internal use.")
 
         #Formal params
-        proc_formal_params.add(proc_return_type)    
+        proc_formal_params.add(proc_return_type) 
 
         #Add template and proc names
         template_name = proc_name
@@ -407,10 +426,11 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         
         #echo astGenRepr proc_def
         #echo repr proc_def 
-        #error repr template_def       
+        #error repr template_def     
+        #error repr proc_def  
              
     else:
-        error "Invalid syntax for def " & repr(function_signature)
+        error "def: Invalid syntax for 'def " & repr(function_signature) & "'"
 
     #This dummy stuff is needed for nim to catch all the references to defs when using modules... Weird bug
     #Otherwise, proc won't overload and import on modules won't work correctly! Trust me, don't delete this!!!
