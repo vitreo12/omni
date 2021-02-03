@@ -37,12 +37,10 @@ suite "ins: number":
   #Check empty name
   test "input names":
     check (omni_inputs_names_const == "in1,in2,in3,in4,in5")
-    check (omni_inputs_names_let == "in1,in2,in3,in4,in5") 
 
   #Check default values
   test "default values":
     check (omni_inputs_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
-    check (omni_inputs_defaults_let   == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
 
   #Check that the templates exist
   test "templates exist":

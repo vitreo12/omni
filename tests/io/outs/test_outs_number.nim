@@ -34,7 +34,6 @@ suite "outs: number":
   #Check empty name
   test "output names":
     check (omni_outputs_names_const == "out1,out2,out3,out4,out5")
-    check (omni_outputs_names_let == "out1,out2,out3,out4,out5") 
 
   #Check C exported functions
   test "exported C functions":

@@ -42,12 +42,10 @@ suite "ins: names":
   #Check empty name
   test "input names":
     check (omni_inputs_names_const == "freq,phase,amp,mul,add")
-    check (omni_inputs_names_let == "freq,phase,amp,mul,add") 
 
   #Check default values
   test "default values":
     check (omni_inputs_defaults_const == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
-    check (omni_inputs_defaults_let   == [0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32, 0.0'f32])
 
   #Check that the templates exist
   test "templates exist":

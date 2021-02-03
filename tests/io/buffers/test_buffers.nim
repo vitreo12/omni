@@ -24,23 +24,21 @@ import unittest
 import ../../../omni_lang/omni_lang
 
 #Have the call here because it can export stuff, needs to be top level
-outs 5:
-  "freq"
-  "phase"
-  "amp"
-  "mul"
-  "add"
+buffers 2:
+    buf1 "something"
+    buf2 "somethingElse"
 
-suite "outs: names":
-  #Check num of inputs
-  test "number of outputs":
-    check (omni_outputs == 5)
+suite "buffers":
+  test "number of buffers":
+    check (omni_buffers == 2)
 
-  #Check empty name
-  test "output names":
-    check (omni_outputs_names_const == "freq,phase,amp,mul,add")
+  test "input names":
+    check (omni_buffers_names_const == "buf1,buf2")
 
-  #Check C exported functions
+  test "default values":
+    check (omni_buffers_defaults_const == ["something", "somethingElse"])
+  
   test "exported C functions":
-    check (Omni_UGenOutputs() == int32(5))
-    check (cast[cstring](Omni_UGenOutputsNames()) == "freq,phase,amp,mul,add")
+    check (Omni_UGenBuffers() == int32(2))
+    check (cast[cstring](Omni_UGenBuffersNames()) == "buf1,buf2")
+    check (cast[cstring](Omni_UGenBuffersDefaults()) == "something,somethingElse")

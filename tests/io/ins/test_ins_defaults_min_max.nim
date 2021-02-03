@@ -42,12 +42,10 @@ suite "ins: defaults + min/max":
   #Check empty name
   test "input names":
     check (omni_inputs_names_const == "in1,in2,in3,in4,in5")
-    check (omni_inputs_names_let == "in1,in2,in3,in4,in5") 
 
   #Check default values
   test "default values":
     check (omni_inputs_defaults_const == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
-    check (omni_inputs_defaults_let   == [440.0'f32, 0.1'f32, 0.2'f32, 0.3'f32, 0.4'f32])
 
   #Check min values
   test "min/max values":
