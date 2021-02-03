@@ -434,19 +434,9 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
 
     var 
         default_min_max_const_section = nnkConstSection.newTree()
-        defaults_array_let_section = nnkLetSection.newTree()
         defaults_array_const = nnkConstDef.newTree(
             nnkPragmaExpr.newTree(
                 newIdentNode("omni_" & inputs_or_params & "_defaults_const"),
-                nnkPragma.newTree(
-                    newIdentNode("inject")
-                )
-            ),
-            newEmptyNode()
-        )
-        defaults_array_let = nnkIdentDefs.newTree(
-            nnkPragmaExpr.newTree(
-                newIdentNode("omni_" & inputs_or_params & "_defaults_let"),
                 nnkPragma.newTree(
                     newIdentNode("inject")
                 )
@@ -505,12 +495,8 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
     defaults_array_const.add(defaults_array_bracket)
     default_min_max_const_section.add(defaults_array_const)
 
-    defaults_array_let.add(defaults_array_bracket)
-    defaults_array_let_section.add(defaults_array_let)
-
     #Declare min max as const, the array as both const (for static IO at the end of perform) and let (so i can get its memory address for Omni_UGenDefaults())
     result.add(default_min_max_const_section)
-    result.add(defaults_array_let_section)
 
 macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     var 
@@ -670,10 +656,8 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     return quote do:
         when not declared(omni_declared_inputs):
             const 
-                omni_inputs            {.inject.} = `ins_number_VAL`  
-                omni_inputs_names_const {.inject.} = `ins_names_node`  #Used for IO.txt
-
-            let omni_inputs_names_let   {.inject.} = `ins_names_node`  #Used as global in C export
+                omni_inputs             {.inject.} = `ins_number_VAL`  
+                omni_inputs_names_const {.inject.} = `ins_names_node`
 
             #compile time variable if ins are defined
             let omni_declared_inputs {.inject, compileTime.} = true
@@ -700,10 +684,10 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                 return int32(omni_inputs)
 
             proc Omni_UGenInputsNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_inputs_names_let[0]))
+                return cast[ptr cchar](omni_inputs_names_const)
 
             proc Omni_UGenInputsDefaults() : ptr cfloat {.exportc: "Omni_UGenInputDefaults", dynlib.} =
-                return cast[ptr cfloat](omni_inputs_defaults_let.unsafeAddr)
+                return cast[ptr cfloat](omni_inputs_defaults_const.unsafeAddr)
         else:
             {.fatal: "ins: Already defined once.".}
 
@@ -822,10 +806,8 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
         when not declared(omni_declared_outputs):
             const 
                 omni_outputs             {.inject.} = `outs_number_VAL` 
-                omni_outputs_names_const {.inject.} = `outs_names_node` #Used for IO.txt
+                omni_outputs_names_const {.inject.} = `outs_names_node`
             
-            let omni_outputs_names_let   {.inject.} = `outs_names_node` #Used as global in C export
-
             #compile time variable if outs are defined
             let omni_declared_outputs {.inject, compileTime.} = true
             
@@ -836,7 +818,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
                 return int32(omni_outputs)
 
             proc Omni_UGenOutputsNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_outputs_names_let[0]))
+                return cast[ptr cchar](omni_outputs_names_const)
         else:
             {.fatal: "outs: Already defined once.".}
 
@@ -1144,20 +1126,6 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
 #Returns a template that unpacks params for perform block
 proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
     var 
-        init_block = nnkStmtList.newTree()
-        omni_unpack_params_init = nnkTemplateDef.newTree(
-            newIdentNode("omni_unpack_params_init"),
-            newEmptyNode(),
-            newEmptyNode(),
-            nnkFormalParams.newTree(
-                newIdentNode("untyped")
-            ),
-            nnkPragma.newTree(
-                newIdentNode("dirty")
-            ),
-            newEmptyNode(),
-            init_block
-        )
         pre_init_block = nnkStmtList.newTree()
         omni_unpack_params_pre_init = nnkTemplateDef.newTree(
             newIdentNode("omni_unpack_params_pre_init"),
@@ -1171,6 +1139,20 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
             ),
             newEmptyNode(),
             pre_init_block
+        )
+        init_block = nnkStmtList.newTree()
+        omni_unpack_params_init = nnkTemplateDef.newTree(
+            newIdentNode("omni_unpack_params_init"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("untyped")
+            ),
+            nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            newEmptyNode(),
+            init_block
         )
         perform_block = nnkStmtList.newTree()
         omni_unpack_params_perform = nnkTemplateDef.newTree(
@@ -1188,8 +1170,8 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
         )
 
     result = nnkStmtList.newTree(
-        omni_unpack_params_init,
         omni_unpack_params_pre_init,
+        omni_unpack_params_init,
         omni_unpack_params_perform
     )
 
@@ -1259,7 +1241,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                         ),
                         newLit(0)
                     ),
-                    newLit(
+                    newFloatLitNode(
                         omni_params_defaults_list[i]
                     )
                 ),
@@ -1272,7 +1254,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                         ),
                         newLit(1)
                     ),
-                    newLit(
+                    newFloatLitNode(
                         omni_params_defaults_list[i]
                     )
                 ),
@@ -1297,7 +1279,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                     nnkIdentDefs.newTree(
                         newIdentNode(param_name),
                         newEmptyNode(),
-                        newLit(0)
+                        newFloatLitNode(0)
                     )
                 )
             )
@@ -1308,7 +1290,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                     nnkIdentDefs.newTree(
                         newIdentNode(param_name),
                         newEmptyNode(),
-                        newLit(0.0)
+                        newFloatLitNode(0.0)
                     )
                 )
             )
@@ -1520,9 +1502,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
         when not declared(omni_declared_params):
             const 
                 omni_params             {.inject.}  = `params_number_VAL`  
-                omni_params_names_const {.inject.}  = `params_names_node`  #Used for IO.txt 
- 
-            let omni_params_names_let   {.inject.}  = `params_names_node`  #Used as global in C export
+                omni_params_names_const {.inject.}  = `params_names_node` 
 
             #compile time variable if params are defined
             let omni_declared_params {.inject, compileTime.} = true
@@ -1541,10 +1521,10 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                 return int32(omni_params)
 
             proc Omni_UGenParamsNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_params_names_let[0]))
+                return cast[ptr cchar](omni_params_names_const)
 
             proc Omni_UGenParamsDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib.} =
-                return cast[ptr cfloat](omni_params_defaults_let.unsafeAddr)
+                return cast[ptr cfloat](omni_params_defaults_const.unsafeAddr)
         else:
             {.fatal: "params: Already defined once.".}
 
@@ -1866,19 +1846,8 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
 proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
     var
         defaults_array_bracket = nnkBracket.newTree()
-        defaults_array_let = nnkLetSection.newTree(
-            nnkIdentDefs.newTree(
-                nnkPragmaExpr.newTree(
-                    newIdentNode("omni_buffers_defaults_let"),
-                    nnkPragma.newTree(
-                        newIdentNode("inject")
-                    )
-                ),
-                newEmptyNode(),
-                defaults_array_bracket
-            )
-        )
-
+        defaults_array_const_unpacked_str : string
+        
         defaults_array_const = nnkConstSection.newTree(
             nnkConstDef.newTree(
                 nnkPragmaExpr.newTree(
@@ -1889,6 +1858,17 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                 ),
                 newEmptyNode(),
                 defaults_array_bracket
+            ), 
+
+            nnkConstDef.newTree(
+                nnkPragmaExpr.newTree(
+                    newIdentNode("omni_buffers_defaults_const_unpacked"),
+                    nnkPragma.newTree(
+                        newIdentNode("inject")
+                    )
+                ),
+                newEmptyNode(),
+                newLit("") #this gets subbed at end of function
             )
         )
         
@@ -1908,7 +1888,6 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
         )
 
     result = nnkStmtList.newTree(
-        defaults_array_let,
         defaults_array_const,
         generate_defaults
     )
@@ -1920,6 +1899,7 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                 buffer_default_lit = newLit(buffer_default)
 
             defaults_array_bracket.add(buffer_default_lit)
+            defaults_array_const_unpacked_str.add(buffer_default & ",")
 
             if buffer_default != OMNI_DEFAULT_NIL_BUFFER:
                 let omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
@@ -1931,17 +1911,23 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                         buffer_default_lit
                     )
                 )
+
+        # remove trailing ,
+        defaults_array_const_unpacked_str.removeSuffix(',')
     else:
+        defaults_array_const_unpacked_str = OMNI_NIL
         let nil_array = nnkBracket.newTree(
             newLit(OMNI_NIL)
         )
-        defaults_array_let[0][^1] = nil_array
         defaults_array_const[0][^1] = nil_array
         generate_defaults[^1] = nnkStmtList.newTree(
             nnkDiscardStmt.newTree(
                 newEmptyNode()
             )
         )
+
+    # replace the defaults_array_const_unpacked_str to the decl
+    defaults_array_const[1][^1] = newLit(defaults_array_const_unpacked_str)
 
     #error repr result
 
@@ -2333,14 +2319,12 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     return quote do:
         when not declared(omni_declared_buffers):
             #Check buffer interface
-            `when_declared_buffer_interface`
+            #`when_declared_buffer_interface`
             
             #declare global vars
             const 
                 omni_buffers             {.inject.}  = `buffers_number_VAL`  
                 omni_buffers_names_const {.inject.}  = `buffers_names_node`  #Used for IO.txt 
-
-            let omni_buffers_names_let   {.inject.}  = `buffers_names_node`  #Used as global exported to C
 
             #compile time variable if buffers are defined
             let omni_declared_buffers {.inject, compileTime.} = true
@@ -2363,10 +2347,10 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                 return int32(omni_buffers)
 
             proc Omni_UGenBuffersNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_buffers_names_let[0]))
+                return cast[ptr cchar](omni_buffers_names_const)
             
             proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib.} =
-                return cast[ptr cchar](unsafeAddr(omni_buffers_defaults_let[0]))
+                return cast[ptr cchar](omni_buffers_defaults_const_unpacked) #used the unpacked version (single string)
         else:
             {.fatal: "buffers: Already defined once.".}
 
