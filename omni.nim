@@ -330,15 +330,15 @@ dispatch(
     },
     
     help={
-        "outName" : "Name for the output library. Defaults to the name of the input file(s) with \"lib\" prepended (e.g. \"OmniSaw.omni\" -> \"libOmniSaw" & $shared_lib_extension & "\"). This flag doesn't work for multiple files or directories.",
-        "outDir" : "Output folder. Defaults to the one in of the omni file(s).",
+        "outName" : "Name for the output library. It defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This flag doesn't work for directories or multiple files.",
+        "outDir" : "Output folder. Defaults to the one in of the Omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
-        "compiler" : "Specify a different C backend compiler to use. Omni supports all of nim's C supported compilers.",
-        "define" : "Define additional symbols for the intermediate nim compiler.",
-        "importModule" : "Import additional nim modules to be compiled with the omni file(s).",
-        "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are \"32\", \"64\" or \"32/64\".",
-        "exportHeader" : "Export the \"omni.h\" header file together with the compiled lib.",
-        "exportIO" : "Export the \"omni_io.txt\" file together with the compiled lib."
+        "compiler" : "Specify a different C backend compiler to use. Omni supports all of Nim's C supported compilers.",
+        "define" : "Define additional symbols for the intermediate Nim compiler.",
+        "importModule" : "Import additional Nim modules to be compiled with the Omni file(s).",
+        "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are '32', '64' or '32/64'.",
+        "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
+        "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib."
     }
 )
