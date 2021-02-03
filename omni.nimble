@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-version       = "0.2.3"
+version       = "0.3.0"
 author        = "Francesco Cameli"
 description   = "omni is a DSL for low-level audio programming."
 license       = "MIT"
