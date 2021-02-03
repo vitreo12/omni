@@ -337,11 +337,11 @@ dispatch(
         "outDir" : "Output folder. Defaults to the one in of the Omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
-        "compiler" : "Specify a different C backend compiler to use. Omni supports all of Nim's C supported compilers.",
+        "compiler" : "Select a different C backend compiler to use. Omni supports all of Nim's C supported compilers.",
+        "performBits" : "Set precision for ins and outs in the init and perform blocks. Accepted values are '32', '64' or '32/64'.",
+        "wrapper" : "Specify an Omni wrapper to use.",
         "define" : "Define additional symbols for the intermediate Nim compiler.",
         "importModule" : "Import additional Nim modules to be compiled with the Omni file(s).",
-        "performBits" : "Specify precision for ins and outs in the init and perform blocks. Accepted values are '32', '64' or '32/64'.",
-        "wrapper" : "Specify an Omni wrapper to use.",
         "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
         "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib."
     }
