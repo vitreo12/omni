@@ -214,14 +214,13 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     else:
         compile_command.add(" -d:omni_perform32 -d:omni_perform64")
 
-    #Check if a wrapper has been specified, otherwise import omni_lang
-    var import_omni_lang = true
+    #Import omni_lang first
+    compile_command.add(" --import:omni_lang")
+    
+    #Check if a wrapper has been specified. If it is, import it
     if wrapper.isEmptyOrWhitespace.not:
-        import_omni_lang = false
         compile_command.add(" --import:\"" & wrapper & "\"")
-    if import_omni_lang:
-        compile_command.add(" --import:omni_lang")
-
+    
     #Append additional imports
     for new_importModule in importModule:
         compile_command.add(" --import:\"" & $new_importModule & "\"")
