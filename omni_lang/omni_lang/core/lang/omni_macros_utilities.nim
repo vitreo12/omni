@@ -29,6 +29,9 @@ import macros
 proc typed_to_untyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
     return parseStmt(code_block.repr())
 
+proc genSymUntyped*(str : string) : NimNode {.inline, compileTime.} =
+    return parseStmt(repr(genSym(ident=str)))[0]
+
 #Use it in place of expandMacros
 macro omni_debug_macros*(code : typed) =
     error $(code.toStrLit)

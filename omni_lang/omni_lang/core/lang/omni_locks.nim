@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import atomics
-export AtomicFlag # needed for Omni_UGen
+export atomics
 
 template acquire*(lock : var AtomicFlag) : bool =
     not(lock.testAndSet(moAcquire))
