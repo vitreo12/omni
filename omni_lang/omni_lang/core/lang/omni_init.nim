@@ -556,6 +556,14 @@ macro init*(code_block : untyped) : untyped =
         when not declared(omni_declared_outputs):
             outs 1
 
+        #This can be defined in wrappers
+        when declared(omni_params_post_hook):
+            omni_params_post_hook()
+
+        #This can be defined in wrappers
+        when declared(omni_buffers_post_hook):
+            omni_buffers_post_hook()
+
         #Use to check variable names in perform block, to check if they are the same as declared vars from init
         var omni_perform_build_names_table {.inject, compileTime.} : seq[string]
             
