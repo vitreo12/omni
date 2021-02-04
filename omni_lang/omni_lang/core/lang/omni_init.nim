@@ -451,7 +451,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 #Unpack params and set default values
                 omni_unpack_params_init()
 
-                #Unpack and init buffers
+                #Unpack buffers and set default values
                 omni_unpack_buffers_init()
                 omni_set_buffers_defaults()
 
@@ -513,7 +513,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 #Unpack params and set default values
                 omni_unpack_params_init()
 
-                #Unpack and init buffers
+                #Unpack buffers and set default values
                 omni_unpack_buffers_init()
                 omni_set_buffers_defaults()
 

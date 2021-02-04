@@ -42,6 +42,8 @@ export omni_auto_mem
 #Buffer
 import omni_lang/core/lib/buffer/omni_buffer
 export omni_buffer
+import omni_lang/core/lib/buffer/omni_buffer_interface
+export omni_buffer_interface
 
 #Data
 import omni_lang/core/lib/data/omni_data
