@@ -1618,7 +1618,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
     var 
         final_template_block = nnkStmtList.newTree()
         final_template = nnkTemplateDef.newTree(
-            newIdentNode("omni_generate_buffers_procs"),
+            newIdentNode("omni_generate_buffers_set_procs"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(

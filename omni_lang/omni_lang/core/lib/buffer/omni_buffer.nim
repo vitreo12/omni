@@ -150,7 +150,7 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.compileTime.} =
 
     error astGenRepr result
 
-#This is quite an overhead, as it gets compiled even when not using Buffer. Find a way to not compile it in that case.
+#This is quite an overhead
 macro omniBufferInterface*(code_block : untyped) : untyped =
     if code_block.kind != nnkStmtList:
         error "omniBufferInterface: Invalid syntax. It must be a statement list."

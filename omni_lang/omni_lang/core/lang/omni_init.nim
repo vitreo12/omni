@@ -416,6 +416,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
         #Generate the proc to find all datas and structs in Omni_UGen
         omni_find_structs_and_datas(Omni_UGen, true)
+
+        #Generate the UGen_BufferSet procs
+        omni_generate_buffers_set_procs()
         
         when defined(omni_perform32):
             proc Omni_UGenInit32*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cfloat, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
