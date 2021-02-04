@@ -548,7 +548,7 @@ macro init*(code_block : untyped) : untyped =
             ins 1
 
         when not declared(omni_declared_params):
-            omni_io.params 0 #not to be confused with macros' params
+            omni_lang.omni_io.params 0 #not to be confused with macros' params
 
         when not declared(omni_declared_buffers):
             buffers 0
