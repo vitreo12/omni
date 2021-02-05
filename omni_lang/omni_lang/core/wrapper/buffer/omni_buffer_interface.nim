@@ -20,25 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import omni_lang
 import omni_read_value_buffer, macros
-
-#[
-omniBufferInterface:
-    struct:
-    
-    init:
-
-    update:
-
-    lock:
-
-    unlock:
-
-    getter:
-
-    setter:
-]#
 
 proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compileTime.} =
     var 
@@ -100,7 +82,7 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
 
     #error astGenRepr result
 
-proc declare_proc(name : string, statement_block : NimNode) : NimNode {.inline, compileTime.} =
+proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void") : NimNode {.inline, compileTime.} =
     return nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
@@ -109,7 +91,7 @@ proc declare_proc(name : string, statement_block : NimNode) : NimNode {.inline, 
         newEmptyNode(),
         newEmptyNode(),
         nnkFormalParams.newTree(
-            newIdentNode("void"),
+            newIdentNode(return_type),
             nnkIdentDefs.newTree(
                 newIdentNode("buffer"),
                 newIdentNode("Buffer"),
@@ -306,13 +288,13 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
             unlock = declare_proc("omni_unlock_buffer", statement_block)
 
         elif statement_name == "length" or statement_name == "len":
-            length = declare_proc("omni_get_length_buffer", statement_block)
+            length = declare_proc("omni_get_length_buffer", statement_block, "int")
                 
         elif statement_name == "samplerate" or statement_name == "sampleRate":
-            samplerate = declare_proc("omni_get_samplerate_buffer", statement_block)
+            samplerate = declare_proc("omni_get_samplerate_buffer", statement_block, "float")
 
         elif statement_name == "channels" or statement_name == "chans":
-            channels = declare_proc("omni_get_channels_buffer", statement_block)
+            channels = declare_proc("omni_get_channels_buffer", statement_block, "int")
         
         elif statement_name == "getter":
             getter = nnkStmtList.newTree(
@@ -495,39 +477,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         channels,
         getter,
         setter,
-        #omni_read_value_buffer
+        omni_read_value_buffer
     )
 
-    error repr result
-
-omniBufferInterface:
-    struct:
-        fbufnum : float32
-
-    init:
-        buffer.fbufnum = -1e9
-        buffer.valid   = true
-
-    update:
-        discard
-
-    lock:
-        discard
-
-    unlock:
-        discard
-    
-    length:
-        discard
-
-    samplerate:
-        discard
-
-    channels:
-        discard
-
-    getter:
-        discard
-
-    setter:
-        discard
+    #error repr result

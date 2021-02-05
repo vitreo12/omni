@@ -2334,7 +2334,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     return quote do:
         when not declared(omni_declared_buffers):
             #Check buffer interface
-            #`when_declared_buffer_interface`
+            `when_declared_buffer_interface`
             
             #declare global vars
             const 

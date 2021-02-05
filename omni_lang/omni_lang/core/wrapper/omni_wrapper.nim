@@ -20,5 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+#Needed when importing this in a wrapper in order to retrieve 
+#omni_alloc, OmniAutoMem, Buffer_inherit, OmniCallType, stdlib functions (interp, etc...)
+import ../lib/alloc/omni_alloc
+import ../lib/auto_mem/omni_auto_mem
+import ../lib/buffer/omni_buffer
+import ../lib/stdlib/omni_stdlib
+import ../lang/omni_call_types
+export omni_alloc, omni_auto_mem, omni_buffer, omni_stdlib, omni_call_types
+
+#Buffer interface
 import buffer/omni_buffer_interface
 export omni_buffer_interface
