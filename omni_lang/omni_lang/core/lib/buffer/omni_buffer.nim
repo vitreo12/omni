@@ -29,6 +29,15 @@ type
     Buffer = ptr Buffer_inherit
     Buffer_omni_struct_ptr = Buffer
 
+#Allocate a new Buffer
+template omni_init_buffer*() : untyped {.dirty.} =
+    Buffer_omni_struct_new(
+        buffer_interface=buffer_interface,
+        omni_struct_type=Buffer_omni_struct_ptr, 
+        omni_auto_mem=omni_auto_mem, 
+        omni_call_type=omni_call_type
+    )
+
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
     omni_get_value_buffer(buffer, 0, int(i), omni_call_type)

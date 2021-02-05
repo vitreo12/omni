@@ -876,8 +876,8 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
             nnkFormalParams.newTree(
                 newIdentNode("void"),
             nnkIdentDefs.newTree(
-                newIdentNode("omni_ugen"),
-                newIdentNode("Omni_UGen"),
+                newIdentNode("omni_ugen_ptr"),
+                newIdentNode("pointer"),
                 newEmptyNode()
             ),
             nnkIdentDefs.newTree(
@@ -924,6 +924,17 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
             var 
                 omni_ugen_setparam_func_name = newIdentNode("Omni_UGenSetParam_" & param_name)
 
+                omni_ugen = nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode("omni_ugen"),
+                        newEmptyNode(),
+                        nnkCast.newTree(
+                            newIdentNode("Omni_UGen"),
+                            newIdentNode("omni_ugen_ptr")
+                        )
+                    )
+                )
+
                 set_param_spin = nnkCall.newTree(
                     nnkDotExpr.newTree(
                         nnkDotExpr.newTree(
@@ -935,6 +946,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 )
 
                 set_param_func_block = nnkStmtList.newTree(
+                    omni_ugen,
                     set_param_spin
                 )
 
@@ -945,8 +957,8 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                     nnkFormalParams.newTree(
                         newIdentNode("void"),
                         nnkIdentDefs.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("Omni_UGen"),
+                            newIdentNode("omni_ugen_ptr"),
+                            newIdentNode("pointer"),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
@@ -1094,7 +1106,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                     nnkStmtList.newTree(
                         nnkCall.newTree(
                             omni_ugen_setparam_func_name,
-                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_ugen_ptr"),
                             newIdentNode("val")
                         )
                     )
@@ -1105,7 +1117,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
             nnkElse.newTree(
                 nnkStmtList.newTree(
                     nnkCall.newTree(
-                        newIdentNode("omni_print"),
+                        newIdentNode("omni_print_str"),
                         newLit("ERROR: Omni_UGenSetParam: invalid param name")
                     )
                 )
@@ -1592,12 +1604,12 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
             nnkFormalParams.newTree(
                 newIdentNode("void"),
             nnkIdentDefs.newTree(
-                newIdentNode("omni_ugen"),
-                newIdentNode("Omni_UGen"),
+                newIdentNode("omni_ugen_ptr"),
+                newIdentNode("pointer"),
                 newEmptyNode()
             ),
             nnkIdentDefs.newTree(
-                newIdentNode("param"),
+                newIdentNode("buffer"),
                 newIdentNode("cstring"),
                 newEmptyNode()
             ),
@@ -1640,7 +1652,19 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
             var
                 omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
 
+                omni_ugen = nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode("omni_ugen"),
+                        newEmptyNode(),
+                        nnkCast.newTree(
+                            newIdentNode("Omni_UGen"),
+                            newIdentNode("omni_ugen_ptr")
+                        )
+                    )
+                )
+
                 set_buffer_func_block = nnkStmtList.newTree(
+                    omni_ugen,
                     nnkCall.newTree(
                         nnkDotExpr.newTree(
                             nnkDotExpr.newTree(
@@ -1669,8 +1693,8 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                     nnkFormalParams.newTree(
                         newIdentNode("void"),
                         nnkIdentDefs.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("Omni_UGen"),
+                            newIdentNode("omni_ugen_ptr"),
+                            newIdentNode("pointer"),
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
@@ -1701,7 +1725,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                     nnkStmtList.newTree(
                         nnkCall.newTree(
                             omni_ugen_setbuffer_func_name,
-                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_ugen_ptr"),
                             newIdentNode("val")
                         )
                     )
@@ -1712,7 +1736,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
             nnkElse.newTree(
                 nnkStmtList.newTree(
                     nnkCall.newTree(
-                        newIdentNode("omni_print"),
+                        newIdentNode("omni_print_str"),
                         newLit("ERROR: Omni_UGenSetBuffer: invalid buffer name")
                     )
                 )
@@ -2026,28 +2050,28 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
                 )
             )
         )
+
+        release_omni_buffers_lock = nnkCall.newTree(
+            newIdentNode("release"),
+            nnkDotExpr.newTree(
+                newIdentNode("omni_ugen"),
+                newIdentNode("omni_buffers_lock")
+            )
+        )
         
-        valid_buffer_str : string
         valid_buffer_if = nnkIfStmt.newTree(
             nnkElifBranch.newTree(
                 newEmptyNode(), #this will be replaced  
                 nnkStmtList.newTree(
                     silence,
+                    release_omni_buffers_lock,
                     nnkReturnStmt.newTree(
                         newEmptyNode()
                     ),
-                    nnkCall.newTree(
-                        newIdentNode("release"),
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("omni_buffers_lock")
-                        )
-                    )
                 )
             )
         )
 
-        lock_buffer_str : string
         lock_buffer_if = nnkIfStmt.newTree(
             nnkElifBranch.newTree(
                 newEmptyNode(), #this will be replaced  
@@ -2056,13 +2080,7 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
                     nnkCall.newTree(
                         newIdentNode("omni_unlock_buffers")
                     ),
-                    nnkCall.newTree(
-                        newIdentNode("release"),
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("omni_buffers_lock")
-                        )
-                    ),
+                    release_omni_buffers_lock,
                     nnkReturnStmt.newTree(
                         newEmptyNode()
                     )
@@ -2135,7 +2153,42 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
             )
         )
 
-    if omni_buffers_names_list.len > 0:
+    #just one buffer
+    if omni_buffers_names_list.len == 1:
+        let 
+            buffer_ident = newIdentNode(omni_buffers_names_list[0])
+            buf_valid = nnkPrefix.newTree(
+                newIdentNode("not"),
+                nnkDotExpr.newTree(
+                    buffer_ident,
+                    newIdentNode("valid")
+                )
+            ) 
+            buf_lock = nnkPrefix.newTree(
+                newIdentNode("not"),
+                nnkDotExpr.newTree(
+                    buffer_ident,
+                    newIdentNode("omni_lock_buffer")
+                )
+            )
+            buf_unlock = nnkCall.newTree(
+                newIdentNode("omni_unlock_buffer"),
+                buffer_ident
+            )
+        
+        valid_buffer_if[0][0] = buf_valid
+        lock_buffer_if[0][0]  = buf_lock
+
+        unlock_buffers_body.add(
+            buf_unlock
+        )
+
+    #multiple buffers
+    elif omni_buffers_names_list.len > 1:
+        var 
+            valid_buffer_str : string
+            lock_buffer_str  : string
+
         for i, buffer_name in omni_buffers_names_list:
             let buffer_ident = newIdentNode(buffer_name)
 
@@ -2146,30 +2199,18 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
                 )
             )
 
-            if omni_buffers_names_list.len == 1:
-                #just one not(buf.valid)
-                valid_buffer_if[0] = nnkElifBranch.newTree(
-                        nnkPrefix.newTree(
-                            newIdentNode("not"),
-                            nnkDotExpr.newTree(
-                                buffer_ident,
-                                newIdentNode("valid")
-                            )
-                        ) 
-                    )  
+            #I'm lazy. not gonna do the "or" infix business, gonna use parseStmt later
+            if i == 0:
+                valid_buffer_str = "(not " & buffer_name & ".valid) or " 
+                lock_buffer_str = "(not omni_lock_buffer(" & buffer_name & ")) or " 
             else:
-                #I'm lazy. not gonna do the "or" infix business, gonna use parseStmt later
-                if i == 0:
-                    valid_buffer_str = "(not " & buffer_name & ".valid) or " 
-                    lock_buffer_str = "(not omni_lock_buffer(" & buffer_name & ")) or " 
-                else:
-                    valid_buffer_str.add("(not " & buffer_name & ".valid) or ")
-                    lock_buffer_str.add("(not omni_lock_buffer(" & buffer_name & ")) or ")
+                valid_buffer_str.add("(not " & buffer_name & ".valid) or ")
+                lock_buffer_str.add("(not omni_lock_buffer(" & buffer_name & ")) or ")
 
-                #remove last " or"
-                if i == (omni_buffers_names_list.len - 1):
-                    valid_buffer_str = valid_buffer_str[0..valid_buffer_str.len - 5]
-                    lock_buffer_str  = lock_buffer_str[0..lock_buffer_str.len - 5]
+            #remove last " or"
+            if i == (omni_buffers_names_list.len - 1):
+                valid_buffer_str = valid_buffer_str[0..valid_buffer_str.len - 5]
+                lock_buffer_str  = lock_buffer_str[0..lock_buffer_str.len - 5]
         
         #Parse the not(buf.valid) or not(buf2.valid) ...etc..
         valid_buffer_if[0][0] = parseStmt(valid_buffer_str)[0]

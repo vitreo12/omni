@@ -47,7 +47,10 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
         for entry in statement_block:
             assert entry.len == 2
             let ident_def = nnkIdentDefs.newTree(
-                entry[0],
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    entry[0]
+                ),
                 entry[1][0],
                 newEmptyNode()
             )
@@ -205,13 +208,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                         newIdentNode("Buffer_omni_struct_new")
                     ),
                     newEmptyNode(),
-                    nnkGenericParams.newTree(
-                        nnkIdentDefs.newTree(
-                            newIdentNode("S"),
-                            newIdentNode("SomeInteger"),
-                            newEmptyNode()
-                        )
-                    ),
+                    newEmptyNode(),
                     nnkFormalParams.newTree(
                         newIdentNode("Buffer"),
                         nnkIdentDefs.newTree(
@@ -268,7 +265,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                         nnkIdentDefs.newTree(
                             newIdentNode("val"),
                             newIdentNode("cstring"),
-                            newEmptyNode()
+                            newLit("")
                         )
                     ),
                     nnkPragma.newTree(
@@ -282,7 +279,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
             )
 
         elif statement_name == "lock":
-            lock = declare_proc("omni_lock_buffer", statement_block)
+            lock = declare_proc("omni_lock_buffer", statement_block, "bool")
         
         elif statement_name == "unlock":
             unlock = declare_proc("omni_unlock_buffer", statement_block)
