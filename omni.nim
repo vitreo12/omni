@@ -227,7 +227,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Export IO
     if exportIO:
-        compile_command.add(" -d:omni_write_io -d:tempDir:\"" & $outDirFullPath & "\"")
+        compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\"")
 
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
