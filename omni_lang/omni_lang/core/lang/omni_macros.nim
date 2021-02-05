@@ -59,3 +59,7 @@ export omni_alias
 #Needed for omni_debug_macros
 from omni_macros_utilities import omni_debug_macros
 export omni_debug_macros
+
+#Needed for exportIO flag
+import omni_export_io
+export omni_export_io
