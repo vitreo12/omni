@@ -25,10 +25,6 @@ type
         name*       : cstring
         valid*      : bool
 
-        length*     : int
-        channels*   : int
-        samplerate* : float
-
     #Don't export these, they are just needed here to define some common operations on Buffers
     Buffer = ptr Buffer_inherit
     Buffer_omni_struct_ptr = Buffer
@@ -57,17 +53,27 @@ template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
 template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
     omni_read_value_buffer(buffer, chan, index, omni_call_type)
 
-#Alias for length
+#length
+template length*(buffer : Buffer) : untyped {.dirty.} =
+    omni_get_length_buffer(buffer)
+
 template len*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.length
+    length(buffer)
 
-#Alias for chans
+#samplerate
+template samplerate*(buffer : Buffer) : untyped {.dirty.} =
+    omni_get_samplerate_buffer(buffer)
+
+#channels
+template channels*(buffer : Buffer) : untyped {.dirty.} =
+    omni_get_channels_buffer(buffer)
+
 template chans*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.channels
-
+    channels(buffer)
+    
 #Chans * length = size
-proc size*(buffer : Buffer) : int {.inline.} =
-    return buffer.channels * buffer.length
+template size*(buffer : Buffer) : untyped =
+    channels(buffer) * length(buffer)
 
 #Internal checking for structs. It works fine without redefining it for every omniBufferInterface!
 proc omni_check_struct_validity*(obj : Buffer) : bool =
