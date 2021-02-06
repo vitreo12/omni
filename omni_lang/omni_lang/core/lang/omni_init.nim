@@ -423,7 +423,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         when defined(omni_perform32):
             proc Omni_UGenInit32*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cfloat, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
                 if isNil(omni_ugen_ptr):
-                    print("ERROR: Omni: build: invalid omni object")
+                    print("ERROR: Omni: invalid omni object pointer")
                     return 0
                 
                 let 
@@ -485,7 +485,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         when defined(omni_perform64):
             proc Omni_UGenInit64*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cdouble, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
                 if isNil(omni_ugen_ptr):
-                    print("ERROR: Omni: build: invalid omni object")
+                    print("ERROR: Omni: invalid omni object pointer")
                     return 0
 
                 let 
@@ -594,7 +594,10 @@ macro init*(code_block : untyped) : untyped =
         omni_unpack_params_pre_init()
 
         #Generate fictional var names for buffers (so that parser won't complain when using them)
-        #omni_unpack_buffers_pre_init()
+        #While this is not necessary, as buffers can't be used in init anyway, it's still useful as it
+        #allows the [] function to be picked up in init and error out if trying to use a buffer in init block!
+        #This is a better "error" than just "myBuffer is not defined"
+        omni_unpack_buffers_pre_init()
 
         #Actually parse the init block
         omni_parse_block_untyped(`code_block`, true)
