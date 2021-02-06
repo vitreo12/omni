@@ -26,9 +26,33 @@
         out2
     ```
 
-3) Introducing `params`:
+3) Introducing `params`. These are `floats` like inputs, but they imply a separation between what's audio rate and what's control rate: `ins` will always be audio rate, while `params` will always be control rate.
+    
+    ```nim
+    params:
+        freq {440, 1, 22000}
+        amp  {1, 0, 1}
 
-4) Introducing `buffers`:
+    init:
+        phase = 0
+
+    sample:
+        freq_incr = freq / samplerate
+        out1 = sin(phase * twopi) * amp
+        phase = (phase + freq_incr) % 1
+    ```
+
+4) Introducing `buffers`. This is the new way of declaring a `Buffer`. An Omni wrapper, then, would use this interface to provide its own implementation of a `Buffer`. Refer to `Writing an Omni wrapper` on the manual.
+
+    ```nim
+    buffers:
+        buf1 "defaultValue"
+        buf2 
+        buf3 "anotherDefaultValue"
+
+    sample:
+        out1 = buf1[0] + buf2[0] + buf3[0]
+    ```
 
 5) Introducing `:=` for aliases:
     
