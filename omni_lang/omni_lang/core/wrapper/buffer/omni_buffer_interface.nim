@@ -129,6 +129,24 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         getter : NimNode
         setter : NimNode
 
+    let when_not_perform = nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkInfix.newTree(
+                newIdentNode("is"),
+                newIdentNode("omni_call_type"),
+                newIdentNode("Omni_InitCall")
+            ),
+            nnkStmtList.newTree(
+                nnkPragma.newTree(
+                    nnkExprColonExpr.newTree(
+                        newIdentNode("fatal"),
+                        newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
+                    )
+                )
+            )
+        )
+    )
+
     for statement in code_block:
         if statement.kind != nnkCall or statement.len > 2:
             error "omniBufferInterface: Invalid statement: '" & repr(statement) & "'. It must be a code block."
@@ -333,23 +351,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        nnkWhenStmt.newTree(
-                            nnkElifBranch.newTree(
-                                nnkInfix.newTree(
-                                    newIdentNode("is"),
-                                    newIdentNode("omni_call_type"),
-                                    newIdentNode("Omni_InitCall")
-                                ),
-                                nnkStmtList.newTree(
-                                    nnkPragma.newTree(
-                                        nnkExprColonExpr.newTree(
-                                            newIdentNode("fatal"),
-                                            newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
-                                        )
-                                    )
-                                )
-                            )
-                        ),
+                        when_not_perform,
                         statement_block
                     )
                 )
@@ -406,23 +408,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        nnkWhenStmt.newTree(
-                            nnkElifBranch.newTree(
-                                nnkInfix.newTree(
-                                    newIdentNode("is"),
-                                    newIdentNode("omni_call_type"),
-                                    newIdentNode("Omni_InitCall")
-                                ),
-                                nnkStmtList.newTree(
-                                    nnkPragma.newTree(
-                                        nnkExprColonExpr.newTree(
-                                            newIdentNode("fatal"),
-                                            newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
-                                        )
-                                    )
-                                )
-                            )
-                        ),
+                        when_not_perform,
                         statement_block
                     )
                 )
