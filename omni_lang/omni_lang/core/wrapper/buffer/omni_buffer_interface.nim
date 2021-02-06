@@ -118,6 +118,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
     result = nnkStmtList.newTree()
 
     var 
+        debug  = false
         struct : NimNode
         init : NimNode
         update : NimNode
@@ -414,6 +415,16 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                 )
             )
 
+        elif statement_name == "debug":
+            if statement_block.len == 1:
+                let true_or_false = statement_block[0]
+                if true_or_false.kind == nnkIdent:
+                    if true_or_false.strVal == "true":
+                        debug = true
+                else:
+                    error "omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'."
+            else:
+                error "omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'."
         else:
             error "omniBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'update', 'lock', 'unlock', 'length', 'samplerate', 'channels', 'getter', 'setter'"
 
@@ -463,4 +474,6 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         omni_read_value_buffer
     )
 
-    #error repr result
+    #To be copy / pasted once an interface has been generated
+    if debug:
+        error repr result

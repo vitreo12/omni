@@ -190,8 +190,6 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
             ),
             nnkReturnStmt.newTree(
                 nnkCall.newTree(
-                newIdentNode("float"),
-                nnkCall.newTree(
                     newIdentNode("linear_interp"),
                     newIdentNode("frac"),
                     nnkCall.newTree(
@@ -212,7 +210,6 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
                     newIdentNode("index2"),
                     newIdentNode("omni_call_type")
                     )
-                )
                 )
             )
             )
@@ -366,8 +363,6 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
             ),
             nnkReturnStmt.newTree(
                 nnkCall.newTree(
-                newIdentNode("float"),
-                nnkCall.newTree(
                     newIdentNode("linear_interp"),
                     newIdentNode("frac"),
                     nnkCall.newTree(
@@ -388,7 +383,6 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
                     newIdentNode("index2"),
                     newIdentNode("omni_call_type")
                     )
-                )
                 )
             )
             )
