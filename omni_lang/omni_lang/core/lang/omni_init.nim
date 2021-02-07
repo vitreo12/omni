@@ -630,7 +630,7 @@ macro build*(var_names : varargs[typed]) =
         )
 
         #use Omni_UGen_struct and not _omni_struct because _omni_struct is 
-        #reserved for the `struct` handling
+        #reserved for the REAL omni `struct` handling
         ptr_typedef = nnkTypeDef.newTree(
             nnkPragmaExpr.newTree(
                 newIdentNode("Omni_UGen"),

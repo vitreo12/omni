@@ -515,7 +515,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
     var temp_generics : seq[string]
 
-    var call_def_inner = nnkCall.newTree(
+    var call_omni_def_inner = nnkCall.newTree(
         newIdentNode("omni_def_inner"),
         function_signature,
         code_block,
@@ -542,13 +542,13 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
                 if not(arg_type_temp.strVal() in temp_generics): #don't add generics!!
                     arg_type = arg_type_temp
         
-        #call_def_inner.add(newIntLitNode(i-1)) #index of this arg
-        call_def_inner.add(arg_type)
+        #call_omni_def_inner.add(newIntLitNode(i-1)) #index of this arg
+        call_omni_def_inner.add(arg_type)
         
-    #echo astGenRepr call_def_inner
+    #echo astGenRepr call_omni_def_inner
 
     return quote do:
         when not declared(omni_current_module_def):
             proc omni_current_module_def() = discard
-        
-        `call_def_inner`
+
+        `call_omni_def_inner`

@@ -43,7 +43,9 @@ let
         "pointer",
         "typeDesc",
         "Omni_AutoMem",
-        "Omni_UGen"
+        "Omni_AutoMem_struct",
+        "Omni_UGen",
+        "Omni_UGen_struct"
     ]
 
     #These are additional types that function calls support. Add support for string and cstring (to make print("hello") work)
@@ -51,7 +53,6 @@ let
         "string",
         "cstring"
     ]
-
 
 proc omni_is_struct*(var_type : NimNode) : bool {.compileTime.} =        
     #if not is_struct_field:
@@ -130,11 +131,11 @@ proc omni_check_valid_type*(var_type : NimNode, var_name : string = "", is_proc_
         #If arg to a proc call, it should accept strings/cstrings too! 
         if not ((var_type_str in omni_accepted_var_types) or (var_type_str in omni_additional_accepted_arg_types) or (var_type_str in omni_additional_accepted_arg_call_types) or (var_type.omni_is_struct())):
             var proc_name_real : string
-            if proc_name.endsWith("_def_inner"):
-                proc_name_real = proc_name[0..(proc_name.len - 11)] #remove _def_inner
+            if proc_name.endsWith("_omni_def"):
+                proc_name_real = proc_name[0..(proc_name.len - 10)] #remove _omni_def
             else:
                 proc_name_real = proc_name
-            error("Call to \'" & $proc_name_real & "\' : argument number " & $var_name & " is of unknown type: \'" & $var_type & "\'.")
+            error("Call to \'" & $proc_name_real & "\' : argument number " & $var_name & " is of unknown type: \'" & $var_type_str & "\'.")
     
     #proc argument (static)
     elif is_proc_arg:

@@ -29,7 +29,7 @@ type
     C_void_ptr_ptr = ptr UncheckedArray[pointer] #void**
 
     #use Omni_AutoMem_struct and not _omni_struct because _omni_struct is 
-    #reserved for the `struct` handling
+    #reserved for the REAL omni `struct` handling!
     Omni_AutoMem_struct* = object
         num_allocs* : int
         allocs*     : C_void_ptr_ptr 
