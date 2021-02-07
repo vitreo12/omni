@@ -85,7 +85,58 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
 
     #error astGenRepr result
 
-proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void") : NimNode {.inline, compileTime.} =
+template when_not_perform() : untyped {.dirty.} = 
+    nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkInfix.newTree(
+                newIdentNode("is"),
+                newIdentNode("omni_call_type"),
+                newIdentNode("Omni_InitCall")
+            ),
+            nnkStmtList.newTree(
+                nnkPragma.newTree(
+                    nnkExprColonExpr.newTree(
+                        newIdentNode("fatal"),
+                        newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
+                    )
+                )
+            )
+        )
+    )
+
+proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void", add_perform_check : bool = true) : NimNode {.inline, compileTime.} =
+    var 
+        args = nnkFormalParams.newTree(
+            newIdentNode(return_type),
+            nnkIdentDefs.newTree(
+                newIdentNode("buffer"),
+                newIdentNode("Buffer"),
+                newEmptyNode()
+            )  
+        )
+
+        stmt_list = nnkStmtList.newTree()
+
+    if add_perform_check:
+        args.add(
+            nnkIdentDefs.newTree(
+                newIdentNode("omni_call_type"),
+                nnkBracketExpr.newTree(
+                    newIdentNode("typedesc"),
+                    newIdentNode("Omni_CallType")
+                ),
+                newIdentNode("Omni_InitCall")
+            )
+        )
+
+        stmt_list.add(
+            when_not_perform()
+        )
+    
+    stmt_list.add(
+        statement_block
+    )
+
     return nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
@@ -93,21 +144,12 @@ proc declare_proc(name : string, statement_block : NimNode, return_type : string
         ),
         newEmptyNode(),
         newEmptyNode(),
-        nnkFormalParams.newTree(
-            newIdentNode(return_type),
-            nnkIdentDefs.newTree(
-                newIdentNode("buffer"),
-                newIdentNode("Buffer"),
-                newEmptyNode()
-            ),
-        ),
+        args,
         nnkPragma.newTree(
             newIdentNode("inline")
         ),
         newEmptyNode(),
-        nnkStmtList.newTree(
-            statement_block
-        )
+        stmt_list
     )
 
 #This is quite an overhead
@@ -129,24 +171,6 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         channels : NimNode
         getter : NimNode
         setter : NimNode
-
-    let when_not_perform = nnkWhenStmt.newTree(
-        nnkElifBranch.newTree(
-            nnkInfix.newTree(
-                newIdentNode("is"),
-                newIdentNode("omni_call_type"),
-                newIdentNode("Omni_InitCall")
-            ),
-            nnkStmtList.newTree(
-                nnkPragma.newTree(
-                    nnkExprColonExpr.newTree(
-                        newIdentNode("fatal"),
-                        newLit("'Buffers' can only be accessed in the 'perform' / 'sample' blocks")
-                    )
-                )
-            )
-        )
-    )
 
     for statement in code_block:
         if statement.kind != nnkCall or statement.len > 2:
@@ -298,10 +322,10 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
             )
 
         elif statement_name == "lock":
-            lock = declare_proc("omni_lock_buffer", statement_block, "bool")
+            lock = declare_proc("omni_lock_buffer", statement_block, "bool", false)
         
         elif statement_name == "unlock":
-            unlock = declare_proc("omni_unlock_buffer", statement_block)
+            unlock = declare_proc("omni_unlock_buffer", statement_block, "void", false)
 
         elif statement_name == "length" or statement_name == "len":
             length = declare_proc("omni_get_length_buffer", statement_block, "int")
@@ -352,7 +376,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        when_not_perform,
+                        when_not_perform(),
                         statement_block
                     )
                 )
@@ -409,7 +433,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
-                        when_not_perform,
+                        when_not_perform(),
                         statement_block
                     )
                 )

@@ -64,18 +64,18 @@ template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, ind
 
 #length
 template length*(buffer : Buffer) : untyped {.dirty.} =
-    omni_get_length_buffer(buffer)
+    omni_get_length_buffer(buffer, omni_call_type)
 
 template len*(buffer : Buffer) : untyped {.dirty.} =
     length(buffer)
 
 #samplerate
 template samplerate*(buffer : Buffer) : untyped {.dirty.} =
-    omni_get_samplerate_buffer(buffer)
+    omni_get_samplerate_buffer(buffer, omni_call_type)
 
 #channels
 template channels*(buffer : Buffer) : untyped {.dirty.} =
-    omni_get_channels_buffer(buffer)
+    omni_get_channels_buffer(buffer, omni_call_type)
 
 template chans*(buffer : Buffer) : untyped {.dirty.} =
     channels(buffer)
