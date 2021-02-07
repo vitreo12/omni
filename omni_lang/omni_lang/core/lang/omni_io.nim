@@ -972,119 +972,103 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 max_val = max_vals[i]
 
             var 
+                set_min_max_template_name = newIdentNode("omni_param_" & param_name & "_min_max")
+                set_min_max_template_block_if = nnkIfStmt.newTree()
+                set_min_max_template = nnkTemplateDef.newTree(
+                    set_min_max_template_name,
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("untyped"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("in_val"),
+                            newIdentNode("untyped"),
+                            newEmptyNode()
+                        )
+                    ),
+                    nnkPragma.newTree(
+                        newIdentNode("dirty")
+                    ),
+                    newEmptyNode(),
+                    nnkStmtList.newTree(
+                        set_min_max_template_block_if
+                    )
+                )
+                
                 set_min_val = false
                 set_max_val = false
 
             #if valid min_val, use it
             if min_val != OMNI_IN_RANDOM_FLOAT:
-                let 
-                    min_val_lit = newFloatLitNode(min_val)
-                    
-                    min_val_assgn = nnkAsgn.newTree(
-                        nnkBracketExpr.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("omni_ugen"),
-                                newIdentNode(param_name & "_omni_param")
-                            ),
-                            newLit(0)
-                        ),
-                        min_val_lit
-                    )
-                    
-                    min_val_elif_branch = nnkElifBranch.newTree(
+                let min_val_lit = newFloatLitNode(min_val)
+                   
+                set_min_max_template_block_if.add(
+                    nnkElifBranch.newTree(
                         nnkInfix.newTree(
                             newIdentNode("<"),
-                            newIdentNode("val"),
-                            min_val_lit,
+                            newIdentNode("in_val"),
+                            min_val_lit
                         ),
                         nnkStmtList.newTree(
-                            min_val_assgn
+                            min_val_lit
                         )
                     )
-                
-                set_param_spin.add(
-                    nnkIfStmt.newTree(
-                        min_val_elif_branch
-                    )
                 )
-
-                #keep adding to the if statement
-                set_param_spin = set_param_spin[^1]
 
                 set_min_val = true
 
             #if valid max val, use it
             if max_val != OMNI_IN_RANDOM_FLOAT:
-                let 
-                    max_val_lit = newFloatLitNode(max_val)
-                    
-                    max_val_assgn = nnkAsgn.newTree(
-                        nnkBracketExpr.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("omni_ugen"),
-                                newIdentNode(param_name & "_omni_param")
-                            ),
-                            newLit(0)
-                        ),
-                        max_val_lit
-                    )
-                    
-                    max_val_elif_branch = nnkElifBranch.newTree(
+                let max_val_lit = newFloatLitNode(max_val)
+
+                set_min_max_template_block_if.add(
+                    nnkElifBranch.newTree(
                         nnkInfix.newTree(
                             newIdentNode(">"),
-                            newIdentNode("val"),
-                            max_val_lit,
+                            newIdentNode("in_val"),
+                            max_val_lit
                         ),
                         nnkStmtList.newTree(
-                            max_val_assgn
+                            max_val_lit
                         )
                     )
-
-                #elif (continue from min_val)
-                if set_min_val:
-                    set_param_spin.add(
-                        max_val_elif_branch
-                    )
-
-                #if (no min_val specified)
-                else:
-                    set_param_spin.add(
-                        nnkIfStmt.newTree(
-                            max_val_elif_branch
-                        )
-                    )
-
-                    #Keep adding to the if statement
-                    set_param_spin = set_param_spin[^1]
+                )
                 
                 set_max_val = true
 
-            let val_assgn = nnkAsgn.newTree(
-                nnkBracketExpr.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("omni_ugen"),
-                        newIdentNode(param_name & "_omni_param")
+            let val_assgn = nnkStmtList.newTree(
+                nnkAsgn.newTree(
+                    nnkBracketExpr.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_ugen"),
+                            newIdentNode("freq_omni_param")
+                        ),
+                        newLit(0)
                     ),
-                    newLit(0)
-                ),
-                newIdentNode("val")
-            )
-
-            #Else
-            if set_min_val or set_max_val:
-                set_param_spin.add(
-                    nnkElse.newTree(
-                        val_assgn
+                    nnkCall.newTree(
+                        set_min_max_template_name,
+                        newIdentNode("val")
                     )
                 )
-            
-            #Assign directly
+            )
+
+            set_param_spin.add(
+                val_assgn
+            )  
+        
+            if set_min_val or set_max_val:
+                set_min_max_template_block_if.add(
+                    nnkElse.newTree(
+                        newIdentNode("in_val")
+                    )
+                )
             else:
-                set_param_spin.add(
-                    val_assgn
+                set_min_max_template[^1] = nnkStmtList.newTree(
+                    newIdentNode("in_val")
                 )
 
             final_template_block.add(
+                set_min_max_template,
                 set_param_func
             )
 
@@ -1124,8 +1108,6 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
     final_template_block.add(
         setParam
     )
-
-    #error repr result
 
 #Returns a template that unpacks params for perform block
 proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
