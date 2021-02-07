@@ -23,6 +23,7 @@
 #remove tables here and move isStrUpperAscii (and strutils) to another module
 import macros, strutils
 import omni_loop, omni_invalid, omni_type_checker, omni_macros_utilities
+from omni_io import omni_ins_names_list, omni_params_names_list, omni_buffers_names_list
 
 #Types that will be converted to float when in tuples (if not explicitly set)
 let omni_tuple_convert_types {.compileTime.} = [
@@ -954,6 +955,12 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
                     #Delete "build" from the code_block.
                     #It will be added back again at the end of the typed evaluation
                     code_block.del(code_block.len() - 1)
+
+    #Add ins / params / buffers to declared vars for init / perform / sample. This allows not to allow to redefine them (but you can in a def)
+    if not is_def_block:
+        declared_vars.add(omni_ins_names_list)
+        declared_vars.add(omni_params_names_list)
+        declared_vars.add(omni_buffers_names_list)
 
     #Begin parsing
     ommni_parse_untyped_block_inner(code_block, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)

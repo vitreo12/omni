@@ -24,11 +24,10 @@ import macros, strutils, omni_macros_utilities
 
 const omni_max_inputs_outputs_const* = 32
 
-#Some crazy numbers
-const 
-    OMNI_IN_RANDOM_FLOAT = -12312418241.1249124194
-    OMNI_BUFFER_RANDOM_FLOAT = -13312418241.1249124194
+#Some crazy number
+const OMNI_IN_RANDOM_FLOAT = -12312418241.1249124194
 
+#Accepted chars for an in / param / buffer name
 const omni_accepted_chars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 #default name when not specifying default buffer value
@@ -36,12 +35,13 @@ const
     OMNI_NIL = "NIL" 
     OMNI_DEFAULT_NIL_BUFFER = "NIL"
 
-#Compile time arrays for params code generation
+#Compile time arrays for params code generation. These are also used in omni_parser to add ins/params/buffers to declared_vars
 var
+    omni_ins_names_list*       {.compileTime.} : seq[string]
     omni_params_names_list*    {.compileTime.} : seq[string]
-    omni_params_defaults_list* {.compileTime.} : seq[float]
+    omni_buffers_names_list*   {.compileTime.} : seq[string]
 
-var omni_buffers_names_list*   {.compileTime.} : seq[string]
+var omni_params_defaults_list* {.compileTime.} : seq[float]
 
 #Compile time array of buffers to unpack
 var omni_at_least_one_buffer*  {.compileTime.} = false
@@ -404,14 +404,8 @@ proc omni_extract_default_min_max(default_min_max : NimNode, param_name : string
             elif default_min_max_len == 1:
                 default_num = float32(value_num)
 
-        elif value_kind == nnkIdent:
-            if value.strVal == "Buffer":
-                return (0.0, OMNI_BUFFER_RANDOM_FLOAT, OMNI_BUFFER_RANDOM_FLOAT)
-            else:
-                error("Invalid syntax for input \"" & $param_name & "\"")
-
         else:
-            error("Invalid syntax for input \"" & $param_name & "\"")
+            error("ins: Invalid syntax for input '" & $param_name & "'")
 
     return (default_num, min_num, max_num)
 
@@ -464,7 +458,7 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
 
         #Don't generate min max for param (will be calculated later)
         if not ins_or_params:
-            if min_val != OMNI_IN_RANDOM_FLOAT and min_val != OMNI_BUFFER_RANDOM_FLOAT:
+            if min_val != OMNI_IN_RANDOM_FLOAT:
                 default_min_max_const_section.add(
                     nnkConstDef.newTree(
                         nnkPragmaExpr.newTree(
@@ -478,7 +472,7 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
                     )
                 )
 
-            if max_val != OMNI_IN_RANDOM_FLOAT and max_val != OMNI_BUFFER_RANDOM_FLOAT:
+            if max_val != OMNI_IN_RANDOM_FLOAT:
                 default_min_max_const_section.add(
                     nnkConstDef.newTree(
                         nnkPragmaExpr.newTree(
@@ -545,11 +539,12 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #This is for the inputs 1, "freq" case. (where "freq" is not viewed as varargs)
     #input 2, "freq", "stmt" is covered in the other macro
     if ins_names_kind == nnkStrLit or ins_names_kind == nnkIdent:
-        let param_name = ins_names.strVal()
+        let in_name = ins_names.strVal()
         
-        omni_check_valid_name(param_name, "ins")
+        omni_check_valid_name(in_name, "ins")
         
-        ins_names_string.add($param_name & ",")
+        ins_names_string.add(in_name & ",")
+        omni_ins_names_list.add(in_name)
         statement_counter = 1
 
     #block case
@@ -561,14 +556,12 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
 
                 #"freq" / freq
                 if statement_kind == nnkStrLit or statement_kind == nnkIdent:
-                    let param_name = statement.strVal()
+                    let in_name = statement.strVal()
 
-                    #Buffer without param name ????
-                    #if param_name == "Buffer":
-
-                    omni_check_valid_name(param_name, "ins")
+                    omni_check_valid_name(in_name, "ins")
                     
-                    ins_names_string.add($param_name & ",")
+                    ins_names_string.add(in_name & ",")
+                    omni_ins_names_list.add(in_name)
                 
                 #"freq" {440, 0, 22000} OR "freq" {440 0 22000}
                 elif statement_kind == nnkCommand:
@@ -576,17 +569,18 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
 
                     #The name of the param
                     let 
-                        param_name_node = statement[0]
-                        param_name_node_kind = param_name_node.kind
-                    if param_name_node_kind != nnkStrLit and param_name_node_kind != nnkIdent:
+                        in_name_node = statement[0]
+                        in_name_node_kind = in_name_node.kind
+                    if in_name_node_kind != nnkStrLit and in_name_node_kind != nnkIdent:
                         error("ins: Expected input name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
 
-                    let param_name = param_name_node.strVal()
-                    omni_check_valid_name(param_name, "ins")
+                    let in_name = in_name_node.strVal()
+                    omni_check_valid_name(in_name, "ins")
 
-                    ins_names_string.add($param_name & ",")
+                    ins_names_string.add(in_name & ",")
+                    omni_ins_names_list.add(in_name)
                 
-                    #The list of { } or Buffer
+                    #The list of { }
                     let 
                         default_min_max = statement[1]
                         default_min_max_kind = default_min_max.kind
@@ -595,21 +589,16 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                         default_val : float
                         min_val : float
                         max_val : float
-
-                    #Ident, no curly brackets Buffer
-                    if default_min_max_kind == nnkIdent:
-                        if default_min_max.strVal == "Buffer":
-                            min_val = OMNI_BUFFER_RANDOM_FLOAT
-                            max_val = OMNI_BUFFER_RANDOM_FLOAT     
-                    elif default_min_max_kind == nnkCurly:
-                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, param_name)
+   
+                    if default_min_max_kind == nnkCurly:
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, in_name)
 
                     #single number literal: wrap in curly brackets
                     elif default_min_max_kind == nnkIntLit or default_min_max_kind == nnkFloatLit:
                         let default_min_max_curly = nnkCurly.newTree(default_min_max)
-                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name)
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, in_name)
                     else:
-                        error("ins: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
+                        error("ins: Expected default / min / max values for '" & $in_name & "' to be wrapped in curly brackets.")
 
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
@@ -617,11 +606,12 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                 
                 #Just {0, 0, 1} / {0 0 1}, no param name provided!
                 elif statement_kind == nnkCurly:
-                    let param_name = "in" & $(statement_counter+1)
+                    let in_name = "in" & $(statement_counter+1)
                     
-                    ins_names_string.add($param_name & ",")
+                    ins_names_string.add(in_name & ",")
+                    omni_ins_names_list.add(in_name)
 
-                    let (default_val, min_val, max_val) = omni_extract_default_min_max(statement, param_name)
+                    let (default_val, min_val, max_val) = omni_extract_default_min_max(statement, in_name)
                     
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
@@ -639,7 +629,9 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #inputs count mismatch
     if ins_names_kind == nnkNilLit:
         for i in 0..ins_number_VAL-1:
-            ins_names_string.add("in" & $(i + 1) & ",")
+            let in_name = "in" & $(i + 1)
+            ins_names_string.add(in_name & ",")
+            omni_ins_names_list.add(in_name)
     else:
         if statement_counter != ins_number_VAL:
             error("ins: Expected " & $ins_number_VAL & " input names, got " & $statement_counter)
@@ -984,7 +976,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 set_max_val = false
 
             #if valid min_val, use it
-            if min_val != OMNI_IN_RANDOM_FLOAT and min_val != OMNI_BUFFER_RANDOM_FLOAT:
+            if min_val != OMNI_IN_RANDOM_FLOAT:
                 let 
                     min_val_lit = newFloatLitNode(min_val)
                     
@@ -1022,7 +1014,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 set_min_val = true
 
             #if valid max val, use it
-            if max_val != OMNI_IN_RANDOM_FLOAT and min_val != OMNI_BUFFER_RANDOM_FLOAT:
+            if max_val != OMNI_IN_RANDOM_FLOAT:
                 let 
                     max_val_lit = newFloatLitNode(max_val)
                     
@@ -1463,7 +1455,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                     params_names_string.add($param_name & ",")
                     omni_params_names_list.add(param_name)
                 
-                    #The list of { } or Buffer
+                    #The list of { }
                     let 
                         default_min_max = statement[1]
                         default_min_max_kind = default_min_max.kind
@@ -1472,13 +1464,8 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                         default_val : float
                         min_val : float
                         max_val : float
-
-                    #Ident, no curly brackets Buffer
-                    if default_min_max_kind == nnkIdent:
-                        if default_min_max.strVal == "Buffer":
-                            min_val = OMNI_BUFFER_RANDOM_FLOAT
-                            max_val = OMNI_BUFFER_RANDOM_FLOAT     
-                    elif default_min_max_kind == nnkCurly:
+   
+                    if default_min_max_kind == nnkCurly:
                         (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, param_name)
 
                     #single number literal: wrap in curly brackets
@@ -1486,7 +1473,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                         let default_min_max_curly = nnkCurly.newTree(default_min_max)
                         (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name)
                     else:
-                        error("ins: Expected default / min / max values for \"" & $param_name & "\" to be wrapped in curly brackets, or 'Buffer' to be declared.")
+                        error("ins: Expected default / min / max values for '" & $param_name & "' to be wrapped in curly brackets.")
 
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val

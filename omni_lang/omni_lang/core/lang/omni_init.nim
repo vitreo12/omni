@@ -316,7 +316,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         
         #In case user is trying to not insert a variable with name in, like "new(1)"
         if var_name.kind != nnkIdent:
-            error("Trying to use a literal value at index " & $index & " of the \"new\" statement. Use a named variable instead.")
+            error("Trying to use a literal value at index " & $index & " of the 'new' statement. Use a named variable instead.")
         
         #Standard case, an nnkIdent with the variable name
         if index > 0: 

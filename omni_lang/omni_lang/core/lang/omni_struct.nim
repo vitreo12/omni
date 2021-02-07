@@ -295,7 +295,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
+            error("struct '" & $ptr_name & $ "' must start with a capital letter")
 
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
@@ -370,7 +370,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct \"" & $ptr_name & $ "\" must start with a capital letter")
+            error("struct '" & $ptr_name & $ "' must start with a capital letter")
         
         #Add name to obj_type_def. Needs to be aliased for proper working!
         obj_type_def.add(
