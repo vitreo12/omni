@@ -237,17 +237,11 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                         previous_loop_stmt = nnkForStmt.newTree(
                             index_ident,
                             nnkInfix.newTree(
-                                newIdentNode(".."),
+                                newIdentNode("..<"),
                                 newLit(0),
-                                nnkPar.newTree(
-                                    nnkInfix.newTree(
-                                        newIdentNode("-"),
-                                        nnkCall.newTree(
-                                            newIdentNode("size"),
-                                            data_name
-                                        ),
-                                        newLit(1)
-                                    )
+                                nnkCall.newTree(
+                                    newIdentNode("size"),
+                                    data_name
                                 )
                             ),
                             previous_body_stmt
@@ -258,17 +252,11 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                             nnkForStmt.newTree(
                                 index_ident,
                                 nnkInfix.newTree(
-                                    newIdentNode(".."),
+                                    newIdentNode("..<"),
                                     newLit(0),
-                                    nnkPar.newTree(
-                                        nnkInfix.newTree(
-                                            newIdentNode("-"),
-                                            nnkCall.newTree(
-                                                newIdentNode("size"),
-                                                prev_index_entry
-                                            ),
-                                            newLit(1)
-                                        )
+                                    nnkCall.newTree(
+                                        newIdentNode("size"),
+                                        prev_index_entry
                                     )
                                 ),
                                 nnkStmtList.newTree(
@@ -320,17 +308,11 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                         nnkForStmt.newTree(
                             index_ident,
                             nnkInfix.newTree(
-                                newIdentNode(".."),
+                                newIdentNode("..<"),
                                 newLit(0),
-                                nnkPar.newTree(
-                                    nnkInfix.newTree(
-                                        newIdentNode("-"),
-                                        nnkCall.newTree(
-                                            newIdentNode("size"),
-                                            prev_index_entry
-                                        ),
-                                        newLit(1)
-                                    )
+                                nnkCall.newTree(
+                                    newIdentNode("size"),
+                                    prev_index_entry
                                 )
                             ),
                             nnkStmtList.newTree(

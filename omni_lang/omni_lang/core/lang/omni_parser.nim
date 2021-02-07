@@ -64,15 +64,9 @@ proc omni_parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
         nnkForStmt.newTree(
             newIdentNode("omni_audio_index"),
             nnkInfix.newTree(
-                newIdentNode(".."),
+                newIdentNode("..<"),
                 newLit(0),
-                nnkPar.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode("-"),
-                        newIdentNode("bufsize"),
-                        newLit(1)
-                    )
-                )
+                newIdentNode("bufsize")
             ),
             nnkStmtList.newTree(
                 #Declare ins unpacking / variable names for the sample block
@@ -1547,29 +1541,20 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                         nnkForStmt.newTree(
                             data_chan,
                             nnkInfix.newTree(
-                                newIdentNode(".."),
+                                newIdentNode("..<"),
                                 newLit(0),
-                                nnkInfix.newTree(
-                                    newIdentNode("-"),
-                                    nnkCall.newTree(
-                                        newIdentNode("chans"),
-                                        data_name
-                                    ),
-                                    newLit(1)
+                                nnkCall.newTree(
+                                    newIdentNode("chans"),
+                                    data_name
                                 )
                             ),
                             nnkForStmt.newTree(
                                 data_index,
                                 nnkInfix.newTree(
-                                    newIdentNode(".."),
-                                    newLit(0),
-                                    nnkInfix.newTree(
-                                        newIdentNode("-"),
-                                        nnkCall.newTree(
-                                            newIdentNode("len"),
-                                            data_name
-                                        ),
-                                        newLit(1)
+                                    newIdentNode("..<"),
+                                    nnkCall.newTree(
+                                        newIdentNode("len"),
+                                        data_name
                                     )
                                 ),
                                 for_loop_body,
@@ -1630,29 +1615,21 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                 parsed_statement = nnkForStmt.newTree(
                     data_chan,
                     nnkInfix.newTree(
-                        newIdentNode(".."),
+                        newIdentNode("..<"),
                         newLit(0),
-                        nnkInfix.newTree(
-                            newIdentNode("-"),
-                            nnkCall.newTree(
-                                newIdentNode("chans"),
-                                data_name
-                            ),
-                            newLit(1)
+                        nnkCall.newTree(
+                            newIdentNode("chans"),
+                            data_name
                         )
                     ),
                     nnkForStmt.newTree(
                         data_index,
                         nnkInfix.newTree(
-                            newIdentNode(".."),
+                            newIdentNode("..<"),
                             newLit(0),
-                            nnkInfix.newTree(
-                                newIdentNode("-"),
-                                nnkCall.newTree(
-                                    newIdentNode("len"),
-                                    data_name
-                                ),
-                                newLit(1)
+                            nnkCall.newTree(
+                                newIdentNode("len"),
+                                data_name
                             )
                         ),
                         for_loop_body

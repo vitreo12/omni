@@ -2009,43 +2009,31 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
         silence = nnkStmtList.newTree(
             nnkForStmt.newTree(
                 newIdentNode("omni_audio_channel"),
-                nnkPar.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode(".."),
-                        newLit(0),
-                        nnkInfix.newTree(
-                            newIdentNode("-"),
-                            newIdentNode("omni_outputs"),
-                            newLit(1)
-                        )
-                    )
+                nnkInfix.newTree(
+                    newIdentNode("..<"),
+                    newLit(0),
+                    newIdentNode("omni_outputs")
                 ),
                 nnkStmtList.newTree(
                     nnkForStmt.newTree(
-                    newIdentNode("omni_audio_index"),
-                    nnkPar.newTree(
+                        newIdentNode("omni_audio_index"),
                         nnkInfix.newTree(
-                            newIdentNode(".."),
+                            newIdentNode("..<"),
                             newLit(0),
-                            nnkInfix.newTree(
-                                newIdentNode("-"),
-                                newIdentNode("bufsize"),
-                                newLit(1)
+                            newIdentNode("bufsize")
+                        ),
+                        nnkStmtList.newTree(
+                            nnkAsgn.newTree(
+                                nnkBracketExpr.newTree(
+                                    nnkBracketExpr.newTree(
+                                        newIdentNode("omni_outs_ptr"),
+                                        newIdentNode("omni_audio_channel")
+                                    ),
+                                    newIdentNode("omni_audio_index")
+                                ),
+                                newFloatLitNode(0.0)
                             )
                         )
-                    ),
-                    nnkStmtList.newTree(
-                        nnkAsgn.newTree(
-                            nnkBracketExpr.newTree(
-                                nnkBracketExpr.newTree(
-                                    newIdentNode("omni_outs_ptr"),
-                                    newIdentNode("omni_audio_channel")
-                                ),
-                                newIdentNode("omni_audio_index")
-                            ),
-                            newFloatLitNode(0.0)
-                        )
-                    )
                     )
                 )
             )
