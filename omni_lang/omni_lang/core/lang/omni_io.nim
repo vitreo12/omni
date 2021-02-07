@@ -879,7 +879,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
             ),
             nnkIdentDefs.newTree(
                 newIdentNode("val"),
-                newIdentNode("float"),
+                newIdentNode("cdouble"),
                 newEmptyNode()
             )
             ),
@@ -894,7 +894,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
     let 
         final_template_block = nnkStmtList.newTree()
         final_template = nnkTemplateDef.newTree(
-            newIdentNode("omni_generate_params_procs"),
+            newIdentNode("omni_generate_params_set_procs"),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
@@ -955,7 +955,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                         ),
                         nnkIdentDefs.newTree(
                             newIdentNode("val"),
-                            newIdentNode("float"),
+                            newIdentNode("cdouble"),
                             newEmptyNode()
                         )
                     ),
