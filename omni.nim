@@ -34,24 +34,24 @@ let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020 Francesco Cameli"
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
 #Extension for static lib
-when defined(Linux) or defined(MacOSX) or defined(MacOS):
-    const static_lib_extension = ".a"
-when defined(Windows):
-    const static_lib_extension = ".lib"
-
-#Extensions for shared lib
 when defined(Linux):
     const 
+        lib_prepend          = "lib"
+        static_lib_extension = ".a"
         shared_lib_extension = ".so"
         default_compiler     = "gcc"
 
 when defined(MacOSX) or defined(MacOS):
     const 
+        lib_prepend          = "lib"
+        static_lib_extension = ".a"
         shared_lib_extension = ".dylib"
         default_compiler     = "clang"
 
 when defined(Windows):
     const 
+        lib_prepend          = ""           #Windows doesn't prepend "lib" to libraries
+        static_lib_extension = ".lib"
         shared_lib_extension = ".dll"
         default_compiler     = "gcc(MinGW)"
 
@@ -142,9 +142,9 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Set output name:
     var output_name : string
     if outName == "":
-        output_name = "lib" & $omniFileName & $lib_extension
+        output_name = $lib_prepend & $omniFileName & $lib_extension
     else:
-        output_name = $outName & $lib_extension
+        output_name = $lib_prepend & $outName & $lib_extension
     
     #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
     setCurrentDir(outDirFullPath)
