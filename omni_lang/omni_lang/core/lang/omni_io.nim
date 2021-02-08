@@ -938,8 +938,21 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 )
 
                 set_param_func_block = nnkStmtList.newTree(
-                    omni_ugen,
-                    set_param_spin
+                    nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("not"),
+                                nnkCall.newTree(
+                                    newIdentNode("omni_ugen_ptr"),
+                                    newIdentNode("isNil")
+                                )
+                            ),
+                            nnkStmtList.newTree(
+                                omni_ugen,
+                                set_param_spin
+                            )
+                        )
+                    )
                 )
 
                 set_param_func = nnkProcDef.newTree(
@@ -1108,6 +1121,8 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
     final_template_block.add(
         setParam
     )
+
+    #error repr result
 
 #Returns a template that unpacks params for perform block
 proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
@@ -1632,24 +1647,39 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                     )
                 )
 
-                set_buffer_func_block = nnkStmtList.newTree(
-                    omni_ugen,
-                    nnkCall.newTree(
+                set_buffer_spin = nnkCall.newTree(
+                    nnkDotExpr.newTree(
                         nnkDotExpr.newTree(
+                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_buffers_lock")
+                        ),
+                        newIdentNode("spin")
+                    ),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("omni_update_buffer"),
                             nnkDotExpr.newTree(
                                 newIdentNode("omni_ugen"),
-                                newIdentNode("omni_buffers_lock")
+                                newIdentNode(buffer_name & "_omni_buffer")
                             ),
-                            newIdentNode("spin")
-                        ),
-                        nnkStmtList.newTree(
+                            newIdentNode("val")
+                        )
+                    )
+                )
+
+                set_buffer_func_block = nnkStmtList.newTree(
+                     nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
                             nnkCall.newTree(
-                                newIdentNode("omni_update_buffer"),
-                                nnkDotExpr.newTree(
-                                    newIdentNode("omni_ugen"),
-                                    newIdentNode(buffer_name & "_omni_buffer")
-                                ),
-                                newIdentNode("val")
+                                newIdentNode("not"),
+                                nnkCall.newTree(
+                                    newIdentNode("omni_ugen_ptr"),
+                                    newIdentNode("isNil")
+                                )
+                            ),
+                            nnkStmtList.newTree(
+                                omni_ugen,
+                                set_buffer_spin
                             )
                         )
                     )

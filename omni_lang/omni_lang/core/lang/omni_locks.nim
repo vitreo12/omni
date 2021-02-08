@@ -30,6 +30,6 @@ template release*(lock : var AtomicFlag) : void =
     lock.clear(moRelease)
 
 template spin*(lock: var AtomicFlag, body: untyped) : untyped =
-    while lock.testAndSet(moAcquire) : discard
+    while acquire(lock) : discard
     body
     lock.clear(moRelease)
