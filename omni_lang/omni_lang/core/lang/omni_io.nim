@@ -2017,8 +2017,11 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
                         newIdentNode("and"),
                         newIdentNode("omni_at_least_one_buffer"),
                         nnkCall.newTree(
-                            newIdentNode("defined"),
-                            newIdentNode("omni_multithread_buffers")
+                            newIdentNode("not"),
+                            nnkCall.newTree(
+                                newIdentNode("defined"),
+                                newIdentNode("omni_no_multithread_buffers")
+                            )
                         )
                     ),
                     unlock_buffers_body
@@ -2096,10 +2099,25 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
                 )
             )
         )
+        
+        lock_buffer_when = nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkCall.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        newIdentNode("defined"),
+                        newIdentNode("omni_no_multithread_buffers")
+                    )
+                ),
+                nnkStmtList.newTree(
+                    lock_buffer_if
+                )
+            )
+        )
 
         lock_buffers_stmt = nnkStmtList.newTree(
             valid_buffer_if,
-            lock_buffer_if
+            lock_buffer_when
         )
 
         lock_buffers_acquire = nnkElifBranch.newTree(
@@ -2352,16 +2370,16 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
         omni_buffers_generate_unpack_templates = omni_buffers_generate_unpack_templates()
         omni_generate_lock_unlock_buffers = omni_generate_lock_unlock_buffers()
     
-    var when_declared_buffer_interface : NimNode
+    var omni_when_declared_buffer_wrapper_interface : NimNode
 
     if zero_buffers:
         buffers_number_VAL = 0
         buffers_names_node = newLit(OMNI_NIL)
-        when_declared_buffer_interface = nnkDiscardStmt.newTree(
+        omni_when_declared_buffer_wrapper_interface = nnkDiscardStmt.newTree(
             newEmptyNode()
         )
     else:
-        when_declared_buffer_interface = nnkWhenStmt.newTree(
+        omni_when_declared_buffer_wrapper_interface = nnkWhenStmt.newTree(
             nnkElifBranch.newTree(
                 nnkPrefix.newTree(
                     newIdentNode("not"),
@@ -2384,7 +2402,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     return quote do:
         when not declared(omni_declared_buffers):
             #Check buffer interface
-            `when_declared_buffer_interface`
+            `omni_when_declared_buffer_wrapper_interface`
             
             #declare global vars
             const 

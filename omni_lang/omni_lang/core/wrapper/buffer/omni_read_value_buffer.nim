@@ -134,7 +134,7 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
                 ),
                 nnkStmtList.newTree(
                     nnkReturnStmt.newTree(
-                    newLit(0.0)
+                    newFloatLitNode(0.0)
                     )
                 )
                 )
@@ -299,7 +299,7 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
                 ),
                 nnkStmtList.newTree(
                     nnkReturnStmt.newTree(
-                    newLit(0.0)
+                    newFloatLitNode(0.0)
                     )
                 )
                 )

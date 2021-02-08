@@ -169,8 +169,8 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
             else:
                 omni_parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = false)
 
-            #UNLOCK buffers when multithread buffers are used
-            when defined(omni_multithread_buffers):
+            #unlock buffers only when multithread buffers are used
+            when not defined(omni_no_multithread_buffers):
                 omni_unlock_buffers()
 
     when defined(omni_perform64):
@@ -186,8 +186,8 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
             else:
                 omni_parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = true)
 
-            #UNLOCK buffers when multithread buffers are used
-            when defined(omni_multithread_buffers):
+            #unlock buffers only when multithread buffers are used
+            when not defined(omni_no_multithread_buffers):
                 omni_unlock_buffers()
 
     #Write IO infos to txt file.
