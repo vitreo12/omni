@@ -56,7 +56,7 @@ extern "C" {
     /* Initialization functions */
     /****************************/
 
-    //Global (initialize alloc, print, utilities in one place)
+    //Global (Alloc + Print)
     OMNI_DLL_EXPORT extern void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
         omni_realloc_func_t* realloc_func, 
@@ -103,23 +103,18 @@ extern "C" {
     /* Omni_UGen audio functions */
     /*****************************/
 
-    //Alloc/Init. Returns NULL if fails to alloc/init
-    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit32(float**  ins, int bufsize, double samplerate, void* buffer_interface);
-    OMNI_DLL_EXPORT extern void*  Omni_UGenAllocInit64(double** ins, int bufsize, double samplerate, void* buffer_interface);
-    
     //returns NULL if it fails
-    OMNI_DLL_EXPORT extern void*  Omni_UGenAlloc();
+    OMNI_DLL_EXPORT extern void* Omni_UGenAlloc();
     
-    //Return 1 if it succeeds / 0 if it fails
-    OMNI_DLL_EXPORT extern int    Omni_UGenInit32(void* omni_ugen, float**  ins, int bufsize, double samplerate, void* buffer_interface);
-    OMNI_DLL_EXPORT extern int    Omni_UGenInit64(void* omni_ugen, double** ins, int bufsize, double samplerate, void* buffer_interface);
+    //Return 1 if it succeeds, 0 if it fails
+    OMNI_DLL_EXPORT extern int   Omni_UGenInit(void* omni_ugen, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform
-    OMNI_DLL_EXPORT extern void   Omni_UGenPerform32(void* omni_ugen, float**  ins, float**  outs, int bufsize);
-    OMNI_DLL_EXPORT extern void   Omni_UGenPerform64(void* omni_ugen, double** ins, double** outs, int bufsize);
+    OMNI_DLL_EXPORT extern void  Omni_UGenPerform32(void* omni_ugen, float**  ins, float**  outs, int bufsize);
+    OMNI_DLL_EXPORT extern void  Omni_UGenPerform64(void* omni_ugen, double** ins, double** outs, int bufsize);
 
     //Free
-    OMNI_DLL_EXPORT extern void   Omni_UGenFree(void* omni_ugen);
+    OMNI_DLL_EXPORT extern void  Omni_UGenFree(void* omni_ugen);
 
 #ifdef __cplusplus
 }
