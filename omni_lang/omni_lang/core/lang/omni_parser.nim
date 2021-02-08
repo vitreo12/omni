@@ -20,10 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#remove tables here and move isStrUpperAscii (and strutils) to another module
 import macros, strutils
 import omni_loop, omni_invalid, omni_type_checker, omni_macros_utilities
 from omni_io import omni_ins_names_list, omni_params_names_list, omni_buffers_names_list
+from omni_init import omni_build_vars_list
 
 #Types that will be converted to float when in tuples (if not explicitly set)
 let omni_tuple_convert_types {.compileTime.} = [
@@ -569,7 +569,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
             var_name_str = var_name.strVal()
 
         #If already in the seq, set boolean to true. else, add it,
-        #This, together with parse_untyped_elif_else_for_while, will also be take care of inner scopes!
+        #This, together with parse_untyped_elif_else_for_while, will also take care of inner scopes!
         if var_name_str in declared_vars:
             var_already_declared = true
         else:
@@ -578,7 +578,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
         #look for out1.. etc to perform typeof
         var is_out_variable = false
 
-        if(var_name_str.startsWith("out")):
+        if var_name_str.startsWith("out"):
             #out1.. / out10..
             if var_name_str.len == 4:
                 if var_name_str[3].isDigit:
@@ -588,7 +588,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                     is_out_variable = true
         
         #can't define a variable as in1, in2, etc...
-        elif(var_name_str.startsWith("in")):
+        elif var_name_str.startsWith("in"):
             #in1.. / in10..
             if var_name_str.len == 3:
                 if var_name_str[2].isDigit:
@@ -600,7 +600,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
         if is_command_or_ident:
             if not is_out_variable:          
                 let 
-                    declaredInScopeStatement = nnkCall.newTree(
+                    var_declared_in_scope = nnkCall.newTree(
                         newIdentNode("not"),
                         nnkCall.newTree(
                             newIdentNode("declaredInScope"),
@@ -621,74 +621,32 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                         )
                     )
 
-                #constructor / def
-                if is_perform_block.not and is_sample_block.not:
-                    #If already declared, no need to run declaredInScope
-                    if var_already_declared:
-                        parsed_statement = assignment_statement
-                    #Else, check declaredInScope
-                    else:
-                        parsed_statement = nnkStmtList.newTree(
-                            nnkWhenStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    declaredInScopeStatement,
-                                    nnkStmtList.newTree(
-                                        nnkVarSection.newTree(
-                                            assgn_left
-                                        )
-                                    )
-                                ),
-                                nnkElse.newTree(
-                                    assignment_statement
-                                )
-                            )
-                        )
-
-                #perform / sample 
+                #If already declared, no need to run declaredInScope
+                if var_already_declared:
+                    parsed_statement = assignment_statement
+                #Else, check declaredInScope
                 else:
-                    #If already declared, no need to run declaredInScope
-                    if var_already_declared:
-                        parsed_statement = assignment_statement
-                    #Else, check declaredInScope and also check names in the omni_perform_build_names_table!
-                    else:
-                        let 
-                            omni_perform_build_names_table = newIdentNode("omni_perform_build_names_table")
-                            var_name_lit = newLit(var_name.strVal())
-
-                        parsed_statement = nnkStmtList.newTree(
-                            nnkWhenStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    nnkInfix.newTree(
-                                        newIdentNode("and"),
-                                        nnkCall.newTree(
-                                            newIdentNode("not"),
-                                            nnkPar.newTree(
-                                                nnkInfix.newTree(
-                                                    newIdentNode("in"),
-                                                    var_name_lit,
-                                                    omni_perform_build_names_table
-                                                )
-                                            )
-                                        ),
-                                        declaredInScopeStatement
-                                    ),
-                                    nnkStmtList.newTree(
-                                        nnkVarSection.newTree(
-                                            assgn_left
-                                        )
+                    parsed_statement = nnkStmtList.newTree(
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                var_declared_in_scope,
+                                nnkStmtList.newTree(
+                                    nnkVarSection.newTree(
+                                        assgn_left
                                     )
-                                ),
-                                nnkElse.newTree(
-                                    assignment_statement
                                 )
+                            ),
+                            nnkElse.newTree(
+                                assignment_statement
                             )
                         )
+                    )
 
-                    #error repr parsed_statement
+                #error repr parsed_statement
 
             #out1 = ... (ONLY in perform / sample blocks)
             else:
-                if is_perform_block:
+                if is_perform_block or is_sample_block:
                     parsed_statement = nnkAsgn.newTree(
                         var_name,
                         nnkCall.newTree(
@@ -961,6 +919,10 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
         declared_vars.add(omni_ins_names_list)
         declared_vars.add(omni_params_names_list)
         declared_vars.add(omni_buffers_names_list)
+
+    #If perform / sample block, also add omni_build_vars_list
+    if is_perform_block or is_sample_block:
+        declared_vars.add(omni_build_vars_list)
 
     #Begin parsing
     ommni_parse_untyped_block_inner(code_block, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)

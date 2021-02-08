@@ -25,6 +25,9 @@ import macros, strutils
 #Import the compile time list of float parameters to be added to Omni_UGen
 from omni_io import omni_params_names_list, omni_params_defaults_list, omni_buffers_names_list
 
+#variables declared in 'build'
+var omni_build_vars_list* {.compileTime.} : seq[string]
+
 macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
     result = nnkStmtList.newTree()
 
@@ -109,10 +112,6 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         templates_for_perform_var_declarations     = nnkStmtList.newTree()
         templates_for_init_var_declarations        = nnkStmtList.newTree()
         templates_for_init_let_declarations        = nnkStmtList.newTree()
-        omni_perform_build_names_table_static_stmt = nnkStmtList.newTree()
-        omni_perform_build_names_table_static      = nnkStaticStmt.newTree(
-            omni_perform_build_names_table_static_stmt
-        )
 
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
@@ -313,14 +312,12 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
     #build the omni_ugen.a = a, omni_ugen.b = b constructs
     for index, var_name in call_to_build_macro:
-        
-        #In case user is trying to not insert a variable with name in, like "new(1)"
+        #In case user is trying to not insert a variable with name in, like "build(1)"
         if var_name.kind != nnkIdent:
-            error("Trying to use a literal value at index " & $index & " of the 'new' statement. Use a named variable instead.")
+            error("'build': Trying to use a literal value at index " & $index & ". Use a named variable instead.")
         
         #Standard case, an nnkIdent with the variable name
         if index > 0: 
-
             let var_name_str = var_name.strVal()
 
             let ugen_asgn_stmt = nnkAsgn.newTree(
@@ -337,17 +334,10 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 newIdentNode(var_name_str)
             )
 
-            omni_perform_build_names_table_static_stmt.add(
-                nnkStmtList.newTree(
-                    nnkCall.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_perform_build_names_table"),
-                            newIdentNode("add")
-                        ),
-                        newLit(var_name_str[0..(var_name_str.len)-5]) #remove _var / _let
-                    )
-                )
-            )   
+            #Also add the build vars name to the omni_build_vars_list
+            omni_build_vars_list.add(
+                var_name_str[0..(var_name_str.len)-5] #remove _var / _let
+            )
 
         #First ident == "build"
         else: 
@@ -377,9 +367,6 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "omni_generate_templates_for_perform_var_declarations()" macro
         template omni_generate_templates_for_perform_var_declarations() : untyped {.dirty.} =
             `templates_for_perform_var_declarations`
-
-        #These are variables declared in build, they won't be renamed in perform
-        `omni_perform_build_names_table_static`
 
         #This only returns the Omni_UGen declaration to scope, together with aliases (:= declarations) 
         omni_clenup_build_statement_scope(`code_block_with_var_let_templates_and_call_to_build_macro`)
@@ -570,9 +557,6 @@ macro init*(code_block : untyped) : untyped =
         when declared(omni_buffers_post_hook):
             omni_buffers_post_hook()
 
-        #Use to check variable names in perform block, to check if they are the same as declared vars from init
-        var omni_perform_build_names_table {.inject, compileTime.} : seq[string]
-            
         #Trick the compiler of the existence of these variables in order to parse the block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 
