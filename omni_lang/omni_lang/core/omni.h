@@ -87,13 +87,13 @@ extern "C" {
     OMNI_DLL_EXPORT extern int    Omni_UGenParams();
     OMNI_DLL_EXPORT extern char*  Omni_UGenParamsNames();
     OMNI_DLL_EXPORT extern float* Omni_UGenParamsDefaults();
-    OMNI_DLL_EXPORT extern void   Omni_UGenSetParam(void* omni_ugen, char* param, double val);
+    OMNI_DLL_EXPORT extern void   Omni_UGenSetParam(void* omni_ugen, const char* param, double val);
 
     //Buffers
     OMNI_DLL_EXPORT extern int    Omni_UGenBuffers();
     OMNI_DLL_EXPORT extern char*  Omni_UGenBuffersNames();
     OMNI_DLL_EXPORT extern char*  Omni_UGenBuffersDefaults();
-    OMNI_DLL_EXPORT extern void   Omni_UGenSetBuffer(void* omni_ugen, char* buffer, char* val);
+    OMNI_DLL_EXPORT extern void   Omni_UGenSetBuffer(void* omni_ugen, const char* buffer, char* val);
 
     //Outputs
     OMNI_DLL_EXPORT extern int    Omni_UGenOutputs();
