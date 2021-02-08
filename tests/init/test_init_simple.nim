@@ -34,9 +34,6 @@ init:
   CONST2 int = 6
 
 suite "init: functions and templates exist":
-  test "omni_perform_build_names_table":
-    check (declared(omni_perform_build_names_table))
-
   test "omni_generate_templates_for_perform_var_declarations":
     check (declared(omni_generate_templates_for_perform_var_declarations))
     omni_generate_templates_for_perform_var_declarations()

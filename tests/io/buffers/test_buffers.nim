@@ -24,21 +24,22 @@ import unittest
 import ../../../omni_lang/omni_lang
 
 #Have the call here because it can export stuff, needs to be top level
-buffers 2:
-    buf1 "something"
-    buf2 "somethingElse"
+when declared(Buffer):
+  buffers 2:
+      buf1 "something"
+      buf2 "somethingElse"
 
-suite "buffers":
-  test "number of buffers":
-    check (omni_buffers == 2)
+  suite "buffers":
+    test "number of buffers":
+      check (omni_buffers == 2)
 
-  test "input names":
-    check (omni_buffers_names_const == "buf1,buf2")
+    test "input names":
+      check (omni_buffers_names_const == "buf1,buf2")
 
-  test "default values":
-    check (omni_buffers_defaults_const == ["something", "somethingElse"])
-  
-  test "exported C functions":
-    check (Omni_UGenBuffers() == int32(2))
-    check (cast[cstring](Omni_UGenBuffersNames()) == "buf1,buf2")
-    check (cast[cstring](Omni_UGenBuffersDefaults()) == "something,somethingElse")
+    test "default values":
+      check (omni_buffers_defaults_const == ["something", "somethingElse"])
+    
+    test "exported C functions":
+      check (Omni_UGenBuffers() == int32(2))
+      check (cast[cstring](Omni_UGenBuffersNames()) == "buf1,buf2")
+      check (cast[cstring](Omni_UGenBuffersDefaults()) == "something,somethingElse")
