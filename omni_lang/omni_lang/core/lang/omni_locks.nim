@@ -23,13 +23,30 @@
 import atomics
 export atomics
 
+#-d:omni_no_locks can be defined to not use any locks around setting and getting params / buffers.
+
+#This option is particularly useful in cases like SuperCollider, where everything happens on the same audio thread, 
+#as the interface comes directly from UGen inputs (in supernova too).
+
+#If you're sure that your Omni_UGenSetParam / Omni_UGenSetBuffer calls will happen in the same thread as your
+#Omni_UGenInit / Omni_UGenPerform ones, this option will remove locks, gaining a little bit of performance.
+
 template acquire*(lock : var AtomicFlag) : bool =
-    not(lock.testAndSet(moAcquire))
+    when defined(omni_no_locks):
+        true
+    else:
+        not(lock.testAndSet(moAcquire))
 
 template release*(lock : var AtomicFlag) : void =
-    lock.clear(moRelease)
+    when defined(omni_no_locks):
+        discard
+    else:
+        lock.clear(moRelease)
 
 template spin*(lock: var AtomicFlag, body: untyped) : untyped =
-    while acquire(lock) : discard
-    body
-    lock.clear(moRelease)
+    when defined(omni_no_locks):
+        body
+    else:
+        while acquire(lock) : discard
+        body
+        lock.clear(moRelease)
