@@ -258,7 +258,6 @@ proc omni_generate_kr_in_template(index : SomeInteger) : NimNode {.compileTime.}
         )
     )
 
-
 #Generate in1, in2, in3...etc templates
 macro omni_generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed, generate_min_max : typed = 0) : untyped =
     var final_statement = nnkStmtList.newTree()
@@ -281,36 +280,6 @@ macro omni_generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed
             final_statement.add(omni_generate_kr_in_template(i))
     
     return final_statement
-
-macro omni_generate_args_templates*(num_of_inputs : typed) : untyped =
-    var 
-        final_statement = nnkStmtList.newTree()
-        num_of_inputs_VAL = num_of_inputs.intVal()
-
-    for i in 1..num_of_inputs_VAL:
-        let temp_in_stmt_list = nnkStmtList.newTree(
-            nnkTemplateDef.newTree(
-                newIdentNode("arg" & $i),
-                newEmptyNode(),
-                newEmptyNode(),
-                nnkFormalParams.newTree(
-                    newIdentNode("untyped")
-                ),
-                nnkPragma.newTree(
-                    newIdentNode("dirty")
-                ),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                    newIdentNode("in" & $i)
-                )
-            )
-        )
-
-        #Accumulate result
-        final_statement.add(temp_in_stmt_list)
-
-    return final_statement
-
 
 macro omni_generate_outputs_templates*(num_of_outputs : typed) : untyped =
     var 
@@ -492,6 +461,38 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
     #Declare min max as const, the array as both const (for static IO at the end of perform) and let (so i can get its memory address for Omni_UGenDefaults())
     result.add(default_min_max_const_section)
 
+#This should be moved into its own "generate" function, as it is for params and buffers...
+macro omni_unpack_ins_perform*(ins_names : typed) : untyped =
+    result = nnkStmtList.newTree()
+
+    let ins_names_seq = ins_names.getImpl.strVal.split(',')
+    
+    for i, in_name in ins_names_seq:
+        let in_number_name = ("in" & $(i+1))
+
+        #let_statement will be overwritten if needed
+        var
+            ident_defs : NimNode
+            
+            let_statement = nnkDiscardStmt.newTree(
+                newEmptyNode()
+            )
+        
+        #Ignore in1, in2, etc...
+        if in_name != in_number_name:
+            var ident_val = newIdentNode(in_number_name)
+
+            ident_defs = nnkIdentDefs.newTree()
+            let_statement = nnkLetSection.newTree(ident_defs)
+
+            ident_defs.add(
+                newIdentNode(in_name),
+                newEmptyNode(),
+                ident_val
+            )
+
+        result.add(let_statement)
+
 macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     var 
         ins_number_VAL : int
@@ -657,11 +658,8 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
             #const statement for defaults / mins / maxs
             `defaults_mins_maxs`
             
-            #Generate procs for min/max
+            #Generate procs for min / max
             omni_generate_inputs_templates(`ins_number_VAL`, 0, 1)
-
-            #Generate arg aliases for in
-            omni_generate_args_templates(`ins_number_VAL`)
 
             #For in[i] access
             proc omni_get_dynamic_input[T : CFloatPtrPtr or CDoublePtrPtr; Y : SomeNumber](omni_ins_ptr : T, chan : Y, omni_audio_index : int = 0) : float =
@@ -943,8 +941,8 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                             nnkCall.newTree(
                                 newIdentNode("not"),
                                 nnkCall.newTree(
-                                    newIdentNode("omni_ugen_ptr"),
-                                    newIdentNode("isNil")
+                                    newIdentNode("isNil"),
+                                    newIdentNode("omni_ugen_ptr")
                                 )
                             ),
                             nnkStmtList.newTree(
@@ -1049,24 +1047,36 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 
                 set_max_val = true
 
-            let val_assgn = nnkStmtList.newTree(
-                nnkAsgn.newTree(
-                    nnkBracketExpr.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("freq_omni_param")
-                        ),
-                        newLit(0)
+            let val_assgn = nnkAsgn.newTree(
+                nnkBracketExpr.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("omni_ugen"),
+                        newIdentNode("freq_omni_param")
                     ),
-                    nnkCall.newTree(
-                        set_min_max_template_name,
-                        newIdentNode("val")
-                    )
+                    newLit(0)
+                ),
+                nnkCall.newTree(
+                    set_min_max_template_name,
+                    newIdentNode("val")
                 )
             )
 
+            let initialized_param = nnkAsgn.newTree(
+                nnkBracketExpr.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("omni_ugen"),
+                        newIdentNode("freq_omni_param")
+                    ),
+                    newLit(2)
+                ),
+                newFloatLitNode(1.0)
+            )
+
             set_param_spin.add(
-                val_assgn
+                nnkStmtList.newTree(
+                    val_assgn,
+                    initialized_param
+                )
             )  
         
             if set_min_val or set_max_val:
@@ -1177,74 +1187,101 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
     )
 
     if omni_params_names_list.len > 0:
-        var 
-            unpack_init = nnkStmtList.newTree()
-            unpack_pre_init = nnkStmtList.newTree()
-
-            unpack_perform_declare_params = nnkStmtList.newTree()
-            unpack_perform_success = nnkStmtList.newTree()
-            unpack_perform_fail = nnkStmtList.newTree()
-            unpack_perform_let  = nnkStmtList.newTree()
-
-        init_block.add(
-            nnkCall.newTree(
-                nnkDotExpr.newTree(
-                nnkDotExpr.newTree(
-                    newIdentNode("omni_ugen"),
-                    newIdentNode("omni_params_lock")
-                ),
-                newIdentNode("spin")
-                ),
-                unpack_init
-            )
-        )
-
-        pre_init_block.add(
-            unpack_pre_init
-        )
-
-        perform_block.add(
-            unpack_perform_declare_params,
-            nnkIfStmt.newTree(
-                nnkElifBranch.newTree(
-                    nnkCall.newTree(
-                        newIdentNode("acquire"),
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("omni_params_lock")
-                        )
-                    ),
-                    nnkStmtList.newTree(
-                        unpack_perform_success,
-                        nnkCall.newTree(
-                            newIdentNode("release"),
-                            nnkDotExpr.newTree(
-                                newIdentNode("omni_ugen"),
-                                newIdentNode("omni_params_lock")
-                            )
-                        )
-                    )
-                ),
-                nnkElse.newTree(
-                    unpack_perform_fail
-                )
-            ),
-            unpack_perform_let
-        )
-
         for i, param_name in omni_params_names_list:
+            var 
+                unpack_init = nnkStmtList.newTree()
+                unpack_pre_init = nnkStmtList.newTree()
+                unpack_perform_declare_params = nnkStmtList.newTree()
+                unpack_perform_success = nnkStmtList.newTree()
+                unpack_perform_fail = nnkStmtList.newTree()
+                unpack_perform_let  = nnkStmtList.newTree()
+            
             let 
                 param_name_ident  = newIdentNode(param_name)
                 param_name_unique = genSymUntyped(param_name)
                 param_name_param  = newIdentNode(param_name & "_omni_param")
-            
+                omni_ugen_param_dot_expr = nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    param_name_param
+                )
+
+            init_block.add(
+                nnkCall.newTree(
+                    nnkDotExpr.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("omni_ugen"),
+                        newIdentNode("omni_params_lock")
+                    ),
+                    newIdentNode("spin")
+                    ),
+                    nnkStmtList.newTree(
+                        nnkIfStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode("=="),
+                                    nnkBracketExpr.newTree(
+                                        omni_ugen_param_dot_expr,
+                                        newLit(2)
+                                    ),
+                                    newFloatLitNode(0.0)
+                                ),
+                                unpack_init
+                            )
+                        ),
+                        nnkLetSection.newTree(
+                            nnkIdentDefs.newTree(
+                                param_name_ident,
+                                newEmptyNode(),
+                                nnkBracketExpr.newTree(
+                                    nnkDotExpr.newTree(
+                                        newIdentNode("omni_ugen"),
+                                        param_name_param
+                                    ),
+                                    newLit(0)
+                                )
+                            )
+                        )
+                    )    
+                )
+            )
+
+            pre_init_block.add(
+                unpack_pre_init
+            )
+
+            perform_block.add(
+                unpack_perform_declare_params,
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("acquire"),
+                            nnkDotExpr.newTree(
+                                newIdentNode("omni_ugen"),
+                                newIdentNode("omni_params_lock")
+                            )
+                        ),
+                        nnkStmtList.newTree(
+                            unpack_perform_success,
+                            nnkCall.newTree(
+                                newIdentNode("release"),
+                                nnkDotExpr.newTree(
+                                    newIdentNode("omni_ugen"),
+                                    newIdentNode("omni_params_lock")
+                                )
+                            )
+                        )
+                    ),
+                    nnkElse.newTree(
+                        unpack_perform_fail
+                    )
+                ),
+                unpack_perform_let
+            )
+
             unpack_init.add(
                 nnkAsgn.newTree(
                     nnkBracketExpr.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            param_name_param
-                        ),
+                        omni_ugen_param_dot_expr,
                         newLit(0)
                     ),
                     newFloatLitNode(
@@ -1254,28 +1291,11 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
 
                 nnkAsgn.newTree(
                     nnkBracketExpr.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            param_name_param
-                        ),
+                        omni_ugen_param_dot_expr,
                         newLit(1)
                     ),
                     newFloatLitNode(
                         omni_params_defaults_list[i]
-                    )
-                ),
-
-                nnkLetSection.newTree(
-                    nnkIdentDefs.newTree(
-                        param_name_ident,
-                        newEmptyNode(),
-                        nnkBracketExpr.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("omni_ugen"),
-                                param_name_param
-                            ),
-                            newLit(0)
-                        )
                     )
                 )
             )
@@ -1364,6 +1384,8 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                 newEmptyNode()
             )
         )
+    
+    #error repr result
 
 macro omni_params_inner*(params_number : typed, params_names : untyped) : untyped =
     var 
@@ -1673,8 +1695,8 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                             nnkCall.newTree(
                                 newIdentNode("not"),
                                 nnkCall.newTree(
-                                    newIdentNode("omni_ugen_ptr"),
-                                    newIdentNode("isNil")
+                                    newIdentNode("isNil"),
+                                    newIdentNode("omni_ugen_ptr")
                                 )
                             ),
                             nnkStmtList.newTree(

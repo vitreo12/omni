@@ -44,61 +44,6 @@ macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
 
     #error repr result
 
-#the "pre_init" argument is used at the start of "init" so that fictional let variables are declared
-#in order to make Nim's parsing happy (just as with bufsize, samplerate, etc...)
-macro omni_unpack_ins_init*(ins_names : typed, pre_init : typed = false) : untyped =
-    result = nnkStmtList.newTree()
-
-    let 
-        ins_names_seq = ins_names.getImpl.strVal.split(',')
-        pre_init_bool = pre_init.boolVal()
-    
-    for i, in_name in ins_names_seq:
-        let in_number_name = ("in" & $(i+1))
-
-        #let_statement will be overwritten if needed
-        var
-            ident_defs : NimNode
-            
-            let_statement = nnkDiscardStmt.newTree(
-                newEmptyNode()
-            )
-        
-        #Ignore in1, in2, etc...
-        if in_name != in_number_name:
-            var ident_val = newIdentNode(in_number_name)
-
-            ident_defs = nnkIdentDefs.newTree()
-            let_statement = nnkLetSection.newTree(ident_defs)
-            
-            if pre_init_bool == true:
-                ident_val = newLit(0.0)
-
-            ident_defs.add(
-                newIdentNode(in_name),
-                newEmptyNode(),
-                ident_val
-            )
-
-        #Check for no {Buffer} on current in1, in2, etc...
-        #The {Buffer} case is handled in the "add_buffers_ins" macro
-        let when_statement = nnkWhenStmt.newTree(
-            nnkElifBranch.newTree(
-                nnkPrefix.newTree(
-                    newIdentNode("not"),
-                    nnkCall.newTree(
-                        newIdentNode("declared"),
-                        newIdentNode(in_number_name & "_omni_buffer")
-                    )
-                ),
-                nnkStmtList.newTree(
-                    let_statement
-                )
-            )
-        )  
-
-        result.add(when_statement)
-
 #This has been correctly parsed!
 macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     #Extract the actual parsed code_block from the nnkStmtList
@@ -410,129 +355,53 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         #Generate the UGen_BufferSet procs
         omni_generate_buffers_set_procs()
         
-        when defined(omni_perform32):
-            proc Omni_UGenInit32*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cfloat, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit32", dynlib.} =
-                if isNil(omni_ugen_ptr):
-                    print("ERROR: Omni: invalid omni object pointer")
-                    return 0
-                
-                let 
-                    omni_ugen        {.inject.} : Omni_UGen     = cast[Omni_UGen](omni_ugen_ptr)     
-                    omni_ins_ptr     {.inject.} : CFloatPtrPtr  = cast[CFloatPtrPtr](ins_ptr)
-                    bufsize          {.inject.} : int           = int(bufsize_in)
-                    samplerate       {.inject.} : float         = float(samplerate_in)
-                    buffer_interface {.inject.} : pointer       = buffer_interface_in
-                
-                #Initialize auto_mem
-                omni_ugen.omni_auto_mem    = omni_create_omni_auto_mem()
+        proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit", dynlib.} =
+            if isNil(omni_ugen_ptr):
+                print("ERROR: Omni: invalid omni_ugen object pointer")
+                return 0
+            
+            let 
+                omni_ugen        {.inject.} : Omni_UGen     = cast[Omni_UGen](omni_ugen_ptr)     
+                bufsize          {.inject.} : int           = int(bufsize_in)
+                samplerate       {.inject.} : float         = float(samplerate_in)
+                buffer_interface {.inject.} : pointer       = buffer_interface_in
+            
+            #Initialize auto_mem
+            omni_ugen.omni_auto_mem    = omni_create_omni_auto_mem()
 
-                if isNil(cast[pointer](omni_ugen.omni_auto_mem)):
-                    print("ERROR: Omni: could not allocate auto_mem")
-                    return 0
+            if isNil(cast[pointer](omni_ugen.omni_auto_mem)):
+                print("ERROR: Omni: could not allocate auto_mem")
+                return 0
 
-                let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
+            let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
 
-                #Needed to be passed to all defs
-                var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
+            #Needed to be passed to all defs
+            var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
-                #Unpack the "ins" variable names
-                omni_unpack_ins_init(omni_inputs_names_const)
+            #Unpack params and set default values
+            omni_unpack_params_init()
 
-                #Unpack params and set default values
-                omni_unpack_params_init()
+            #Unpack buffers and set default values
+            omni_unpack_buffers_init()
+            omni_set_buffers_defaults()
 
-                #Unpack buffers and set default values
-                omni_unpack_buffers_init()
-                omni_set_buffers_defaults()
+            #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
+            `templates_for_init_var_declarations`
 
-                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                `templates_for_init_var_declarations`
+            #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
+            `templates_for_init_let_declarations`
+            
+            #Actual body of the constructor
+            `code_block`
 
-                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                `templates_for_init_let_declarations`
-                
-                #Actual body of the constructor
-                `code_block`
+            #Assign omni_ugen fields
+            `assign_ugen_fields`
 
-                #Assign omni_ugen fields
-                `assign_ugen_fields`
-
-                #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
-                if not omni_check_struct_validity(omni_ugen):
-                    return 0
-                
-                return 1
-
-            proc Omni_UGenAllocInit32*(ins_ptr {.inject.} : ptr ptr cfloat, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : pointer {.exportc: "Omni_UGenAllocInit32", dynlib.} =
-                let omni_ugen_ptr {.inject.} = Omni_UGenAlloc()
-                if Omni_UGenInit32(omni_ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
-                    return omni_ugen_ptr
-                else:
-                    if not isNil(omni_ugen_ptr):
-                        Omni_UGenFree(omni_ugen_ptr)
-                    return cast[pointer](nil)
-
-        when defined(omni_perform64):
-            proc Omni_UGenInit64*(omni_ugen_ptr {.inject.} : pointer, ins_ptr {.inject.} : ptr ptr cdouble, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit64", dynlib.} =
-                if isNil(omni_ugen_ptr):
-                    print("ERROR: Omni: invalid omni object pointer")
-                    return 0
-
-                let 
-                    omni_ugen        {.inject.} : Omni_UGen      = cast[Omni_UGen](omni_ugen_ptr)     
-                    omni_ins_ptr     {.inject.} : CDoublePtrPtr  = cast[CDoublePtrPtr](ins_ptr)
-                    bufsize          {.inject.} : int            = int(bufsize_in)
-                    samplerate       {.inject.} : float          = float(samplerate_in)
-                    buffer_interface {.inject.} : pointer        = buffer_interface_in
-
-                #Initialize auto_mem
-                omni_ugen.omni_auto_mem    = omni_create_omni_auto_mem()
-
-                if isNil(cast[pointer](omni_ugen.omni_auto_mem)):
-                    print("ERROR: Omni: could not allocate auto_mem")
-                    return 0
-
-                let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
-
-                #Needed to be passed to all defs
-                var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
-
-                #Unpack the "ins" variable names
-                omni_unpack_ins_init(omni_inputs_names_const)
-
-                #Unpack params and set default values
-                omni_unpack_params_init()
-
-                #Unpack buffers and set default values
-                omni_unpack_buffers_init()
-                omni_set_buffers_defaults()
-
-                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-                `templates_for_init_var_declarations`
-
-                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-                `templates_for_init_let_declarations`
-                
-                #Actual body of the constructor
-                `code_block`
-
-                #Assign omni_ugen fields
-                `assign_ugen_fields`
-
-                #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
-                if not omni_check_struct_validity(omni_ugen):
-                    return 0
-                
-                return 1
-
-            proc Omni_UGenAllocInit64*(ins_ptr {.inject.} : ptr ptr cdouble, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : pointer {.exportc: "Omni_UGenAllocInit64", dynlib.} =
-                let omni_ugen_ptr {.inject.} = Omni_UGenAlloc()
-                if Omni_UGenInit64(omni_ugen_ptr, ins_ptr, bufsize_in, samplerate_in, buffer_interface_in) == 1:
-                    return omni_ugen_ptr
-                else:
-                    if not isNil(omni_ugen_ptr):
-                        Omni_UGenFree(omni_ugen_ptr)
-                    return cast[pointer](nil)
+            #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
+            if not omni_check_struct_validity(omni_ugen):
+                return 0
+            
+            return 1
 
 macro init*(code_block : untyped) : untyped =
     return quote do:
@@ -557,7 +426,7 @@ macro init*(code_block : untyped) : untyped =
         when declared(omni_buffers_post_hook):
             omni_buffers_post_hook()
 
-        #Trick the compiler of the existence of these variables in order to parse the block.
+        #Trick the compiler of the existence of these variables in order to parse the init block.
         #These will be overwrittne in the UGenCosntructor anyway.
         let 
             bufsize            {.inject.} : int            = 0
@@ -567,15 +436,9 @@ macro init*(code_block : untyped) : untyped =
         
         var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
-        #It doesn' matter it's a CFloatPtrPtr (even for performBits:64), as it will just be replaced in the functions with the proper casting
-        let omni_ins_ptr       {.inject.} : CFloatPtrPtr   = cast[CFloatPtrPtr](0)
-
         #Define that init exists, so perform doesn't create an empty one automatically
         #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
         let omni_declared_init {.inject, compileTime.} = true
-
-        #Generate fictional let names for ins (so that parser won't complain when using them)
-        omni_unpack_ins_init(omni_inputs_names_const, true)
 
         #Generate fictional let names for params (so that parser won't complain when using them)
         omni_unpack_params_pre_init()
@@ -677,7 +540,7 @@ macro build*(var_names : varargs[typed]) =
                 newIdentNode(param_name & "_omni_param"),
                 nnkBracketExpr.newTree(
                     newIdentNode("array"),
-                    newLit(2),
+                    newLit(3),
                     newIdentNode("float")
                 ),
                 newEmptyNode()

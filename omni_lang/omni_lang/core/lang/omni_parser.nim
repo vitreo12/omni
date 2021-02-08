@@ -72,7 +72,7 @@ proc omni_parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
             nnkStmtList.newTree(
                 #Declare ins unpacking / variable names for the sample block
                 nnkCall.newTree(
-                    newIdentNode("omni_unpack_ins_init"),
+                    newIdentNode("omni_unpack_ins_perform"),
                     newIdentNode("omni_inputs_names_const")
                 ),
                 
@@ -988,7 +988,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
 
             #Declare ins unpacking / variable names for the perform block
             nnkCall.newTree(
-                newIdentNode("omni_unpack_ins_init"),
+                newIdentNode("omni_unpack_ins_perform"),
                 newIdentNode("omni_inputs_names_const")
             ),
 
