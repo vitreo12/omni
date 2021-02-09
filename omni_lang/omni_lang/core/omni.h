@@ -25,6 +25,8 @@
 
 //For platform's size_t and malloc/realloc/free (defaults for omni's allocator)
 #include "stdlib.h"
+
+//For bool
 #include "stdbool.h"
 
 //Needed for .dll export
@@ -104,10 +106,10 @@ extern "C" {
     /* Omni_UGen audio functions */
     /*****************************/
 
-    //returns NULL if it fails
+    //Returns a pointer to a new omni_ugen, or NULL if it fails
     OMNI_DLL_EXPORT extern void* Omni_UGenAlloc();
     
-    //Return 1 if it succeeds, 0 if it fails
+    //Return true if it succeeds, or false if it fails
     OMNI_DLL_EXPORT extern bool  Omni_UGenInit(void* omni_ugen, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform

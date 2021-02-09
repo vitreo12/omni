@@ -1047,12 +1047,14 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 
                 set_max_val = true
 
+            let param_dot_expr = nnkDotExpr.newTree(
+                newIdentNode("omni_ugen"),
+                newIdentNode("freq_omni_param")
+            )
+
             let val_assgn = nnkAsgn.newTree(
                 nnkDotExpr.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("omni_ugen"),
-                        newIdentNode("freq_omni_param")
-                    ),
+                    param_dot_expr,
                     newIdentNode("val")
                 ),
                 nnkCall.newTree(
@@ -1061,15 +1063,35 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 )
             )
 
-            let initialized_param = nnkAsgn.newTree(
-                nnkDotExpr.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("omni_ugen"),
-                        newIdentNode("freq_omni_param")
+            let initialized_param = nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("not"),
+                        nnkDotExpr.newTree(
+                            param_dot_expr,
+                            newIdentNode("init")
+                        )
                     ),
-                    newIdentNode("init")
-                ),
-                newLit(true)
+                    nnkStmtList.newTree(
+                        nnkAsgn.newTree(
+                            nnkDotExpr.newTree(
+                                param_dot_expr,
+                                newIdentNode("init")
+                            ),
+                            newLit(true)
+                        ),
+                        nnkAsgn.newTree(
+                            nnkDotExpr.newTree(
+                                param_dot_expr,
+                                newIdentNode("prev_val")
+                            ),
+                            nnkDotExpr.newTree(
+                                param_dot_expr,
+                                newIdentNode("val")
+                            )
+                        ),
+                    )
+                )
             )
 
             set_param_spin.add(
@@ -1224,7 +1246,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                                         newIdentNode("init")
                                     )
                                 ),
-                                unpack_init
+                                unpack_init,
                             )
                         ),
                         nnkLetSection.newTree(
@@ -1296,6 +1318,14 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                     newFloatLitNode(
                         omni_params_defaults_list[i]
                     )
+                ),
+
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        omni_ugen_param_dot_expr,
+                        newIdentNode("init")
+                    ),
+                    newLit(true)           
                 )
             )
 
@@ -1969,7 +1999,12 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
             defaults_array_const_unpacked_str.add(buffer_default & ",")
 
             if buffer_default != OMNI_DEFAULT_NIL_BUFFER:
-                let omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
+                let 
+                    omni_ugen_setbuffer_func_name = newIdentNode("Omni_UGenSetBuffer_" & buffer_name)
+                    buffer_name_dot_expr = nnkDotExpr.newTree(
+                        newIdentNode("omni_ugen"),
+                        newIdentNode(buffer_name & "_omni_buffer")
+                    )
                 
                 generate_defaults_block.add(
                     nnkIfStmt.newTree(
@@ -1977,17 +2012,23 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                             nnkCall.newTree(
                                 newIdentNode("not"),
                                 nnkDotExpr.newTree(
-                                    nnkDotExpr.newTree(
-                                        newIdentNode("omni_ugen"),
-                                        newIdentNode(buffer_name & "_omni_buffer")
-                                    ),
+                                    buffer_name_dot_expr,
                                     newIdentNode("init")
                                 )    
                             ),
-                            nnkCall.newTree(
-                                omni_ugen_setbuffer_func_name,
-                                newIdentNode("omni_ugen"),
-                                buffer_default_lit
+                            nnkStmtList.newTree(
+                                nnkCall.newTree(
+                                    omni_ugen_setbuffer_func_name,
+                                    newIdentNode("omni_ugen"),
+                                    buffer_default_lit
+                                ),
+                                nnkAsgn.newTree(
+                                    nnkDotExpr.newTree(
+                                        buffer_name_dot_expr,
+                                        newIdentNode("init")
+                                    ),
+                                    newLit(true)
+                                )
                             )
                         )
                     )       
@@ -2425,7 +2466,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     return quote do:
         when not declared(omni_declared_buffers):
             #Check buffer interface
-            #`omni_when_declared_buffer_wrapper_interface`
+            `omni_when_declared_buffer_wrapper_interface`
             
             #declare global vars
             const 

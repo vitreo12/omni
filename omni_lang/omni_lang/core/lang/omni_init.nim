@@ -358,7 +358,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : bool {.exportc: "Omni_UGenInit", dynlib.} =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: invalid omni_ugen object pointer")
-                return 0
+                return false
             
             let 
                 omni_ugen        {.inject.} : Omni_UGen     = cast[Omni_UGen](omni_ugen_ptr)     
@@ -371,7 +371,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             if isNil(cast[pointer](omni_ugen.omni_auto_mem)):
                 print("ERROR: Omni: could not allocate auto_mem")
-                return 0
+                return false
 
             let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
 
@@ -399,9 +399,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
             if not omni_check_struct_validity(omni_ugen):
-                return 0
+                return false
             
-            return 1
+            return true
 
 macro init*(code_block : untyped) : untyped =
     return quote do:
@@ -538,11 +538,7 @@ macro build*(var_names : varargs[typed]) =
         var_names_and_types.add(
             nnkIdentDefs.newTree(
                 newIdentNode(param_name & "_omni_param"),
-                nnkBracketExpr.newTree(
-                    newIdentNode("array"),
-                    newLit(3),
-                    newIdentNode("float")
-                ),
+                newIdentNode("Omni_Param"),
                 newEmptyNode()
             )
         )
