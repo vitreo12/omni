@@ -31,22 +31,44 @@ export atomics
 #If you're sure that your Omni_UGenSetParam / Omni_UGenSetBuffer calls will happen in the same thread as your
 #Omni_UGenInit / Omni_UGenPerform ones, this option will remove locks, gaining a little bit of performance.
 
-template acquire*(lock : var AtomicFlag) : bool =
-    when defined(omni_no_locks):
+#param
+template acquireParamLock*(lock : var AtomicFlag) : bool =
+    when defined(omni_no_param_lock) or defined(omni_no_locks):
         true
     else:
         not(lock.testAndSet(moAcquire))
 
-template release*(lock : var AtomicFlag) : void =
-    when defined(omni_no_locks):
+template releaseParamLock*(lock : var AtomicFlag) : void =
+    when defined(omni_no_param_lock) or defined(omni_no_locks):
         discard
     else:
         lock.clear(moRelease)
 
-template spin*(lock: var AtomicFlag, body: untyped) : untyped =
-    when defined(omni_no_locks):
+template spinParamLock*(lock: var AtomicFlag, body: untyped) : untyped =
+    when defined(omni_no_param_lock) or defined(omni_no_locks):
         body
     else:
-        while acquire(lock) : discard
+        while acquireParamLock(lock) : discard
+        body
+        lock.clear(moRelease)
+
+#buffer
+template acquireBufferLock*(lock : var AtomicFlag) : bool =
+    when defined(omni_no_buffer_lock) or defined(omni_no_locks):
+        true
+    else:
+        not(lock.testAndSet(moAcquire))
+
+template releaseBufferLock*(lock : var AtomicFlag) : void =
+    when defined(omni_no_buffer_lock) or defined(omni_no_locks):
+        discard
+    else:
+        lock.clear(moRelease)
+
+template spinBufferLock*(lock: var AtomicFlag, body: untyped) : untyped =
+    when defined(omni_no_buffer_lock) or defined(omni_no_locks):
+        body
+    else:
+        while acquireBufferLock(lock) : discard
         body
         lock.clear(moRelease)

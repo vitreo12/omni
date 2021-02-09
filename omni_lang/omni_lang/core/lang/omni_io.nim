@@ -932,7 +932,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                             newIdentNode("omni_ugen"),
                             newIdentNode("omni_params_lock")
                         ),
-                        newIdentNode("spin")
+                        newIdentNode("spinParamLock")
                     )
                 )
 
@@ -1239,7 +1239,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                         newIdentNode("omni_ugen"),
                         newIdentNode("omni_params_lock")
                     ),
-                    newIdentNode("spin")
+                    newIdentNode("spinParamLock")
                     ),
                     nnkStmtList.newTree(
                         nnkIfStmt.newTree(
@@ -1280,7 +1280,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                 nnkIfStmt.newTree(
                     nnkElifBranch.newTree(
                         nnkCall.newTree(
-                            newIdentNode("acquire"),
+                            newIdentNode("acquireParamLock"),
                             nnkDotExpr.newTree(
                                 newIdentNode("omni_ugen"),
                                 newIdentNode("omni_params_lock")
@@ -1289,7 +1289,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                         nnkStmtList.newTree(
                             unpack_perform_success,
                             nnkCall.newTree(
-                                newIdentNode("release"),
+                                newIdentNode("releaseParamLock"),
                                 nnkDotExpr.newTree(
                                     newIdentNode("omni_ugen"),
                                     newIdentNode("omni_params_lock")
@@ -1714,20 +1714,31 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                             newIdentNode("omni_ugen"),
                             newIdentNode("omni_buffers_lock")
                         ),
-                        newIdentNode("spin")
+                        newIdentNode("spinBufferLock")
                     ),
                     nnkStmtList.newTree(
-                        nnkCall.newTree(
-                            newIdentNode("omni_update_buffer"),
-                            buffer_dot_expr,
-                            newIdentNode("val")
-                        ),
-                        nnkAsgn.newTree(
-                            nnkDotExpr.newTree(
-                                buffer_dot_expr,
-                                newIdentNode("init")
+                        nnkIfStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkDotExpr.newTree(
+                                    buffer_dot_expr,
+                                    newIdentNode("init")
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("omni_update_buffer"),
+                                        buffer_dot_expr,
+                                        newIdentNode("val")
+                                    )
+                                )
                             ),
-                            newLit(true)
+                            nnkElse.newTree(
+                                nnkStmtList.newTree(
+                                    nnkCall.newTree(
+                                        newIdentNode("omni_print_str"),
+                                        newLit("ERROR: Omni_UGenSetBuffer: Can't set '" & buffer_name & "' before running Omni_UGenInit.")
+                                    )
+                                )
+                            )
                         )
                     )
                 )
@@ -1796,7 +1807,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                 )
             )
 
-            error_str.add(" '" & buffer_name & ",")
+            error_str.add(" '" & buffer_name & "',")
 
         error_str.removeSuffix(',')
         
@@ -1902,7 +1913,8 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
                         buffer_name_buffer
                     ),
                     nnkCall.newTree(
-                        newIdentNode("omni_init_buffer")
+                        newIdentNode("omni_init_buffer"),
+                        newLit(buffer_name)
                     )
                )
             )
@@ -2017,31 +2029,11 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
                     )
                 
                 generate_defaults_block.add(
-                    nnkIfStmt.newTree(
-                        nnkElifBranch.newTree(
-                            nnkCall.newTree(
-                                newIdentNode("not"),
-                                nnkDotExpr.newTree(
-                                    buffer_name_dot_expr,
-                                    newIdentNode("init")
-                                )    
-                            ),
-                            nnkStmtList.newTree(
-                                nnkCall.newTree(
-                                    omni_ugen_setbuffer_func_name,
-                                    newIdentNode("omni_ugen"),
-                                    buffer_default_lit
-                                ),
-                                nnkAsgn.newTree(
-                                    nnkDotExpr.newTree(
-                                        buffer_name_dot_expr,
-                                        newIdentNode("init")
-                                    ),
-                                    newLit(true)
-                                )
-                            )
-                        )
-                    )       
+                    nnkCall.newTree(
+                        omni_ugen_setbuffer_func_name,
+                        newIdentNode("omni_ugen"),
+                        buffer_default_lit
+                    )     
                 )
 
         # remove trailing ,
@@ -2087,18 +2079,18 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
             nnkStmtList.newTree(
                 nnkWhenStmt.newTree(
                     nnkElifBranch.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode("and"),
-                        newIdentNode("omni_at_least_one_buffer"),
-                        nnkCall.newTree(
-                            newIdentNode("not"),
+                        nnkInfix.newTree(
+                            newIdentNode("and"),
+                            newIdentNode("omni_at_least_one_buffer"),
                             nnkCall.newTree(
-                                newIdentNode("defined"),
-                                newIdentNode("omni_no_multithread_buffers")
+                                newIdentNode("not"),
+                                nnkCall.newTree(
+                                    newIdentNode("defined"),
+                                    newIdentNode("omni_no_multithread_buffers")
+                                )
                             )
-                        )
-                    ),
-                    unlock_buffers_body
+                        ),
+                        unlock_buffers_body
                     )
                 )
             )
@@ -2138,7 +2130,7 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
         )
 
         release_omni_buffers_lock = nnkCall.newTree(
-            newIdentNode("release"),
+            newIdentNode("releaseParamLock"),
             nnkDotExpr.newTree(
                 newIdentNode("omni_ugen"),
                 newIdentNode("omni_buffers_lock")
@@ -2154,6 +2146,21 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
                     nnkReturnStmt.newTree(
                         newEmptyNode()
                     ),
+                )
+            )
+        )
+
+        valid_buffer_when = nnkWhenStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkCall.newTree(
+                    newIdentNode("not"),
+                    nnkCall.newTree(
+                        newIdentNode("defined"),
+                        newIdentNode("omni_no_check_valid_buffers")
+                    )
+                ),
+                nnkStmtList.newTree(
+                    valid_buffer_if
                 )
             )
         )
@@ -2190,13 +2197,13 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
         )
 
         lock_buffers_stmt = nnkStmtList.newTree(
-            valid_buffer_if,
+            valid_buffer_when,
             lock_buffer_when
         )
 
         lock_buffers_acquire = nnkElifBranch.newTree(
             nnkCall.newTree(
-                newIdentNode("acquire"),
+                newIdentNode("acquireBufferLock"),
                 nnkDotExpr.newTree(
                     newIdentNode("omni_ugen"),
                     newIdentNode("omni_buffers_lock")
@@ -2205,7 +2212,7 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
             nnkStmtList.newTree(
                 lock_buffers_stmt,
                 nnkCall.newTree(
-                    newIdentNode("release"),
+                    newIdentNode("releaseParamLock"),
                     nnkDotExpr.newTree(
                         newIdentNode("omni_ugen"),
                         newIdentNode("omni_buffers_lock")

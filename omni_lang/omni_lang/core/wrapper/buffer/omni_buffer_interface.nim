@@ -238,7 +238,21 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newLit(false)
                 ),
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("name"),
+                    ),
+                    newIdentNode("buffer_name")
+                ),
                 statement_block,
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("init"),
+                    ),
+                    newLit(true)
+                ),
                 nnkReturnStmt.newTree(
                     newIdentNode("buffer")
                 )
@@ -254,6 +268,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     newEmptyNode(),
                     nnkFormalParams.newTree(
                         newIdentNode("Buffer"),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("buffer_name"),
+                            newIdentNode("string"),
+                            newEmptyNode()
+                        ),
                         nnkIdentDefs.newTree(
                             newIdentNode("buffer_interface"),
                             newIdentNode("pointer"),

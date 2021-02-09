@@ -22,7 +22,7 @@
 
 type
     Buffer_inherit* = object of RootObj
-        name*       : cstring
+        name*       : string
         valid*      : bool
         init*       : bool
 
@@ -31,8 +31,9 @@ type
     Buffer_omni_struct_ptr = Buffer
 
 #Allocate a new Buffer
-template omni_init_buffer*() : untyped {.dirty.} =
+template omni_init_buffer*(name : string) : untyped {.dirty.} =
     Buffer_omni_struct_new(
+        buffer_name=name,
         buffer_interface=buffer_interface,
         omni_struct_type=Buffer_omni_struct_ptr, 
         omni_auto_mem=omni_auto_mem, 
