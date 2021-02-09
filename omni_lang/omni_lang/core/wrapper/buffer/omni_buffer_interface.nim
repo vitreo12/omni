@@ -104,7 +104,7 @@ template when_not_perform() : untyped {.dirty.} =
         )
     )
 
-proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void", add_perform_check : bool = true, is_lock : bool = false, is_unlock : bool = false) : NimNode {.inline, compileTime.} =
+proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void", add_perform_check : bool = true, is_lock : bool = false, is_unlock : bool = false) : NimNode {.inline, compileTime.} =        
     var 
         args = nnkFormalParams.newTree(
             newIdentNode(return_type),
@@ -153,58 +153,67 @@ proc declare_proc(name : string, statement_block : NimNode, return_type : string
         )
 
     if is_lock:
-        return nnkStmtList.newTree(
-            nnkProcDef.newTree(
-                nnkPostfix.newTree(
-                    newIdentNode("*"),
-                    newIdentNode("omni_lock_buffer_inner")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                args,
-                nnkPragma.newTree(
-                    newIdentNode("inline")
-                ),
-                newEmptyNode(),
-                stmt_list
+        return nnkProcDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("omni_lock_buffer")
             ),
-            nnkProcDef.newTree(
-                nnkPostfix.newTree(
-                    newIdentNode("*"),
-                    newIdentNode("omni_lock_buffer")
-                ),
-                newEmptyNode(),
-                newEmptyNode(),
-                args,
-                nnkPragma.newTree(
-                    newIdentNode("inline")
-                ),
-                newEmptyNode(),
-                nnkStmtList.newTree(
-                    nnkLetSection.newTree(
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newIdentNode("bool"),
+                nnkIdentDefs.newTree(
+                    newIdentNode("buffer"),
+                    newIdentNode("Buffer"),
+                    newEmptyNode()
+                )
+            ),
+            nnkPragma.newTree(
+                newIdentNode("inline")
+            ),
+            newEmptyNode(),
+            nnkStmtList.newTree(
+                nnkProcDef.newTree(
+                    newIdentNode("omni_lock_buffer_inner"),
+                    newEmptyNode(),
+                    newEmptyNode(),
+                    nnkFormalParams.newTree(
+                        newIdentNode("bool"),
                         nnkIdentDefs.newTree(
-                            newIdentNode("valid_lock"),
-                            newEmptyNode(),
-                            nnkCall.newTree(
-                                newIdentNode("omni_lock_buffer_inner"),
-                                newIdentNode("buffer")
-                            )
+                            newIdentNode("buffer"),
+                            newIdentNode("Buffer"),
+                            newEmptyNode()
                         )
                     ),
-                    nnkAsgn.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("buffer"),
-                            newIdentNode("valid_lock")
-                        ),
+                    nnkPragma.newTree(
+                        newIdentNode("inline")
+                    ),
+                    newEmptyNode(),
+                    stmt_list
+                ),
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode("valid_lock"),
+                        newEmptyNode(),
+                        nnkCall.newTree(
+                            newIdentNode("omni_lock_buffer_inner"),
+                            newIdentNode("buffer")
+                        )
+                    )
+                ),
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
                         newIdentNode("valid_lock")
                     ),
-                    nnkReturnStmt.newTree(
-                        newIdentNode("valid_lock")                    
-                    )
+                    newIdentNode("valid_lock")
+                ),
+                nnkReturnStmt.newTree(
+                    newIdentNode("valid_lock")
                 )
             )
         )
-
+        
     return nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
