@@ -910,6 +910,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
     )
 
     if omni_params_names_list.len > 0:
+        var error_str = "ERROR: Omni_UGenSetParam: invalid param name. Valid param names are:"
         for i, param_name in omni_params_names_list:
             var 
                 omni_ugen_setparam_func_name = newIdentNode("Omni_UGenSetParam_" & param_name)
@@ -1133,13 +1134,17 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                     )
                 )
             )
+
+            error_str.add(" '" & param_name & "',")
         
+        error_str.removeSuffix(',')
+
         setParam_if.add(
             nnkElse.newTree(
                 nnkStmtList.newTree(
                     nnkCall.newTree(
                         newIdentNode("omni_print_str"),
-                        newLit("ERROR: Omni_UGenSetParam: invalid param name")
+                        newLit(error_str)
                     )
                 )
             )
@@ -1683,6 +1688,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
     )
 
     if omni_buffers_names_list.len > 0:
+        var error_str = "ERROR: Omni_UGenSetBuffer: invalid buffer name. Valid buffer names are:"
         for buffer_name in omni_buffers_names_list:
             var
                 buffer_dot_expr = nnkDotExpr.newTree(
@@ -1790,12 +1796,16 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                 )
             )
 
+            error_str.add(" '" & buffer_name & ",")
+
+        error_str.removeSuffix(',')
+        
         setBuffer_if.add(
             nnkElse.newTree(
                 nnkStmtList.newTree(
                     nnkCall.newTree(
                         newIdentNode("omni_print_str"),
-                        newLit("ERROR: Omni_UGenSetBuffer: invalid buffer name")
+                        newLit(error_str)
                     )
                 )
             )
