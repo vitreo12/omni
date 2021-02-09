@@ -1235,11 +1235,11 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
             init_block.add(
                 nnkCall.newTree(
                     nnkDotExpr.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("omni_ugen"),
-                        newIdentNode("omni_params_lock")
-                    ),
-                    newIdentNode("spinParamLock")
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_ugen"),
+                            newIdentNode("omni_params_lock")
+                        ),
+                        newIdentNode("spinParamLock")
                     ),
                     nnkStmtList.newTree(
                         nnkIfStmt.newTree(
@@ -2130,7 +2130,7 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
         )
 
         release_omni_buffers_lock = nnkCall.newTree(
-            newIdentNode("releaseParamLock"),
+            newIdentNode("releaseBufferLock"),
             nnkDotExpr.newTree(
                 newIdentNode("omni_ugen"),
                 newIdentNode("omni_buffers_lock")
@@ -2212,7 +2212,7 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
             nnkStmtList.newTree(
                 lock_buffers_stmt,
                 nnkCall.newTree(
-                    newIdentNode("releaseParamLock"),
+                    newIdentNode("releaseBufferLock"),
                     nnkDotExpr.newTree(
                         newIdentNode("omni_ugen"),
                         newIdentNode("omni_buffers_lock")
