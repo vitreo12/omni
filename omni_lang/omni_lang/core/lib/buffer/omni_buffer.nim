@@ -24,6 +24,7 @@ type
     Buffer_inherit* = object of RootObj
         name*       : cstring
         valid*      : bool
+        init*       : bool
 
     #Don't export these, they are just needed here to define some common operations on Buffers
     Buffer = ptr Buffer_inherit

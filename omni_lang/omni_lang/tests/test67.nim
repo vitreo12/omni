@@ -2,6 +2,9 @@ params:
     freq {0, 1, 2}
     something
 
+buffers:
+    bubu "something"
+
 omni_debug_macros:
     init:
         a = 0

@@ -20,57 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-##########
-## LANG ##
-##########
-
-import omni_lang/core/lang/omni_macros
-export omni_macros
-
-#########
-## LIB ##
-#########
-
-#Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
-import omni_lang/core/lib/init/omni_init_global
-export omni_init_global
-
-#Allocation
-import omni_lang/core/lib/alloc/omni_alloc
-export omni_alloc
-
-#Automatic memory management
-import omni_lang/core/lib/auto_mem/omni_auto_mem
-export omni_auto_mem
-
-#Buffer
-import omni_lang/core/lib/buffer/omni_buffer
-export omni_buffer
-
-#Param
-import omni_lang/core/lib/param/omni_param
-export omni_param
-
-#Data
-import omni_lang/core/lib/data/omni_data
-export omni_data
-
-#Delay
-import omni_lang/core/lib/delay/omni_delay
-export omni_delay
-
-#Print
-import omni_lang/core/lib/print/omni_print
-export omni_print
-
-#math
-import omni_lang/core/lib/math/omni_math
-export omni_math
-
-#tables
-import omni_lang/core/lib/math/omni_tables
-export omni_tables
-
-#stdlib
-import omni_lang/core/lib/stdlib/omni_stdlib
-export omni_stdlib
+type Omni_Param* = object
+    val      : float
+    prev_val : float
+    init     : bool
