@@ -25,6 +25,7 @@
 
 //For platform's size_t and malloc/realloc/free (defaults for omni's allocator)
 #include "stdlib.h"
+#include "stdbool.h"
 
 //Needed for .dll export
 #ifdef _WIN32
@@ -42,15 +43,15 @@ extern "C" {
     /**************************************/
     
     //Alloc
-    typedef void*  omni_alloc_func_t(size_t in_size);
-    typedef void*  omni_realloc_func_t(void *in, size_t in_size);
-    typedef void   omni_free_func_t(void *in);
+    typedef void* omni_alloc_func_t(size_t in_size);
+    typedef void* omni_realloc_func_t(void *in, size_t in_size);
+    typedef void  omni_free_func_t(void *in);
     
     //Print
-    typedef void   omni_print_debug_func_t(const char* format_string, size_t value);
-    typedef void   omni_print_str_func_t(const char* format_string);
-    typedef void   omni_print_float_func_t(float value);
-    typedef void   omni_print_int_func_t(int value);
+    typedef void  omni_print_debug_func_t(const char* format_string, size_t value);
+    typedef void  omni_print_str_func_t(const char* format_string);
+    typedef void  omni_print_float_func_t(float value);
+    typedef void  omni_print_int_func_t(int value);
 
     /****************************/
     /* Initialization functions */
@@ -107,7 +108,7 @@ extern "C" {
     OMNI_DLL_EXPORT extern void* Omni_UGenAlloc();
     
     //Return 1 if it succeeds, 0 if it fails
-    OMNI_DLL_EXPORT extern int   Omni_UGenInit(void* omni_ugen, int bufsize, double samplerate, void* buffer_interface);
+    OMNI_DLL_EXPORT extern bool  Omni_UGenInit(void* omni_ugen, int bufsize, double samplerate, void* buffer_interface);
 
     //Perform
     OMNI_DLL_EXPORT extern void  Omni_UGenPerform32(void* omni_ugen, float**  ins, float**  outs, int bufsize);

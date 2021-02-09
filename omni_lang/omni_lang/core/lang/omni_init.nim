@@ -355,7 +355,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         #Generate the UGen_BufferSet procs
         omni_generate_buffers_set_procs()
         
-        proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : int {.exportc: "Omni_UGenInit", dynlib.} =
+        proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : bool {.exportc: "Omni_UGenInit", dynlib.} =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: invalid omni_ugen object pointer")
                 return 0
