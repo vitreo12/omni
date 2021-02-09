@@ -399,6 +399,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
             if not omni_check_struct_validity(omni_ugen):
+                Omni_UGenFree(omni_ugen)
                 return false
             
             return true

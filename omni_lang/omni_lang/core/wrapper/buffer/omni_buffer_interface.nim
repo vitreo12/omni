@@ -104,7 +104,7 @@ template when_not_perform() : untyped {.dirty.} =
         )
     )
 
-proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void", add_perform_check : bool = true) : NimNode {.inline, compileTime.} =
+proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void", add_perform_check : bool = true, is_lock : bool = false, is_unlock : bool = false) : NimNode {.inline, compileTime.} =
     var 
         args = nnkFormalParams.newTree(
             newIdentNode(return_type),
@@ -132,10 +132,78 @@ proc declare_proc(name : string, statement_block : NimNode, return_type : string
         stmt_list.add(
             when_not_perform()
         )
-    
-    stmt_list.add(
-        statement_block
-    )
+
+    if not is_unlock:
+        stmt_list.add(
+            statement_block
+        )
+    else:
+        stmt_list.add(
+            nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("valid_lock")
+                    ),
+                    nnkStmtList.newTree(
+                        statement_block
+                    )
+                )
+            )
+        )
+
+    if is_lock:
+        return nnkStmtList.newTree(
+            nnkProcDef.newTree(
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    newIdentNode("omni_lock_buffer_inner")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                args,
+                nnkPragma.newTree(
+                    newIdentNode("inline")
+                ),
+                newEmptyNode(),
+                stmt_list
+            ),
+            nnkProcDef.newTree(
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    newIdentNode("omni_lock_buffer")
+                ),
+                newEmptyNode(),
+                newEmptyNode(),
+                args,
+                nnkPragma.newTree(
+                    newIdentNode("inline")
+                ),
+                newEmptyNode(),
+                nnkStmtList.newTree(
+                    nnkLetSection.newTree(
+                        nnkIdentDefs.newTree(
+                            newIdentNode("valid_lock"),
+                            newEmptyNode(),
+                            nnkCall.newTree(
+                                newIdentNode("omni_lock_buffer_inner"),
+                                newIdentNode("buffer")
+                            )
+                        )
+                    ),
+                    nnkAsgn.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("buffer"),
+                            newIdentNode("valid_lock")
+                        ),
+                        newIdentNode("valid_lock")
+                    ),
+                    nnkReturnStmt.newTree(
+                        newIdentNode("valid_lock")                    
+                    )
+                )
+            )
+        )
 
     return nnkProcDef.newTree(
         nnkPostfix.newTree(
@@ -341,10 +409,10 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
             )
 
         elif statement_name == "lock":
-            lock = declare_proc("omni_lock_buffer", statement_block, "bool", false)
+            lock = declare_proc("omni_lock_buffer", statement_block, "bool", false, is_lock=true)
         
         elif statement_name == "unlock":
-            unlock = declare_proc("omni_unlock_buffer", statement_block, "void", false)
+            unlock = declare_proc("omni_unlock_buffer", statement_block, "void", false, is_unlock=true)
 
         elif statement_name == "length" or statement_name == "len":
             length = declare_proc("omni_get_length_buffer", statement_block, "int")
