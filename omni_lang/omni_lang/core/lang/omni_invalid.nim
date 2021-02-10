@@ -21,7 +21,12 @@
 # SOFTWARE.
 
 let omni_invalid_idents* {.compileTime.} = [
-    "omni_ugen", "Omni_UGen", "Data", "Delay", "Buffer"
+    "omni_ugen", "Omni_UGen", 
+    "omni_auto_mem", "Omni_AutoMem",
+    "Omni_Param",
+    "AtomicFlag",
+    "omni_params_lock", "omni_buffers_lock",
+    "Data", "Delay", "Buffer"
 ]
 
 let omni_invalid_ends_with* {.compileTime.} = [
@@ -34,7 +39,7 @@ let omni_invalid_ends_with* {.compileTime.} = [
 ]
 
 let omni_invalid_variable_names* {.compileTime.} = [
-    "omni_ugen", "Omni_UGen",
+    "omni_ugen",
     "omni_auto_mem", "omni_params_lock", "omni_buffers_lock",
     "ins", "inputs",
     "outs", "outputs",
