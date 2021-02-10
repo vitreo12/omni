@@ -26,6 +26,9 @@ type
         valid*      : bool
         valid_lock* : bool
         init*       : bool
+        length*     : int
+        samplerate* : float
+        channels*   : int
 
     #Don't export these, they are just needed here to define some common operations on Buffers
     Buffer = ptr Buffer_inherit
@@ -66,26 +69,26 @@ template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, ind
     omni_read_value_buffer(buffer, chan, index, omni_call_type)
 
 #length
-template length*(buffer : Buffer) : untyped {.dirty.} =
-    omni_get_length_buffer(buffer, omni_call_type)
+#[ template length*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.length ]#
 
 template len*(buffer : Buffer) : untyped {.dirty.} =
-    length(buffer)
+    buffer.length
 
 #samplerate
-template samplerate*(buffer : Buffer) : untyped {.dirty.} =
-    omni_get_samplerate_buffer(buffer, omni_call_type)
+#[ template samplerate*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.samplerate ]#
 
 #channels
-template channels*(buffer : Buffer) : untyped {.dirty.} =
-    omni_get_channels_buffer(buffer, omni_call_type)
+#[ template channels*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.channels ]#
 
 template chans*(buffer : Buffer) : untyped {.dirty.} =
-    channels(buffer)
+    buffer.channels
     
 #Chans * length = size
 template size*(buffer : Buffer) : untyped =
-    channels(buffer) * length(buffer)
+    buffer.channels * buffer.length
 
 #Internal checking for structs. It works fine without redefining it for every omniBufferInterface!
 proc omni_check_struct_validity*(obj : Buffer) : bool =

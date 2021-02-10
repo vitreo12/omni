@@ -243,9 +243,9 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         update : NimNode
         lock : NimNode
         unlock : NimNode
-        length : NimNode
+        #[ length : NimNode
         samplerate : NimNode
-        channels : NimNode
+        channels : NimNode ]#
         getter : NimNode
         setter : NimNode
 
@@ -423,14 +423,14 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         elif statement_name == "unlock":
             unlock = declare_proc("omni_unlock_buffer", statement_block, "void", false, is_unlock=true)
 
-        elif statement_name == "length" or statement_name == "len":
+        #[ elif statement_name == "length" or statement_name == "len":
             length = declare_proc("omni_get_length_buffer", statement_block, "int")
                 
         elif statement_name == "samplerate" or statement_name == "sampleRate":
             samplerate = declare_proc("omni_get_samplerate_buffer", statement_block, "float")
 
         elif statement_name == "channels" or statement_name == "chans":
-            channels = declare_proc("omni_get_channels_buffer", statement_block, "int")
+            channels = declare_proc("omni_get_channels_buffer", statement_block, "int") ]#
         
         elif statement_name == "getter":
             getter = nnkStmtList.newTree(
@@ -546,7 +546,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
             else:
                 error "omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'."
         else:
-            error "omniBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'update', 'lock', 'unlock', 'length', 'samplerate', 'channels', 'getter', 'setter'"
+            error "omniBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'update', 'lock', 'unlock', 'getter', 'setter'"
 
     if struct == nil:
         error "omniBufferInterface: Missing 'struct'"
@@ -563,14 +563,14 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
     if unlock == nil:
         error "omniBufferInterface: Missing 'unlock'"
     
-    if length == nil:
+    #[ if length == nil:
         error "omniBufferInterface: Missing 'length'"
 
     if samplerate == nil:
         error "omniBufferInterface: Missing 'samplerate'"
 
     if channels == nil:
-        error "omniBufferInterface: Missing 'channels'"
+        error "omniBufferInterface: Missing 'channels'" ]#
         
     if getter == nil:
         error "omniBufferInterface: Missing 'getter'"
@@ -586,9 +586,9 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         update,
         lock,
         unlock,
-        length,
+        #[ length,
         samplerate,
-        channels,
+        channels, ]#
         getter,
         setter,
         omni_read_value_buffer
