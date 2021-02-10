@@ -48,7 +48,7 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
         actual_size = int(samplerate)
 
     #Allocate obj
-    result = cast[Delay](omni_alloc(culong(sizeof(Delay_omni_struct))))
+    result = cast[Delay](omni_alloc0(culong(sizeof(Delay_omni_struct))))
 
     #Allocate data
     let 

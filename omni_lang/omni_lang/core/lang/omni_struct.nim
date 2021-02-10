@@ -652,7 +652,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             nnkCast.newTree(
                 ptr_bracket_expr,
                 nnkCall.newTree(
-                        newIdentNode("omni_alloc"),
+                        newIdentNode("omni_alloc0"),
                         nnkCall.newTree(
                             newIdentNode("culong"),
                                 nnkCall.newTree(

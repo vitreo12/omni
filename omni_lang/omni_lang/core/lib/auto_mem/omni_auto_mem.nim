@@ -38,7 +38,7 @@ type
 
 proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
     let 
-        auto_mem_ptr = omni_alloc(culong(sizeof(Omni_AutoMem_struct))) 
+        auto_mem_ptr = omni_alloc0(culong(sizeof(Omni_AutoMem_struct))) 
         auto_mem = cast[Omni_AutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):

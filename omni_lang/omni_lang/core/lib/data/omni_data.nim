@@ -67,7 +67,7 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     let size_data_obj = sizeof(Data_omni_struct[G1])
 
     #Actual object, assigned to result
-    result = cast[Data[G1]](omni_alloc(culong(size_data_obj)))
+    result = cast[Data[G1]](omni_alloc0(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 

@@ -213,7 +213,7 @@ proc declare_proc(name : string, statement_block : NimNode, return_type : string
                 )
             )
         )
-        
+
     return nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
@@ -289,7 +289,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                         nnkCast.newTree(
                             newIdentNode("Buffer"),
                             nnkCall.newTree(
-                                newIdentNode("omni_alloc"),
+                                newIdentNode("omni_alloc0"),
                                 nnkCall.newTree(
                                     newIdentNode("culong"),
                                     nnkCall.newTree(
