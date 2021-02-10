@@ -311,25 +311,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
                         newIdentNode("buffer"),
-                        newIdentNode("valid")
-                    ),
-                    newLit(false)
-                ),
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("buffer"),
                         newIdentNode("name"),
                     ),
                     newIdentNode("buffer_name")
                 ),
                 statement_block,
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("buffer"),
-                        newIdentNode("init"),
-                    ),
-                    newLit(true)
-                ),
                 nnkReturnStmt.newTree(
                     newIdentNode("buffer")
                 )
@@ -402,7 +388,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
-                            newIdentNode("val"),
+                            newIdentNode("value"),
                             newIdentNode("cstring"),
                             newLit("")
                         )

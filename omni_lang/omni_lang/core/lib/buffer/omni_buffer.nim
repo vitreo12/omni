@@ -23,9 +23,7 @@
 type
     Buffer_inherit* = object of RootObj
         name*       : string
-        valid*      : bool
         valid_lock* : bool
-        init*       : bool
         length*     : int
         samplerate* : float
         channels*   : int
@@ -68,25 +66,13 @@ template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
 template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
     omni_read_value_buffer(buffer, chan, index, omni_call_type)
 
-#length
-#[ template length*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.length ]#
-
 template len*(buffer : Buffer) : untyped {.dirty.} =
     buffer.length
-
-#samplerate
-#[ template samplerate*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.samplerate ]#
-
-#channels
-#[ template channels*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.channels ]#
 
 template chans*(buffer : Buffer) : untyped {.dirty.} =
     buffer.channels
     
-#Chans * length = size
+#size = chans * length
 template size*(buffer : Buffer) : untyped =
     buffer.channels * buffer.length
 

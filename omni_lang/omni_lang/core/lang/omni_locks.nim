@@ -23,7 +23,7 @@
 import atomics
 export atomics
 
-#-d:omni_no_locks can be defined to not use any locks around setting and getting params / buffers.
+#-d:omni_locks_disable can be defined to not use any locks around setting and getting params / buffers.
 
 #This option is particularly useful in cases like SuperCollider, where everything happens on the same audio thread, 
 #as the interface comes directly from UGen inputs (in supernova too).
@@ -33,19 +33,19 @@ export atomics
 
 #param
 template acquireParamLock*(lock : var AtomicFlag) : bool =
-    when defined(omni_no_param_lock) or defined(omni_no_locks):
+    when defined(omni_locks_disable_param_lock) or defined(omni_locks_disable):
         true
     else:
         not(lock.testAndSet(moAcquire))
 
 template releaseParamLock*(lock : var AtomicFlag) : void =
-    when defined(omni_no_param_lock) or defined(omni_no_locks):
+    when defined(omni_locks_disable_param_lock) or defined(omni_locks_disable):
         discard
     else:
         lock.clear(moRelease)
 
 template spinParamLock*(lock: var AtomicFlag, body: untyped) : untyped =
-    when defined(omni_no_param_lock) or defined(omni_no_locks):
+    when defined(omni_locks_disable_param_lock) or defined(omni_locks_disable):
         body
     else:
         while acquireParamLock(lock) : discard
@@ -54,19 +54,19 @@ template spinParamLock*(lock: var AtomicFlag, body: untyped) : untyped =
 
 #buffer
 template acquireBufferLock*(lock : var AtomicFlag) : bool =
-    when defined(omni_no_buffer_lock) or defined(omni_no_locks):
+    when defined(omni_locks_disable_buffer_lock) or defined(omni_locks_disable):
         true
     else:
         not(lock.testAndSet(moAcquire))
 
 template releaseBufferLock*(lock : var AtomicFlag) : void =
-    when defined(omni_no_buffer_lock) or defined(omni_no_locks):
+    when defined(omni_locks_disable_buffer_lock) or defined(omni_locks_disable):
         discard
     else:
         lock.clear(moRelease)
 
 template spinBufferLock*(lock: var AtomicFlag, body: untyped) : untyped =
-    when defined(omni_no_buffer_lock) or defined(omni_no_locks):
+    when defined(omni_locks_disable_buffer_lock) or defined(omni_locks_disable):
         body
     else:
         while acquireBufferLock(lock) : discard
