@@ -45,13 +45,12 @@ extern "C" {
     /**************************************/
     
     //Alloc
-    typedef void* omni_alloc_func_t(size_t in_size);
-    typedef void* omni_realloc_func_t(void *in, size_t in_size);
+    typedef void* omni_alloc_func_t(size_t size);
+    typedef void* omni_realloc_func_t(void *in, size_t size);
     typedef void  omni_free_func_t(void *in);
     
     //Print
-    typedef void  omni_print_debug_func_t(const char* format_string, size_t value);
-    typedef void  omni_print_str_func_t(const char* format_string);
+    typedef void  omni_print_str_func_t(const char* string);
     typedef void  omni_print_float_func_t(float value);
     typedef void  omni_print_int_func_t(int value);
 
@@ -64,7 +63,6 @@ extern "C" {
         omni_alloc_func_t* alloc_func, 
         omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 
-        omni_print_debug_func_t* print_debug_func, 
         omni_print_str_func_t* print_str_func, 
         omni_print_float_func_t* print_float_func, 
         omni_print_int_func_t* print_int_func
@@ -74,8 +72,7 @@ extern "C" {
     OMNI_DLL_EXPORT extern void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func);
 
     //Print
-    OMNI_DLL_EXPORT extern void Omni_InitPrint(omni_print_debug_func_t* print_debug_func, omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
-    OMNI_DLL_EXPORT extern omni_print_debug_func_t* get_omni_print_debug_func();
+    OMNI_DLL_EXPORT extern void Omni_InitPrint(omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
 
     /***************************/
     /* Omni_UGen I/O functions */
