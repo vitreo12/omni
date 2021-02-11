@@ -42,6 +42,62 @@ template omni_init_buffer*(name : string) : untyped {.dirty.} =
         omni_call_type=omni_call_type
     )
 
+#Internal checking for structs. Buffer doesn't allocate more than itself, so just return true.
+proc omni_check_struct_validity*(obj : Buffer) : bool =
+    return true
+
+#used in omniBufferInterface
+proc omni_set_name_buffer*(buffer : Buffer, name : string) : void {.inline.} =
+    buffer.name = name
+
+#return buffer's name (used internally)
+proc name*(buffer : Buffer) : string {.inline.} =
+    return buffer.name
+
+#used in omniBufferInterface
+proc omni_set_valid_lock_buffer*(buffer : Buffer, valid_lock : bool) : void {.inline.} =
+    buffer.valid_lock = valid_lock
+
+#return buffer's valid_lock (used internally)
+proc valid_lock*(buffer : Buffer) : bool {.inline.} =
+    return buffer.valid_lock
+
+#used in omniBufferInterface
+proc omni_set_length_buffer*(buffer : Buffer, length : int) : void {.inline.} =
+    buffer.length = length
+
+#return buffer's length
+proc length*(buffer : Buffer) : int {.inline.}  =
+    return buffer.length
+
+#short for length
+template len*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.length
+
+#used in omniBufferInterface
+proc omni_set_samplerate_buffer*(buffer : Buffer, samplerate : float) : void {.inline.} =
+    buffer.samplerate = samplerate
+
+#return buffer's samplerate
+proc samplerate*(buffer : Buffer) : float {.inline.}  =
+    return buffer.samplerate
+
+#used in omniBufferInterface
+proc omni_set_channels_buffer*(buffer : Buffer, channels : int) : void {.inline.} =
+    buffer.channels = channels
+
+#return buffer's channels
+proc channels*(buffer : Buffer) : int {.inline.}  =
+    return buffer.channels
+
+#short for channels
+template chans*(buffer : Buffer) : untyped {.dirty.} =
+    buffer.channels
+    
+#size = chans * length
+template size*(buffer : Buffer) : untyped =
+    buffer.channels * buffer.length
+
 #1 channel
 template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
     omni_get_value_buffer(buffer, 0, int(i), omni_call_type)
@@ -65,26 +121,3 @@ template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
 #interp read
 template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
     omni_read_value_buffer(buffer, chan, index, omni_call_type)
-
-proc length*(buffer : Buffer) : int {.inline.}  =
-    return buffer.length
-
-template len*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.length
-
-proc samplerate*(buffer : Buffer) : float {.inline.}  =
-    return buffer.samplerate
-
-proc channels*(buffer : Buffer) : int {.inline.}  =
-    return buffer.channels
-
-template chans*(buffer : Buffer) : untyped {.dirty.} =
-    buffer.channels
-    
-#size = chans * length
-template size*(buffer : Buffer) : untyped =
-    buffer.channels * buffer.length
-
-#Internal checking for structs.
-proc omni_check_struct_validity*(obj : Buffer) : bool =
-    return true

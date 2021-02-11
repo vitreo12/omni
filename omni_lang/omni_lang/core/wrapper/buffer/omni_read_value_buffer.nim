@@ -25,7 +25,7 @@ proc omni_read_value_buffer*[I : SomeNumber](buffer : Buffer, index : I, omni_ca
     when omni_call_type is Omni_InitCall:
         {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
 
-    let buf_len = buffer.omni_get_length_buffer
+    let buf_len = buffer.length
     
     if buf_len <= 0:
         return 0.0
@@ -43,7 +43,7 @@ proc omni_read_value_buffer*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, 
     when omni_call_type is Omni_InitCall:
         {.fatal: "'Buffers' can only be accessed in the 'perform' / 'sample' blocks".}
 
-    let buf_len = buffer.omni_get_length_buffer
+    let buf_len = buffer.length
 
     if buf_len <= 0:
         return 0.0
@@ -121,7 +121,7 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
                 newEmptyNode(),
                 nnkDotExpr.newTree(
                     newIdentNode("buffer"),
-                    newIdentNode("omni_get_length_buffer")
+                    newIdentNode("length")
                 )
                 )
             ),
@@ -286,7 +286,7 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
                 newEmptyNode(),
                 nnkDotExpr.newTree(
                     newIdentNode("buffer"),
-                    newIdentNode("omni_get_length_buffer")
+                    newIdentNode("length")
                 )
                 )
             ),

@@ -22,6 +22,41 @@
 
 import omni_read_value_buffer, macros
 
+proc declare_local_setter_proc(field_name : string, field_type : string) : NimNode {.inline, compileTime.} =
+    let field_name_ident = newIdentNode(field_name)
+    return nnkTemplateDef.newTree(
+        nnkAccQuoted.newTree(
+            field_name_ident,
+            newIdentNode("=")
+        ),
+        newEmptyNode(),
+        newEmptyNode(),
+         nnkFormalParams.newTree(
+            newIdentNode("void"),
+            nnkIdentDefs.newTree(
+                newIdentNode("buffer"),
+                newIdentNode("Buffer"),
+                newEmptyNode()
+            ),
+            nnkIdentDefs.newTree(
+                field_name_ident,
+                newIdentNode(field_type),
+                newEmptyNode()
+            )
+        ),
+        nnkPragma.newTree(
+            newIdentNode("dirty")
+        ),
+        newEmptyNode(),
+        nnkStmtList.newTree(
+            nnkCall.newTree(
+                newIdentNode("omni_set_" & field_name & "_buffer"),
+                newIdentNode("buffer"),
+                field_name_ident
+            )
+        )
+    )
+
 proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compileTime.} =
     var 
         buffer_omni_struct_rec_list = nnkRecList.newTree()
@@ -39,6 +74,14 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
                 buffer_omni_struct_rec_list
             )
         )
+
+        buffer_setter_procs = nnkStmtList.newTree(
+            #declare_local_setter_proc("name", "string"), #name is not neeeded
+            declare_local_setter_proc("valid_lock", "bool"),
+            declare_local_setter_proc("length", "int"),
+            declare_local_setter_proc("samplerate", "float"),
+            declare_local_setter_proc("channels", "int"),
+        )
     
     if statement_block.len == 1:
         if statement_block[0].kind == nnkDiscardStmt:
@@ -47,10 +90,7 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
         for entry in statement_block:
             assert entry.len == 2
             let ident_def = nnkIdentDefs.newTree(
-                nnkPostfix.newTree(
-                    newIdentNode("*"),
-                    entry[0]
-                ),
+                entry[0],
                 entry[1][0],
                 newEmptyNode()
             )
@@ -80,9 +120,11 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
             newEmptyNode(),
             newIdentNode("Buffer")
             )
-        )
+        ),
+        buffer_setter_procs
     )
 
+    #error repr result
     #error astGenRepr result
 
 template when_not_perform() : untyped {.dirty.} = 
@@ -104,55 +146,25 @@ template when_not_perform() : untyped {.dirty.} =
         )
     )
 
-proc declare_proc(name : string, statement_block : NimNode, return_type : string = "void", add_perform_check : bool = true, is_lock : bool = false, is_unlock : bool = false) : NimNode {.inline, compileTime.} =        
+proc declare_lock_unlock_proc(statement_block : NimNode, is_lock : bool = false) : NimNode {.inline, compileTime.} =        
     var 
-        args = nnkFormalParams.newTree(
-            newIdentNode(return_type),
+        args = nnkFormalParams.newTree()
+        stmt_list = nnkStmtList.newTree()
+
+    if is_lock:
+        args.add(
+            newIdentNode("bool"),
             nnkIdentDefs.newTree(
                 newIdentNode("buffer"),
                 newIdentNode("Buffer"),
                 newEmptyNode()
             )  
         )
-
-        stmt_list = nnkStmtList.newTree()
-
-    if add_perform_check:
-        args.add(
-            nnkIdentDefs.newTree(
-                newIdentNode("omni_call_type"),
-                nnkBracketExpr.newTree(
-                    newIdentNode("typedesc"),
-                    newIdentNode("Omni_CallType")
-                ),
-                newIdentNode("Omni_InitCall")
-            )
-        )
-
-        stmt_list.add(
-            when_not_perform()
-        )
-
-    if not is_unlock:
+        
         stmt_list.add(
             statement_block
         )
-    else:
-        stmt_list.add(
-            nnkIfStmt.newTree(
-                nnkElifBranch.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("buffer"),
-                        newIdentNode("valid_lock")
-                    ),
-                    nnkStmtList.newTree(
-                        statement_block
-                    )
-                )
-            )
-        )
 
-    if is_lock:
         return nnkProcDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
@@ -213,21 +225,44 @@ proc declare_proc(name : string, statement_block : NimNode, return_type : string
                 )
             )
         )
+    else:
+        args.add(
+            newIdentNode("void"),
+            nnkIdentDefs.newTree(
+                newIdentNode("buffer"),
+                newIdentNode("Buffer"),
+                newEmptyNode()
+            )  
+        )
 
-    return nnkProcDef.newTree(
-        nnkPostfix.newTree(
-            newIdentNode("*"),
-            newIdentNode(name)
-        ),
-        newEmptyNode(),
-        newEmptyNode(),
-        args,
-        nnkPragma.newTree(
-            newIdentNode("inline")
-        ),
-        newEmptyNode(),
-        stmt_list
-    )
+        stmt_list.add(
+            nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("buffer"),
+                        newIdentNode("valid_lock")
+                    ),
+                    nnkStmtList.newTree(
+                        statement_block
+                    )
+                )
+            )
+        )
+
+        return nnkProcDef.newTree(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("omni_unlock_buffer")
+            ),
+            newEmptyNode(),
+            newEmptyNode(),
+            args,
+            nnkPragma.newTree(
+                newIdentNode("inline")
+            ),
+            newEmptyNode(),
+            stmt_list
+        )
 
 #This is quite an overhead
 macro omniBufferInterface*(code_block : untyped) : untyped =
@@ -243,9 +278,6 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         update : NimNode
         lock : NimNode
         unlock : NimNode
-        #[ length : NimNode
-        samplerate : NimNode
-        channels : NimNode ]#
         getter : NimNode
         setter : NimNode
 
@@ -404,19 +436,10 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
             )
 
         elif statement_name == "lock":
-            lock = declare_proc("omni_lock_buffer", statement_block, "bool", false, is_lock=true)
+            lock = declare_lock_unlock_proc(statement_block, is_lock=true)
         
         elif statement_name == "unlock":
-            unlock = declare_proc("omni_unlock_buffer", statement_block, "void", false, is_unlock=true)
-
-        #[ elif statement_name == "length" or statement_name == "len":
-            length = declare_proc("omni_get_length_buffer", statement_block, "int")
-                
-        elif statement_name == "samplerate" or statement_name == "sampleRate":
-            samplerate = declare_proc("omni_get_samplerate_buffer", statement_block, "float")
-
-        elif statement_name == "channels" or statement_name == "chans":
-            channels = declare_proc("omni_get_channels_buffer", statement_block, "int") ]#
+            unlock = declare_lock_unlock_proc(statement_block)
         
         elif statement_name == "getter":
             getter = nnkStmtList.newTree(
@@ -548,15 +571,6 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
 
     if unlock == nil:
         error "omniBufferInterface: Missing 'unlock'"
-    
-    #[ if length == nil:
-        error "omniBufferInterface: Missing 'length'"
-
-    if samplerate == nil:
-        error "omniBufferInterface: Missing 'samplerate'"
-
-    if channels == nil:
-        error "omniBufferInterface: Missing 'channels'" ]#
         
     if getter == nil:
         error "omniBufferInterface: Missing 'getter'"
@@ -572,9 +586,6 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         update,
         lock,
         unlock,
-        #[ length,
-        samplerate,
-        channels, ]#
         getter,
         setter,
         omni_read_value_buffer

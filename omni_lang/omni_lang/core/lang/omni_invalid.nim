@@ -47,6 +47,7 @@ let omni_invalid_variable_names* {.compileTime.} = [
     "buffers",
     "init", "initialize", "initialise", "build",
     "perform", "sample",
+    "samplerate", "bufsize",
     "sig", "sig32", "sig64",
     "signal", "signal32", "signal64",
     "Data", "Buffer", "Delay"
