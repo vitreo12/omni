@@ -1048,10 +1048,12 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 
                 set_max_val = true
 
-            let param_dot_expr = nnkDotExpr.newTree(
-                newIdentNode("omni_ugen"),
-                newIdentNode("freq_omni_param")
-            )
+            let 
+                param_name_param = newIdentNode(param_name & "_omni_param")
+                param_dot_expr = nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    param_name_param
+                )
 
             let val_assgn = nnkAsgn.newTree(
                 nnkDotExpr.newTree(
@@ -1084,7 +1086,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                         nnkAsgn.newTree(
                             nnkDotExpr.newTree(
                                 param_dot_expr,
-                                newIdentNode("prev_val")
+                                newIdentNode("prev_value")
                             ),
                             nnkDotExpr.newTree(
                                 param_dot_expr,
@@ -1318,7 +1320,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
                         omni_ugen_param_dot_expr,
-                        newIdentNode("prev_val")
+                        newIdentNode("prev_value")
                     ),
                     newFloatLitNode(
                         omni_params_defaults_list[i]
@@ -1372,7 +1374,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                             newIdentNode("omni_ugen"),
                             param_name_param
                         ),
-                        newIdentNode("prev_val")
+                        newIdentNode("prev_value")
                     ),
                     param_name_unique
                 )
@@ -1386,7 +1388,7 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                             newIdentNode("omni_ugen"),
                             param_name_param
                         ),
-                        newIdentNode("prev_val")
+                        newIdentNode("prev_value")
                     )
                 )
             )

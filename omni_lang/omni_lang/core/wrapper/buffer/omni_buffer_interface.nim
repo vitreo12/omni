@@ -280,6 +280,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         unlock : NimNode
         getter : NimNode
         setter : NimNode
+        extra : NimNode
 
     for statement in code_block:
         if statement.kind != nnkCall or statement.len > 2:
@@ -544,6 +545,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                 )
             )
 
+        elif statement_name == "extra":
+            extra = nnkStmtList.newTree(
+                statement_block
+            )
+
         elif statement_name == "debug":
             if statement_block.len == 1:
                 let true_or_false = statement_block[0]
@@ -590,6 +596,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
         setter,
         omni_read_value_buffer
     )
+
+    if extra != nil:
+        result.add(
+            extra
+        )
 
     #To be copy / pasted once an interface has been generated
     if debug:

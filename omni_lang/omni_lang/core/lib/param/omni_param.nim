@@ -21,6 +21,6 @@
 # SOFTWARE.
 
 type Omni_Param* = object
-    val*      : float
-    prev_val* : float
-    init*     : bool
+    value*      : float
+    prev_value* : float
+    init*       : bool
