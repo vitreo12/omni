@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ const
     omni_ver = NimblePkgVersion
 
 #-v / --version
-let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020 Francesco Cameli"
+let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020-2021 Francesco Cameli"
 
 #Path to omni_lang
 const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
