@@ -22,11 +22,11 @@
 
 type
     Buffer_inherit* = object of RootObj
-        name*       : string
-        valid_lock* : bool
-        length*     : int
-        samplerate* : float
-        channels*   : int
+        name        : string
+        valid_lock  : bool
+        length      : int
+        samplerate  : float
+        channels    : int
 
     #Don't export these, they are just needed here to define some common operations on Buffers
     Buffer = ptr Buffer_inherit
@@ -66,8 +66,17 @@ template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
 template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
     omni_read_value_buffer(buffer, chan, index, omni_call_type)
 
+proc length*(buffer : Buffer) : int {.inline.}  =
+    return buffer.length
+
 template len*(buffer : Buffer) : untyped {.dirty.} =
     buffer.length
+
+proc samplerate*(buffer : Buffer) : float {.inline.}  =
+    return buffer.samplerate
+
+proc channels*(buffer : Buffer) : int {.inline.}  =
+    return buffer.channels
 
 template chans*(buffer : Buffer) : untyped {.dirty.} =
     buffer.channels
@@ -76,6 +85,6 @@ template chans*(buffer : Buffer) : untyped {.dirty.} =
 template size*(buffer : Buffer) : untyped =
     buffer.channels * buffer.length
 
-#Internal checking for structs. It works fine without redefining it for every omniBufferInterface!
+#Internal checking for structs.
 proc omni_check_struct_validity*(obj : Buffer) : bool =
     return true
