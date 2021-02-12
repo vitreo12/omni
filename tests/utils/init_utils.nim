@@ -22,19 +22,19 @@
 
 template alloc_ins_Nim*(n : int) : untyped =
   let 
-    ins_ptr_64_void {.inject.} = system.alloc(sizeof(CDoublePtr) * n)
-    ins_ptr_32_void {.inject.} = system.alloc(sizeof(CFloatPtr) * n)
+    ins_ptr_64_void {.inject.} = system.alloc(sizeof(Float64_ptr) * n)
+    ins_ptr_32_void {.inject.} = system.alloc(sizeof(Float32_ptr) * n)
     ins_ptr_64 {.inject.} = cast[ptr ptr cdouble](ins_ptr_64_void)
     ins_ptr_32 {.inject.} = cast[ptr ptr cfloat](ins_ptr_32_void)
-    ins_Nim_64 {.inject.} = cast[CDoublePtrPtr](ins_ptr_64_void)
-    ins_Nim_32 {.inject.} = cast[CFloatPtrPtr](ins_ptr_32_void)
+    ins_Nim_64 {.inject.} = cast[Float64_ptr_ptr](ins_ptr_64_void)
+    ins_Nim_32 {.inject.} = cast[Float32_ptr_ptr](ins_ptr_32_void)
 
     test_bufsize {.inject.} = 1 
     test_samplerate {.inject.} = 48000.0
 
   for i in 0..(n-1):
-    ins_Nim_64[i] = cast[CDoublePtr](system.alloc(sizeof(cdouble) * test_bufsize))
-    ins_Nim_32[i] = cast[CFloatPtr](system.alloc(sizeof(cfloat) * test_bufsize))
+    ins_Nim_64[i] = cast[Float64_ptr](system.alloc(sizeof(cdouble) * test_bufsize))
+    ins_Nim_32[i] = cast[Float32_ptr](system.alloc(sizeof(cfloat) * test_bufsize))
 
 template dealloc_ins_Nim*(n : int) : untyped =
   for i in 0..(n-1):

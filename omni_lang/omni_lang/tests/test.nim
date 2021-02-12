@@ -106,15 +106,15 @@ var
     in_ptr1_void = alloc0(sizeof(cfloat) * 512)         #float*
 
     ins_ptr_SC = cast[ptr ptr cfloat](ins_ptr_void)
-    ins_ptr = cast[CFloatPtrPtr](ins_ptr_void)
-    in_ptr1 = cast[CFloatPtr](in_ptr1_void)
+    ins_ptr = cast[Float32_ptr_ptr](ins_ptr_void)
+    in_ptr1 = cast[Float32_ptr](in_ptr1_void)
 
     outs_ptr_void  = alloc0(sizeof(ptr cfloat) * 2)     #float**
     out_ptr1_void = alloc0(sizeof(cfloat) * 512)        #float*
     
     outs_ptr_SC = cast[ptr ptr cfloat](outs_ptr_void)
-    outs_ptr = cast[CFloatPtrPtr](outs_ptr_void)
-    out_ptr1 = cast[CFloatPtr](out_ptr1_void)
+    outs_ptr = cast[Float32_ptr_ptr](outs_ptr_void)
+    out_ptr1 = cast[Float32_ptr](out_ptr1_void)
 
 #Dummy
 let world = alloc0(sizeof(float))

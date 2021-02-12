@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+#Aliases for floats
 type
     signal*        = float
     signal64*      = float64
@@ -27,7 +28,10 @@ type
     sig*           = float
     sig64*         = float64
     sig32*         = float32
-    CFloatPtr*     = ptr UncheckedArray[cfloat]       #float*
-    CFloatPtrPtr*  = ptr UncheckedArray[CFloatPtr]    #float**
-    CDoublePtr*    = ptr UncheckedArray[cdouble]      #double*
-    CDoublePtrPtr* = ptr UncheckedArray[CDoublePtr]   #double**
+
+#Aliases for float*/float**/double*/double**
+type
+    Float32_ptr*      = ptr UncheckedArray[cfloat]       #float*
+    Float32_ptr_ptr*  = ptr UncheckedArray[Float32_ptr]  #float**
+    Float64_ptr*     = ptr UncheckedArray[cdouble]      #double*
+    Float64_ptr_ptr* = ptr UncheckedArray[Float64_ptr] #double**

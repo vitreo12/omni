@@ -21,9 +21,9 @@
 # SOFTWARE.
 
 template alloc_ins_Nim*(n : int) : untyped =
-  let omni_ins_ptr {.inject.} = cast[CDoublePtrPtr](system.alloc(sizeof(CDoublePtr) * n))
+  let omni_ins_ptr {.inject.} = cast[Float64_ptr_ptr](system.alloc(sizeof(Float64_ptr) * n))
   for i in 0..(n-1):
-    omni_ins_ptr[i] = cast[CDoublePtr](system.alloc(sizeof(float)))
+    omni_ins_ptr[i] = cast[Float64_ptr](system.alloc(sizeof(float)))
     omni_ins_ptr[i][0] = 0.75 #Whatever value
 
 template dealloc_ins_Nim*(n : int) : untyped =

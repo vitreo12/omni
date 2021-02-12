@@ -1,6 +1,8 @@
-ins 2:
-    buffer Buffer
-    speed  {1, 0, 10}
+params:
+  speed {1, -10, 10}
+
+buffers:
+  buffer
 
 outs 1
 

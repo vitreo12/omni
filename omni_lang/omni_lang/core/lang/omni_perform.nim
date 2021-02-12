@@ -128,13 +128,13 @@ macro omni_unpack_ugen_fields*(t : typed) =
 #Simply cast the inputs from SC in a indexable form in Nim
 template omni_cast_ins_outs32*() : untyped {.dirty.} =
     let 
-        omni_ins_ptr  {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](ins_ptr)
-        omni_outs_ptr {.inject.}  : CFloatPtrPtr = cast[CFloatPtrPtr](outs_ptr)
+        omni_ins_ptr  {.inject.}  : Float32_ptr_ptr = cast[Float32_ptr_ptr](ins_ptr)
+        omni_outs_ptr {.inject.}  : Float32_ptr_ptr = cast[Float32_ptr_ptr](outs_ptr)
 
 template omni_cast_ins_outs64*() : untyped {.dirty.} =
     let 
-        omni_ins_ptr  {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](ins_ptr)
-        omni_outs_ptr {.inject.}  : CDoublePtrPtr = cast[CDoublePtrPtr](outs_ptr)
+        omni_ins_ptr  {.inject.}  : Float64_ptr_ptr = cast[Float64_ptr_ptr](ins_ptr)
+        omni_outs_ptr {.inject.}  : Float64_ptr_ptr = cast[Float64_ptr_ptr](outs_ptr)
 
 template omni_perform_inner*(code_block : untyped) {.dirty.} =
     #If ins / params / outs are not declared, declare them!

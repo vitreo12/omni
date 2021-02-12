@@ -1,6 +1,7 @@
-ins 1:
+params:
     freq {440, 0.01, 22000}
 
+ins 0
 outs 1
 
 init:
