@@ -1,5 +1,6 @@
 omni_debug_macros:
-  ins 0
+  ins 1:
+    hello
   params 2:
     freq;phase
 

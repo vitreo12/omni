@@ -512,6 +512,9 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #This is for the inputs 1, "freq" case. (where "freq" is not viewed as varargs)
     #input 2, "freq", "stmt" is covered in the other macro
     if ins_names_kind == nnkStrLit or ins_names_kind == nnkIdent:
+        if zero_ins:
+            error("ins: Can't assign names when declaring 0 inputs.")
+
         let in_name = ins_names.strVal()
         
         omni_check_valid_name(in_name, "ins")
@@ -524,6 +527,9 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     else:
         #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if ins_names_kind == nnkStmtList:
+            if zero_ins:
+                error("ins: Can't assign names when declaring 0 inputs.")
+            
             for statement in ins_names.children():
                 let statement_kind = statement.kind
 
@@ -597,7 +603,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     
         #Single "freq" {440, 0, 22000} OR "freq" on same line: ins 1, "freq" {440, 0, 22000}
         elif ins_names_kind == nnkCommand:
-            error("ins: syntax not implemented yet")
+            error("ins: command syntax not implemented yet")
 
     #inputs count mismatch
     if not zero_ins:
