@@ -26,7 +26,17 @@
         out2
     ```
 
-3) Introducing `params`. These are `floats` like inputs, but they imply a separation between what's audio rate and what's control rate: `ins` will always be audio rate, while `params` will always be control rate.
+3) New `ins` and `outs` mechanism: dynamic counting of IO inside `perform` and `sample`. This allows to not having to declare `ins` and `outs` explicitly, but they will be extracted by parsing the `perform` or `sample` blocks. Dynamic access still works as expected:
+
+    ```nim
+    sample:
+        out1 = in15
+        out26 = in2
+        outs[27] = 2       #Will be ignored, outs are 26
+        outs[20] = ins[16] #outs[20] will be set to 0, as ins[16] is out of bounds
+    ```
+
+4) Introducing `params`. These are `floats` like inputs, but they imply a separation between what's audio rate and what's control rate: `ins` will always be audio rate, while `params` will always be control rate.
     
     ```nim
     params:
@@ -42,19 +52,37 @@
         phase = (phase + freq_incr) % 1
     ```
 
-4) Introducing `buffers`. This is the new way of declaring a `Buffer`. An Omni wrapper, then, would use this interface to provide its own implementation of a `Buffer`. Refer to `Writing an Omni wrapper` on the manual.
+When names are not declared, `params` will be named `param1, param2, etc...`:
+    
+    ```nim
+    params 3
+
+    sample:
+        out1 = param1 + param2 + param3
+    ```
+
+5) Introducing `buffers`. This is the new way of declaring a `Buffer`. An Omni wrapper, then, would use this interface to provide its own implementation of a `Buffer`. Refer to `Writing an Omni wrapper` on the manual.
 
     ```nim
     buffers:
-        buf1 "defaultValue"
-        buf2 
-        buf3 "anotherDefaultValue"
+        myBuf1 "defaultValue"
+        myBuf2 
+        myBuf3 "anotherDefaultValue"
+
+    sample:
+        out1 = myBuf1[0] + myBuf2[0] + myBuf3[0]
+    ```
+
+When names are not declared, `buffers` will be named `buf1, buf2, etc...`:
+    
+    ```nim
+    buffers 3
 
     sample:
         out1 = buf1[0] + buf2[0] + buf3[0]
     ```
 
-5) Introducing `:=` for aliases:
+6) Introducing `:=` for aliases:
     
     ```nim
     struct Something:
@@ -69,7 +97,7 @@
         bubu[0] = in1
     ```
 
-6) `loop` now supports infinite loops:
+7) `loop` now supports infinite loops:
 
     ```nim
     init:
@@ -77,7 +105,7 @@
             print "hanging forever"
     ```
 
-7) `def` can now be used without arguments, if needed:
+8) `def` can now be used without arguments, if needed:
 
     ```nim
     def something:
@@ -90,9 +118,9 @@
         return 0.5
     ```
 
-8) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
+9) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
 
-9) CLI's `--importModule` flag is now shortened with `-m`.
+10) CLI's `--importModule` flag is now shortened with `-m`.
 
 ## 0.2.3
 

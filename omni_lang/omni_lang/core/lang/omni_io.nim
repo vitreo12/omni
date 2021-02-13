@@ -461,7 +461,7 @@ macro omni_unpack_ins_perform*(ins_names : typed) : untyped =
 
             let_statement = nnkLetSection.newTree(ident_defs)
 
-        result.add(let_statement)
+            result.add(let_statement)
 
 macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     var 
@@ -514,11 +514,8 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     if ins_names_kind == nnkStrLit or ins_names_kind == nnkIdent:
         if zero_ins:
             error("ins: Can't assign names when declaring 0 inputs.")
-
         let in_name = ins_names.strVal()
-        
         omni_check_valid_name(in_name, "ins")
-        
         ins_names_string.add(in_name & ",")
         omni_ins_names_list.add(in_name)
         statement_counter = 1
@@ -618,7 +615,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
 
         #Remove trailing coma
         if ins_names_string.len > 1:
-            ins_names_string = ins_names_string[0..ins_names_string.high-1]
+            ins_names_string.removeSuffix(',')
 
     #Assign to node
     ins_names_node = newLit(ins_names_string)
@@ -809,7 +806,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
     
     #Remove trailing coma
     if outs_names_string.len > 1:
-        outs_names_string = outs_names_string[0..outs_names_string.high-1]
+        outs_names_string.removeSuffix(',')
 
     #Assign to node
     outs_names_node = newLit(outs_names_string)
@@ -1493,10 +1490,10 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
     #This is for the params 1, "freq" case. (where "freq" is not viewed as varargs)
     #param 2, "freq", "stmt" is covered in the other macro
     if params_names_kind == nnkStrLit or params_names_kind == nnkIdent:
+        if zero_params:
+            error("params: Can't assign names when declaring 0 params.")
         let param_name = params_names.strVal()
-        
         omni_check_valid_name(param_name, "params")
-        
         params_names_string.add($param_name & ",")
         statement_counter = 1
 
@@ -1504,6 +1501,9 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
     else:
         #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if params_names_kind == nnkStmtList:
+            if zero_params:
+                error("params: Can't assign names when declaring 0 params.")
+            
             for statement in params_names.children():
                 let statement_kind = statement.kind
 
@@ -1568,15 +1568,22 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                     
         #Single "freq" {440, 0, 22000} OR "freq" on same line: params 1, "freq" {440, 0, 22000}
         elif params_names_kind == nnkCommand:
-            error("params: syntax not implemented yet")
+            error("params: command syntax not implemented yet")
 
     #params count mismatch
-    if not zero_params and statement_counter != params_number_VAL:
-        error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter)
+    if not zero_params:
+        if params_names_kind == nnkNilLit:
+            for i in 0..params_number_VAL-1:
+                let param_name = "param" & $(i + 1)
+                params_names_string.add(param_name & ",")
+                omni_params_names_list.add(param_name)
+        else:
+            if statement_counter != params_number_VAL:
+                error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter)
 
-    #Remove trailing coma
-    if params_names_string.len > 1:
-        params_names_string = params_names_string[0..params_names_string.high-1]
+        #Remove trailing coma
+        if params_names_string.len > 1:
+            params_names_string.removeSuffix(',')
 
     #Assign to node
     params_names_node = newLit(params_names_string)
@@ -2352,6 +2359,8 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
 
     #This is for the buffers 1, buf case. (where buf is not viewed as varargs)
     if buffers_names_kind == nnkIdent:
+        if zero_buffers:
+            error("buffers: Can't assign names when declaring 0 buffers.")
         let buffer_name = buffers_names.strVal()
         omni_check_valid_name(buffer_name, "buffers")
         buffers_names_string.add($buffer_name & ",")
@@ -2363,6 +2372,8 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     else:
         #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if buffers_names_kind == nnkStmtList:
+            if zero_buffers:
+                error("buffers: Can't assign names when declaring 0 buffers.")
             for statement in buffers_names.children():
                 let statement_kind = statement.kind
 
@@ -2406,15 +2417,22 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                 statement_counter += 1
                     
         elif buffers_names_kind == nnkCommand:
-            error("buffers: syntax not implemented yet")
+            error("buffers: command syntax not implemented yet")
 
     #buffers count mismatch
-    if not zero_buffers and statement_counter != buffers_number_VAL:
-        error("buffers: Expected " & $buffers_number_VAL & " buffer names, got " & $statement_counter)
+    if not zero_buffers:
+        if buffers_names_kind == nnkNilLit:
+            for i in 0..buffers_number_VAL-1:
+                let buffer_name = "buf" & $(i + 1)
+                buffers_names_string.add(buffer_name & ",")
+                omni_buffers_names_list.add(buffer_name)
+        else:
+            if statement_counter != buffers_number_VAL:
+                error("buffers: Expected " & $buffers_number_VAL & " buffer names, got " & $statement_counter)
 
-    #Remove trailing coma
-    if buffers_names_string.len > 1:
-        buffers_names_string = buffers_names_string[0..buffers_names_string.high-1]
+        #Remove trailing coma
+        if buffers_names_string.len > 1:
+            buffers_names_string.removeSuffix(',')
 
     #Assign to node
     buffers_names_node = newLit(buffers_names_string)
