@@ -406,18 +406,11 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
 macro init*(code_block : untyped) : untyped =
     return quote do:
-        #If ins / params / outs are not declared, declare them!
-        when not declared(omni_declared_inputs):
-            ins 1
-
         when not declared(omni_declared_params):
             omni_io.params 0 #not to be confused with macros' params
 
         when not declared(omni_declared_buffers):
             buffers 0
-
-        when not declared(omni_declared_outputs):
-            outs 1
 
         #This can be defined in wrappers
         when declared(omni_params_post_hook):

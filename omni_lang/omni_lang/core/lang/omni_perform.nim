@@ -125,7 +125,7 @@ proc omni_unpack_ugen_fields_inner(t : NimNode) : NimNode {.compileTime.} =
 macro omni_unpack_ugen_fields*(t : typed) =
     return omni_unpack_ugen_fields_inner(t)
 
-#Simply cast the inputs from SC in a indexable form in Nim
+#Simply cast the inputs from C to an indexable form in Nim
 template omni_cast_ins_outs32*() : untyped {.dirty.} =
     let 
         omni_ins_ptr  {.inject.}  : Float32_ptr_ptr = cast[Float32_ptr_ptr](ins_ptr)
@@ -137,23 +137,30 @@ template omni_cast_ins_outs64*() : untyped {.dirty.} =
         omni_outs_ptr {.inject.}  : Float64_ptr_ptr = cast[Float64_ptr_ptr](outs_ptr)
 
 template omni_perform_inner*(code_block : untyped) {.dirty.} =
-    #If ins / params / outs are not declared, declare them!
-    when not declared(omni_declared_inputs):
-        ins 1
-
     when not declared(omni_declared_params):
-        omni_lang.omni_io.params 0  #omni_lang is here required cause it's template (in omni_init, omni_io is enough!)
+        omni_lang.omni_io.params 0  #omni_lang is here required cause it's a template (in omni_init, omni_io is enough!)
 
     when not declared(omni_declared_buffers):
         buffers 0
-
-    when not declared(omni_declared_outputs):
-        outs 1
 
     #Create an empty init block if one wasn't defined by the user
     when not declared(omni_declared_init):
         init:
             discard
+    
+    #In the case of perform / sample blocks, omni_parse_block_untyped actually returns:
+    # when not declared(omni_declared_inputs):
+    #  ins ..
+    # when not declared(omni_declared_outputs):
+    #  outs ..
+    # template omni_perform_block_untyped() : untyped {.dirty.} =
+    #   ... (untyped parsed code) ...
+    #perform block
+    when declared(omni_declared_perform):
+        omni_parse_block_untyped(code_block, false, true)
+    #sample block without perform
+    else:
+        omni_parse_block_untyped(code_block, false, true, true)
 
     #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(omni_perform32):
@@ -161,13 +168,17 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
             #Needed to be passed to all defs
             var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
 
-            #standard perform block
-            when declared(omni_declared_perform):
-                omni_parse_block_untyped(code_block, false, true, bits_32_or_64_typed = false)
-            
-            #sample block without perform
-            else:
-                omni_parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = false)
+            #Unpack everything
+            let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)
+            omni_cast_ins_outs32()
+            omni_unpack_ugen_fields(Omni_UGen_struct)
+            omni_generate_templates_for_perform_var_declarations()
+
+            #Run typed perform manually. untyped block is stored in the omni_perform_untyped_block() template
+            omni_parse_block_typed(
+                omni_perform_untyped_block(), 
+                is_perform_block_typed=true
+            )
 
             #unlock buffers only when multithread buffers are used
             when not defined(omni_buffers_disable_multithreading):
@@ -178,13 +189,17 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
             #Needed to be passed to all defs
             var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
 
-            #standard perform block
-            when declared(omni_declared_perform):
-                omni_parse_block_untyped(code_block, false, true, bits_32_or_64_typed = true)
-            
-            #sample block without perform
-            else:
-                omni_parse_block_untyped(code_block, false, true, true, false, bits_32_or_64_typed = true)
+            #Unpack everything
+            let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)
+            omni_cast_ins_outs64()
+            omni_unpack_ugen_fields(Omni_UGen_struct)
+            omni_generate_templates_for_perform_var_declarations()
+
+            #Run typed perform manually. untyped block is stored in the omni_perform_untyped_block() template
+            omni_parse_block_typed(
+                omni_perform_untyped_block(), 
+                is_perform_block_typed=true
+            )
 
             #unlock buffers only when multithread buffers are used
             when not defined(omni_buffers_disable_multithreading):
@@ -196,13 +211,16 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "omni_ugen".
 template perform*(code_block : untyped) {.dirty.} =
-    let omni_declared_perform {.compileTime.} = true
-    omni_perform_inner(code_block)
+    when not declared(omni_declared_perform) and not declared(omni_declared_sample):
+        let omni_declared_perform {.compileTime.} = true
+        omni_perform_inner(code_block)
+    else:
+        {.fatal: "perform: there already is a 'perform' or 'sample' block declared.".}
 
 #Run perform inner, but directly to the for loop
 template sample*(code_block : untyped) {.dirty.} =
-    when not declared(omni_declared_perform):
+    when not declared(omni_declared_perform) and not declared(omni_declared_sample):
         let omni_declared_sample {.compileTime.} = true
         omni_perform_inner(code_block)
     else:
-        {.fatal: "sample: there already is a 'perform' block declared.".}
+        {.fatal: "sample: there already is a 'perform' or 'sample' block declared.".}

@@ -346,7 +346,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 newLit(false),
                 newLit(false),
                 newLit(true),    #is_def
-                newLit(false),
                 proc_return_type #pass return type as "extra_data"
             )
         ) 
