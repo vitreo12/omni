@@ -20,7 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+#omni_locks_multi_param_lock allows each param to have its own lock, instead of using the global one
+#once per perform loop
+
+when defined(omni_locks_multi_param_lock):
+    import ../../lang/omni_locks
+
 type Omni_Param* = object
     value*      : float
     prev_value* : float
     init*       : bool
+    when defined(omni_locks_multi_param_lock):
+        lock*   : AtomicFlag

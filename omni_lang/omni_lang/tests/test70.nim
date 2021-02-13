@@ -1,4 +1,6 @@
 omni_debug_macros:
+    params 3
+        
     perform:
         b = 10
         sample:

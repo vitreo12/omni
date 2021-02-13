@@ -931,7 +931,29 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
 
     if omni_params_names_list.len > 0:
         var error_str = "ERROR: Omni_UGenSetParam: invalid param name. Valid param names are:"
+        
         for i, param_name in omni_params_names_list:
+            let 
+                param_name_param = newIdentNode(param_name & "_omni_param")
+                param_dot_expr = nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    param_name_param
+                )
+
+            #Individual lock per param
+            when defined(omni_locks_multi_param_lock):
+                var param_lock = nnkDotExpr.newTree(
+                    param_dot_expr,
+                    newIdentNode("lock")
+                )
+            
+            #Global (UGen) param lock
+            else:
+                var param_lock = nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    newIdentNode("omni_params_lock")
+                )
+
             var 
                 omni_ugen_setparam_func_name = newIdentNode("Omni_UGenSetParam_" & param_name)
 
@@ -948,10 +970,7 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
 
                 set_param_spin = nnkCall.newTree(
                     nnkDotExpr.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_ugen"),
-                            newIdentNode("omni_params_lock")
-                        ),
+                        param_lock,
                         newIdentNode("spinParamLock")
                     )
                 )
@@ -1067,13 +1086,6 @@ proc omni_params_generate_set_templates(min_vals : seq[float], max_vals : seq[fl
                 )
                 
                 set_max_val = true
-
-            let 
-                param_name_param = newIdentNode(param_name & "_omni_param")
-                param_dot_expr = nnkDotExpr.newTree(
-                    newIdentNode("omni_ugen"),
-                    param_name_param
-                )
 
             let val_assgn = nnkAsgn.newTree(
                 nnkDotExpr.newTree(
@@ -1236,23 +1248,20 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
     )
 
     if omni_params_names_list.len > 0:
-        for i, param_name in omni_params_names_list:
-            var 
+        var unpack_pre_init = nnkStmtList.newTree()
+        
+        pre_init_block.add(
+            unpack_pre_init
+        )
+        
+        #Using global (UGen's) param lock
+        when not defined(omni_locks_multi_param_lock):
+            var
                 unpack_init = nnkStmtList.newTree()
-                unpack_pre_init = nnkStmtList.newTree()
                 unpack_perform_declare_params = nnkStmtList.newTree()
                 unpack_perform_success = nnkStmtList.newTree()
                 unpack_perform_fail = nnkStmtList.newTree()
                 unpack_perform_let  = nnkStmtList.newTree()
-            
-            let 
-                param_name_ident  = newIdentNode(param_name)
-                param_name_unique = genSymUntyped(param_name)
-                param_name_param  = newIdentNode(param_name & "_omni_param")
-                omni_ugen_param_dot_expr = nnkDotExpr.newTree(
-                    newIdentNode("omni_ugen"),
-                    param_name_param
-                )
 
             init_block.add(
                 nnkCall.newTree(
@@ -1263,38 +1272,8 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                         ),
                         newIdentNode("spinParamLock")
                     ),
-                    nnkStmtList.newTree(
-                        nnkIfStmt.newTree(
-                            nnkElifBranch.newTree(
-                                nnkCall.newTree(
-                                    newIdentNode("not"),
-                                    nnkDotExpr.newTree(
-                                        omni_ugen_param_dot_expr,
-                                        newIdentNode("init")
-                                    )
-                                ),
-                                unpack_init,
-                            )
-                        ),
-                        nnkLetSection.newTree(
-                            nnkIdentDefs.newTree(
-                                param_name_ident,
-                                newEmptyNode(),
-                                nnkDotExpr.newTree(
-                                    nnkDotExpr.newTree(
-                                        newIdentNode("omni_ugen"),
-                                        param_name_param
-                                    ),
-                                    newIdentNode("value")
-                                )
-                            )
-                        )
-                    )    
+                    unpack_init 
                 )
-            )
-
-            pre_init_block.add(
-                unpack_pre_init
             )
 
             perform_block.add(
@@ -1326,35 +1305,15 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                 unpack_perform_let
             )
 
-            unpack_init.add(
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        omni_ugen_param_dot_expr,
-                        newIdentNode("value")
-                    ),
-                    newFloatLitNode(
-                        omni_params_defaults_list[i]
-                    )
-                ),
-
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        omni_ugen_param_dot_expr,
-                        newIdentNode("prev_value")
-                    ),
-                    newFloatLitNode(
-                        omni_params_defaults_list[i]
-                    )
-                ),
-
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        omni_ugen_param_dot_expr,
-                        newIdentNode("init")
-                    ),
-                    newLit(true)           
+        for i, param_name in omni_params_names_list:        
+            let 
+                param_name_ident  = newIdentNode(param_name)
+                param_name_unique = genSymUntyped(param_name)
+                param_name_param  = newIdentNode(param_name & "_omni_param")
+                omni_ugen_param_dot_expr = nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    param_name_param
                 )
-            )
 
             unpack_pre_init.add(
                 nnkLetSection.newTree(
@@ -1362,6 +1321,110 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                         param_name_ident,
                         newEmptyNode(),
                         newFloatLitNode(0)
+                    )
+                )
+            )
+
+            #Using individual param's lock
+            when defined(omni_locks_multi_param_lock):
+                var param_lock = nnkDotExpr.newTree(
+                    newIdentNode("omni_ugen"),
+                    nnkDotExpr.newTree(
+                        param_name_ident,
+                        newIdentNode("lock")
+                    )
+                )
+                var
+                    unpack_init = nnkStmtList.newTree()
+                    unpack_perform_declare_params = nnkStmtList.newTree()
+                    unpack_perform_success = nnkStmtList.newTree()
+                    unpack_perform_fail = nnkStmtList.newTree()
+                    unpack_perform_let  = nnkStmtList.newTree()
+                
+                init_block.add(
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            param_lock,
+                            newIdentNode("spinParamLock")
+                        ),
+                        unpack_init 
+                    )
+                )
+
+                perform_block.add(
+                    unpack_perform_declare_params,
+                    nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("acquireParamLock"),
+                                param_lock
+                            ),
+                            nnkStmtList.newTree(
+                                unpack_perform_success,
+                                nnkCall.newTree(
+                                    newIdentNode("releaseParamLock"),
+                                    param_lock
+                                )
+                            )
+                        ),
+                        nnkElse.newTree(
+                            unpack_perform_fail
+                        )
+                    ),
+                    unpack_perform_let
+                )
+                
+            unpack_init.add(
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("not"),
+                            nnkDotExpr.newTree(
+                                omni_ugen_param_dot_expr,
+                                newIdentNode("init")
+                            )
+                        ),
+                        nnkAsgn.newTree(
+                            nnkDotExpr.newTree(
+                                omni_ugen_param_dot_expr,
+                                newIdentNode("value")
+                            ),
+                            newFloatLitNode(
+                                omni_params_defaults_list[i]
+                            )
+                        ),
+
+                        nnkAsgn.newTree(
+                            nnkDotExpr.newTree(
+                                omni_ugen_param_dot_expr,
+                                newIdentNode("prev_value")
+                            ),
+                            newFloatLitNode(
+                                omni_params_defaults_list[i]
+                            )
+                        ),
+
+                        nnkAsgn.newTree(
+                            nnkDotExpr.newTree(
+                                omni_ugen_param_dot_expr,
+                                newIdentNode("init")
+                            ),
+                            newLit(true)           
+                        )
+                    )
+                ),
+
+                nnkLetSection.newTree(
+                    nnkIdentDefs.newTree(
+                        param_name_ident,
+                        newEmptyNode(),
+                        nnkDotExpr.newTree(
+                            nnkDotExpr.newTree(
+                                newIdentNode("omni_ugen"),
+                                param_name_param
+                            ),
+                            newIdentNode("value")
+                        )
                     )
                 )
             )
