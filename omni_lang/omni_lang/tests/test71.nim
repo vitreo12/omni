@@ -1,2 +1,5 @@
 omni_debug_macros:
-    params 3
+    params 1
+
+    sample:
+        out1 = omniInputs

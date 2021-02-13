@@ -1384,32 +1384,34 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
                                 newIdentNode("init")
                             )
                         ),
-                        nnkAsgn.newTree(
-                            nnkDotExpr.newTree(
-                                omni_ugen_param_dot_expr,
-                                newIdentNode("value")
+                        nnkStmtList.newTree(
+                            nnkAsgn.newTree(
+                                nnkDotExpr.newTree(
+                                    omni_ugen_param_dot_expr,
+                                    newIdentNode("value")
+                                ),
+                                newFloatLitNode(
+                                    omni_params_defaults_list[i]
+                                )
                             ),
-                            newFloatLitNode(
-                                omni_params_defaults_list[i]
-                            )
-                        ),
 
-                        nnkAsgn.newTree(
-                            nnkDotExpr.newTree(
-                                omni_ugen_param_dot_expr,
-                                newIdentNode("prev_value")
+                            nnkAsgn.newTree(
+                                nnkDotExpr.newTree(
+                                    omni_ugen_param_dot_expr,
+                                    newIdentNode("prev_value")
+                                ),
+                                newFloatLitNode(
+                                    omni_params_defaults_list[i]
+                                )
                             ),
-                            newFloatLitNode(
-                                omni_params_defaults_list[i]
-                            )
-                        ),
 
-                        nnkAsgn.newTree(
-                            nnkDotExpr.newTree(
-                                omni_ugen_param_dot_expr,
-                                newIdentNode("init")
-                            ),
-                            newLit(true)           
+                            nnkAsgn.newTree(
+                                nnkDotExpr.newTree(
+                                    omni_ugen_param_dot_expr,
+                                    newIdentNode("init")
+                                ),
+                                newLit(true)           
+                            )
                         )
                     )
                 ),
