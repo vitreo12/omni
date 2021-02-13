@@ -52,7 +52,7 @@
         phase = (phase + freq_incr) % 1
     ```
 
-When names are not declared, `params` will be named `param1, param2, etc...`:
+    When names are not declared, `params` will be named `param1, param2, etc...`:
     
     ```nim
     params 3
@@ -73,7 +73,7 @@ When names are not declared, `params` will be named `param1, param2, etc...`:
         out1 = myBuf1[0] + myBuf2[0] + myBuf3[0]
     ```
 
-When names are not declared, `buffers` will be named `buf1, buf2, etc...`:
+    When names are not declared, `buffers` will be named `buf1, buf2, etc...`:
     
     ```nim
     buffers 3
@@ -122,6 +122,16 @@ When names are not declared, `buffers` will be named `buf1, buf2, etc...`:
 
 10) CLI's `--importModule` flag is now shortened with `-m`.
 
+11) New `--define` options:
+    
+    1) *omni_locks_disable*: disable all locks, turning them into no-ops. This option also defines both *omni_locks_disable_param_lock* and *omni_locks_disable_buffer_lock*.
+    2) *omni_locks_disable_param_lock*: disable all locks (even individual ones) relative to `params`.
+    3) *omni_locks_disable_buffer_lock*: disable the global `buffer` lock.
+    4) *omni_locks_multi_param_lock*: use an individual lock for each `param`. If not defined, a global lock, like the one for `buffers`, will be used
+    5) *omni_buffers_disable_multithreading*: don't run the `unlock()` call on `buffers` (no multithread access to them).
+
+    **NOTE:** These locks are internal `Omni` locks, and they do not refer to the ones that an `Omni` wrapper might implement for safe access to `buffers`. The `Omni` locks only make sure that any `Omni_UGenSetParam` / `Omni_UGenSetBuffer` operation is thread safe.
+        
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS
