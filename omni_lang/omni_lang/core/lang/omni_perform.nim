@@ -142,6 +142,11 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
 
     when not declared(omni_declared_buffers):
         buffers 0
+
+    #If init wasn't declared, declare an empty one
+    when not declared(omni_declared_init):
+        init:
+            discard
     
     #In the case of perform / sample blocks, omni_parse_block_untyped returns:
     #when not declared(omni_declared_inputs):

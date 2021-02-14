@@ -1559,6 +1559,10 @@ proc omni_generate_get_dynamic_param_template() : NimNode {.compileTime.} =
                 newFloatLitNode(0.0)
             )
         )
+    else:
+        return nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
     
     #error repr result
 
