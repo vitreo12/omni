@@ -142,11 +142,6 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
 
     when not declared(omni_declared_buffers):
         buffers 0
-
-    #Create an empty init block if one wasn't defined by the user
-    when not declared(omni_declared_init):
-        init:
-            discard
     
     #In the case of perform / sample blocks, omni_parse_block_untyped returns:
     #when not declared(omni_declared_inputs):
@@ -160,6 +155,10 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
     #sample block without perform
     else:
         omni_parse_block_untyped(code_block, false, true, true)
+
+    #Execute the init block AFTER the untyped parsing of the perform. 
+    #This allows to use the omni_inputs / omni_outputs in init
+    omni_define_init_block()
 
     #This can be defined in wrappers
     when declared(omni_params_pre_perform_hook):

@@ -18,8 +18,7 @@ omni_debug_macros:
 
         a = something() * samplerate
         
-        buffer = Something()
-        buffer.samplerate = 3
+        print outs
 
     sample:
         out12 = something()

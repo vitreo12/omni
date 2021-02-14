@@ -406,45 +406,46 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
 macro init*(code_block : untyped) : untyped =
     return quote do:
-        when not declared(omni_declared_params):
-            omni_io.params 0 #not to be confused with macros' params
+        template omni_define_init_block() : untyped {.dirty.} =
+            when not declared(omni_declared_params):
+                omni_io.params 0 #not to be confused with macros' params
 
-        when not declared(omni_declared_buffers):
-            buffers 0
+            when not declared(omni_declared_buffers):
+                buffers 0
 
-        #This can be defined in wrappers
-        when declared(omni_params_pre_init_hook):
-            omni_params_pre_init_hook()
+            #This can be defined in wrappers
+            when declared(omni_params_pre_init_hook):
+                omni_params_pre_init_hook()
 
-        #This can be defined in wrappers
-        when declared(omni_buffers_pre_init_hook):
-            omni_buffers_pre_init_hook()
+            #This can be defined in wrappers
+            when declared(omni_buffers_pre_init_hook):
+                omni_buffers_pre_init_hook()
 
-        #Trick the compiler of the existence of these variables in order to parse the init block.
-        #These will be overwrittne in the UGenCosntructor anyway.
-        let 
-            bufsize            {.inject.} : int            = 0
-            samplerate         {.inject.} : float          = 0.0
-            buffer_interface   {.inject.} : pointer        = nil
-            omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
-        
-        var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
+            #Trick the compiler of the existence of these variables in order to parse the init block.
+            #These will be overwrittne in the UGenCosntructor anyway.
+            let 
+                bufsize            {.inject.} : int            = 0
+                samplerate         {.inject.} : float          = 0.0
+                buffer_interface   {.inject.} : pointer        = nil
+                omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
+            
+            var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
-        #Define that init exists, so perform doesn't create an empty one automatically
-        #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
-        let omni_declared_init {.inject, compileTime.} = true
+            #Define that init exists, so perform doesn't create an empty one automatically
+            #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
+            let omni_declared_init {.inject, compileTime.} = true
 
-        #Generate fictional let names for params (so that parser won't complain when using them)
-        omni_unpack_params_pre_init()
+            #Generate fictional let names for params (so that parser won't complain when using them)
+            omni_unpack_params_pre_init()
 
-        #Generate fictional var names for buffers (so that parser won't complain when using them)
-        #While this is not necessary, as buffers can't be used in init anyway, it's still useful as it
-        #allows the [] function to be picked up in init and error out if trying to use a buffer in init block!
-        #This is a better "error" than just "myBuffer is not defined"
-        omni_unpack_buffers_pre_init()
+            #Generate fictional var names for buffers (so that parser won't complain when using them)
+            #While this is not necessary, as buffers can't be used in init anyway, it's still useful as it
+            #allows the [] function to be picked up in init and error out if trying to use a buffer in init block!
+            #This is a better "error" than just "myBuffer is not defined"
+            omni_unpack_buffers_pre_init()
 
-        #Actually parse the init block
-        omni_parse_block_untyped(`code_block`, true)
+            #Actually parse the init block
+            omni_parse_block_untyped(`code_block`, true)
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
