@@ -53,9 +53,9 @@ proc omni_check_valid_name(param_name : string, which_call : string = "ins") : v
         if not (individualChar in omni_accepted_chars):
             error(which_call & ": Invalid character '" & $individualChar & $ "' in input name '" & $param_name & "'")
 
-###########
-# outputs #
-###########
+##########
+# inputs #
+##########
 
 proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
@@ -92,7 +92,8 @@ proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} 
                         )
                     ),
                     nnkPragma.newTree(
-                        newIdentNode("inline")
+                        newIdentNode("inline"),
+                        newIdentNode("noSideEffect")
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
