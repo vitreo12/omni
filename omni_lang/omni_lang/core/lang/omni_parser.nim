@@ -1734,8 +1734,6 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
     #Will return an untyped code block!
     result = typed_to_untyped(inner_block)
     
-    error astGenRepr result
-
     #if constructor block, run the omni_init_inner macro on the resulting block.
     if is_init_block:
         #If old untyped code in constructor constructor had a "build" call as last call, 
