@@ -326,7 +326,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: could not allocate memory")
             
-            omni_ugen.omni_auto_mem    = nil
+            omni_ugen.omni_auto_mem = nil
 
             return omni_ugen_ptr
         
@@ -367,7 +367,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 buffer_interface {.inject.} : pointer       = buffer_interface_in
             
             #Initialize auto_mem
-            omni_ugen.omni_auto_mem    = omni_create_omni_auto_mem()
+            omni_ugen.omni_auto_mem = omni_create_omni_auto_mem()
 
             if isNil(cast[pointer](omni_ugen.omni_auto_mem)):
                 print("ERROR: Omni: could not allocate auto_mem")

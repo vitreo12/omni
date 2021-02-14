@@ -333,7 +333,7 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
                 let 
                     array_var   = parsed_statement[1]
                     array_index = parsed_statement[2]
-                    assgn_val   = parsed_statement[3]
+                    asgn_val   = parsed_statement[3]
 
                 #Replace the val assignment with typeof the accessed array bit
                 parsed_statement[3] = nnkCall.newTree(
@@ -345,7 +345,7 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
                             array_index
                         )
                     ),
-                    assgn_val
+                    asgn_val
                 )
 
                 #error repr parsed_statement
@@ -493,74 +493,74 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
     if statement.len > 3:
         error("Invalid variable assignment.")
 
-    #Don't keep the parsed things before the = (so that commands will only be parsed in the assgn_right)
+    #Don't keep the parsed things before the = (so that commands will only be parsed in the asgn_right)
     var parsed_statement = statement.copy() 
     parsed_statement = omni_parser_untyped_loop(parsed_statement, level, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
         
     var
-        assgn_left : NimNode
-        assgn_right : NimNode
+        asgn_left : NimNode
+        asgn_right : NimNode
         is_command_or_ident = false
         is_outs_brackets = false
         bracket_ident : NimNode
         bracket_index : NimNode
 
     if parsed_statement.len > 1:
-        #Don't keep the parsed things before the = (so that commands will only be parsed in the assgn_right)
-        parsed_statement[0] = statement[0] #reput previous assgn_left. Needed to do statement.copy() for this reason: need the old one
+        #Don't keep the parsed things before the = (so that commands will only be parsed in the asgn_right)
+        parsed_statement[0] = statement[0] #reput previous asgn_left. Needed to do statement.copy() for this reason: need the old one
 
-        assgn_left  = parsed_statement[0]
-        assgn_right = parsed_statement[1]
+        asgn_left  = parsed_statement[0]
+        asgn_right = parsed_statement[1]
 
-        let assgn_left_kind = assgn_left.kind
+        let asgn_left_kind = asgn_left.kind
         
         #Tryin to declare a variable named "tuple" or "type"
-        if assgn_left_kind == nnkTupleClassTy:
+        if asgn_left_kind == nnkTupleClassTy:
             error("Can't declare a variable named 'tuple'. It's a keyword for internal use.")
-        elif assgn_left_kind == nnkTypeClassTy:
+        elif asgn_left_kind == nnkTypeClassTy:
             error("Can't declare a variable named 'type'. It's a keyword for internal use.")
         
         #Command assignment: a float = 0.0
-        if assgn_left_kind == nnkCommand:
-            if assgn_left.len != 2:
+        if asgn_left_kind == nnkCommand:
+            if asgn_left.len != 2:
                 error("Invalid variable type declaration.")
 
             let 
-                var_name = assgn_left[0]
-                var_type = assgn_left[1]
+                var_name = asgn_left[0]
+                var_type = asgn_left[1]
 
-            var new_assgn_right : NimNode
+            var new_asgn_right : NimNode
 
             #Detect tuple assignment, gotta convert every single entry, or the nim untyped parser won't be happy
             #a (int, (int, float)) = (1, (1, 1)) -> (int(1), (int(1), float(1)))
             #This however won't work with function returns, as tuples can't be casted in group:
             #a (int, (int, float)) = (1, someFunc()) -> if someFunc doesn't return (int, float), it's an error :)
             if var_type.kind == nnkPar:
-                #new_assgn_right is modified in place in omni_tuple_untyped_assign
-                new_assgn_right = assgn_right
-                omni_tuple_untyped_assign(var_type, new_assgn_right)
+                #new_asgn_right is modified in place in omni_tuple_untyped_assign
+                new_asgn_right = asgn_right
+                omni_tuple_untyped_assign(var_type, new_asgn_right)
 
-                #error repr new_assgn_right
+                #error repr new_asgn_right
             
             #a int = 123.214 -> a : int = int(123.324)...
             #Is this REALLY necessary? Shouldn't the user be careful on this by himself, without
             #adding this additional check?
             else:
-                new_assgn_right = nnkCall.newTree(
+                new_asgn_right = nnkCall.newTree(
                     var_type,
-                    assgn_right
+                    asgn_right
                 )
 
                 #No casting:
-                #new_assgn_right = assgn_right
+                #new_asgn_right = asgn_right
 
-            #error repr new_assgn_right
+            #error repr new_asgn_right
 
-            #Build final ident defs, using the newly converted new_assgn_right
-            assgn_left = nnkIdentDefs.newTree(
+            #Build final ident defs, using the newly converted new_asgn_right
+            asgn_left = nnkIdentDefs.newTree(
                 var_name,
                 var_type,
-                new_assgn_right
+                new_asgn_right
             )
 
             is_command_or_ident = true
@@ -568,25 +568,25 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
         #All other cases: normal ident: a = 10, bracket: a[i] = 10, dot: a.b = 10
         else:
             #Normal assignment: a = 0.0
-            if assgn_left_kind == nnkIdent:
+            if asgn_left_kind == nnkIdent:
                 is_command_or_ident = true
             
             #Look for outs[i] in perform block
-            elif is_perform_block and assgn_left_kind == nnkBracketExpr:
-                bracket_ident = assgn_left[0]
-                bracket_index = assgn_left[1]
+            elif is_perform_block and asgn_left_kind == nnkBracketExpr:
+                bracket_ident = asgn_left[0]
+                bracket_index = asgn_left[1]
                 if bracket_ident.kind == nnkIdent:
                     if bracket_ident.strVal() == "outs":
                         is_outs_brackets = true
 
-            assgn_left = nnkIdentDefs.newTree(
-                assgn_left,
+            asgn_left = nnkIdentDefs.newTree(
+                asgn_left,
                 newEmptyNode(),
-                assgn_right
+                asgn_right
             )
 
-    if assgn_left != nil:
-        let var_name     = assgn_left[0]
+    if asgn_left != nil:
+        let var_name     = asgn_left[0]
  
         var 
             var_name_str : string
@@ -668,7 +668,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                                     newIdentNode("typeof"),
                                     var_name
                                 ),
-                                assgn_right
+                                asgn_right
                             )
                         )
                     )
@@ -684,7 +684,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                                 var_declared_in_scope,
                                 nnkStmtList.newTree(
                                     nnkVarSection.newTree(
-                                        assgn_left
+                                        asgn_left
                                     )
                                 )
                             ),
@@ -706,7 +706,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                                 newIdentNode("typeof"),
                                 var_name
                             ),
-                            assgn_right
+                            asgn_right
                         )
                     )
 
@@ -758,7 +758,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                                         newIdentNode("typeof"),
                                         audio_index_loop_bracket
                                     ),
-                                    assgn_right
+                                    asgn_right
                                 )
                             )
                         )
@@ -776,7 +776,7 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                             newIdentNode("typeof"),
                             var_name
                         ),
-                        assgn_right
+                        asgn_right
                     )
                 )
             )
@@ -824,6 +824,20 @@ proc omni_parse_untyped_brackets(statement : NimNode, level : var int, declared_
                 newIdentNode("omni_ins_ptr"),
                 bracket_val,
                 omni_audio_index
+            )
+
+        #Look for params[i]
+        elif bracket_ident_str == "params":
+            parsed_statement = nnkCall.newTree(
+                newIdentNode("omni_get_dynamic_param"),
+                bracket_val
+            )
+
+        #Look for buffers[i]
+        elif bracket_ident_str == "buffers":
+            parsed_statement = nnkCall.newTree(
+                newIdentNode("omni_get_dynamic_buffer"),
+                bracket_val
             )
 
     return parsed_statement
@@ -948,10 +962,6 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
         
     var build_statement : NimNode
     if is_init_block:
-        #This will get rid of the first entry, which is the call to "add_buffers_ins". It will be
-        #added again as soon as the untyped parsing is completed
-        #code_block = code_block.last()
-        
         #Remove "build" statement from the block before all syntactic analysis.
         #This is needed for this to work:
         #build:
@@ -985,12 +995,6 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
 
     #final block. it's a block stmt
     final_block.add(code_block)
-
-    #if is_def_block:
-    #    echo repr final_block
-
-    #if is_init_block:
-        #error repr final_block
     
     #If perform or sample block:
     #1) Run ins / outs according to dynamic input count
@@ -1055,7 +1059,6 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
 
     #Run the typed version of the macro on the produced code
     return quote do:
-        #Need to run through an evaluation in order to get the typed information of the block:
         omni_parse_block_typed(
             `final_block`, 
             `build_statement`, 
@@ -1082,7 +1085,7 @@ proc omni_parser_typed_loop(statement : NimNode, level : var int, is_init_block 
 
 #Parse the call syntax: function(arg)
 proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    var parsed_statement = omni_parser_typed_loop(statement, level, is_perform_block, is_def_block)
+    var parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
 
     let function_call = parsed_statement[0]
 
@@ -1095,20 +1098,20 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
             #1 channel
             if parsed_statement[1].kind == nnkDotExpr:
                 
-                var assgn_right = parsed_statement[3]
+                var asgn_right = parsed_statement[3]
 
                 #Remove typeof() which has been added in untyped section for tuple access safety
-                if assgn_right.kind == nnkConv:
-                    if assgn_right.len == 2:
-                        if assgn_right[0].kind == nnkTypeOfExpr:
-                            assgn_right = assgn_right[1]
+                if asgn_right.kind == nnkConv:
+                    if asgn_right.len == 2:
+                        if asgn_right[0].kind == nnkTypeOfExpr:
+                            asgn_right = asgn_right[1]
 
                 parsed_statement = nnkAsgn.newTree(
                     nnkBracketExpr.newTree(
                         parsed_statement[1],
                         parsed_statement[2]
                     ),
-                    assgn_right
+                    asgn_right
                 )
 
             #Multi channel
@@ -1119,17 +1122,17 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
                 for channel_index in 2..parsed_statement.len-2:
                     bracket_expr.add(parsed_statement[channel_index])
 
-                var assgn_right = parsed_statement.last()
+                var asgn_right = parsed_statement.last()
 
                 #Remove typeof() which has been added in untyped section for tuple access safety
-                if assgn_right.kind == nnkConv:
-                    if assgn_right.len == 2:
-                        if assgn_right[0].kind == nnkTypeOfExpr:
-                            assgn_right = assgn_right[1]
+                if asgn_right.kind == nnkConv:
+                    if asgn_right.len == 2:
+                        if asgn_right[0].kind == nnkTypeOfExpr:
+                            asgn_right = asgn_right[1]
 
                 parsed_statement = nnkAsgn.newTree(
                     bracket_expr,
-                    assgn_right
+                    asgn_right
                 )
 
         #If a omni_struct_new call, figure out generics from the omni_struct_type argument!
@@ -1264,7 +1267,7 @@ proc omni_convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode,
 
 #Parse the var section
 proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    var parsed_statement = omni_parser_typed_loop(statement, level, is_perform_block, is_def_block)
+    var parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
 
     let 
         ident_defs    = parsed_statement[0]
@@ -1374,7 +1377,7 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
 #Used in defs for "return",
 #This is needed in order to avoid type checking with "return" statements!
 proc omni_parse_typed_let_section(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    var parsed_statement = omni_parser_typed_loop(statement, level, is_perform_block, is_def_block)
+    var parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
 
     if is_def_block:
         let 
@@ -1398,7 +1401,7 @@ proc omni_parse_typed_let_section(statement : NimNode, level : var int, is_init_
     return parsed_statement
 
 proc omni_parse_typed_infix(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    var parsed_statement = omni_parser_typed_loop(statement, level, is_perform_block, is_def_block)
+    var parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
 
     assert parsed_statement.len == 3
 
@@ -1428,22 +1431,21 @@ proc omni_parse_typed_infix(statement : NimNode, level : var int, is_init_block 
 
     return parsed_statement
 
-proc omni_parse_typed_assgn(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
+proc omni_parse_typed_asgn(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     var 
-        parsed_statement = omni_parser_typed_loop(statement, level, is_perform_block, is_def_block)
-        assgn_left = parsed_statement[0]
+        parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
+        asgn_left  = parsed_statement[0]
 
     #Ignore 'result' (which is used in return stmt)
-    if assgn_left.kind == nnkSym:
-        if assgn_left.strVal() == "result":
+    if asgn_left.kind == nnkSym:
+        if asgn_left.strVal() == "result":
             return parsed_statement
 
-    if omni_is_struct(assgn_left):
-        if assgn_left.kind == nnkDotExpr:
-            error("'" & assgn_left.repr & "': trying to re-assign an already allocated struct field.")
+    if omni_is_struct(asgn_left):
+        if asgn_left.kind == nnkDotExpr:
+            error("'" & asgn_left.repr & "': trying to re-assign an already allocated struct field.")
         else:
-            error("'" & assgn_left.repr & "': trying to re-assign an already allocated struct.")
-
+            error("'" & asgn_left.repr & "': trying to re-assign an already allocated struct.")
 
     ##########################################################################
     #CHECK FOR SAME TYPE TO REMOVE EVENTUAL EXCESSIVE TYPEOF() CALLS HERE !!!!
@@ -1481,11 +1483,8 @@ proc omni_substitute_for_loop(code_block : NimNode, entry : NimNode, substitutio
 #for i, entry in a:
 #   entry = Something(i)
 proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
-    var parsed_statement = statement
-    
-    parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
-    
     var 
+        parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
         index1 = parsed_statement[0]
         index2 = parsed_statement[1]
 
@@ -1671,6 +1670,15 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
 
     return parsed_statement
 
+#Wrap if expressions in parenthesis. if expressions are the ones that get assigned to variables. This is especially useful for the params[i] / buffers[i] interface.
+#this turns this: let a = if b: 0 else: 1 -> let a = (if b: 0 else: 1)
+proc omni_parse_typed_if_expr(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
+    var parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
+    parsed_statement = nnkPar.newTree(
+        parsed_statement
+    )
+    return parsed_statement
+    
 #Dispatcher logic
 proc omni_parser_typed_dispatcher(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     let statement_kind = statement.kind
@@ -1686,9 +1694,11 @@ proc omni_parser_typed_dispatcher(statement : NimNode, level : var int, is_init_
     elif statement_kind == nnkInfix:
         parsed_statement = omni_parse_typed_infix(statement, level, is_init_block, is_perform_block, is_def_block)
     elif statement_kind == nnkAsgn:
-        parsed_statement = omni_parse_typed_assgn(statement, level, is_init_block, is_perform_block, is_def_block)
+        parsed_statement = omni_parse_typed_asgn(statement, level, is_init_block, is_perform_block, is_def_block)
     elif statement_kind == nnkForStmt:
         parsed_statement = omni_parse_typed_for(statement, level, is_init_block, is_perform_block, is_def_block)
+    elif statement_kind == nnkIfExpr:
+        parsed_statement = omni_parse_typed_if_expr(statement, level, is_init_block, is_perform_block, is_def_block)
     else:
         parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
 
@@ -1723,11 +1733,11 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
 
     #Will return an untyped code block!
     result = typed_to_untyped(inner_block)
+    
+    error astGenRepr result
 
     #if constructor block, run the omni_init_inner macro on the resulting block.
     if is_init_block:
-        #error repr result
-
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.
         #Otherwise all the _let / _var declaration in Omni_UGen body are screwed

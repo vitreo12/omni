@@ -22,16 +22,14 @@
 
 import macros
 
-#Dirty way of turning a typed block of code into an untyped:
-#Basically, what's needed is to turn all newSymNode into newIdentNode.
-#Sym are already semantically checked, Idents are not...
-#Maybe just replace Syms with Idents instead? It would be much safer than this...
+#Dirty way of turning a typed block of code into an untyped one.
 proc typed_to_untyped*(code_block : NimNode) : NimNode {.inline, compileTime.} =
-    return parseStmt(code_block.repr())
+    return parseStmt(repr(code_block))
 
+#Generate a unique ident
 proc genSymUntyped*(str : string) : NimNode {.inline, compileTime.} =
     return parseStmt(repr(genSym(ident=str)))[0]
 
 #Use it in place of expandMacros
 macro omni_debug_macros*(code : typed) =
-    error $(code.toStrLit)
+    error($(code.toStrLit))

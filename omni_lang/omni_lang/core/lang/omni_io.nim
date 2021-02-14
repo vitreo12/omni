@@ -630,7 +630,8 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         when not declared(omni_declared_inputs):
             const 
                 omni_inputs             {.inject.} = `ins_number_VAL`  
-                omni_inputs_names_const {.inject.} = `ins_names_node`
+                ins                     {.inject.} = omni_inputs      #Better alias to use in omni code  
+                omni_inputs_names_const {.inject.} = `ins_names_node` #Used in omni_io.txt
 
             #compile time variable if ins are defined
             let omni_declared_inputs {.inject, compileTime.} = true
@@ -814,8 +815,9 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
     return quote do: 
         when not declared(omni_declared_outputs):
             const 
-                omni_outputs             {.inject.} = `outs_number_VAL` 
-                omni_outputs_names_const {.inject.} = `outs_names_node`
+                omni_outputs             {.inject.} = `outs_number_VAL`
+                outs                     {.inject.} = omni_outputs      #Better alias to use in omni code
+                omni_outputs_names_const {.inject.} = `outs_names_node` #Used in omni_io.txt
             
             #compile time variable if outs are defined
             let omni_declared_outputs {.inject, compileTime.} = true
@@ -1508,6 +1510,58 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
     
     #error repr result
 
+#For params[0] syntax. Returns prev_value as it's equal to current value if thread has lock!
+proc omni_generate_get_dynamic_param_template() : NimNode {.compileTime.} =
+    if omni_params_names_list.len > 0:
+        var if_stmt = nnkIfStmt.newTree()
+        
+        result = newProc(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                newIdentNode("omni_get_dynamic_param")
+            ),
+            [ 
+                newIdentNode("untyped"),
+                nnkIdentDefs.newTree(
+                    newIdentNode("index"),
+                    newIdentNode("SomeNumber"),
+                    newLit(0)
+                )
+            ],
+            pragmas = nnkPragma.newTree(
+                newIdentNode("dirty")
+            ),
+            body = nnkStmtList.newTree(
+                nnkPar.newTree(
+                    if_stmt
+                )
+            ),
+            procType = nnkTemplateDef
+        )
+
+        for index, param_name in omni_params_names_list:
+            if_stmt.add(
+                nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("=="),
+                        nnkCall.newTree(
+                            newIdentNode("int"),
+                            newIdentNode("index")
+                        ),
+                        newLit(index)
+                    ),
+                    newIdentNode(param_name)
+                )
+            )
+        
+        if_stmt.add(
+            nnkElse.newTree(
+                newFloatLitNode(0.0)
+            )
+        )
+    
+    #error repr result
+
 macro omni_params_inner*(params_number : typed, params_names : untyped) : untyped =
     var 
         params_number_VAL : int
@@ -1656,6 +1710,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
     let
         defaults_mins_maxs = omni_build_default_min_max_arrays(params_number_VAL, default_vals, min_vals, max_vals, params_names_string, true)
         omni_params_generate_set_templates = omni_params_generate_set_templates(min_vals, max_vals)
+        omni_generate_get_dynamic_param_template = omni_generate_get_dynamic_param_template()
         omni_params_generate_unpack_templates = omni_params_generate_unpack_templates()
 
     if zero_params:
@@ -1666,7 +1721,8 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
         when not declared(omni_declared_params):
             const 
                 omni_params             {.inject.}  = `params_number_VAL`  
-                omni_params_names_const {.inject.}  = `params_names_node` 
+                params                  {.inject.}  = omni_params         #Better alias to use in omni code
+                omni_params_names_const {.inject.}  = `params_names_node` #Used for omni_io.txt 
 
             #compile time variable if params are defined
             let omni_declared_params {.inject, compileTime.} = true
@@ -1679,6 +1735,9 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
 
             #Returns a template that generates the unpacking of params for perform block
             `omni_params_generate_unpack_templates`
+
+            #Returns a template for dynamic params access, params[i]
+            `omni_generate_get_dynamic_param_template`
 
             #Export to C
             proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib.} =
@@ -2072,7 +2131,7 @@ proc omni_buffers_generate_unpack_templates() : NimNode {.compileTime.} =
 
     #error repr result
 
-proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
+proc omni_buffers_generate_defaults(buffers_default : seq[string]) : NimNode {.compileTime.} =
     var
         defaults_array_bracket = nnkBracket.newTree()
         defaults_array_const_unpacked_str : string
@@ -2162,7 +2221,7 @@ proc omni_buffer_generate_defaults(buffers_default : seq[string]) : NimNode {.co
 
     #error repr result
 
-proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
+proc omni_generate_lock_unlock_buffers() : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     var 
@@ -2388,6 +2447,73 @@ proc omni_generate_lock_unlock_buffers*() : NimNode {.compileTime.} =
 
     #error repr result
 
+#For buffers[0] syntax
+proc omni_buffers_generate_get_dynamic_buffer() : NimNode {.compileTime.} =
+    result = nnkStmtList.newTree()
+    
+    if omni_buffers_names_list.len > 0:
+        var 
+            if_stmt = nnkIfStmt.newTree()
+            first_buffer_str : string
+            first_buffer_ident : NimNode
+        
+        result.add(
+            newProc(
+                nnkPostfix.newTree(
+                    newIdentNode("*"),
+                    newIdentNode("omni_get_dynamic_buffer")
+                ),
+                [ 
+                    newIdentNode("untyped"),
+                    nnkIdentDefs.newTree(
+                        newIdentNode("index"),
+                        newIdentNode("SomeInteger"),
+                        newLit(0)
+                    )
+                ],
+                pragmas = nnkPragma.newTree(
+                    newIdentNode("dirty")
+                ),
+                body = nnkStmtList.newTree(
+                    if_stmt
+                ),
+                procType = nnkTemplateDef
+            )
+        )
+
+        for index, buffer_name in omni_buffers_names_list:
+            var buffer_ident = newIdentNode(buffer_name)
+            if index == 0:
+                first_buffer_str = buffer_name
+                first_buffer_ident = buffer_ident
+            if_stmt.add(
+                nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("=="),
+                        nnkCall.newTree(
+                            newIdentNode("int"),
+                            newIdentNode("index")
+                        ),
+                        newLit(index)
+                    ),
+                    buffer_ident
+                )
+            )
+        
+        if_stmt.add(
+            nnkElse.newTree(
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("omni_print_str"),
+                        newLit("ERROR: omni_get_dynamic_buffer: trying to access out of bounds Buffer. The first Buffer, '" & first_buffer_str & "', will be returned instead.")
+                    ),
+                first_buffer_ident
+                )
+            )
+        )
+
+    #error repr result
+
 macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : untyped =
     var 
         buffers_number_VAL : int
@@ -2502,10 +2628,16 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     #Assign to node
     buffers_names_node = newLit(buffers_names_string)
 
+    #Mismatch with defaults
+    if buffers_number_VAL > buffer_defaults.len:
+        for i in 0..<buffers_number_VAL:
+            buffer_defaults.add(OMNI_DEFAULT_NIL_BUFFER)
+
     let
-        omni_buffer_generate_defaults = omni_buffer_generate_defaults(buffer_defaults)
+        omni_buffers_generate_defaults = omni_buffers_generate_defaults(buffer_defaults)
         omni_buffers_generate_set_templates = omni_buffers_generate_set_templates()
         omni_buffers_generate_unpack_templates = omni_buffers_generate_unpack_templates()
+        omni_buffers_generate_get_dynamic_buffer = omni_buffers_generate_get_dynamic_buffer()
         omni_generate_lock_unlock_buffers = omni_generate_lock_unlock_buffers()
     
     var omni_when_declared_buffer_wrapper_interface : NimNode
@@ -2543,21 +2675,25 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             `omni_when_declared_buffer_wrapper_interface`
             
             #declare global vars
-            const 
+            const  
                 omni_buffers             {.inject.}  = `buffers_number_VAL`  
-                omni_buffers_names_const {.inject.}  = `buffers_names_node`  #Used for IO.txt 
+                buffers                  {.inject.}  = omni_buffers         #Better alias to use in omni code
+                omni_buffers_names_const {.inject.}  = `buffers_names_node` #Used for omni_io.txt 
 
             #compile time variable if buffers are defined
             let omni_declared_buffers {.inject, compileTime.} = true
 
             #Returns a const with default names and a template that calls the default init names (to be called in init)
-            `omni_buffer_generate_defaults`
+            `omni_buffers_generate_defaults`
 
             #Returns a template that generates all setbuffers procs. This must be called after Omni_UGen definition
             `omni_buffers_generate_set_templates`
 
             #Returns a template that generates the unpacking of buffers for perform block
             `omni_buffers_generate_unpack_templates`
+            
+            #Returns a proc for dynamic accessing of buffers with buffers[..] syntax
+            `omni_buffers_generate_get_dynamic_buffer`
 
             #Create omni_lock_buffers and omni_unlock_buffers templates
             #omni_unlock_buffers is generated first because it's used in omni_lock_buffers to unlock all buffers in case of error in locking one
