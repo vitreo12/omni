@@ -1293,10 +1293,6 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
                 if var_content.kind == nnkEmpty:
                     error("'" & var_name & "': structs must be instantiated on declaration.")
             
-            #If trying to assign a ptr type to any variable.. this won't probably be caught as it's been already parsed from untyped to typed...
-            #if is_perform_block:
-            #    error("`" & $var_name & "`: cannot declare new structs in the `perform` or `sample` blocks.")
-
             #All good, create new let statement
             let new_let_statement = nnkLetSection.newTree(
                 ident_defs
