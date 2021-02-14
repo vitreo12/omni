@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils
+import macros
 
 #Import the compile time list of float parameters to be added to Omni_UGen
 from omni_io import omni_params_names_list, omni_params_defaults_list, omni_buffers_names_list

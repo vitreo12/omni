@@ -3,8 +3,11 @@ params 3
 
 omni_debug_macros:
     def something:
-        omni_temp_result = 2
+        #omni_temp_result = 2
         return 0.5
+
+    struct Something:
+        samplerate 
 
     init:
         a = 23
@@ -13,7 +16,10 @@ omni_debug_macros:
         loop(params, i):
             d = params[i] * 2
 
-        a = something()
+        a = something() * samplerate
+        
+        buffer = Something()
+        buffer.samplerate = 3
 
     sample:
         out1 = something()

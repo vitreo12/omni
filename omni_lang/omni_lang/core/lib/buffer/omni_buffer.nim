@@ -24,9 +24,9 @@ type
     Buffer_inherit* = object of RootObj
         name        : string
         valid_lock  : bool
-        length      : int
-        samplerate  : float
-        channels    : int
+        length*     : int
+        samplerate* : float
+        channels*   : int
 
     #Don't export these, they are just needed here to define some common operations on Buffers
     Buffer = ptr Buffer_inherit
@@ -62,33 +62,9 @@ proc omni_set_valid_lock_buffer*(buffer : Buffer, valid_lock : bool) : void {.in
 proc valid_lock*(buffer : Buffer) : bool {.inline.} =
     return buffer.valid_lock
 
-#used in omniBufferInterface
-proc omni_set_length_buffer*(buffer : Buffer, length : int) : void {.inline.} =
-    buffer.length = length
-
-#return buffer's length
-proc length*(buffer : Buffer) : int {.inline.}  =
-    return buffer.length
-
 #short for length
 template len*(buffer : Buffer) : untyped {.dirty.} =
     buffer.length
-
-#used in omniBufferInterface
-proc omni_set_samplerate_buffer*(buffer : Buffer, samplerate : float) : void {.inline.} =
-    buffer.samplerate = samplerate
-
-#return buffer's samplerate
-proc samplerate*(buffer : Buffer) : float {.inline.}  =
-    return buffer.samplerate
-
-#used in omniBufferInterface
-proc omni_set_channels_buffer*(buffer : Buffer, channels : int) : void {.inline.} =
-    buffer.channels = channels
-
-#return buffer's channels
-proc channels*(buffer : Buffer) : int {.inline.}  =
-    return buffer.channels
 
 #short for channels
 template chans*(buffer : Buffer) : untyped {.dirty.} =

@@ -78,9 +78,10 @@ proc declare_struct(statement_block : NimNode = nil) : NimNode {.inline, compile
         buffer_setter_procs = nnkStmtList.newTree(
             #declare_local_setter_proc("name", "string"), #name is not neeeded
             declare_local_setter_proc("valid_lock", "bool"),
-            declare_local_setter_proc("length", "int"),
-            declare_local_setter_proc("samplerate", "float"),
-            declare_local_setter_proc("channels", "int"),
+            #These are exported directly cause they cause problems with normal "samplerate" meaning
+            #declare_local_setter_proc("length", "int"),
+            #declare_local_setter_proc("samplerate", "float"),
+            #declare_local_setter_proc("channels", "int"),
         )
     
     if statement_block.len == 1:
