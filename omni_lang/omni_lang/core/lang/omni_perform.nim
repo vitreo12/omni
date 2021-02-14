@@ -148,19 +148,26 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
         init:
             discard
     
-    #In the case of perform / sample blocks, omni_parse_block_untyped actually returns:
-    # when not declared(omni_declared_inputs):
-    #  ins ..
-    # when not declared(omni_declared_outputs):
-    #  outs ..
-    # template omni_perform_block_untyped() : untyped {.dirty.} =
+    #In the case of perform / sample blocks, omni_parse_block_untyped returns:
+    #when not declared(omni_declared_inputs):
+    #   ins ..
+    #when not declared(omni_declared_outputs):
+    #   outs ..
+    #template omni_perform_block_untyped() : untyped {.dirty.} =
     #   ... (untyped parsed code) ...
-    #perform block
     when declared(omni_declared_perform):
         omni_parse_block_untyped(code_block, false, true)
     #sample block without perform
     else:
         omni_parse_block_untyped(code_block, false, true, true)
+
+    #This can be defined in wrappers
+    when declared(omni_params_pre_perform_hook):
+        omni_params_pre_perform_hook()
+
+    #This can be defined in wrappers
+    when declared(omni_buffers_pre_perform_hook):
+        omni_buffers_pre_perform_hook()
 
     #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(omni_perform32):

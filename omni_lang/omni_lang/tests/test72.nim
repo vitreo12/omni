@@ -22,4 +22,4 @@ omni_debug_macros:
         buffer.samplerate = 3
 
     sample:
-        out1 = something()
+        out12 = something()

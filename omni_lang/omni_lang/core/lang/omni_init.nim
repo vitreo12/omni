@@ -413,12 +413,12 @@ macro init*(code_block : untyped) : untyped =
             buffers 0
 
         #This can be defined in wrappers
-        when declared(omni_params_post_hook):
-            omni_params_post_hook()
+        when declared(omni_params_pre_init_hook):
+            omni_params_pre_init_hook()
 
         #This can be defined in wrappers
-        when declared(omni_buffers_post_hook):
-            omni_buffers_post_hook()
+        when declared(omni_buffers_pre_init_hook):
+            omni_buffers_pre_init_hook()
 
         #Trick the compiler of the existence of these variables in order to parse the init block.
         #These will be overwrittne in the UGenCosntructor anyway.

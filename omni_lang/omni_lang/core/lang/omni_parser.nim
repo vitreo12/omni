@@ -1425,17 +1425,33 @@ proc omni_parse_typed_asgn(statement : NimNode, level : var int, is_init_block :
     var 
         parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
         asgn_left  = parsed_statement[0]
+        asgn_left_kind = asgn_left.kind
 
     #Ignore 'result' (which is used in return stmt)
-    if asgn_left.kind == nnkSym:
+    if asgn_left_kind == nnkSym:
         if asgn_left.strVal() == "result":
             return parsed_statement
 
     if omni_is_struct(asgn_left):
-        if asgn_left.kind == nnkDotExpr:
+        if asgn_left_kind == nnkDotExpr:
             error("'" & asgn_left.repr & "': trying to re-assign an already allocated struct field.")
         else:
             error("'" & asgn_left.repr & "': trying to re-assign an already allocated struct.")
+
+    #Check if trying to re-assign length / samplerate / channels of a Buffer
+    if asgn_left_kind == nnkDotExpr:
+        var
+            left_dot = asgn_left[0]
+            right_dot = asgn_left[1]
+            left_type_inst = left_dot.getTypeInst()
+
+        if left_type_inst.kind == nnkSym:
+            let left_type_inst_str = left_type_inst.strVal()
+            if left_type_inst_str == "Buffer" or left_type_inst_str == "Buffer_omni_struct":
+                if right_dot.kind == nnkSym:
+                    let right_dot_str = right_dot.strVal()
+                    if right_dot_str == "samplerate" or right_dot_str == "length" or right_dot_str == "channels":
+                        error "'" & repr(parsed_statement) & "': can't reassign a Buffer's '" & right_dot_str & "'"
 
     ##########################################################################
     #CHECK FOR SAME TYPE TO REMOVE EVENTUAL EXCESSIVE TYPEOF() CALLS HERE !!!!
