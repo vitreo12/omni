@@ -338,7 +338,7 @@ proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, 
 
             def_new_name_str = def_new_name.strVal()
 
-        #omni_def_dummy
+        #omni_def_dummy / omni_def_export
         let 
             omni_def_dummy_name = newIdentNode(def_new_name_str & "_omni_def_dummy")
             omni_def_export = newIdentNode(def_new_name_str & "_omni_def_export")
