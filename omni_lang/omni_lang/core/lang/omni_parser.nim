@@ -355,10 +355,6 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
     #Detect constructor calls
     parsed_statement = omni_find_struct_constructor_call(parsed_statement)
 
-    #if is_def_block:
-    #    error repr call_name
-    #    error repr parsed_statement
-
     if is_def_block and statement.kind == nnkReturnStmt:
         var return_val = parsed_statement[0]
 
@@ -376,17 +372,15 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
                     return_val
                 )
 
-        #Convert "return" to "omni_temp_result_... ="
+        #Convert "return" to "omni_temp_result... ="
         #This is needed to avoid type checking weirdness in the def block!
         parsed_statement = nnkLetSection.newTree(
             nnkIdentDefs.newTree(
-                genSym(ident="omni_temp_result_posadijwehqwensdakswyetrwqeq"),
+                genSym(ident="omni_temp_result"),
                 newEmptyNode(),
                 return_val
             )
         )
-
-    #error repr parsed_statement
 
     return parsed_statement
 
@@ -1380,8 +1374,8 @@ proc omni_parse_typed_let_section(statement : NimNode, level : var int, is_init_
             ident_defs = parsed_statement[0]
             var_name = ident_defs[0]
 
-        #Convert "omni_temp_result_posadijwehqwensdakswyetrwqeq = xyz" to "return xyz" statements
-        if var_name.strVal().startsWith("omni_temp_result_posadijwehqwensdakswyetrwqeq"):
+        #Convert "omni_temp_result = xyz" to "return xyz" statements
+        if var_name.strVal().startsWith("omni_temp_result"):
             var return_content = ident_defs[2]
 
             #If a tuple, run conversions!

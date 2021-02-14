@@ -351,7 +351,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
         #Generate the UGen_SetParam procs
         omni_generate_params_set_procs()
-        
+
         #Generate the UGen_BufferSet procs
         omni_generate_buffers_set_procs()
         

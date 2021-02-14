@@ -342,11 +342,14 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             nnkCall.newTree(
                 newIdentNode("omni_parse_block_untyped"),
                 code_block,
-                newLit(false),
-                newLit(false),
-                newLit(false),
-                newLit(true),    #is_def
-                proc_return_type #pass return type as "extra_data"
+                nnkExprEqExpr.newTree(
+                    newIdentNode("is_def_block_typed"),
+                    newLit(true)
+                ),
+                nnkExprEqExpr.newTree(
+                    newIdentNode("extra_data"),
+                    proc_return_type #pass return type as "extra_data"
+                )
             )
         ) 
         
@@ -422,12 +425,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 template_body_call
             )
         )
-        
-        #echo astGenRepr proc_def
-        #echo repr proc_def 
-        #error repr template_def     
-        #error repr proc_def  
-             
+
     else:
         error "def: Invalid syntax for 'def " & repr(function_signature) & "'"
 
@@ -494,13 +492,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
     proc_and_template.add(proc_omni_def_export)
     proc_and_template.add(template_def)
 
-    #echo astGenRepr proc_def
-
-    #proc_and_template.add(template_omni_def_export)
-
-    #echo astGenRepr proc_and_template
-    #echo astGenRepr proc_formal_params
-    #echo astGenRepr checkValidTypes
+    #error repr proc_and_template
 
     return quote do:
         #Run validity type check on each argument of the def

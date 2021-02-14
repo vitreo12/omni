@@ -41,6 +41,9 @@ let omni_invalid_ends_with* {.compileTime.} = [
 let omni_invalid_variable_names* {.compileTime.} = [
     "omni_ugen",
     "omni_auto_mem", "omni_params_lock", "omni_buffers_lock",
+    "omni_samplerate", "samplerate",
+    "omni_bufsize", "bufsize",
+    "omni_temp_result",
     "ins", "inputs",
     "outs", "outputs",
     "parameters", "params",
