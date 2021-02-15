@@ -406,6 +406,12 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
 macro init*(code_block : untyped) : untyped =
     return quote do:
+        #Define that init exists, so perform doesn't create an empty one automatically
+        #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
+        let omni_declared_init {.inject, compileTime.} = true
+
+        #Store the whole block in a template, to be either triggered right away if ins / outs are defined
+        #OR defined right before perform / sample, since there could be dynamic I/O definitions
         template omni_define_init_block() : untyped {.dirty.} =
             when not declared(omni_declared_params):
                 omni_io.params 0 #not to be confused with macros' params
@@ -431,10 +437,6 @@ macro init*(code_block : untyped) : untyped =
             
             var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
 
-            #Define that init exists, so perform doesn't create an empty one automatically
-            #Or, if perform is defining one, define omni_declared_init here so that it will still only be defined once
-            let omni_declared_init {.inject, compileTime.} = true
-
             #Generate fictional let names for params (so that parser won't complain when using them)
             omni_unpack_params_pre_init()
 
@@ -446,6 +448,10 @@ macro init*(code_block : untyped) : untyped =
 
             #Actually parse the init block
             omni_parse_block_untyped(`code_block`, true)
+
+        #If ins / outs are defined already, it's safe to define block too
+        when declared(omni_declared_inputs) and declared(omni_declared_outputs):
+            omni_define_init_block()
 
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
