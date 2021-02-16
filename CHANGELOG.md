@@ -110,15 +110,7 @@
         bubu[0] = in1
     ```
 
-8) `loop` now supports infinite loops:
-
-    ```nim
-    init:
-        loop:
-            print "hanging forever"
-    ```
-
-9) `def` can now be used without arguments, if needed:
+8) `def` can now be used without arguments, if needed:
 
     ```nim
     def something:
@@ -129,6 +121,58 @@
 
     def something3 float:
         return 0.5
+    ```
+
+9) `loop`: reversed the arguments and support for range.
+
+    ```nim
+    loop(i, 4)
+
+    loop(i, 0..3)
+    
+    loop(i, 0..<4)
+
+    loop i 4
+
+    loop i 0..3
+    
+    loop i 0..<4
+
+    loop i, 4
+
+    loop i, 0..3
+
+    loop i, 0..<4
+    ```
+
+    Anonymous index through the `_` identifier:
+
+    ```nim
+    loop 4:
+        print _
+    ```
+
+    Support for `Data` access and initialization:
+
+    ```nim
+    struct Something:
+        a float
+
+    init:
+        data = Data[Something](10)
+        loop(something, data):
+            something = Something()
+
+        data2 = Data[Something](10)
+        loop data2:
+            _ = Something()
+    ```
+
+    Infinite loops:
+
+    ```nim
+    loop:
+        print "hanging forever"
     ```
 
 10) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
