@@ -91,7 +91,7 @@
     outs 5
 
     sample:
-        loop(params, i):
+        loop(i, params):
             outs[i] = ins[i] * buffers[i][params[i]]
     ```
 
