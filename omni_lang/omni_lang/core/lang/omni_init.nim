@@ -414,7 +414,7 @@ macro init*(code_block : untyped) : untyped =
         #OR defined right before perform / sample, since there could be dynamic I/O definitions
         template omni_define_init_block() : untyped {.dirty.} =
             when not declared(omni_declared_params):
-                omni_io.params 0 #not to be confused with macros' params
+                parameters 0 #Use 'parameters' not to be confused with macro's params
 
             when not declared(omni_declared_buffers):
                 buffers 0
