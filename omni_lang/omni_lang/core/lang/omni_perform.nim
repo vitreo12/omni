@@ -138,12 +138,12 @@ template omni_cast_ins_outs64*() : untyped {.dirty.} =
 
 template omni_perform_inner*(code_block : untyped) {.dirty.} =
     when not declared(omni_declared_params):
-        omni_lang.omni_io.params 0  #omni_lang is here required cause it's a template (in omni_init, omni_io is enough!)
+        parameters 0 #Use 'parameters' not to be confused with macro's params
 
     when not declared(omni_declared_buffers):
         buffers 0
 
-    #Create an empty init block if one wasn't defined by the user
+    #If init wasn't declared, declare an empty one
     when not declared(omni_declared_init):
         init:
             discard
@@ -160,6 +160,10 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
     #sample block without perform
     else:
         omni_parse_block_untyped(code_block, false, true, true)
+
+    #Execute the init block AFTER the untyped parsing of the perform. 
+    #This allows to use the omni_inputs / omni_outputs in init
+    omni_define_init_block()
 
     #This can be defined in wrappers
     when declared(omni_params_pre_perform_hook):

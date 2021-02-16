@@ -20,70 +20,103 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros
+import macros, omni_macros_utilities
 
-#[ 
-    
-proc loop_index_substitute(code_block : NimNode, index_original : NimNode, index_sub : NimNode) : void {.compileTime.} =
-    for i, statement in code_block:
-        if statement == index_original:
-            code_block[i] = index_sub
-        loop_index_substitute(statement, index_original, index_sub)
+proc find_and_replace_underscore(code_block : NimNode, new_val : NimNode) : void {.compileTime.} =
+    for index, statement in code_block:
+        var is_another_loop = false
+        if statement.kind == nnkIdent:
+            if statement.strVal() == "_":
+                code_block[index] = new_val
+        elif statement.kind == nnkCommand or statement.kind == nnkCall:
+            let first_call = statement[0]
+            if first_call.kind == nnkIdent:
+                if first_call.strVal() == "loop":
+                    is_another_loop = true
+        #Don't run substitution on inner loops, as they are taken care of already by themselves!
+        if not is_another_loop:
+            find_and_replace_underscore(statement, new_val)
 
-#loop_unroll actually slows things down apparently...
-proc loop_unroll(code_block : NimNode, num : NimNode, index : NimNode) : NimNode {.compileTime.} =
-    let num_val = num.intVal()
-    
-    result = nnkStmtList.newTree()
-
-    #if loop <= 0, return 
-    if num_val <= 0:
-        return result
-        
-    for i in 0..<num_val:
-        let code_block_cp = code_block.copy()
-        let new_index = newLit(int(i))
-        
-        loop_index_substitute(code_block_cp, index, new_index)
-
-        #Needed for struct re-assigning!
-        result.add(
-            nnkBlockStmt.newTree(
-                newEmptyNode(),
-                code_block_cp
+template when_stmt_loop(index, num) : untyped {.dirty.} =
+    nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+            nnkInfix.newTree(
+                newIdentNode("is"),
+                nnkCall.newTree(
+                    newIdentNode("typeof"),
+                    num
+                ),
+                newIdentNode("SomeNumber")
+            ),
+            nnkStmtList.newTree(
+                nnkForStmt.newTree(
+                    index,
+                    nnkInfix.newTree(
+                        newIdentNode("..<"),
+                        newLit(0),
+                        num
+                    ),
+                    code_block
+                )
+            )
+        ),
+        nnkElse.newTree(
+            nnkStmtList.newTree(
+                nnkForStmt.newTree(
+                    index,
+                    num,
+                    code_block
+                )
             )
         )
-
-    #Wrap the whole loop in block, so the scope is not polluted
-    result = nnkBlockStmt.newTree(
-        newEmptyNode(),
-        result
     )
 
-    #error repr result
-]#
-        
 proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
-    if loop_block.kind == nnkCall:
+    let 
+        loop_block_kind = loop_block.kind
+        loop_block_len = loop_block.len
+
+    if loop_block_kind == nnkCall or loop_block_kind == nnkCommand:
         #loop: ... infinite loop
-        if loop_block.len == 2:
+        if loop_block_len == 2:
             let code_block = loop_block[1]
             return nnkWhileStmt.newTree(
                 newIdentNode("true"),
                 code_block
             )
 
-        #loop(4, i)
-        elif loop_block.len == 4:
-            let 
+        #loop(0..4)
+        elif loop_block_len == 3:
+            var 
                 num = loop_block[1]
                 num_kind = num.kind
-                index = loop_block[2]
-                index_kind = index.kind
-                code_block = loop_block[3]
+                code_block = loop_block[2]
 
+            if num_kind == nnkInfix:
+                let infix_str = num[0].strVal()
+                if infix_str == ".." or infix_str == "..<":
+                    let unique_index = genSymUntyped("index")
+                    find_and_replace_underscore(code_block, unique_index)
+                    return nnkForStmt.newTree(
+                        unique_index,
+                        num,
+                        code_block
+                    )
+                
+                else:
+                    error "loop: invalid infix: '" & infix_str & "'"
+            
+        #loop(i, 4) / loop(i, 0..4) / loop i, 4 / loop i, 0..4
+        elif loop_block_len == 4:
+            let 
+                index = loop_block[1]
+                index_kind = index.kind
+                num = loop_block[2]
+                num_kind = num.kind
+                code_block = loop_block[3]
+            
             if index_kind == nnkIdent:
-                #loop(4, i)
+                #loop(i, 4)
                 if num_kind == nnkIntLit:
                     #use num_val: gcc will optimize the loop
                     let num_val = newLit(int(num.intVal()))
@@ -97,43 +130,42 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                         code_block
                     )
                     
-                    #loop_unroll actually slows things down apparently...
-                    #return loop_unroll(code_block, num, index)
-                
-                #loop(a, i)
+                #loop(i, a)... This returns a when statement to allow to use
+                #loop(i, a) when a is not a number, but for example is Data
                 elif num_kind == nnkIdent:
-                    return nnkForStmt.newTree(
-                        index,
-                        nnkInfix.newTree(
-                            newIdentNode("..<"),
-                            newLit(0),
-                            num
-                        ),
-                        code_block
-                    )
+                    return when_stmt_loop(index, num)
+                
+                #loop(i, 0..4)
+                elif num_kind == nnkInfix:
+                    let infix_str = num[0].strVal()
+                    if infix_str == ".." or infix_str == "..<":
+                        return nnkForStmt.newTree(
+                            index,
+                            num,
+                            code_block
+                        )
                 else:
                     error "loop: Invalid number or identifier '" & repr(num) & "' in ' " & repr(loop_block) & "'"
             else:
                 error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(loop_block) & "'"
 
-    if loop_block.len != 3:
+    if loop_block_len != 3:
         error "loop: Invalid syntax: '" & repr(loop_block) & "'"
 
     let 
         index_or_num = loop_block[1]
         index_or_num_kind = index_or_num.kind
-
         code_block = loop_block[2]
 
-    var unique_index = genSym(ident="index")
-    unique_index = parseExpr(repr(unique_index))
+    let unique_index = genSymUntyped("index")
 
-    #loop 4 / loop variable / loop(4) / loop(variable)
+    #loop 4 / loop i 4 / loop variable / loop(4) / loop(variable) / loop 0..4 / loop i 0..4
 
     #loop 4
     if index_or_num_kind == nnkIntLit:
         #use num_val: gcc will optimize the loop
         let num_val = newLit(int(index_or_num.intVal()))
+        find_and_replace_underscore(code_block, unique_index)
         return nnkForStmt.newTree(
             unique_index,
             nnkInfix.newTree(
@@ -143,31 +175,34 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
             ),
             code_block
         )
-
-        #return loop_unroll(code_block, index_or_num, nil)
     
-    #loop a
+    #loop a This returns a when statement to allow to use
+    #loop a when a is not a number, but for example is Data
     elif index_or_num_kind == nnkIdent:
-        return nnkForStmt.newTree(
-            unique_index,
-            nnkInfix.newTree(
-                newIdentNode("..<"),
-                newLit(0),
-                index_or_num
-            ),
-            code_block
-        )
+        find_and_replace_underscore(code_block, unique_index)
+        return when_stmt_loop(unique_index, index_or_num)
 
-    #loop 4 i
+    #loop 0..4
+    elif index_or_num_kind == nnkInfix:
+        let infix_str = index_or_num[0].strVal()
+        find_and_replace_underscore(code_block, unique_index)
+        if infix_str == ".." or infix_str == "..<":
+            return nnkForStmt.newTree(
+                unique_index,
+                index_or_num,
+                code_block
+            ) 
+
+    #loop i 4 / loop i 0..4
     elif index_or_num_kind == nnkCommand:
         let 
-            num = index_or_num[0]
-            num_kind = num.kind
-            index = index_or_num[1]
+            index = index_or_num[0]
             index_kind = index.kind
+            num = index_or_num[1]
+            num_kind = num.kind
 
         if index_kind == nnkIdent:
-            #loop 4 i
+            #loop i 4
             if num_kind == nnkIntLit:
                 #use num_val: gcc will optimize the loop
                 let num_val = newLit(int(num.intVal()))
@@ -181,19 +216,20 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                     code_block
                 )
 
-                #return loop_unroll(code_block, num, index)
-            
-            #loop a i
+            #loop i a ... This returns a when statement to allow to use
+            #loop i a when a is not a number, but for example is Data
             elif num_kind == nnkIdent:
-                return nnkForStmt.newTree(
-                    index,
-                    nnkInfix.newTree(
-                        newIdentNode("..<"),
-                        newLit(0),
-                        num
-                    ),
-                    code_block
-                )
+                return when_stmt_loop(index, num)
+            
+            #loop i 0..4
+            elif num_kind == nnkInfix:
+                let infix_str = num[0].strVal()
+                if infix_str == ".." or infix_str == "..<":
+                    return nnkForStmt.newTree(
+                        index,
+                        num,
+                        code_block
+                    )
             else:
                 error "loop: Invalid number or identifier '" & repr(num) & "' in ' " & repr(index_or_num) & "'"
         else:

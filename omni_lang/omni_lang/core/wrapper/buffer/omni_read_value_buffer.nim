@@ -94,7 +94,8 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
             )
             ),
             nnkPragma.newTree(
-            newIdentNode("inline")
+            newIdentNode("inline"),
+            newIdentNode("noSideEffect")
             ),
             newEmptyNode(),
             nnkStmtList.newTree(
@@ -259,7 +260,8 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
             )
             ),
             nnkPragma.newTree(
-            newIdentNode("inline")
+            newIdentNode("inline"),
+            newIdentNode("noSideEffect")
             ),
             newEmptyNode(),
             nnkStmtList.newTree(

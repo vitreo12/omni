@@ -53,9 +53,9 @@ proc omni_check_valid_name(param_name : string, which_call : string = "ins") : v
         if not (individualChar in omni_accepted_chars):
             error(which_call & ": Invalid character '" & $individualChar & $ "' in input name '" & $param_name & "'")
 
-###########
-# outputs #
-###########
+##########
+# inputs #
+##########
 
 proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} =
     let 
@@ -92,7 +92,8 @@ proc omni_generate_min_max_procs(index : SomeInteger) : NimNode {.compileTime.} 
                         )
                     ),
                     nnkPragma.newTree(
-                        newIdentNode("inline")
+                        newIdentNode("inline"),
+                        newIdentNode("noSideEffect")
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
@@ -630,7 +631,8 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         when not declared(omni_declared_inputs):
             const 
                 omni_inputs             {.inject.} = `ins_number_VAL`  
-                ins                     {.inject.} = omni_inputs      #Better alias to use in omni code  
+                ins                     {.inject.} = omni_inputs      #Better alias to use in omni code
+                inputs                  {.inject.} = omni_inputs      #Better alias to use in omni code  
                 omni_inputs_names_const {.inject.} = `ins_names_node` #Used in omni_io.txt
 
             #compile time variable if ins are defined
@@ -817,6 +819,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
             const 
                 omni_outputs             {.inject.} = `outs_number_VAL`
                 outs                     {.inject.} = omni_outputs      #Better alias to use in omni code
+                outputs                  {.inject.} = omni_outputs      #Better alias to use in omni code
                 omni_outputs_names_const {.inject.} = `outs_names_node` #Used in omni_io.txt
             
             #compile time variable if outs are defined
@@ -1559,6 +1562,10 @@ proc omni_generate_get_dynamic_param_template() : NimNode {.compileTime.} =
                 newFloatLitNode(0.0)
             )
         )
+    else:
+        return nnkDiscardStmt.newTree(
+            newEmptyNode()
+        )
     
     #error repr result
 
@@ -1722,6 +1729,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
             const 
                 omni_params             {.inject.}  = `params_number_VAL`  
                 params                  {.inject.}  = omni_params         #Better alias to use in omni code
+                parameters              {.inject.}  = omni_params         #Better alias to use in omni code
                 omni_params_names_const {.inject.}  = `params_names_node` #Used for omni_io.txt 
 
             #compile time variable if params are defined
@@ -2677,6 +2685,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             #declare global vars
             const  
                 omni_buffers             {.inject.}  = `buffers_number_VAL`  
+                bufs                     {.inject.}  = omni_buffers         #Better alias to use in omni code
                 buffers                  {.inject.}  = omni_buffers         #Better alias to use in omni code
                 omni_buffers_names_const {.inject.}  = `buffers_names_node` #Used for omni_io.txt 
 

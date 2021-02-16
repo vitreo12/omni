@@ -329,10 +329,11 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #Add formal args
         proc_def.add(proc_formal_params)
         
-        #Add inline pragma
+        #Add inline and noSideEffect
         proc_def.add(
             nnkPragma.newTree(
-                newIdentNode("inline")
+                newIdentNode("inline"),
+                newIdentNode("noSideEffect")
             ),
             newEmptyNode()
         )   
@@ -361,9 +362,10 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         # ================= #
 
         proc_omni_def_export = proc_def.copy()
-        #error astGenRepr proc_omni_def_export
-        proc_omni_def_export[4] = newEmptyNode() #remove inline pragma
+        proc_omni_def_export[4]    = newEmptyNode() #remove pragmas
         proc_omni_def_export[0][1] = newIdentNode(proc_name_str & "_omni_def_export") #change name
+        
+        #error astGenRepr proc_omni_def_export
         
         #Can't remove these things because the generated code will be then == to the one generated in the dummy proc with a def with no args!!
         #[ var proc_omni_def_export_formal_params = proc_omni_def_export[3]
