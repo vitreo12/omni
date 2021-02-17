@@ -1516,7 +1516,12 @@ proc omni_params_generate_unpack_templates() : NimNode {.compileTime.} =
 #For params[0] syntax. Returns prev_value as it's equal to current value if thread has lock!
 proc omni_generate_get_dynamic_param_template() : NimNode {.compileTime.} =
     if omni_params_names_list.len > 0:
-        var if_stmt = nnkIfStmt.newTree()
+        var case_stmt = nnkCaseStmt.newTree(
+            nnkCall.newTree(
+                newIdentNode("int"),
+                newIdentNode("index")
+            )
+        )
         
         result = newProc(
             nnkPostfix.newTree(
@@ -1536,28 +1541,21 @@ proc omni_generate_get_dynamic_param_template() : NimNode {.compileTime.} =
             ),
             body = nnkStmtList.newTree(
                 nnkPar.newTree(
-                    if_stmt
+                    case_stmt
                 )
             ),
             procType = nnkTemplateDef
         )
 
         for index, param_name in omni_params_names_list:
-            if_stmt.add(
-                nnkElifBranch.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode("=="),
-                        nnkCall.newTree(
-                            newIdentNode("int"),
-                            newIdentNode("index")
-                        ),
-                        newLit(index)
-                    ),
+            case_stmt.add(
+                nnkOfBranch.newTree(
+                    newLit(index),
                     newIdentNode(param_name)
                 )
             )
         
-        if_stmt.add(
+        case_stmt.add(
             nnkElse.newTree(
                 newFloatLitNode(0.0)
             )
@@ -2456,12 +2454,17 @@ proc omni_generate_lock_unlock_buffers() : NimNode {.compileTime.} =
     #error repr result
 
 #For buffers[0] syntax
-proc omni_buffers_generate_get_dynamic_buffer() : NimNode {.compileTime.} =
+proc omni_buffers_generate_get_dynamic_buffer_template() : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
     
     if omni_buffers_names_list.len > 0:
         var 
-            if_stmt = nnkIfStmt.newTree()
+            case_stmt = nnkCaseStmt.newTree(
+                nnkCall.newTree(
+                    newIdentNode("int"),
+                    newIdentNode("index")
+                )
+            )
             first_buffer_str : string
             first_buffer_ident : NimNode
         
@@ -2483,7 +2486,7 @@ proc omni_buffers_generate_get_dynamic_buffer() : NimNode {.compileTime.} =
                     newIdentNode("dirty")
                 ),
                 body = nnkStmtList.newTree(
-                    if_stmt
+                    case_stmt
                 ),
                 procType = nnkTemplateDef
             )
@@ -2494,28 +2497,21 @@ proc omni_buffers_generate_get_dynamic_buffer() : NimNode {.compileTime.} =
             if index == 0:
                 first_buffer_str = buffer_name
                 first_buffer_ident = buffer_ident
-            if_stmt.add(
-                nnkElifBranch.newTree(
-                    nnkInfix.newTree(
-                        newIdentNode("=="),
-                        nnkCall.newTree(
-                            newIdentNode("int"),
-                            newIdentNode("index")
-                        ),
-                        newLit(index)
-                    ),
+            case_stmt.add(
+                nnkOfBranch.newTree(
+                    newLit(index),
                     buffer_ident
                 )
             )
         
-        if_stmt.add(
+        case_stmt.add(
             nnkElse.newTree(
                 nnkStmtList.newTree(
                     nnkCall.newTree(
                         newIdentNode("omni_print_str"),
                         newLit("ERROR: omni_get_dynamic_buffer: trying to access out of bounds Buffer. The first Buffer, '" & first_buffer_str & "', will be returned instead.")
                     ),
-                first_buffer_ident
+                    first_buffer_ident
                 )
             )
         )
@@ -2645,7 +2641,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
         omni_buffers_generate_defaults = omni_buffers_generate_defaults(buffer_defaults)
         omni_buffers_generate_set_templates = omni_buffers_generate_set_templates()
         omni_buffers_generate_unpack_templates = omni_buffers_generate_unpack_templates()
-        omni_buffers_generate_get_dynamic_buffer = omni_buffers_generate_get_dynamic_buffer()
+        omni_buffers_generate_get_dynamic_buffer_template = omni_buffers_generate_get_dynamic_buffer_template()
         omni_generate_lock_unlock_buffers = omni_generate_lock_unlock_buffers()
     
     var omni_when_declared_buffer_wrapper_interface : NimNode
@@ -2702,7 +2698,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             `omni_buffers_generate_unpack_templates`
             
             #Returns a proc for dynamic accessing of buffers with buffers[..] syntax
-            `omni_buffers_generate_get_dynamic_buffer`
+            `omni_buffers_generate_get_dynamic_buffer_template`
 
             #Create omni_lock_buffers and omni_unlock_buffers templates
             #omni_unlock_buffers is generated first because it's used in omni_lock_buffers to unlock all buffers in case of error in locking one

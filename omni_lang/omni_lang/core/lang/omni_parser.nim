@@ -1676,9 +1676,10 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
 
     return parsed_statement
 
-#Wrap if expressions in parenthesis. if expressions are the ones that get assigned to variables. This is especially useful for the params[i] / buffers[i] interface.
-#this turns this: let a = if b: 0 else: 1 -> let a = (if b: 0 else: 1)
-proc omni_parse_typed_if_expr(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
+#Wrap if expressions and case statements in parenthesis. This is especially useful for the params[i] / buffers[i] interface, which uses a case statement
+# let a = if b: 0 else: 1 -> let a = (if b: 0 else: 1)
+# let a = case b: of 0: 0 else: 1 -> let a = (case b: of 0: 0 else: 1)
+proc omni_parse_typed_if_expr_case_stmt(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     var parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
     parsed_statement = nnkPar.newTree(
         parsed_statement
@@ -1703,8 +1704,8 @@ proc omni_parser_typed_dispatcher(statement : NimNode, level : var int, is_init_
         parsed_statement = omni_parse_typed_asgn(statement, level, is_init_block, is_perform_block, is_def_block)
     elif statement_kind == nnkForStmt:
         parsed_statement = omni_parse_typed_for(statement, level, is_init_block, is_perform_block, is_def_block)
-    elif statement_kind == nnkIfExpr:
-        parsed_statement = omni_parse_typed_if_expr(statement, level, is_init_block, is_perform_block, is_def_block)
+    elif statement_kind == nnkIfExpr or statement_kind == nnkCaseStmt:
+        parsed_statement = omni_parse_typed_if_expr_case_stmt(statement, level, is_init_block, is_perform_block, is_def_block)
     else:
         parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
 
@@ -1734,7 +1735,8 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
     #And also wrap it in a StmtList (if it wasn't a StmtList already)
     if inner_block.kind != nnkStmtList:
         inner_block = nnkStmtList.newTree(inner_block)
-    
+
+    #Run the actual typed parsing
     omni_parse_typed_block_inner(inner_block, is_init_block, is_perform_block, is_def_block)
 
     #Will return an untyped code block!
