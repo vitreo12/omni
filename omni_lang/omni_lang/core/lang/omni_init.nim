@@ -521,8 +521,8 @@ macro build*(var_names : varargs[typed]) =
            var_name_ident
         )
 
-        #builtin or ptr (struct) type.
-        if var_type_kind == nnkSym or var_type_kind == nnkIdent or var_type_kind == nnkPtrTy:
+        #builtin / tuple / ptr (struct) type.
+        if var_type_kind == nnkSym or var_type_kind == nnkIdent or var_type_kind == nnkTupleConstr or var_type_kind == nnkPtrTy:
             var_name_and_type.add(
                 var_type,
                 newEmptyNode()

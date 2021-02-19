@@ -2,5 +2,7 @@ ins 1
 outs 1
 params 1
 
-init:
-    a = 10 * params[1] + params[2]
+omni_debug_macros:
+    init:
+        b (int, int) = (10, 20)
+        a = 10 * params[1] + params[2]
