@@ -23,7 +23,6 @@
 import macros, strutils
 import omni_loop, omni_invalid, omni_type_checker, omni_macros_utilities
 from omni_io import omni_ins_names_list, omni_params_names_list, omni_buffers_names_list
-from omni_init import omni_build_vars_list
 
 #Used to check highest in / out
 var 
@@ -667,28 +666,71 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                         )
                     )
 
-                #If already declared, no need to run declaredInScope
-                if var_already_declared:
-                    parsed_statement = assignment_statement
-                #Else, check declaredInScope
-                else:
-                    parsed_statement = nnkStmtList.newTree(
-                        nnkWhenStmt.newTree(
-                            nnkElifBranch.newTree(
-                                var_declared_in_scope,
-                                nnkStmtList.newTree(
-                                    nnkVarSection.newTree(
-                                        asgn_left
+                #init / def
+                if not is_perform_block and not is_sample_block:
+                    #If already declared, no need to run declaredInScope
+                    if var_already_declared:
+                        parsed_statement = assignment_statement
+                    #Else, check declaredInScope
+                    else:
+                        parsed_statement = nnkStmtList.newTree(
+                            nnkWhenStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    var_declared_in_scope,
+                                    nnkStmtList.newTree(
+                                        nnkVarSection.newTree(
+                                            asgn_left
+                                        )
                                     )
+                                ),
+                                nnkElse.newTree(
+                                    assignment_statement
                                 )
-                            ),
-                            nnkElse.newTree(
-                                assignment_statement
                             )
                         )
-                    )
 
-                #error repr parsed_statement
+                # perform / sample
+                #Need to check against omni_build_names too!!
+                else:
+                    #If already declared, no need to run declaredInScope
+                    if var_already_declared:
+                        parsed_statement = assignment_statement
+                    #Else, check declaredInScope AND omni_build_names
+                    else:
+                        let 
+                            omni_build_names = newIdentNode("omni_build_names")
+                            var_name_lit = newLit(
+                                var_name.strVal()
+                            )
+
+                        parsed_statement = nnkStmtList.newTree(
+                            nnkWhenStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    nnkInfix.newTree(
+                                        newIdentNode("and"),
+                                        nnkCall.newTree(
+                                            newIdentNode("not"),
+                                            nnkPar.newTree(
+                                                nnkInfix.newTree(
+                                                    newIdentNode("in"),
+                                                    var_name_lit,
+                                                    omni_build_names
+                                                )
+                                            )
+                                        ),
+                                        var_declared_in_scope
+                                    ),
+                                    nnkStmtList.newTree(
+                                        nnkVarSection.newTree(
+                                            asgn_left
+                                        )
+                                    )
+                                ),
+                                nnkElse.newTree(
+                                    assignment_statement
+                                )
+                            )
+                        )  
 
             #out1 = ... (ONLY in perform / sample blocks)
             else:
@@ -980,19 +1022,24 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
         declared_vars.add(omni_params_names_list)
         declared_vars.add(omni_buffers_names_list)
 
-    #If perform / sample block, also add omni_build_vars_list
-    if is_perform_block or is_sample_block:
-        declared_vars.add(omni_build_vars_list)
-
     #Begin parsing
-    omni_parse_untyped_block_inner(code_block, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    omni_parse_untyped_block_inner(
+        code_block, 
+        declared_vars,
+        is_init_block, 
+        is_perform_block, 
+        is_sample_block, 
+        is_def_block, 
+        extra_data
+    )
 
     #final block. it's a block stmt
     final_block.add(code_block)
     
     #If perform or sample block:
     #1) Run ins / outs according to dynamic input count
-    #2) Return the untyped code as a template. The parsed code generation will run at a second stage
+    #2) Define init if needed
+    #3) Store the untyped perform code as a template. The parsed code generation will run at a second stage (inside the perform functions)
     if is_perform_block or is_sample_block:
         let 
             declare_ins = nnkWhenStmt.newTree(
@@ -1031,10 +1078,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
                 )
             )
 
-        return nnkStmtList.newTree(
-            declare_ins,
-            declare_outs,
-            nnkTemplateDef.newTree(
+            perform_untyped_block = nnkTemplateDef.newTree(
                 newIdentNode("omni_perform_untyped_block"),
                 newEmptyNode(),
                 newEmptyNode(),
@@ -1049,6 +1093,11 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
                     final_block
                 )
             )
+
+        return nnkStmtList.newTree(
+            declare_ins,
+            declare_outs,   
+            perform_untyped_block
         )
 
     #Run the typed version of the macro on the produced code
@@ -1737,7 +1786,12 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
         inner_block = nnkStmtList.newTree(inner_block)
 
     #Run the actual typed parsing
-    omni_parse_typed_block_inner(inner_block, is_init_block, is_perform_block, is_def_block)
+    omni_parse_typed_block_inner(
+        inner_block, 
+        is_init_block, 
+        is_perform_block, 
+        is_def_block
+    )
 
     #Will return an untyped code block!
     result = typed_to_untyped(inner_block)

@@ -25,9 +25,6 @@ import macros
 #Import the compile time list of float parameters to be added to Omni_UGen
 from omni_io import omni_params_names_list, omni_params_defaults_list, omni_buffers_names_list
 
-#variables declared in 'build'
-var omni_build_vars_list* {.compileTime.} : seq[string]
-
 macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
     result = nnkStmtList.newTree()
 
@@ -54,9 +51,14 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         let_declarations : seq[NimNode]
         var_declarations : seq[NimNode]
 
-        templates_for_perform_var_declarations     = nnkStmtList.newTree()
+        omni_templates_for_perform_var_declarations     = nnkStmtList.newTree()
         templates_for_init_var_declarations        = nnkStmtList.newTree()
         templates_for_init_let_declarations        = nnkStmtList.newTree()
+
+        omni_build_names_static_stmt = nnkStmtList.newTree()
+        omni_build_names_static      = nnkStaticStmt.newTree(
+            omni_build_names_static_stmt
+        )
 
         call_to_build_macro : NimNode
         final_var_names = nnkBracket.newTree()
@@ -237,7 +239,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                     )
                 )
                 
-                templates_for_perform_var_declarations.add(perform_var_template)     
+                omni_templates_for_perform_var_declarations.add(perform_var_template)     
 
         #Check if any of the let_declarations are inputs to the "build" macro. If so, just append their variable name with "_let"
         for let_declaration in let_declarations:
@@ -248,8 +250,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 #Replace the name directly in the call to the "build" macro
                 call_to_build_macro[index] = new_let_declaration
 
-    if templates_for_perform_var_declarations.len == 0:
-        templates_for_perform_var_declarations.add(
+    if omni_templates_for_perform_var_declarations.len == 0:
+        omni_templates_for_perform_var_declarations.add(
             nnkDiscardStmt.newTree(
                 newEmptyNode()
             )
@@ -260,7 +262,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         #In case user is trying to not insert a variable with name in, like "build(1)"
         if var_name.kind != nnkIdent:
             error("'build': Trying to use a literal value at index " & $index & ". Use a named variable instead.")
-        
+
         #Standard case, an nnkIdent with the variable name
         if index > 0: 
             let var_name_str = var_name.strVal()
@@ -279,9 +281,17 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 newIdentNode(var_name_str)
             )
 
-            #Also add the build vars name to the omni_build_vars_list
-            omni_build_vars_list.add(
-                var_name_str[0..(var_name_str.len)-5] #remove _var / _let
+            #Add name to static omni_build_names
+            omni_build_names_static_stmt.add(
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_build_names"),
+                            newIdentNode("add")
+                        ),
+                        newLit(var_name_str[0..(var_name_str.len)-5]) #remove _var / _let
+                    )
+                )
             )
 
         #First ident == "build"
@@ -309,12 +319,17 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
-        #This is a fast way of passing the `templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "omni_generate_templates_for_perform_var_declarations()" macro
+        #This is a fast way of passing the `omni_templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "omni_generate_templates_for_perform_var_declarations()" macro
         template omni_generate_templates_for_perform_var_declarations() : untyped {.dirty.} =
-            `templates_for_perform_var_declarations`
+            `omni_templates_for_perform_var_declarations`
+
+        #These are variables declared in build, they won't be renamed in perform. This must be used since init might be actually parsed AFTER perform's untyped parsing!
+        `omni_build_names_static`
 
         #This only returns the Omni_UGen declaration to scope, together with aliases (:= declarations) 
-        omni_clenup_build_statement_scope(`code_block_with_var_let_templates_and_call_to_build_macro`)
+        omni_clenup_build_statement_scope(
+            `code_block_with_var_let_templates_and_call_to_build_macro`
+        )
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib.} =
@@ -411,7 +426,7 @@ macro init*(code_block : untyped) : untyped =
         let omni_declared_init {.inject, compileTime.} = true
 
         #Store the whole block in a template, to be either triggered right away if ins / outs are defined
-        #OR defined right before perform / sample, since there could be dynamic I/O definitions
+        #OR triggered right before perform / sample, since there could be dynamic I/O definitions
         template omni_define_init_block() : untyped {.dirty.} =
             when not declared(omni_declared_params):
                 parameters 0 #Use 'parameters' not to be confused with macro's params
@@ -426,6 +441,10 @@ macro init*(code_block : untyped) : untyped =
             #This can be defined in wrappers
             when declared(omni_buffers_pre_init_hook):
                 omni_buffers_pre_init_hook()
+
+            #This is used to store all the 'build' names, in order not to re-declare them in perform/sample.
+            #This also works with init being defined AFTER perform, since perform's typed check still always happens after!
+            var omni_build_names   {.inject, compileTime.} : seq[string]
 
             #Trick the compiler of the existence of these variables in order to parse the init block.
             #These will be overwrittne in the UGenCosntructor anyway.

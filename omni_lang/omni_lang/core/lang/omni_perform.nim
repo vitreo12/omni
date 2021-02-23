@@ -151,8 +151,10 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
     #In the case of perform / sample blocks, omni_parse_block_untyped returns:
     #when not declared(omni_declared_inputs):
     #   ins ..
+    #
     #when not declared(omni_declared_outputs):
     #   outs ..
+    #
     #template omni_perform_block_untyped() : untyped {.dirty.} =
     #   ... (untyped parsed code) ...
     when declared(omni_declared_perform):
