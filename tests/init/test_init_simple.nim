@@ -33,6 +33,9 @@ init:
   CONST1 = 5.0
   CONST2 int = 6
 
+sample:
+  discard
+
 suite "init: functions and templates exist":
   test "omni_generate_templates_for_perform_var_declarations":
     check (declared(omni_generate_templates_for_perform_var_declarations))
@@ -73,7 +76,7 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit":
   let init_ugen = Omni_UGenInit(ugen_ptr, cint(test_bufsize), cdouble(test_samplerate), nil)
 
   test "omni_ugen init":
-    check (init_ugen == 1)
+    check (init_ugen == true)
 
   test "omni_auto_mem is not nil":
     check (ugen.omni_auto_mem != nil)

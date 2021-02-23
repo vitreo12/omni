@@ -2735,7 +2735,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             proc Omni_UGenBuffersNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib, noSideEffect, raises:[].} =
                 return cast[ptr cchar](omni_buffers_names_const)
             
-            proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynli, noSideEffect, raises:[]b.} =
+            proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib, noSideEffect, raises:[].} =
                 return cast[ptr cchar](omni_buffers_defaults_const_unpacked) #used the unpacked version (single string)
         else:
             {.fatal: "buffers: Already defined once.".}
