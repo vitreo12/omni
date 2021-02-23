@@ -183,7 +183,11 @@ proc declare_lock_unlock_proc(statement_block : NimNode, is_lock : bool = false)
             ),
             nnkPragma.newTree(
                 newIdentNode("inline"),
-                newIdentNode("noSideEffect")
+                newIdentNode("noSideEffect"),
+                nnkExprColonExpr.newTree(
+                    newIdentNode("raises"),
+                    nnkBracket.newTree()
+                )
             ),
             newEmptyNode(),
             nnkStmtList.newTree(
@@ -201,7 +205,11 @@ proc declare_lock_unlock_proc(statement_block : NimNode, is_lock : bool = false)
                     ),
                     nnkPragma.newTree(
                         newIdentNode("inline"),
-                        newIdentNode("noSideEffect")
+                        newIdentNode("noSideEffect"),
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("raises"),
+                            nnkBracket.newTree()
+                        )
                     ),
                     newEmptyNode(),
                     stmt_list
@@ -262,7 +270,11 @@ proc declare_lock_unlock_proc(statement_block : NimNode, is_lock : bool = false)
             args,
             nnkPragma.newTree(
                 newIdentNode("inline"),
-                newIdentNode("noSideEffect")
+                newIdentNode("noSideEffect"),
+                nnkExprColonExpr.newTree(
+                    newIdentNode("raises"),
+                    nnkBracket.newTree()
+                )
             ),
             newEmptyNode(),
             stmt_list
@@ -402,7 +414,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     nnkPragma.newTree(
                         newIdentNode("inline"),
-                        newIdentNode("noSideEffect")
+                        newIdentNode("noSideEffect"),
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("raises"),
+                            nnkBracket.newTree()
+                        )
                     ),
                     newEmptyNode(),
                     init_body
@@ -433,7 +449,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     nnkPragma.newTree(
                         newIdentNode("inline"),
-                        newIdentNode("noSideEffect")
+                        newIdentNode("noSideEffect"),
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("raises"),
+                            nnkBracket.newTree()
+                        )
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
@@ -485,7 +505,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     nnkPragma.newTree(
                         newIdentNode("inline"),
-                        newIdentNode("noSideEffect")
+                        newIdentNode("noSideEffect"),
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("raises"),
+                            nnkBracket.newTree()
+                        )
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(
@@ -543,7 +567,11 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     nnkPragma.newTree(
                         newIdentNode("inline"),
-                        newIdentNode("noSideEffect")
+                        newIdentNode("noSideEffect"),
+                        nnkExprColonExpr.newTree(
+                            newIdentNode("raises"),
+                            nnkBracket.newTree()
+                        )
                     ),
                     newEmptyNode(),
                     nnkStmtList.newTree(

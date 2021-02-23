@@ -179,7 +179,7 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
 
     #Code shouldn't be parsed twice for 32/64. Find a way to do it just once.
     when defined(omni_perform32):
-        proc Omni_UGenPerform32*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib.} =    
+        proc Omni_UGenPerform32*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib, noSideEffect, raises:[].} =    
             #Needed to be passed to all defs
             var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
 
@@ -200,7 +200,7 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
                 omni_unlock_buffers()
 
     when defined(omni_perform64):
-        proc Omni_UGenPerform64*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib.} =    
+        proc Omni_UGenPerform64*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib, noSideEffect, raises:[].} =    
             #Needed to be passed to all defs
             var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
 

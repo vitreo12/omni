@@ -95,7 +95,11 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
             ),
             nnkPragma.newTree(
             newIdentNode("inline"),
-            newIdentNode("noSideEffect")
+            newIdentNode("noSideEffect"),
+            nnkExprColonExpr.newTree(
+                newIdentNode("raises"),
+                nnkBracket.newTree()
+            )
             ),
             newEmptyNode(),
             nnkStmtList.newTree(
@@ -261,7 +265,11 @@ template omni_read_value_buffer*() : untyped {.dirty.} =
             ),
             nnkPragma.newTree(
             newIdentNode("inline"),
-            newIdentNode("noSideEffect")
+            newIdentNode("noSideEffect"),
+            nnkExprColonExpr.newTree(
+                newIdentNode("raises"),
+                nnkBracket.newTree()
+            )
             ),
             newEmptyNode(),
             nnkStmtList.newTree(

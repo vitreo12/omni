@@ -329,11 +329,15 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #Add formal args
         proc_def.add(proc_formal_params)
         
-        #Add inline and noSideEffect
+        #Add inline, noSideEffect and raises:[]
         proc_def.add(
             nnkPragma.newTree(
                 newIdentNode("inline"),
-                newIdentNode("noSideEffect")
+                newIdentNode("noSideEffect"),
+                nnkExprColonExpr.newTree(
+                    newIdentNode("raises"),
+                    nnkBracket.newTree()
+                )
             ),
             newEmptyNode()
         )   
