@@ -690,7 +690,6 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
                         )
 
                 # perform / sample
-                #Need to check against omni_build_names too!!
                 else:
                     #If already declared, no need to run declaredInScope
                     if var_already_declared:
