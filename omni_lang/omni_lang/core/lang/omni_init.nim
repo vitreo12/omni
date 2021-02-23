@@ -468,10 +468,6 @@ macro init*(code_block : untyped) : untyped =
             #Actually parse the init block
             omni_parse_block_untyped(`code_block`, true)
 
-        #If ins / outs are defined already, it's safe to define block too
-        when declared(omni_declared_inputs) and declared(omni_declared_outputs):
-            omni_define_init_block()
-
 #Equal to init:
 macro initialize*(code_block : untyped) : untyped =
     return quote do:
