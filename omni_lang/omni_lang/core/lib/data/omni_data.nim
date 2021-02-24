@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,32 +25,32 @@ import ../alloc/omni_alloc
 import ../auto_mem/omni_auto_mem
 import ../print/omni_print
 import ../math/omni_math
+from   ../stdlib/omni_stdlib import cubic_interp
+
+type ArrayPtr[T] = ptr UncheckedArray[T]
 
 type
-    ArrayPtr[T] = ptr UncheckedArray[T]
-
-    Data_struct_inner*[T] = object
+    Data_omni_struct*[T] = object
         data    : ArrayPtr[T]
         length  : int
         chans   : int
-        length_X_chans : int
+        size    : int
 
-    Data*[T] = ptr Data_struct_inner[T]
+    Data*[T] = ptr Data_omni_struct[T]
 
-    Data_struct_export*[T] = Data[T]
+    Data_omni_struct_ptr*[T] = Data[T]
      
 #Having the strings as const as --gc:none is used
 const
-    length_error = "WARNING: Omni: Data's length must be a positive number. Setting it to 1"
-    chans_error  = "WARNING: Omni: Data's chans must be a positive number. Setting it to 1"
-
-    #bounds_error = "WARNING: Trying to access out of bounds Data."
+    length_error  = "WARNING: Omni: Data's length must be a positive number. Setting it to 1"
+    chans_error   = "WARNING: Omni: Data's chans must be a positive number. Setting it to 1"
+    #bounds_error = "WARNING: Omni: DatTrying to access out of bounds Data."
 
 #Constructor interface: Data
-proc Data_struct_new_inner*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], obj_type : typedesc[Data_struct_export], ugen_auto_mem : ptr OmniAutoMem, ugen_call_type : typedesc[CallType] = InitCall) : Data[G1]  {.inline.} =
+proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], omni_struct_type : typedesc[Data_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
     #Trying to allocate in perform block! nonono
-    when ugen_call_type is PerformCall:
-        {.fatal: "attempting to allocate memory in the `perform` or `sample` blocks for `struct Data`".}
+    when omni_call_type is Omni_PerformCall:
+        {.fatal: "Data: attempting to allocate memory in the `perform` or `sample` blocks".}
     
     var 
         real_length = int(length)
@@ -64,35 +64,35 @@ proc Data_struct_new_inner*[S : SomeNumber, C : SomeNumber](length : S = int(1),
         print(chans_error)
         real_chans = 1
 
-    let size_data_obj = sizeof(Data_struct_inner[G1])
+    let size_data_obj = sizeof(Data_omni_struct[G1])
 
     #Actual object, assigned to result
-    result = cast[Data[G1]](omni_alloc(culong(size_data_obj)))
+    result = cast[Data[G1]](omni_alloc0(culong(size_data_obj)))
     
     #Data of the object (the array)
     let 
-        length_X_chans     = real_length * real_chans
-        size_data_type     = sizeof(G1)
-        total_size_culong  = culong(size_data_type * length_X_chans)
-        data               = cast[ArrayPtr[G1]](omni_alloc0(total_size_culong))
+        size              = real_length * real_chans
+        size_data_type    = sizeof(G1)
+        total_size_culong = culong(size_data_type * size)
+        data              = cast[ArrayPtr[G1]](omni_alloc0(total_size_culong))
 
     #Register both the Data object and its data to the automatic memory management
-    ugen_auto_mem.registerChild(result)
-    ugen_auto_mem.registerChild(data)
+    omni_auto_mem.omni_auto_mem_register_child(result)
+    omni_auto_mem.omni_auto_mem_register_child(data)
     
     #Fill the object layout
-    result.data           = data
-    result.chans          = real_chans
-    result.length         = real_length
-    result.length_X_chans = length_X_chans
+    result.data   = data
+    result.chans  = real_chans
+    result.length = real_length
+    result.size   = size
 
-proc checkDataValidity*[T](data : Data[T]) : bool =
+proc omni_check_data_validity*[T](data : Data[T]) : bool =
     when T isnot SomeNumber:
         for i in 0..(data.chans-1):
             for y in 0..(data.length-1):
                 let entry = cast[pointer](data[i, y])
                 if isNil(entry):
-                    print("ERROR: Omni: Not all Data entries have been initialized in the \'init\' block. This can happen if using a Data containing structs, and not having allocated all of the Data entries in \'init\'!")
+                    print("ERROR: Omni: Not all 'Data' entries have been initialized in the 'init' block. This can happen if using a 'Data' containing 'structs', and not having allocated all of the 'Data' entries in 'init'!")
                     return false
     return true
 
@@ -128,7 +128,7 @@ proc getter[T](data : Data[T], channel : int = 0, index : int = 0) : T {.inline.
     else:
         actual_index = (index * chans) + channel
     
-    if actual_index >= 0 and actual_index < data.length_X_chans:
+    if actual_index >= 0 and actual_index < data.size:
         return data.data[actual_index]
     
     when T is SomeNumber:
@@ -193,13 +193,13 @@ proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : 
     else:
         actual_index = (index * chans) + channel
     
-    if actual_index >= 0 and actual_index < data.length_X_chans:
+    if actual_index >= 0 and actual_index < data.size:
         when T is SomeNumber and Y is SomeNumber:
             data.data[actual_index] = T(x)
         elif T is Y:
             data.data[actual_index] = x
         else:
-            {.fatal: "'" & $T & "': invalid dataType for Data's setter function".}
+            {.fatal: "Data: '" & $T & "' is an invalid type for the setter function".}
 
 #1 channel     
 proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
@@ -213,11 +213,14 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
 # INFOS #
 #########
 
-proc len*[T](data : Data[T]) : int =
+proc length*[T](data : Data[T]) : int {.inline.} =
     return data.length
 
-proc size*[T](data : Data[T]) : int =
-    return data.length_X_chans
+proc len*[T](data : Data[T]) : int {.inline.} =
+    return data.length
 
-proc chans*[T](data : Data[T]) : int =
+proc chans*[T](data : Data[T]) : int {.inline.} =
     return data.chans
+
+proc size*[T](data : Data[T]) : int {.inline.} =
+    return data.size

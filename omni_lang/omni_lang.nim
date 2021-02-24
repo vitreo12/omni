@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,10 @@ export omni_macros
 ## LIB ##
 #########
 
+#Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
+import omni_lang/core/lib/init/omni_init_global
+export omni_init_global
+
 #Allocation
 import omni_lang/core/lib/alloc/omni_alloc
 export omni_alloc
@@ -38,6 +42,14 @@ export omni_alloc
 #Automatic memory management
 import omni_lang/core/lib/auto_mem/omni_auto_mem
 export omni_auto_mem
+
+#Buffer
+import omni_lang/core/lib/buffer/omni_buffer
+export omni_buffer
+
+#Param
+import omni_lang/core/lib/param/omni_param
+export omni_param
 
 #Data
 import omni_lang/core/lib/data/omni_data
@@ -51,17 +63,14 @@ export omni_delay
 import omni_lang/core/lib/print/omni_print
 export omni_print
 
-#Utilities (get samplerate/bufsize)
-import omni_lang/core/lib/utilities/omni_utilities
-export omni_utilities
-
-#Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
-import omni_lang/core/lib/init/omni_init_global
-export omni_init_global
-
 #math
 import omni_lang/core/lib/math/omni_math
 export omni_math
 
+#tables
 import omni_lang/core/lib/math/omni_tables
 export omni_tables
+
+#stdlib
+import omni_lang/core/lib/stdlib/omni_stdlib
+export omni_stdlib

@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,20 +21,36 @@
 # SOFTWARE.
 
 let omni_invalid_idents* {.compileTime.} = [
-    "Data", "Delay", "Buffer", "UGen"
+    "omni_ugen", "Omni_UGen", 
+    "omni_auto_mem", "Omni_AutoMem",
+    "Omni_Param",
+    "AtomicFlag",
+    "omni_params_lock", "omni_buffers_lock",
+    "Data", "Delay", "Buffer"
 ]
 
 let omni_invalid_ends_with* {.compileTime.} = [
-    "def_export", "def_dummy",
-    "module_inner",
-    "struct_inner", "struct_new_inner", "struct_export"
+    "omni_min_max",
+    "omni_param",
+    "omni_buffer",
+    "omni_def", "omni_def_export", "omni_def_dummy",
+    "omni_module",
+    "omni_struct", "omni_struct_new", "omni_struct_ptr"
 ]
 
 let omni_invalid_variable_names* {.compileTime.} = [
+    "omni_ugen",
+    "omni_auto_mem", "omni_params_lock", "omni_buffers_lock",
+    "omni_samplerate", "samplerate",
+    "omni_bufsize", "bufsize",
+    "omni_temp_result",
     "ins", "inputs",
     "outs", "outputs",
+    "parameters", "params",
+    "bufs", "buffers",
     "init", "initialize", "initialise", "build",
     "perform", "sample",
+    "samplerate", "bufsize",
     "sig", "sig32", "sig64",
     "signal", "signal32", "signal64",
     "Data", "Buffer", "Delay"

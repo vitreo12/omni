@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,12 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-version       = "0.2.3"
+version       = "0.3.0"
 author        = "Francesco Cameli"
 description   = "omni is a DSL for low-level audio programming."
 license       = "MIT"
 
-requires "nim >= 1.0.0"
+requires "nim >= 1.4.0"
 requires "cligen >= 1.0.0"
 
 #Ignore omni_lang
@@ -37,23 +37,19 @@ installDirs = @["examples"]
 #Compiler executable
 bin = @["omni"]
 
-#If using "nimble install" instead of "nimble installOmni", make sure omni-lang is still getting installed
+#Make sure omni-lang is getting installed first
 before install:
   withDir(getPkgDir() & "/omni_lang"):
     exec "nimble install"
 
-#before/after are BOTH needed for any of the two to work
+#before / after are BOTH needed for any of the two to work
 after install:
   discard
     
-#As nimble install, but with -d:release, -d:danger and --opt:speed. Also installs omni_lang.
-task installOmni, "Install the omni-lang package and the omni compiler":
-  #Build and install the omni compiler executable. This will also trigger the "before install" to install omni_lang
-  exec "nimble install --passNim:-d:release --passNim:-d:danger --passNim:--opt:speed"
-
 #Needed for the walkDir function
 import os
 
+#Run all tests in tests/ folder
 proc runTestsInFolder(path : string, top_level : bool = false) : void =
   for kind, file in walkDir(path):
     let splitFile = file.splitFile
@@ -65,6 +61,7 @@ proc runTestsInFolder(path : string, top_level : bool = false) : void =
         continue
       runTestsInFolder(file, false)
 
+#Run tests
 task test, "Execute all tests":
   let testsDir = getPkgDir() & "/tests"
   runTestsInFolder(testsDir, true)
@@ -73,9 +70,10 @@ task test, "Execute all tests":
 before testCI:
   exec "nimble install" 
 
+#CI test running
 task testCI, "Run tests on CI: it installs omni / omni_lang first":
   exec "nimble test"
 
-#before/after are BOTH needed for any of the two to work
+#before / after are BOTH needed for any of the two to work
 after testCI:
   discard

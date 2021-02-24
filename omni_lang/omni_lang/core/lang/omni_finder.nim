@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,43 +22,37 @@
 
 import macros, strutils, omni_type_checker
 
-#at_least_one_buffer is a compile time variable to use in the get_buffers/unlock_buffers templates in omni_perform
-var at_least_one_buffer* {.compileTime.} = false
-
-macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
+macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
     let is_ugen_bool = is_ugen.boolVal()
     var t_type : NimNode
     
+    #Omni_UGen (top)
     if is_ugen_bool:
-        t_type = nnkPtrTy.newTree(newIdentNode("UGen"))
-                
+        t_type = newIdentNode("Omni_UGen")
+
+    #struct     
     else:
         if t.kind != nnkIdent and t.kind != nnkSym:
             error("Not a valid object type!")
-        t_type = newIdentNode(t.strVal())
+        t_type = newIdentNode(
+            t.strVal()
+        )
 
     var 
         proc_def = nnkProcDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("checkValidity")
+                newIdentNode("omni_check_struct_validity")
             ),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
                 newIdentNode("bool"),
                 nnkIdentDefs.newTree(
-                    newIdentNode("obj"),
+                    newIdentNode("omni_obj"),
                     t_type,
-                    newEmptyNode()
-                ),
-                nnkIdentDefs.newTree(
-                    newIdentNode("ugen_auto_buffer"),
-                    nnkPtrTy.newTree(
-                        newIdentNode("OmniAutoMem")
-                    ),
                     newEmptyNode()
                 )
             ),
@@ -134,7 +128,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
         let var_name_ident = newIdentNode(var_name.strVal())
 
         #Found a data
-        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_struct_inner" or type_to_inspect_string == "Data_struct_export":
+        if type_to_inspect_string == "Data" or type_to_inspect_string == "Data_omni_struct" or type_to_inspect_string == "Data_omni_struct_ptr":
             if var_type.kind != nnkBracketExpr:
                 continue
 
@@ -145,9 +139,9 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                         nnkPrefix.newTree(
                             newIdentNode("not"),
                             nnkCall.newTree(
-                                newIdentNode("checkDataValidity"),
+                                newIdentNode("omni_check_data_validity"),
                                 nnkDotExpr.newTree(
-                                    newIdentNode("obj"),
+                                    newIdentNode("omni_obj"),
                                     var_name_ident
                                 )
                             )
@@ -182,26 +176,25 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                     is_data = false
                     is_struct = false
 
-                
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
                     let type_name_str = type_name.strVal()
-                    if type_name_str == "Data" or type_name_str == "Data_struct_inner" or type_name_str == "Data_struct_export":
+                    if type_name_str == "Data" or type_name_str == "Data_omni_struct" or type_name_str == "Data_omni_struct_ptr":
                         is_data = true
                         interim_type = data_content   
                     
-                    elif type_name_str == "Buffer" or type_name_str == "Buffer_struct_inner" or type_name_str == "Buffer_struct_export": 
-                        at_least_one_buffer = true
+                    #elif type_name_str == "Buffer" or type_name_str == "Buffer_omni_struct" or type_name_str == "Buffer_omni_struct_ptr": 
+                    #    omni_at_least_one_buffer = true
                 
                 elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
                     #Check for structs, otherwise, get out!
-                    if not isStruct(data_content):
+                    if not omni_is_struct(data_content):
                         break
                 else:
                     break
 
                 let data_name = nnkDotExpr.newTree(
-                    newIdentNode("obj"),
+                    newIdentNode("omni_obj"),
                     var_name
                 )
 
@@ -209,7 +202,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                     index_ident = newIdentNode("i" & $counter)
                     index_entry = newIdentNode("entry" & $counter)
 
-                #If it hits a Data, add "checkDataValidity"
+                #If it hits a Data, add "omni_check_data_validity"
                 if is_data:
                     if counter == 0:
                         previous_body_stmt = nnkStmtList.newTree(
@@ -228,7 +221,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                                     nnkPrefix.newTree(
                                         newIdentNode("not"),
                                         nnkCall.newTree(
-                                            newIdentNode("checkDataValidity"),
+                                            newIdentNode("omni_check_data_validity"),
                                             index_entry
                                         )
                                     ),
@@ -244,17 +237,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                         previous_loop_stmt = nnkForStmt.newTree(
                             index_ident,
                             nnkInfix.newTree(
-                                newIdentNode(".."),
+                                newIdentNode("..<"),
                                 newLit(0),
-                                nnkPar.newTree(
-                                    nnkInfix.newTree(
-                                        newIdentNode("-"),
-                                        nnkCall.newTree(
-                                            newIdentNode("size"),
-                                            data_name
-                                        ),
-                                        newLit(1)
-                                    )
+                                nnkCall.newTree(
+                                    newIdentNode("size"),
+                                    data_name
                                 )
                             ),
                             previous_body_stmt
@@ -265,17 +252,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                             nnkForStmt.newTree(
                                 index_ident,
                                 nnkInfix.newTree(
-                                    newIdentNode(".."),
+                                    newIdentNode("..<"),
                                     newLit(0),
-                                    nnkPar.newTree(
-                                        nnkInfix.newTree(
-                                            newIdentNode("-"),
-                                            nnkCall.newTree(
-                                                newIdentNode("size"),
-                                                prev_index_entry
-                                            ),
-                                            newLit(1)
-                                        )
+                                    nnkCall.newTree(
+                                        newIdentNode("size"),
+                                        prev_index_entry
                                     )
                                 ),
                                 nnkStmtList.newTree(
@@ -294,7 +275,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                                             nnkPrefix.newTree(
                                                 newIdentNode("not"),
                                                 nnkCall.newTree(
-                                                    newIdentNode("checkDataValidity"),
+                                                    newIdentNode("omni_check_data_validity"),
                                                     index_entry
                                                 )
                                             ),
@@ -315,7 +296,7 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                     prev_index_ident = index_ident
                     prev_index_entry = index_entry
 
-                #If it hits a struct add "checkValidity" and exit the loop
+                #If it hits a struct add "omni_check_struct_validity" and exit the loop
                 else:
                     if previous_body_stmt == nil:
                         prev_index_entry = data_name
@@ -327,17 +308,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                         nnkForStmt.newTree(
                             index_ident,
                             nnkInfix.newTree(
-                                newIdentNode(".."),
+                                newIdentNode("..<"),
                                 newLit(0),
-                                nnkPar.newTree(
-                                    nnkInfix.newTree(
-                                        newIdentNode("-"),
-                                        nnkCall.newTree(
-                                            newIdentNode("size"),
-                                            prev_index_entry
-                                        ),
-                                        newLit(1)
-                                    )
+                                nnkCall.newTree(
+                                    newIdentNode("size"),
+                                    prev_index_entry
                                 )
                             ),
                             nnkStmtList.newTree(
@@ -356,9 +331,8 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                                         nnkPrefix.newTree(
                                             newIdentNode("not"),
                                             nnkCall.newTree(
-                                                newIdentNode("checkValidity"),
-                                                index_entry,
-                                                newIdentNode("ugen_auto_buffer")
+                                                newIdentNode("omni_check_struct_validity"),
+                                                index_entry
                                             )
                                         ),
                                         nnkStmtList.newTree(
@@ -385,11 +359,11 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                 proc_body.add(previous_loop_stmt)
 
         #Found a struct
-        elif type_to_inspect_string.endsWith("_struct_inner") or type_to_inspect.isStruct():
+        elif type_to_inspect_string.endsWith("_omni_struct") or type_to_inspect.omni_is_struct():
             
             #Compile time setting of variable
-            if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_struct_inner" or type_to_inspect_string == "Buffer_struct_export":
-                at_least_one_buffer = true
+            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_omni_struct" or type_to_inspect_string == "Buffer_omni_struct_ptr":
+            #    omni_at_least_one_buffer = true
 
             proc_body.add(
                 nnkIfStmt.newTree(
@@ -397,12 +371,12 @@ macro findDatasAndStructs*(t : typed, is_ugen : typed = false) : untyped =
                         nnkPrefix.newTree(
                             newIdentNode("not"),
                             nnkCall.newTree(
-                                newIdentNode("checkValidity"),
+                                newIdentNode("omni_check_struct_validity"),
                                 nnkDotExpr.newTree(
-                                    newIdentNode("obj"),
+                                    newIdentNode("omni_obj"),
                                     var_name_ident
-                                ),
-                                newIdentNode("ugen_auto_buffer")
+                                )#,
+                                #newIdentNode("ugen_auto_buffer")
                             )
                         ),
                         nnkStmtList.newTree(

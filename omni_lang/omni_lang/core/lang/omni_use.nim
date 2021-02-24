@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,14 +23,14 @@
 import macros, os, strutils, tables, omni_invalid, omni_macros_utilities
 
 #type
-#    ImportMe1 = ImportMe_module_inner.ImportMe_struct_export
+#    ImportMe1 = ImportMe_omni_module.ImportMe_omni_struct_ptr
 #type
-#    ImportMe1_struct_export = ImportMe1
+#    ImportMe1_omni_struct_ptr = ImportMe1
 #
-#proc ImportMe1_new_struct_inner(obj_type : typedesc[ImportMe1_struct_export], ...) : ImportMe1 {.inline.} =
-#    return ImportMe_module_inner.ImportMe_new_struct_inner(....)
+#proc ImportMe1_new_omni_struct(omni_struct_type : typedesc[ImportMe1_omni_struct_ptr], ...) : ImportMe1 {.inline.} =
+#    return ImportMe_omni_module.ImportMe_new_omni_struct(....)
 
-proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_typed_constructor : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
+proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed : NimNode, struct_typed_constructor : NimNode, struct_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     var 
@@ -58,9 +58,9 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
     let 
         struct_new_name_str = struct_new_name.strVal()
         struct_new_name_ident = newIdentNode(struct_new_name_str)
-        struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_struct_export")
-        struct_new_name_struct_new_inner_ident = newIdentNode(struct_new_name_str & "_struct_new_inner")
-        old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_struct_export")
+        struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_omni_struct_ptr")
+        struct_new_name_omni_struct_new_ident = newIdentNode(struct_new_name_str & "_omni_struct_new")
+        old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_omni_struct_ptr")
 
     #put generics again if needed
     var 
@@ -71,16 +71,16 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
         stuct_typed_constuctor_impl = struct_typed_constructor.getImpl()
 
         #Untyped translation, to retrieve formal params from (and modify them)
-        stuct_untyped_constuctor_impl = typedToUntyped(stuct_typed_constuctor_impl)[0]
+        stuct_untyped_constuctor_impl = typed_to_untyped(stuct_typed_constuctor_impl)[0]
         struct_untyped_formal_params = stuct_untyped_constuctor_impl[3]
 
     var 
-        #can copy from old impl, they are typed symbols anyway! Only thing to change is the first arg, obj_type
+        #can copy from old impl, they are typed symbols anyway! Only thing to change is the first arg, omni_struct_type
         new_struct_formal_params = struct_untyped_formal_params
 
         old_struct_constructor = nnkDotExpr.newTree(
             module_name,
-            newIdentNode(struct_typed_name_str & "_struct_new_inner")
+            newIdentNode(struct_typed_name_str & "_omni_struct_new")
         )
 
     #call to old struct
@@ -144,14 +144,14 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
     else:
         new_struct_formal_params[0] = struct_new_name_ident
 
-    #Change name in obj_type argument (third last)
+    #Change name in omni_struct_type argument (third last)
     new_struct_formal_params[^3][1][1] = struct_new_name_export_ident
 
-    #Add obj_type, ugen_auto_mem and ugen_call_type etc...
+    #Add omni_struct_type, omni_auto_mem and omni_call_type etc...
     new_struct_call.add(
-        newIdentNode("obj_type"),
-        newIdentNode("ugen_auto_mem"),
-        newIdentNode("ugen_call_type"),
+        newIdentNode("omni_struct_type"),
+        newIdentNode("omni_auto_mem"),
+        newIdentNode("omni_call_type"),
     )
 
     let new_struct = nnkTypeSection.newTree(
@@ -165,7 +165,7 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
         )
     )
 
-    let new_struct_export = nnkTypeSection.newTree(
+    let new_omni_struct_ptr = nnkTypeSection.newTree(
         nnkTypeDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
@@ -179,10 +179,10 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
     #Copy the old func's body? Not really needed
     #return_stmt = stuct_typed_constuctor_impl[^1]
 
-    var new_struct_new_inner = nnkProcDef.newTree(
+    var new_omni_struct_new = nnkProcDef.newTree(
         nnkPostfix.newTree(
             newIdentNode("*"),
-            struct_new_name_struct_new_inner_ident
+            struct_new_name_omni_struct_new_ident
         ),
         newEmptyNode(),
         newEmptyNode(),
@@ -196,15 +196,15 @@ proc generate_new_module_bindings_for_struct(module_name : NimNode, struct_typed
 
     result.add(
         new_struct,
-        new_struct_export,
-        new_struct_new_inner
+        new_omni_struct_ptr,
+        new_omni_struct_new
     )
 
     #error astGenRepr new_struct
     #error repr result
 
 
-proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
+proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     let 
@@ -232,7 +232,7 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
         )   
 
     for generic_param in generic_params:
-        #ignore autos and ugen_call_type:type in generics!
+        #ignore autos and omni_call_type:type in generics!
         if not (generic_param.strVal().endsWith(":type")):
             new_template_generic_params.add(
                 nnkIdentDefs.newTree(
@@ -243,7 +243,7 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
             )
 
     #If generic params
-    if generic_params.len > 1: # 1 because there's always ugen_call_type:type
+    if generic_params.len > 1: # 1 because there's always omni_call_type:type
         new_template.add(new_template_generic_params)
     
     #no generics
@@ -266,17 +266,17 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
             else:
                 arg_type_str = arg_type[0].strVal()
             
-            #ImportMe -> ImportMe_module_inner.ImportMe_struct_export
+            #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_ptr
             #[ let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
-                if inner_type[0].strVal().endsWith("_struct_inner"):
+                if inner_type[0].strVal().endsWith("_omni_struct"):
                     #is this needed? Os is arg_type enough since it's a symbol?
-                    let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_struct_export")[0]
+                    let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_ptr")[0]
             
                     #error astGenRepr new_arg_type  ]#
 
-            #Skip samplerate. bufsize, ugen_auto_mem, ugen_call_type
-            if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "ugen_auto_mem" and arg_name_str != "ugen_call_type":    
+            #Skip samplerate. bufsize, omni_auto_mem, omni_call_type
+            if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "omni_auto_mem" and arg_name_str != "omni_call_type":    
                 new_template_formal_params.add(
                     nnkIdentDefs.newTree(
                         arg_name,
@@ -298,20 +298,20 @@ proc generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNo
     
     #This will override entries, which is perfect! I need last representation of each duplicate
     #So that imports of imports are overwritten. (Basically, if a func is defined in two files, and one is imported in the other, only the last one is considered!)
-    #This is only needed to create new def_exports, as templates override each other already 
+    #This is only needed to create new omni_def_exports, as templates override each other already 
     let formal_params_repr = repr(new_template_formal_params)
     def_combinations[formal_params_repr] = def_call
 
     result.add(new_template)
 
-proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
+proc omni_generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     let struct_or_def_impl = struct_or_def_typed.getImpl()
 
     #Struct
     if struct_or_def_impl.kind == nnkTypeDef:
-        let new_struct = generate_new_module_bindings_for_struct(module_name, struct_or_def_impl, struct_constructor_typed, struct_or_def_new_name)
+        let new_struct = omni_generate_new_module_bindings_for_struct(module_name, struct_or_def_impl, struct_constructor_typed, struct_or_def_new_name)
         result.add(new_struct)
     
     #Def
@@ -321,16 +321,16 @@ proc generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode,
         #multiple ones with same name
         if actual_def_call.kind == nnkOpenSymChoice:
             for def_call in actual_def_call:
-                let new_template = generate_new_modue_bindings_for_def(module_name, def_call, struct_or_def_new_name, def_combinations)
+                let new_template = omni_generate_new_modue_bindings_for_def(module_name, def_call, struct_or_def_new_name, def_combinations)
                 result.add(new_template)
         
         if actual_def_call.kind == nnkSym:
-            let new_template = generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
+            let new_template = omni_generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
             result.add(new_template)
 
         #error repr result
     
-proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], def_new_name : NimNode) : NimNode {.compileTime.} =
+proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, NimNode], def_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
     for key, value in def_combinations:
         let 
@@ -338,25 +338,25 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
 
             def_new_name_str = def_new_name.strVal()
 
-        #def_dummy
+        #omni_def_dummy / omni_def_export
         let 
-            def_dummy_name = newIdentNode(def_new_name_str & "_def_dummy")
-            def_export = newIdentNode(def_new_name_str & "_def_export")
+            omni_def_dummy_name = newIdentNode(def_new_name_str & "_omni_def_dummy")
+            omni_def_export = newIdentNode(def_new_name_str & "_omni_def_export")
             
-            def_dummy = nnkWhenStmt.newTree(
+            omni_def_dummy = nnkWhenStmt.newTree(
                 nnkElifBranch.newTree(
                     nnkPrefix.newTree(
                         newIdentNode("not"),
                         nnkCall.newTree(
                             newIdentNode("declared"),
-                            def_dummy_name
+                            omni_def_dummy_name
                         )
                     ),
                     nnkStmtList.newTree(
                         nnkProcDef.newTree(
                             nnkPostfix.newTree(
                                 newIdentNode("*"),
-                                def_dummy_name
+                                omni_def_dummy_name
                             ),
                             newEmptyNode(),
                             newEmptyNode(),
@@ -374,7 +374,7 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
                         nnkProcDef.newTree(
                             nnkPostfix.newTree(
                                 newIdentNode("*"),
-                                def_export
+                                omni_def_export
                             ),
                             newEmptyNode(),
                             newEmptyNode(),
@@ -393,53 +393,53 @@ proc generate_new_def_exports(def_combinations : OrderedTable[string, NimNode], 
                 )
             )
 
-        #actual def_export
+        #actual omni_def_export
         var 
             def_call_typed = def_call.getImpl() #typed
             def_call_typed_formal_params = def_call_typed[3] #save formal params! they are typed and carry all type infos
         
         #Remove the actual function body, it's unneeded
-        #and it creates problems too with parsing of some return statements, due to the parsed_untyped_loop being triggered with typedToUntyped
+        #and it creates problems too with parsing of some return statements, due to the parsed_untyped_loop being triggered with typed_to_untyped
         def_call_typed[^1] = nnkDiscardStmt.newTree(
             newEmptyNode()
         )
 
-        #This is only needed to change name to def_export, tbh... Find a cleaner solution
-        var new_def_export = typedToUntyped(def_call_typed)[0] #typed to untyped
+        #This is only needed to change name to omni_def_export, tbh... Find a cleaner solution
+        var new_omni_def_export = typed_to_untyped(def_call_typed)[0] #typed to untyped
 
         #Change name
-        new_def_export[0] = nnkPostfix.newTree(
+        new_omni_def_export[0] = nnkPostfix.newTree(
             newIdentNode("*"),
-            def_export
+            omni_def_export
         )
 
         #If it has generics, need to be SomeNumber! Or type info won't work
-        var generic_params = new_def_export[2]
+        var generic_params = new_omni_def_export[2]
         for generic_param in generic_params:
             generic_param[1] = newIdentNode("SomeNumber")
 
         #Use typed formal params (so all type information on arguments and return types is preserverd)
-        new_def_export[3] = def_call_typed_formal_params
+        new_omni_def_export[3] = def_call_typed_formal_params
 
         #Use the actual def_call in order to maintain all type information and module belonging!
-        #This must be put here (and not before typedToUntyped) in order for the nnkSym to be maintained after the typedToUntyped
-        new_def_export[^1] = def_call 
+        #This must be put here (and not before typed_to_untyped) in order for the nnkSym to be maintained after the typed_to_untyped
+        new_omni_def_export[^1] = def_call 
 
         result.add(
-            def_dummy,
-            new_def_export
+            omni_def_dummy,
+            new_omni_def_export
         )
 
     #error repr result
 
-macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_constructor_typed : typed = nil, struct_or_def_new_name : untyped) : untyped =    
+macro omni_generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_constructor_typed : typed = nil, struct_or_def_new_name : untyped) : untyped =    
     var def_combinations : OrderedTable[string, NimNode]
     result = nnkStmtList.newTree()
 
     #error astGenRepr struct_or_def_typed
 
     if struct_or_def_typed.kind == nnkSym:
-        let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_constructor_typed, struct_or_def_new_name, def_combinations)
+        let new_structs_or_def_templates = omni_generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_typed, struct_constructor_typed, struct_or_def_new_name, def_combinations)
         result.add(new_structs_or_def_templates)
         
     elif struct_or_def_typed.kind == nnkClosedSymChoice:
@@ -448,17 +448,17 @@ macro generate_new_module_bindings_for_struct_or_def*(module_name : untyped, str
         #error astGenRepr struct_or_def_typed
         
         for struct_or_def_choice in struct_or_def_typed:
-            let new_structs_or_def_templates = generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_constructor_typed, struct_or_def_new_name, def_combinations)
+            let new_structs_or_def_templates = omni_generate_new_module_bindings_for_struct_or_def_inner(module_name, struct_or_def_choice, struct_constructor_typed, struct_or_def_new_name, def_combinations)
             result.add(new_structs_or_def_templates)
 
     #Only for defs
-    let new_def_exports = generate_new_def_exports(def_combinations, struct_or_def_new_name)
-    result.add(new_def_exports)
+    let new_omni_def_exports = omni_generate_new_omni_def_exports(def_combinations, struct_or_def_new_name)
+    result.add(new_omni_def_exports)
 
     #error repr result
     
 #use with normal import / export
-proc use_inner(paths : NimNode) : NimNode {.compileTime.} =
+proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
     for path in paths:
@@ -474,7 +474,8 @@ proc use_inner(paths : NimNode) : NimNode {.compileTime.} =
         elif path.kind == nnkIdent:
             import_name_without_extension = path.strVal()
             
-            #what about .oi?
+            #what about .oi? a solution would be: https://forum.nim-lang.org/t/3752#43859.
+            #Basically, testing using when (compiles do: import ImportMe)
             let import_name_omni = import_name_without_extension & ".omni"
             real_path = newLit(import_name_omni)
 
@@ -518,19 +519,19 @@ proc use_inner(paths : NimNode) : NimNode {.compileTime.} =
         else:
             error "use: Invalid path syntax: " & repr(path)
 
-        let module_inner = newIdentNode(import_name_without_extension & "_module_inner")
+        let omni_module = newIdentNode(import_name_without_extension & "_omni_module")
 
         result.add(
             nnkImportStmt.newTree(
                 nnkInfix.newTree(
                     newIdentNode("as"),
                     real_path,
-                    module_inner
+                    omni_module
                 )
             ),
             
             nnkExportStmt.newTree(
-                module_inner
+                omni_module
             )
         )
 
@@ -598,20 +599,20 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
     else:
         error "use: Invalid path syntax: " & repr(path)
 
-    let import_name_module_inner = newIdentNode(import_name_without_extension & "_module_inner")
+    let import_name_omni_module = newIdentNode(import_name_without_extension & "_omni_module")
 
     #Add import
     import_stmt.add(
         nnkInfix.newTree(
             newIdentNode("as"),
             real_path,
-            import_name_module_inner
+            import_name_omni_module
         )
     )
 
     #Add export
     export_stmt.add(
-        import_name_module_inner
+        import_name_omni_module
     )
 
     #Need to be before all the generate_new_module_bindings_for_struct_or_def_calls
@@ -634,36 +635,36 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     infix_second_val = statement[2]
 
                 var generate_new_module_bindings_for_struct_or_def_call = nnkCall.newTree(
-                    newIdentNode("generate_new_module_bindings_for_struct_or_def"),
-                    import_name_module_inner,
+                    newIdentNode("omni_generate_new_module_bindings_for_struct_or_def"),
+                    import_name_omni_module,
                 )
 
                 #Add excepts: first entry of infix
                 if infix_first_val.kind == nnkIdent:
                     let 
                         infix_first_val_str = infix_first_val.strVal()
-                        infix_first_val_struct_export = newIdentNode(infix_first_val_str & "_struct_export")
-                        infix_first_val_struct_new_inner = newIdentNode(infix_first_val_str & "_struct_new_inner")
+                        infix_first_val_omni_struct_ptr = newIdentNode(infix_first_val_str & "_omni_struct_ptr")
+                        infix_first_val_omni_struct_new = newIdentNode(infix_first_val_str & "_omni_struct_new")
                     
                     import_stmt.add(infix_first_val)
-                    import_stmt.add(infix_first_val_struct_export)
+                    import_stmt.add(infix_first_val_omni_struct_ptr)
                     export_stmt.add(infix_first_val)
-                    export_stmt.add(infix_first_val_struct_export)
+                    export_stmt.add(infix_first_val_omni_struct_ptr)
 
                     let 
                         struct_dot_expr = nnkDotExpr.newTree(
-                            import_name_module_inner,
-                            infix_first_val_struct_export
+                            import_name_omni_module,
+                            infix_first_val_omni_struct_ptr
                         )
 
                         struct_constructor_dot_expr = nnkDotExpr.newTree(
-                            import_name_module_inner,
-                            infix_first_val_struct_new_inner
+                            import_name_omni_module,
+                            infix_first_val_omni_struct_new
                         )
 
                         def_dot_expr = nnkDotExpr.newTree(
-                            import_name_module_inner,
-                            newIdentNode(infix_first_val.strVal() & "_def_export")
+                            import_name_omni_module,
+                            newIdentNode(infix_first_val.strVal() & "_omni_def_export")
                         )
 
                     var 
@@ -686,7 +687,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 nnkPragma.newTree(
                                     nnkExprColonExpr.newTree(
                                         newIdentNode("fatal"),
-                                        newLit("Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
+                                        newLit("use: Undefined identifier '" & infix_first_val.strVal() & "' in '" & repr(statement) & "'")
                                     )
                                 )
                             )
@@ -711,7 +712,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                                 nnkPragma.newTree(
                                     nnkExprColonExpr.newTree(
                                         newIdentNode("fatal"),
-                                        newLit("Undefined constructor '" & infix_first_val_struct_new_inner.strVal() & "' in '" & repr(statement) & "'")
+                                        newLit("use: Undefined constructor '" & infix_first_val_omni_struct_new.strVal() & "' in '" & repr(statement) & "'")
                                     )
                                 )
                             )
@@ -765,13 +766,13 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
             stmt_list
         )
 
-        result = use_inner(paths)
+        result = omni_use_inner(paths)
 
 #use Path
 #OR
 #use Path1, Path2, Path3
 macro use*(paths : varargs[untyped]) : untyped =
-    result = use_inner(paths)
+    result = omni_use_inner(paths)
 
 #Aliases
 macro require*(path : untyped, stmt_list : untyped) : untyped =

@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,38 +38,38 @@ const
 # ========= #
 
 #Generate operator functions that work for any number type
-template omniOperatorFunction(func_name : untyped) : untyped {.dirty.} =
-    proc `func_name`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
+template omni_operator_proc(proc_name : untyped) : untyped {.dirty.} =
+    proc `proc_name`*[T : SomeNumber, Y : SomeNumber](a : T, b : Y) : auto {.inline.} =
         when Y is SomeFloat:
-            return `func_name`(Y(a), b)
+            return `proc_name`(Y(a), b)
         else:
-            return `func_name`(a, T(b))
+            return `proc_name`(a, T(b))
 
-template omniOperatorFunctionNoReturn(func_name : untyped) : untyped {.dirty.} =
+template omni_operator_proc_no_return(proc_name : untyped) : untyped {.dirty.} =
     #Y as float is already implemented in nim
-    proc `func_name`*[T : SomeFloat, Y : SomeInteger](a : var T, b : Y) : auto {.inline.} =
-        `func_name`(a, T(b))
+    proc `proc_name`*[T : SomeFloat, Y : SomeInteger](a : var T, b : Y) : auto {.inline.} =
+        `proc_name`(a, T(b))
 
-    proc `func_name`*[T : SomeInteger, Y : SomeFloat](a : var T, b : Y) : auto {.inline.} =
-        `func_name`(a, T(b))
+    proc `proc_name`*[T : SomeInteger, Y : SomeFloat](a : var T, b : Y) : auto {.inline.} =
+        `proc_name`(a, T(b))
 
 # != / >= / > are declared as templates: 
 # It's enough to declare for the == / <= / < counterparts, or it will error out!
-omniOperatorFunction(`==`)
-omniOperatorFunction(`<`)
-omniOperatorFunction(`<=`)
+omni_operator_proc(`==`)
+omni_operator_proc(`<`)
+omni_operator_proc(`<=`)
 
-omniOperatorFunction(`+`)
-omniOperatorFunction(`-`)
-omniOperatorFunction(`*`)
+omni_operator_proc(`+`)
+omni_operator_proc(`-`)
+omni_operator_proc(`*`)
 
-omniOperatorFunction(`min`)
-omniOperatorFunction(`max`)
+omni_operator_proc(`min`)
+omni_operator_proc(`max`)
 
 #What about /= and %= ?
-omniOperatorFunctionNoReturn(`+=`)
-omniOperatorFunctionNoReturn(`-=`)
-omniOperatorFunctionNoReturn(`*=`)
+omni_operator_proc_no_return(`+=`)
+omni_operator_proc_no_return(`-=`)
+omni_operator_proc_no_return(`*=`)
 
 # ================= #
 # safemod / safediv #
@@ -139,6 +139,129 @@ proc `>>`*[T : SomeInteger, Y : SomeInteger](a : T, b : Y) : auto {.inline.} =
 proc `~`*[T : SomeInteger, Y : SomeInteger](a : T) : auto {.inline.} =
     return not a
 
+# =============================== #
+# Wrappers for math.nim operators #
+# =============================== #
+
+proc fixdenorm*[T : SomeNumber](x : T) : auto {.inline.} =
+    when T isnot SomeFloat:
+        let float_x = float(x)
+    else:
+        let float_x = x
+    
+    #Don't know why but result != result checks for nans (it's in the classify function in math modules)
+    #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+    #Comparison should be done with the IEEE represenation of inf / neginf / nan    
+    if float_x == Inf or float_x == NegInf or float_x != float_x:
+        return T(0.0)
+    return x
+
+#Turn any one input math function into a generic one thatalso supports integers
+template omni_math_proc(proc_name : untyped) : untyped {.dirty.} =
+    proc `proc_name`*[T : SomeNumber](x : T) : float {.inline.} =
+        when T isnot SomeFloat:
+            return math.`proc_name`(float(x))
+        else:
+            return math.`proc_name`(x)
+
+template omni_math_proc_check_inf(proc_name : untyped) : untyped {.dirty.} =
+    proc `proc_name`*[T : SomeNumber](x : T) : float {.inline.} =
+        when T isnot SomeFloat:
+            result = math.`proc_name`(float(x))
+        else:
+            result = math.`proc_name`(x)
+        #Don't know why but result != result checks for nans (it's in the classify function in math modules)
+        #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+        #Comparison should be done with the IEEE represenation of inf / neginf / nan
+        if result == Inf or result == NegInf or result != result:
+            result = 0.0
+
+#nextPowerOfTwo is the only one with ints
+proc nextPowerOfTwo*[T : SomeNumber](x : T) : T =
+    when T isnot SomeInteger:
+        return T(nextPowerOfTwo(int(x)))
+    else:
+        return nextPowerOfTwo(x)
+
+#pow is the only one with 2 inputs
+proc pow*[T : SomeNumber, Y : SomeNumber](x : T, y : Y) : float {.inline.} =
+    when T isnot SomeFloat:
+        when Y isnot SomeFloat:
+            return math.pow(float(x), float(y))
+        else:
+            return math.pow(float(x), y)
+    else:
+        when Y isnot SomeFloat:
+            return math.pow(x, float(y))
+        else:
+            return math.pow(x, y)
+
+#alternative syntax for pow
+proc `^`*[T : SomeNumber, Y: SomeNumber](x : T, y : Y) : float {.inline.} =
+    return omni_math.pow(x, y)
+
+#log is the only one with 2 inputs and check for inf/neginf/nan
+proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
+    when T isnot SomeFloat:
+        when Y isnot SomeFloat:
+            result = math.log(float(x), float(base))
+        else:
+            result = math.log(float(x), base)
+    else:
+        when Y isnot SomeFloat:
+            result = math.log(x, float(base))
+        else:
+            result = math.log(x, base)
+    #Don't know why but result != result checks for nans (it's in the classify function in math modules)
+    #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
+    #Comparison should be done with the IEEE represenation of inf / neginf / nan
+    if result == Inf or result == NegInf or result != result:
+        result = 0.0
+
+omni_math_proc_check_inf(ln)
+omni_math_proc_check_inf(log2)
+omni_math_proc_check_inf(log10)
+omni_math_proc_check_inf(gamma)
+omni_math_proc_check_inf(lgamma)
+omni_math_proc(sqrt)
+omni_math_proc(cbrt)
+omni_math_proc(exp)
+omni_math_proc(hypot)
+omni_math_proc(erf)
+omni_math_proc(erfc)
+omni_math_proc(floor)
+omni_math_proc(ceil)
+omni_math_proc(round)
+omni_math_proc(trunc)
+omni_math_proc(degToRad)
+omni_math_proc(radToDeg)
+omni_math_proc(sgn)
+omni_math_proc(sin)
+omni_math_proc(cos)
+omni_math_proc(tan)
+omni_math_proc(sinh)
+omni_math_proc(cosh)
+omni_math_proc(tanh)
+omni_math_proc(arccos)
+omni_math_proc(arcsin)
+omni_math_proc(arctan)
+omni_math_proc(arctan2)
+omni_math_proc(arcsinh)
+omni_math_proc(arccosh)
+omni_math_proc(arctanh)
+omni_math_proc(cot)
+omni_math_proc(sec)
+omni_math_proc(csc)
+omni_math_proc(coth)
+omni_math_proc(sech)
+omni_math_proc(csch)
+omni_math_proc(arccot)
+omni_math_proc(arcsec)
+omni_math_proc(arccsc)
+omni_math_proc(arccoth)
+omni_math_proc(arcsech)
+omni_math_proc(arccsch)
+
 # ========= #
 # Iterators #
 # ========= #
@@ -192,316 +315,3 @@ iterator `..<`*(a : SomeInteger, b : SomeFloat) : auto {.inline.} =
     while res < int(b):
         yield res
         inc(res)
-
-# ================= #
-# Simple noise func #
-# ================= #
-
-from random import rand
-
-proc noise*() : float {.inline.} =
-    return rand(2.0) - 1.0
-
-# ================== #
-# WRAPPING / FOLDING #
-# ================== #
-
-proc fold*[V : SomeNumber, L : SomeNumber, H : SomeNumber](v : V, lo1 : L, hi1 : H) : auto {.inline.} =
-    var 
-        lo : L
-        hi : H
-    
-    var out_v = v
-    
-    if lo1 == hi1:
-        return lo1
-
-    if lo1 > hi1:
-        hi = lo1 
-        lo = hi1
-    else:
-        lo = lo1 
-        hi = hi1
-
-    let diff = hi - lo
-    var numWraps = 0
-    
-    if out_v >= hi:
-        out_v -= diff
-        if out_v >= hi:
-            numWraps = int((out_v - lo) / diff)
-            out_v -= diff * V(numWraps)
-        numWraps+=1
-    elif out_v < lo:
-        out_v += diff
-        if out_v < lo:
-            numWraps = int((out_v - lo) / diff) - 1.0
-            out_v -= diff * V(numWraps)
-        numWraps-=1
-    
-    if numWraps and 1:
-         out_v = hi + lo - out_v
-
-    return v;
-
-proc wrap*[V : SomeNumber, L : SomeNumber, H : SomeNumber](v : V, lo1 : L, hi1 : H) : auto {.inline.} =
-    var 
-        lo : L
-        hi : H
-    
-    var out_v = v
-
-    if lo1 == hi1:
-        return lo1
-
-    if lo1 > hi1: 
-        hi = lo1 
-        lo = hi1
-    else:
-        lo = lo1
-        hi = hi1
-    
-    let diff = hi - lo
-    if out_v >= lo and out_v < hi:
-        return v
-
-    if diff <= 0.000000001:
-        return lo
-
-    let numWraps : int = int((out_v - lo) / diff) - int(out_v < lo)
-    return v - diff * V(numWraps)
-
-proc clamp*[X : SomeNumber, M1 : SomeNumber, M2 : SomeNumber](x : X, min_val : M1, max_val : M2) : X {.inline.} =
-    if x > X(max_val):
-        return X(max_val)
-    elif x < X(min_val):
-        return X(min_val)
-    return x
-
-# ======================= #
-# Interpolation functions #
-# ======================= #
-
-proc linear_interp*[A : SomeNumber, X : SomeNumber, Y : SomeNumber](a : A, x : X, y : Y) : auto {.inline.} =
-    return x + (a * (y - x))
-
-proc cubic_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : A, w : W, x : X, y : Y, z : Z) : auto {.inline.} =
-    when A isnot SomeFloat:
-        let float_a = float(a)
-    else:
-        let float_a = a
-
-    when W isnot SomeFloat:
-        let float_w = float(w)
-    else:
-        let float_w = w
-
-    when X isnot SomeFloat:
-        let float_x = float(x)
-    else:
-        let float_x = x
-
-    when Y isnot SomeFloat:
-        let float_y = float(y)
-    else:
-        let float_y = y
-
-    when Z isnot SomeFloat:
-        let float_z = float(z)
-    else:
-        let float_z = z
-
-    let
-        a2 : float = float_a * float_a
-        f0 : float = float_z - float_y - float_w + float_x
-        f1 : float = float_w - float_x - f0
-        f2 : float = float_y - float_w
-        f3 : float = float_x
-
-    return (f0 * float_a * a2) + (f1 * a2) + (f2 * float_a) + f3
-
-proc spline_interp*[A : SomeNumber, W : SomeNumber, X : SomeNumber, Y : SomeNumber, Z : SomeNumber](a : A, w : W, x : X, y : Y, z : Z) : auto {.inline.} =
-    when A isnot SomeFloat:
-        let float_a = float(a)
-    else:
-        let float_a = a
-
-    when W isnot SomeFloat:
-        let float_w = float(w)
-    else:
-        let float_w = w
-
-    when X isnot SomeFloat:
-        let float_x = float(x)
-    else:
-        let float_x = x
-
-    when Y isnot SomeFloat:
-        let float_y = float(y)
-    else:
-        let float_y = y
-
-    when Z isnot SomeFloat:
-        let float_z = float(z)
-    else:
-        let float_z = z
-
-    let
-        a2 : float = float_a * float_a
-        f0 : float = (-0.5 * float_w) + (1.5 * float_x) - (1.5 * float_y) + (0.5 * float_z)
-        f1 : float = w - (2.5 * float_x) + (2.0 * float_y) - (0.5 * float_z)
-        f2 : float = (-0.5 * float_w) + (0.5 * float_y)
-    
-    return (f0 * float_a * a2) + (f1 * a2) + (f2 * float_a) + float_x
-
-# =============================== #
-# Wrappers for math.nim operators #
-# =============================== #
-
-proc fixdenorm*[T : SomeNumber](x : T) : auto {.inline.} =
-    when T isnot SomeFloat:
-        let float_x = float(x)
-    else:
-        let float_x = x
-    
-    #Don't know why but result != result checks for nans (it's in the classify function in math modules)
-    #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
-    #Comparison should be done with the IEEE represenation of inf / neginf / nan    
-    if float_x == Inf or float_x == NegInf or float_x != float_x:
-        return T(0.0)
-    return x
-
-#Turn any one input math function into a generic one thatalso supports integers
-template omniMathFunction(func_name : untyped) : untyped {.dirty.} =
-    proc `func_name`*[T : SomeNumber](x : T) : float {.inline.} =
-        when T isnot SomeFloat:
-            return math.`func_name`(float(x))
-        else:
-            return math.`func_name`(x)
-
-template omniMathFunctionCheckInf(func_name : untyped) : untyped {.dirty.} =
-    proc `func_name`*[T : SomeNumber](x : T) : float {.inline.} =
-        when T isnot SomeFloat:
-            result = math.`func_name`(float(x))
-        else:
-            result = math.`func_name`(x)
-        #Don't know why but result != result checks for nans (it's in the classify function in math modules)
-        #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
-        #Comparison should be done with the IEEE represenation of inf / neginf / nan
-        if result == Inf or result == NegInf or result != result:
-            result = 0.0
-
-#nextPowerOfTwo is the only one with ints
-proc nextPowerOfTwo*[T : SomeNumber](x : T) : T =
-    when T isnot SomeInteger:
-        return T(nextPowerOfTwo(int(x)))
-    else:
-        return nextPowerOfTwo(x)
-
-#pow is the only one with 2 inputs
-proc pow*[T : SomeNumber, Y : SomeNumber](x : T, y : Y) : float {.inline.} =
-    when T isnot SomeFloat:
-        when Y isnot SomeFloat:
-            return math.pow(float(x), float(y))
-        else:
-            return math.pow(float(x), y)
-    else:
-        when Y isnot SomeFloat:
-            return math.pow(x, float(y))
-        else:
-            return math.pow(x, y)
-
-#alternative syntax for pow
-proc `^`*[T : SomeNumber, Y: SomeNumber](x : T, y : Y) : float {.inline.} =
-    return omni_math.pow(x, y)
-
-#log is the only one with 2 inputs and check for inf/neginf/nan
-proc log*[T : SomeNumber, Y : SomeNumber](x : T, base : Y) : float {.inline.} =
-    when T isnot SomeFloat:
-        when Y isnot SomeFloat:
-            result = math.log(float(x), float(base))
-        else:
-            result = math.log(float(x), base)
-    else:
-        when Y isnot SomeFloat:
-            result = math.log(x, float(base))
-        else:
-            result = math.log(x, base)
-    #Don't know why but result != result checks for nans (it's in the classify function in math modules)
-    #Also, this inf / neginf comparison is quite slow, as the C code actually translates to (for neg inf) 1.0 / 0.0, so it's an extra division operation!
-    #Comparison should be done with the IEEE represenation of inf / neginf / nan
-    if result == Inf or result == NegInf or result != result:
-        result = 0.0
-
-omniMathFunctionCheckInf(ln)
-omniMathFunctionCheckInf(log2)
-omniMathFunctionCheckInf(log10)
-omniMathFunctionCheckInf(gamma)
-omniMathFunctionCheckInf(lgamma)
-omniMathFunction(sqrt)
-omniMathFunction(cbrt)
-omniMathFunction(exp)
-omniMathFunction(hypot)
-omniMathFunction(erf)
-omniMathFunction(erfc)
-omniMathFunction(floor)
-omniMathFunction(ceil)
-omniMathFunction(round)
-omniMathFunction(trunc)
-omniMathFunction(degToRad)
-omniMathFunction(radToDeg)
-omniMathFunction(sgn)
-omniMathFunction(sin)
-omniMathFunction(cos)
-omniMathFunction(tan)
-omniMathFunction(sinh)
-omniMathFunction(cosh)
-omniMathFunction(tanh)
-omniMathFunction(arccos)
-omniMathFunction(arcsin)
-omniMathFunction(arctan)
-omniMathFunction(arctan2)
-omniMathFunction(arcsinh)
-omniMathFunction(arccosh)
-omniMathFunction(arctanh)
-omniMathFunction(cot)
-omniMathFunction(sec)
-omniMathFunction(csc)
-omniMathFunction(coth)
-omniMathFunction(sech)
-omniMathFunction(csch)
-omniMathFunction(arccot)
-omniMathFunction(arcsec)
-omniMathFunction(arccsc)
-omniMathFunction(arccoth)
-omniMathFunction(arcsech)
-omniMathFunction(arccsch)
-
-# ================= #
-# Various utilities #
-# ================= #
-
-#Emulate omni's def behaviour in order to be able to use samplerate
-proc mstosamps_inner*[T : SomeNumber](ms : T, samplerate : float) : float {.inline.} =
-    return samplerate * ms * 0.001
-
-template mstosamps*[T : SomeNumber](ms : T) : untyped {.dirty.} =
-    mstosamps_inner(ms, samplerate)
-
-proc sampstoms_inner*[T : SomeNumber](s : T, samplerate : float) : float {.inline.} =
-    return 1000.0 * s / samplerate
-
-template sampstoms*[T : SomeNumber](s : T) : untyped {.dirty.} =
-    sampstoms_inner(s, samplerate)
-
-proc atodb*[T : SomeNumber](x : T) : float {.inline.} =
-    return if x <= 0.0: return -999.0 else: return 20.0 * log10(x)
-
-proc dbtoa*[T : SomeNumber](x : T) : float {.inline.} =
-    return pow(10.0, x * 0.05)
-
-proc ftom*[T: SomeNumber , Y : SomeNumber](x : T, tuning : Y = 440.0) : float {.inline.} =
-    return 69.0 + (17.31234050465299 * log(safediv(x, tuning)))
-
-proc mtof*[T: SomeNumber , Y : SomeNumber](x : T, tuning : Y = 440.0) : float {.inline.} =
-    return tuning * exp(0.057762265) * (x - 69.0)
