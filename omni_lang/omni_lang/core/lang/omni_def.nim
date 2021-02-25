@@ -76,7 +76,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         
         #def a() -> float:
         elif function_signature_kind == nnkInfix:
-            
             if function_signature[0].strVal() != "->":
                 error "def: Invalid return operator: '" & $function_signature[0] & "'. Use '->'."
             
@@ -164,9 +163,8 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         template_body_call.add(proc_name)
         
         let args_block = name_with_args[1..name_with_args.len-1]
-    
+        
         for index, statement in args_block.pairs():
-            
             var 
                 arg_name  : NimNode
                 arg_type  : NimNode
@@ -510,39 +508,60 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 #Define a dummy proc to retrieve current module by passing it as a typed parameter
 #and calling .owner on it
 macro def*(function_signature : untyped, code_block : untyped) : untyped =
-    var temp_generics : seq[string]
-
-    var call_omni_def_inner = nnkCall.newTree(
-        newIdentNode("omni_def_inner"),
-        function_signature,
-        code_block,
-        newIdentNode("omni_current_module_def"),
-    )
-
-    for i, arg in function_signature:
-        let arg_kind = arg.kind
-
-        var arg_type = newNilLit()
-
-        #Name of func and generics
-        if i == 0:
-            #Generics, extract them
-            if arg_kind == nnkBracketExpr:
-                for generic_param in arg:
-                    if generic_param.kind == nnkIdent:
-                        temp_generics.add(generic_param.strVal())
-            continue
+    let function_signature_kind = function_signature.kind
+    
+    var 
+        temp_generics : seq[string]
         
-        if arg_kind == nnkCommand:
-            let arg_type_temp = arg[1]
-            if arg_type_temp.kind == nnkIdent:
-                if not(arg_type_temp.strVal() in temp_generics): #don't add generics!!
-                    arg_type = arg_type_temp
-        
-        #call_omni_def_inner.add(newIntLitNode(i-1)) #index of this arg
-        call_omni_def_inner.add(arg_type)
-        
-    #echo astGenRepr call_omni_def_inner
+        call_omni_def_inner = nnkCall.newTree(
+            newIdentNode("omni_def_inner"),
+            function_signature,
+            code_block,
+            newIdentNode("omni_current_module_def"),
+        )
+
+        function_signature_call : NimNode
+        function_signature_call_kind : NimNodeKind
+    
+    #Has return type, just take first part
+    if function_signature_kind == nnkCommand:
+        function_signature_call = function_signature[0]
+        function_signature_call_kind = function_signature_call.kind
+
+    #Has return type with infix operator ->>
+    elif function_signature_kind == nnkInfix:
+        function_signature_call = function_signature[1]
+        function_signature_call_kind = function_signature_call.kind
+
+    #Perhaps invalid if it's not nnkCall. Checked afterwards
+    else:
+        function_signature_call = function_signature
+        function_signature_call_kind = function_signature_kind
+    
+    #Extract argument types from function signature
+    if function_signature_call_kind == nnkCall:
+        for i, arg in function_signature_call:
+            let arg_kind = arg.kind
+            var arg_type = newNilLit()
+
+            #Name of func and generics
+            if i == 0:
+                #Generics, extract them
+                if arg_kind == nnkBracketExpr:
+                    for generic_param in arg:
+                        if generic_param.kind == nnkIdent:
+                            temp_generics.add(generic_param.strVal())
+                continue
+            
+            if arg_kind == nnkCommand:
+                let arg_type_temp = arg[1]
+                if arg_type_temp.kind == nnkIdent:
+                    if not(arg_type_temp.strVal() in temp_generics): #don't add generics!!
+                        arg_type = arg_type_temp
+            
+            call_omni_def_inner.add(arg_type)
+    else:
+        error "def: invalid function signature: '" & $repr(function_signature) & "'"
 
     return quote do:
         when not declared(omni_current_module_def):
