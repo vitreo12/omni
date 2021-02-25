@@ -107,6 +107,13 @@ proc clamp*[X : SomeNumber, M1 : SomeNumber, M2 : SomeNumber](x : X, min_val : M
         return X(min_val)
     return x
 
+proc clip*[X : SomeNumber, M1 : SomeNumber, M2 : SomeNumber](x : X, min_val : M1, max_val : M2) : X {.inline.} =
+    if x > X(max_val):
+        return X(max_val)
+    elif x < X(min_val):
+        return X(min_val)
+    return x
+
 # ======================= #
 # Interpolation functions #
 # ======================= #
