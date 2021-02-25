@@ -556,7 +556,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             if arg_kind == nnkCommand:
                 let arg_type_temp = arg[1]
                 if arg_type_temp.kind == nnkIdent:
-                    if not(arg_type_temp.strVal() in temp_generics): #don't add generics!!
+                    #Don't add generics!
+                    if not(arg_type_temp.strVal() in temp_generics):
                         arg_type = arg_type_temp
             
             call_omni_def_inner.add(arg_type)
