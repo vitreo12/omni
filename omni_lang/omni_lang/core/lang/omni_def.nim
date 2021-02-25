@@ -365,7 +365,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         # BUILD EXPORT PROC #
         # ================= #
 
-        proc_omni_def_export = proc_def.copy()
+        proc_omni_def_export       = proc_def.copy()
         proc_omni_def_export[4]    = newEmptyNode() #remove pragmas
         proc_omni_def_export[0][1] = newIdentNode(proc_name_str & "_omni_def_export") #change name
         

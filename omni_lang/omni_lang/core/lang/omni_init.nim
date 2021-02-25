@@ -332,7 +332,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         )
 
         #This is just allocating memory, not running constructor
-        proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib, noSideEffect, raises:[].} =
+        proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib, raises:[].} =
             #allocation of "omni_ugen" variable
             let 
                 omni_ugen_ptr {.inject.} = omni_alloc0(culong(sizeof(Omni_UGen_struct)))
@@ -346,7 +346,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             return omni_ugen_ptr
         
         #Define Omni_UGenFree
-        proc Omni_UGenFree*(omni_ugen_ptr {.inject.} : pointer) : void {.exportc: "Omni_UGenFree", dynlib, noSideEffect, raises:[].} =
+        proc Omni_UGenFree*(omni_ugen_ptr {.inject.} : pointer) : void {.exportc: "Omni_UGenFree", dynlib, raises:[].} =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: invalid omni_ugen_ptr to free.")
                 return
@@ -370,7 +370,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         #Generate the UGen_BufferSet procs
         omni_generate_buffers_set_procs()
         
-        proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : bool {.exportc: "Omni_UGenInit", dynlib, noSideEffect, raises:[].} =
+        proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : bool {.exportc: "Omni_UGenInit", dynlib, raises:[].} =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: invalid omni_ugen object pointer")
                 return false
