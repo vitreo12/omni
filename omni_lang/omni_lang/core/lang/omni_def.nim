@@ -169,7 +169,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 arg_name  : NimNode
                 arg_type  : NimNode
                 arg_value : NimNode
-                
                 new_arg   : NimNode
 
             let statement_kind = statement.kind
@@ -367,14 +366,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         proc_omni_def_export[4]    = newEmptyNode() #remove pragmas
         proc_omni_def_export[0][1] = newIdentNode(proc_name_str & "_omni_def_export") #change name
         
-        #error astGenRepr proc_omni_def_export
-        
-        #Can't remove these things because the generated code will be then == to the one generated in the dummy proc with a def with no args!!
-        #[ var proc_omni_def_export_formal_params = proc_omni_def_export[3]
-        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #delete omni_call_type
-        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #table shifted, delete omni_auto_mem now
-        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #table shifted, delete bufsize now
-        proc_omni_def_export_formal_params.del(proc_omni_def_export_formal_params.len - 1) #table shifted, delete samplerate now ]#
+        #Don't remove formal params because the generated code will then be == to the one generated in the dummy proc with a def with no args!!
         
         proc_omni_def_export[^1] = proc_name #template_body_call.copy()
 
