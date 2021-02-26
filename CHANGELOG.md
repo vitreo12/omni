@@ -181,7 +181,7 @@
 
 12) New `--define` options:
     
-    1) *omni_locks_disable*: disable all locks relative to params and buffers access, turning them into no-ops. This option also defines both *omni_locks_disable_param_lock* and *omni_locks_disable_buffer_lock*.
+    1) *omni_locks_disable*: disable all locks relative to `params` and `buffers` access, turning them into no-ops. This option also defines both *omni_locks_disable_param_lock* and *omni_locks_disable_buffer_lock*.
     2) *omni_locks_disable_param_lock*: disable all locks (even individual ones) relative to `params`.
     3) *omni_locks_disable_buffer_lock*: disable the global `buffer` lock.
     4) *omni_locks_multi_param_lock*: use an individual lock for each `param`. If not defined, a global lock, like the one for `buffers`, will be used
