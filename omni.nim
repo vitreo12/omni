@@ -332,7 +332,7 @@ dispatch(
     },
     
     help={
-        "outName" : "Name for the output library. It defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This flag doesn't work for directories or multiple files.",
+        "outName" : "Name for the output library. It defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This argument does not work for directories or multiple files.",
         "outDir" : "Output folder. Defaults to the one in of the Omni file(s).",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
