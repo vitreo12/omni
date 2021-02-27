@@ -297,13 +297,61 @@ macro omni_generate_inputs_templates*(num_of_inputs : typed, generate_ar : typed
     
     return final_statement
 
-proc omni_extract_default_min_max(default_min_max : NimNode, param_name : string) : tuple[defult : float, min : float, max : float] {.compileTime.} =
-    let default_min_max_len = default_min_max.len()
-
+proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : string, ins_or_params : string = "ins") : tuple[defult : float, min : float, max : float] {.compileTime.} =
     var 
+        default_min_max : NimNode
         default_num : float = 0.0
         min_num     : float = OMNI_RANDOM_FLOAT
         max_num     : float = OMNI_RANDOM_FLOAT
+
+    #{default: 0, min: 0, max: 1}
+    if default_min_max_in.kind == nnkTableConstr:
+        var default_min_max_curly = nnkCurly.newTree(
+            newFloatLitNode(default_num),
+            newFloatLitNode(min_num),
+            newFloatLitNode(max_num)
+        )
+
+        var 
+            explicit_defined_default = false
+            explicit_defined_min     = false
+            explicit_defined_max     = false
+
+        if default_min_max_in.len > 3:
+            error ins_or_params & ": invalid { } syntax for '" & $param_name & "'. Too many elements: " & $default_min_max.len & ". They must be less than 3."
+
+        for index, value in default_min_max_in:
+            if value.kind == nnkExprColonExpr:
+                let 
+                    value_left  = value[0]
+                    value_right = value[1]
+                if value_left.kind == nnkIdent:
+                    let value_left_str = value_left.strVal()
+                    if value_left_str == "default":
+                        default_min_max_curly[0] = value_right
+                        explicit_defined_default = true
+                    elif value_left_str == "min":
+                        default_min_max_curly[1] = value_right
+                        explicit_defined_min = true
+                    elif value_left_str == "max":
+                        default_min_max_curly[2] = value_right
+                        explicit_defined_max = true
+                    else:
+                        error ins_or_params & ": invalid identifier for '" & $param_name & "': '" & $value_left_str & "'. Valid ones are 'default', 'min' and 'max'"
+            else:
+                if index == 0 and not explicit_defined_default:
+                    default_min_max_curly[0] = value
+                elif index == 1 and not explicit_defined_min:
+                    default_min_max_curly[1] = value
+                elif index == 2 and not explicit_defined_max:
+                    default_min_max_curly[2] = value
+
+        default_min_max = default_min_max_curly
+    
+    else:
+        default_min_max = default_min_max_in
+    
+    let default_min_max_len = default_min_max.len
 
     #Extract def / min / max values
     for index, value in default_min_max.pairs():
@@ -319,14 +367,14 @@ proc omni_extract_default_min_max(default_min_max : NimNode, param_name : string
             else:
                 #negative number
                 if value[0].strVal() != "-":
-                    error("Invalid prefix for input " & $repr(value))
+                    error ins_or_params & ": invalid prefix for '" & param_name & "': " & $repr(value) & "'"
                 let number = value[1]
                 if number.kind == nnkIntLit:
                     value_num = float(-1 * number.intVal())
                 elif number.kind == nnkFloatLit:
                     value_num = (-1 * number.floatVal())
                 else:
-                    error("Invalid input:" & $repr(value))
+                    error ins_or_params & ": invalid value for '" & param_name & "': '" & $repr(value) & "'"
 
             if default_min_max_len == 3:
                 case index:
@@ -350,18 +398,12 @@ proc omni_extract_default_min_max(default_min_max : NimNode, param_name : string
                 default_num = float32(value_num)
 
         else:
-            error("ins: Invalid syntax for input '" & $param_name & "'")
+            error ins_or_params & ": invalid syntax for '" & $param_name & "': '" & repr(value) & "'"
 
     return (default_num, min_num, max_num)
 
 proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[float32], min_vals : seq[float], max_vals : seq[float], ins_names_string : string, ins_or_params : bool = false) : NimNode {.compileTime.} =
     let default_vals_len = default_vals.len()
-
-    #Find mismatch. Perhaps user hasn't defined def/min/max for some params
-    if num_of_inputs != default_vals_len:
-        error("ins: Got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
-
-    result = nnkStmtList.newTree()
 
     var 
         in_or_param = "in"
@@ -370,6 +412,12 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
     if ins_or_params == true:
         in_or_param = "param"
         inputs_or_params = "params"
+
+    #Find mismatch. Perhaps user hasn't defined def/min/max for some params
+    if num_of_inputs != default_vals_len:
+        error inputs_or_params & ": got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values."
+
+    result = nnkStmtList.newTree()
 
     var 
         default_min_max_const_section = nnkConstSection.newTree()
@@ -571,7 +619,8 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                         min_val : float
                         max_val : float
    
-                    if default_min_max_kind == nnkCurly:
+                    #{0, 0, 1} / {default:0, min:0, max:1}
+                    if default_min_max_kind == nnkCurly  or default_min_max_kind == nnkTableConstr:
                         (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, in_name)
 
                     #single number literal: wrap in curly brackets
@@ -1678,16 +1727,18 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                         default_val : float
                         min_val : float
                         max_val : float
-   
-                    if default_min_max_kind == nnkCurly:
-                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, param_name)
-
+                    
+                    #{0, 0, 1} / 
+                    if default_min_max_kind == nnkCurly or default_min_max_kind == nnkTableConstr:
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max, param_name, "params")
+                
                     #single number literal: wrap in curly brackets
                     elif default_min_max_kind == nnkIntLit or default_min_max_kind == nnkFloatLit:
                         let default_min_max_curly = nnkCurly.newTree(default_min_max)
-                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name)
+                        (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name, "params")
+        
                     else:
-                        error("ins: Expected default / min / max values for '" & $param_name & "' to be wrapped in curly brackets.")
+                        error("params: Expected default / min / max values for '" & $param_name & "' to be wrapped in curly brackets.")
 
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val

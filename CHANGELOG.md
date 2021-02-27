@@ -95,7 +95,16 @@
             outs[i] = ins[i] * buffers[i][params[i]]
     ```
 
-7) Introducing `:=` for aliases:
+7) Define `default` / `min` / `max` with keywords:
+
+    ```nim
+    ins:
+        freq {min: 0, max: 1000}
+    
+    params:
+        freq {default: 440, min: 0, max: 20000}
+    ```
+8) Introducing `:=` for aliases:
     
     ```nim
     struct Something:
@@ -110,7 +119,7 @@
         bubu[0] = in1
     ```
 
-8) `def` can now be used without arguments, if needed:
+9) `def` can now be used without arguments, if needed:
 
     ```nim
     def something:
@@ -123,7 +132,7 @@
         return 0.5
     ```
 
-9) `loop`: reversed the arguments and support for range.
+10) `loop`: reversed the arguments and support for range.
 
     ```nim
     loop(i, 4)
@@ -175,11 +184,11 @@
         print "hanging forever"
     ```
 
-10) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
+11) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
 
-11) CLI's `--importModule` flag is now shortened with `-m`.
+12) CLI's `--importModule` flag is now shortened with `-m`.
 
-12) New `--define` options:
+13) New `--define` options:
     
     1) *omni_locks_disable*: disable all locks relative to `params` and `buffers` access, turning them into no-ops. This option also defines both *omni_locks_disable_param_lock* and *omni_locks_disable_buffer_lock*.
     2) *omni_locks_disable_param_lock*: disable all locks (even individual ones when `omni_locks_multi_param_lock` is defined) relative to `params`.
