@@ -83,7 +83,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
     return false
 
 #Actual compiler
-proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule  : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : int =
+proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -178,7 +178,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Append additional definitions
     for new_define in define:
-
         #Look if -d has paths in it. Paths are expressed like so: -d:tempDir:"./"
         let split_define = new_define.split(':')
         
@@ -224,6 +223,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Append additional imports
     for new_importModule in importModule:
         compile_command.add(" --import:\"" & $new_importModule & "\"")
+
+    #Append additional flags for Nim compiler
+    for new_nim_flag in passNim:
+        compile_command.add(" " & $new_nim_flag)
 
     #Export IO
     if exportIO:
@@ -279,7 +282,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule  : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : int =
+proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : int =
     #no files provided, print --version
     if files.len == 0:
         echo version_flag
@@ -293,9 +296,9 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
-                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, exportHeader, exportIO)
+                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO)
             else:
-                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, exportHeader, exportIO) > 0:
+                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -307,7 +310,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, exportHeader, exportIO) > 0:
+                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO) > 0:
                             return 1
 
         else:
@@ -316,31 +319,42 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
     
     return 0
 
-#Workaround to pass custom version string
+#Pass custom version string
 clCfg.version = version_flag
+
+#Remove --help-syntax
+clCfg.helpSyntax = ""
 
 #Dispatch the omni function as the CLI one
 dispatch(
     omni,
 
-    short={
+    #Remove "Usage: ..."
+    noHdr = true,
+    
+    #Custom options printing
+    usage = version_flag & "\n\nOptions:\n$options",
+
+    short = {
         "version" : 'v',
         "outName" : 'n',
         "performBits" : 'b',
         "importModule" : 'm',
+        "passNim" : 'p',
         "exportIO" : 'i'
     },
     
-    help={
-        "outName" : "Name for the output library. It defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This argument does not work for directories or multiple files.",
-        "outDir" : "Output folder. Defaults to the one in of the Omni file(s).",
+    help = {
+        "outName" : "Name for the output library. Defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This argument does not work for directories or multiple files.",
+        "outDir" : "Output folder. Defaults to the one of the Omni file(s) to compile.",
         "lib" : "Build a shared or static library.",
         "architecture" : "Build architecture.",
         "compiler" : "Select a different C backend compiler to use. Omni supports all of Nim's C supported compilers.",
-        "performBits" : "Set precision for ins and outs in the perform block. Accepted values are '32', '64' or '32/64'.",
+        "performBits" : "Set precision for 'ins' and 'outs' in the perform block. Accepted values are '32', '64' or '32/64'.",
         "wrapper" : "Specify an Omni wrapper to use.",
         "define" : "Define additional symbols for the intermediate Nim compiler.",
         "importModule" : "Import additional Nim modules to be compiled with the Omni file(s).",
+        "passNim" : "Pass additional flags to the intermediate Nim compiler.",
         "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
         "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib."
     }
