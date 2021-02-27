@@ -103,6 +103,7 @@
     
     params:
         freq {default: 440, min: 0, max: 20000}
+        amp  {min: 0}
     ```
 8) Introducing `:=` for aliases:
     
