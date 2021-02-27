@@ -186,6 +186,7 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
             #Unpack everything
             let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)
             omni_cast_ins_outs32()
+            omni_unpack_ins_perform(omni_inputs_names_const) #kr unpacking
             omni_unpack_ugen_fields(Omni_UGen_struct)
             omni_generate_templates_for_perform_var_declarations()
 
@@ -207,6 +208,7 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
             #Unpack everything
             let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)
             omni_cast_ins_outs64()
+            omni_unpack_ins_perform(omni_inputs_names_const) #kr unpacking
             omni_unpack_ugen_fields(Omni_UGen_struct)
             omni_generate_templates_for_perform_var_declarations()
 
