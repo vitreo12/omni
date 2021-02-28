@@ -325,6 +325,9 @@ clCfg.version = version_flag
 #Remove --help-syntax
 clCfg.helpSyntax = ""
 
+#Arguments string
+let arguments = "Arguments:\n  Omni file(s) or folder."
+
 #Dispatch the omni function as the CLI one
 dispatch(
     omni,
@@ -333,7 +336,7 @@ dispatch(
     noHdr = true,
     
     #Custom options printing
-    usage = version_flag & "\n\nOptions:\n$options",
+    usage = version_flag & "\n\n" & arguments & "\n\nOptions:\n$options",
 
     short = {
         "version" : 'v',
