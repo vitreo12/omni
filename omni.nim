@@ -99,7 +99,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Check file extension
     if not(omniFileExt == ".omni") and not(omniFileExt == ".oi"):
-        printError($fileFullPath & " is not an omni file.")
+        printError($fileFullPath & " is not an Omni file.")
         return 1
     
     var outDirFullPath : string
@@ -117,7 +117,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Check performBits argument
     if performBits != "32" and performBits != "64" and performBits != "32/64":
-        printError("performBits: " & $performBits & " is invalid. Only valid valiues are \"32\", \"64\" and \"32/64\".")
+        printError("performBits: " & $performBits & " is invalid. Valid values are '32', '64' and '32/64'.")
         return 1
 
     #This is the path to the original omni file to be used in shell.
