@@ -711,10 +711,10 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
             proc Omni_UGenInputs() : int32 {.exportc: "Omni_UGenInputs", dynlib, raises:[].} =
                 return int32(omni_inputs)
 
-            proc Omni_UGenInputsNames() : ptr cchar {.exportc: "Omni_UGenInputNames", dynlib, raises:[].} =
+            proc Omni_UGenInputsNames() : ptr cchar {.exportc: "Omni_UGenInputsNames", dynlib, raises:[].} =
                 return cast[ptr cchar](omni_inputs_names_const)
 
-            proc Omni_UGenInputsDefaults() : ptr cfloat {.exportc: "Omni_UGenInputDefaults", dynlib, raises:[].} =
+            proc Omni_UGenInputsDefaults() : ptr cfloat {.exportc: "Omni_UGenInputsDefaults", dynlib, raises:[].} =
                 return cast[ptr cfloat](omni_inputs_defaults_const.unsafeAddr)
         else:
             {.fatal: "ins: Already defined once.".}
@@ -882,7 +882,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
             proc Omni_UGenOutputs() : int32 {.exportc: "Omni_UGenOutputs", dynlib, raises:[].} =
                 return int32(omni_outputs)
 
-            proc Omni_UGenOutputsNames() : ptr cchar {.exportc: "Omni_UGenOutputNames", dynlib, raises:[].} =
+            proc Omni_UGenOutputsNames() : ptr cchar {.exportc: "Omni_UGenOutputsNames", dynlib, raises:[].} =
                 return cast[ptr cchar](omni_outputs_names_const)
         else:
             {.fatal: "outs: Already defined once.".}
@@ -1812,10 +1812,10 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
             proc Omni_UGenParams() : int32 {.exportc: "Omni_UGenParams", dynlib, raises:[].} =
                 return int32(omni_params)
 
-            proc Omni_UGenParamsNames() : ptr cchar {.exportc: "Omni_UGenParamNames", dynlib, raises:[].} =
+            proc Omni_UGenParamsNames() : ptr cchar {.exportc: "Omni_UGenParamsNames", dynlib, raises:[].} =
                 return cast[ptr cchar](omni_params_names_const)
 
-            proc Omni_UGenParamsDefaults() : ptr cfloat {.exportc: "Omni_UGenParamDefaults", dynlib, raises:[].} =
+            proc Omni_UGenParamsDefaults() : ptr cfloat {.exportc: "Omni_UGenParamsDefaults", dynlib, raises:[].} =
                 return cast[ptr cfloat](omni_params_defaults_const.unsafeAddr)
         else:
             {.fatal: "params: Already defined once.".}
@@ -2779,10 +2779,10 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
             proc Omni_UGenBuffers() : int32 {.exportc: "Omni_UGenBuffers", dynlib, raises:[].} =
                 return int32(omni_buffers)
 
-            proc Omni_UGenBuffersNames() : ptr cchar {.exportc: "Omni_UGenBufferNames", dynlib, raises:[].} =
+            proc Omni_UGenBuffersNames() : ptr cchar {.exportc: "Omni_UGenBuffersNames", dynlib, raises:[].} =
                 return cast[ptr cchar](omni_buffers_names_const)
             
-            proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBufferDefaults", dynlib, raises:[].} =
+            proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBuffersDefaults", dynlib, raises:[].} =
                 return cast[ptr cchar](omni_buffers_defaults_const_unpacked) #used the unpacked version (single string)
         else:
             {.fatal: "buffers: Already defined once.".}
