@@ -4,7 +4,7 @@
     </div>
 </a>
 
-![Build Status (master)](https://github.com/vitreo12/omni/.github/workflows/omni.yml/badge.svg?branch=master)
+![Build Status (master)](https://github.com/vitreo12/omni/tree/master/.github/workflows/omni.yml/badge.svg?branch=master)
 
 <a href="https://www.buymeacoffee.com/vitreo12" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
