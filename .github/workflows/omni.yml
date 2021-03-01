@@ -1,7 +1,15 @@
-steps:
-  - uses: actions/checkout@v2
-  - uses: jiro4989/setup-nim-action@v1
-    with:
-      nim-version: 'stable'
-  - run: nimble build -Y
-  - run: nimble test -Y
+name: Omni
+
+on: push
+
+jobs:
+    Omni:
+        name: Omni
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+            - uses: jiro4989/setup-nim-action@v1
+            with:
+                nim-version: 'stable'
+            - run: nimble build -Y
+            - run: nimble test -Y
