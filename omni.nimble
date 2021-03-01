@@ -40,7 +40,7 @@ bin = @["omni"]
 #Make sure omni-lang is getting installed first
 before install:
   withDir(getPkgDir() & "/omni_lang"):
-    exec "nimble install"
+    exec "nimble install -Y"
 
 #before / after are BOTH needed for any of the two to work
 after install:
@@ -68,11 +68,11 @@ task test, "Execute all tests":
 
 #Install the omni compiler executable before running the tests on CI 
 before testCI:
-  exec "nimble install" 
+  exec "nimble install -Y" 
 
 #CI test running
 task testCI, "Run tests on CI: it installs omni / omni_lang first":
-  exec "nimble test"
+  exec "nimble test -Y"
 
 #before / after are BOTH needed for any of the two to work
 after testCI:
