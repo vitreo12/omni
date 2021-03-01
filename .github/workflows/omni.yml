@@ -1,10 +1,10 @@
-name: Omni - Test suite
+name: Omni - Test Suite
 
 on: push
 
 jobs:
     All_Linux:
-        name: All tests - Linux
+        name: All Tests - Linux
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
@@ -15,7 +15,7 @@ jobs:
             - run: nimble test -Y
 
     All_MacOS:
-        name: All tests - MacOS
+        name: All Tests - MacOS
         runs-on: macos-latest 
         steps:
             - uses: actions/checkout@v2
