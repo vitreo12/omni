@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,10 +33,9 @@ suite "outs: number":
 
   #Check empty name
   test "output names":
-    check (omni_output_names_const == "out1,out2,out3,out4,out5")
-    check (omni_output_names_let == "out1,out2,out3,out4,out5") 
+    check (omni_outputs_names_const == "out1,out2,out3,out4,out5")
 
   #Check C exported functions
   test "exported C functions":
     check (Omni_UGenOutputs() == int32(5))
-    check (cast[cstring](Omni_UGenOutputNames()) == "out1,out2,out3,out4,out5")
+    check (cast[cstring](Omni_UGenOutputsNames()) == "out1,out2,out3,out4,out5")

@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,21 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-### Buffer implementation spec ###
+import unittest
+import ../../../omni_lang/omni_lang
 
-# Buffer.innerInit*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S, omni_inputs : int) : Buffer
+#Have the call here because it can export stuff, needs to be top level
+when declared(Buffer):
+  buffers 2:
+      buf1 "something"
+      buf2 "somethingElse"
 
-# template new*[S : SomeInteger](obj_type : typedesc[Buffer], input_num : S) : untyped =
-#     innerInit(Buffer, input_num, omni_inputs) #omni_inputs belongs to the scope of the dsp module
+  suite "buffers":
+    test "number of buffers":
+      check (omni_buffers == 2)
 
-# Buffer.get_buffer(buffer : Buffer, input_val : float32)
-# when defined(multithread_buffer):
-#   Buffer.unlock_buffer(buffer : Buffer)
+    test "input names":
+      check (omni_buffers_names_const == "buf1,buf2")
 
-# []
-# []=
-
-# Buffer.len()
-# Buffer.size()
-# Buffer.nchans()
-# Buffer.samplerate()
+    test "default values":
+      check (omni_buffers_defaults_const == ["something", "somethingElse"])
+    
+    test "exported C functions":
+      check (Omni_UGenBuffers() == int32(2))
+      check (cast[cstring](Omni_UGenBuffersNames()) == "buf1,buf2")
+      check (cast[cstring](Omni_UGenBuffersDefaults()) == "something,somethingElse")

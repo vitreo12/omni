@@ -1,0 +1,28 @@
+name: Omni - Test suite
+
+on: push
+
+jobs:
+    All_Linux:
+        name: All tests - Linux
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+            - uses: jiro4989/setup-nim-action@v1
+              with:
+                  nim-version: 'stable'
+            - run: nimble install -Y
+            - run: nimble test -Y
+
+    All_MacOS:
+        name: All tests - MacOS
+        runs-on: macos-latest 
+        steps:
+            - uses: actions/checkout@v2
+            - uses: jiro4989/setup-nim-action@v1
+              with:
+                  nim-version: 'stable'
+            - run: nimble install -Y
+            - run: nimble test -Y
+
+    #Windows does not work well

@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,9 @@ import omni_finder
 export omni_finder
 
 #Utilities
+import omni_locks
+export omni_locks
+
 import omni_types
 export omni_types
 
@@ -49,3 +52,14 @@ export omni_use
 
 import omni_loop
 export omni_loop
+
+import omni_alias
+export omni_alias
+
+#Needed for omni_debug_macros
+from omni_macros_utilities import omni_debug_macros
+export omni_debug_macros
+
+#Needed for exportIO flag
+import omni_export_io
+export omni_export_io

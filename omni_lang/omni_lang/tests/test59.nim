@@ -1,5 +1,4 @@
-import ../../omni_lang, macros
+import ../../omni_lang
 
-expandMacros:
-    init:
-        a = Delay()
+init:
+    a = Delay()

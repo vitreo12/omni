@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,6 +21,6 @@
 # SOFTWARE.
 
 type
-    CallType*    = object of RootObj
-    InitCall*    = object of CallType
-    PerformCall* = object of CallType
+    Omni_CallType*    = object of RootObj
+    Omni_InitCall*    = object of Omni_CallType
+    Omni_PerformCall* = object of Omni_CallType

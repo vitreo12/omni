@@ -1,3 +1,204 @@
+## 0.3.0
+
+1) Deprecate `nim < 1.4`.
+
+2) New `ins` and `outs` mechanism: dynamic counting of IO:
+
+    ```nim
+    ins 2
+
+    ins 2:
+        freq
+        amp
+
+    ins:
+        freq
+        amp
+    
+    outs 2
+
+    outs 2:
+        out1
+        out2
+
+    outs:
+        out1
+        out2
+    ```
+
+3) New `ins` and `outs` mechanism: dynamic counting of IO inside `perform` and `sample`. This allows to not having to declare `ins` and `outs` explicitly, but they will be extracted by parsing the `perform` or `sample` blocks. Dynamic access still works as expected:
+
+    ```nim
+    sample:
+        out1 = in15
+        out26 = in2
+        outs[27] = 2       #Will be ignored, outs are 26
+        outs[20] = ins[16] #outs[20] will be set to 0, as ins[16] is out of bounds
+    ```
+
+4) Introducing `params`. These are `floats` like inputs, but they imply a separation between what's audio rate and what's control rate: `ins` will always be audio rate, while `params` will always be control rate.
+    
+    ```nim
+    params:
+        freq {440, 1, 22000}
+        amp  {1, 0, 1}
+
+    init:
+        phase = 0
+
+    sample:
+        freq_incr = freq / samplerate
+        out1 = sin(phase * twopi) * amp
+        phase = (phase + freq_incr) % 1
+    ```
+
+    When names are not declared, `params` will be named `param1, param2, etc...`:
+    
+    ```nim
+    params 3
+
+    sample:
+        out1 = param1 + param2 + param3
+    ```
+
+5) Introducing `buffers`. This is the new way of declaring a `Buffer`. An Omni wrapper, then, would use this interface to provide its own implementation of a `Buffer`. Refer to `Writing an Omni wrapper` on the manual.
+
+    ```nim
+    buffers:
+        myBuf1 "defaultValue"
+        myBuf2 
+        myBuf3 "anotherDefaultValue"
+
+    sample:
+        out1 = myBuf1[0] + myBuf2[0] + myBuf3[0]
+    ```
+
+    When names are not declared, `buffers` will be named `buf1, buf2, etc...`:
+    
+    ```nim
+    buffers 3
+
+    sample:
+        out1 = buf1[0] + buf2[0] + buf3[0]
+    ```
+
+6) Dynamic access to `ins`, `outs`, `params` and `buffers`:
+
+    ```nim
+    params 2
+    buffers 3
+    ins 4
+    outs 5
+
+    sample:
+        loop(i, params):
+            outs[i] = ins[i] * buffers[i][params[i]]
+    ```
+
+7) Define `default` / `min` / `max` with keywords:
+
+    ```nim
+    ins:
+        freq {min: 0, max: 1000}
+    
+    params:
+        freq {default: 440, min: 0, max: 20000}
+        amp  {min: 0}
+    ```
+8) Introducing `:=` for aliases:
+    
+    ```nim
+    struct Something:
+        data Data
+
+    init:
+        something = Something(Data())
+        bubu := something.data
+
+    sample:
+        out1 = bubu[0]
+        bubu[0] = in1
+    ```
+
+9) `def` can now be used without arguments, if needed:
+
+    ```nim
+    def something:
+        return 0.5
+
+    def something2 float:
+        return 0.5
+
+    def something3 float:
+        return 0.5
+    ```
+
+10) `loop`: reversed the arguments and support for range.
+
+    ```nim
+    loop(i, 4)
+
+    loop(i, 0..3)
+    
+    loop(i, 0..<4)
+
+    loop i 4
+
+    loop i 0..3
+    
+    loop i 0..<4
+
+    loop i, 4
+
+    loop i, 0..3
+
+    loop i, 0..<4
+    ```
+
+    Anonymous index through the `_` identifier:
+
+    ```nim
+    loop 4:
+        print _
+    ```
+
+    Support for `Data` access and initialization:
+
+    ```nim
+    struct Something:
+        a float
+
+    init:
+        data = Data[Something](10)
+        loop(something, data):
+            something = Something()
+
+        data2 = Data[Something](10)
+        loop data2:
+            _ = Something()
+    ```
+
+    Infinite loops:
+
+    ```nim
+    loop:
+        print "hanging forever"
+    ```
+
+11) New CLI flag: `--exportIO`. This will export an `omni_io.txt` file with infos about `ins` / `params` / `buffers` / `outs`.
+
+12) CLI's `--importModule` flag is now shortened with `-m`.
+
+13) New `--define` options:
+    
+    1) *omni_locks_disable*: disable all locks relative to `params` and `buffers` access, turning them into no-ops. This option also defines both *omni_locks_disable_param_lock* and *omni_locks_disable_buffer_lock*.
+    2) *omni_locks_disable_param_lock*: disable all locks (even individual ones when `omni_locks_multi_param_lock` is defined) relative to `params`.
+    3) *omni_locks_disable_buffer_lock*: disable the global `buffer` lock.
+    4) *omni_locks_multi_param_lock*: use an individual lock for each `param`. If not defined, a global lock, like the one for `buffers`, will be used
+    5) *omni_buffers_disable_multithreading*: don't run the `unlock()` call on `buffers` (no multithread access to them).
+
+    **NOTE:** These locks are internal `Omni` locks, and they do not refer to the ones that an `Omni` wrapper might implement for safe access to `buffers`. The `Omni` locks only make sure that any `Omni_UGenSetParam` / `Omni_UGenSetBuffer` operation is thread safe.
+        
 ## 0.2.3
 
 1) Fix for `-d:lto` on MacOS

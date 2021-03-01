@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,12 +21,12 @@
 # SOFTWARE.
 
 template alloc_ins_Nim*(n : int) : untyped =
-  let ins_Nim {.inject.} = cast[CDoublePtrPtr](system.alloc(sizeof(CDoublePtr) * n))
+  let omni_ins_ptr {.inject.} = cast[Float64_ptr_ptr](system.alloc(sizeof(Float64_ptr) * n))
   for i in 0..(n-1):
-    ins_Nim[i] = cast[CDoublePtr](system.alloc(sizeof(float)))
-    ins_Nim[i][0] = 0.75 #Whatever value
+    omni_ins_ptr[i] = cast[Float64_ptr](system.alloc(sizeof(float)))
+    omni_ins_ptr[i][0] = 0.75 #Whatever value
 
 template dealloc_ins_Nim*(n : int) : untyped =
   for i in 0..(n-1):
-    system.dealloc(cast[pointer](ins_Nim[i]))
-  system.dealloc(cast[pointer](ins_Nim))
+    system.dealloc(cast[pointer](omni_ins_ptr[i]))
+  system.dealloc(cast[pointer](omni_ins_ptr))

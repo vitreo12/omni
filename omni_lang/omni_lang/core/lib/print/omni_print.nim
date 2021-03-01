@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
-proc omni_print_debug*   (format_string : cstring, value : culong) : void {.importc: "omni_print_debug_C", cdecl.}
-proc omni_print_str*     (format_string : cstring)                 : void {.importc: "omni_print_str_C", cdecl.}
-proc omni_print_float*   (value : cfloat)                          : void {.importc: "omni_print_float_C", cdecl.}
-proc omni_print_int*     (value : cint)                            : void {.importc: "omni_print_int_C", cdecl.}
+proc omni_print_str*     (value : cstring) : void {.importc: "omni_print_str_C", cdecl.}
+proc omni_print_float*   (value : cfloat)  : void {.importc: "omni_print_float_C", cdecl.}
+proc omni_print_int*     (value : cint)    : void {.importc: "omni_print_int_C", cdecl.}
 
 #string
 template print*(str : string) : untyped =

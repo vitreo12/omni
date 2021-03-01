@@ -1,14 +1,15 @@
-ins 2:
-    buffer Buffer
-    speed  {1, 0, 10}
+params:
+    speed {1, -10, 10}
 
-outs 1
+buffers:
+    buffer
 
 init:
     phase = 0.0
 
-sample:
+perform:
     scaled_rate = buffer.samplerate / samplerate
-    out1 = buffer[phase]
-    phase += (speed * scaled_rate)
-    phase = phase % buffer.len
+    sample:
+        out1 = buffer.read(phase)
+        phase += (speed * scaled_rate)
+        phase = phase % buffer.len

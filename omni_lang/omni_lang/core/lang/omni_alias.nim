@@ -1,6 +1,6 @@
 # MIT License
 # 
-# Copyright (c) 2020 Francesco Cameli
+# Copyright (c) 2020-2021 Francesco Cameli
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,26 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#C file to compile together
-{.compile: "./omni_samplerate_bufsize.c".}
-
-#Pass optimization flag to C compiler
-{.localPassc: "-O3".}
-{.passC: "-O3".}
-
-proc omni_get_samplerate_C*() : cdouble {.importc: "omni_get_samplerate_C", cdecl.}
-proc omni_get_bufsize_C*()    : cint    {.importc: "omni_get_bufsize_C", cdecl.}
-
-proc omni_get_samplerate*() : float {.inline.} =
-    return float(omni_get_samplerate_C())
-
-proc omni_get_bufsize*() : int {.inline.} =
-    return int(omni_get_bufsize_C())
-
-#Make this just "samplerate"
-template get_samplerate*() : untyped =
-    omni_get_samplerate()
-
-#Make this just "bufsize"
-template get_bufsize*() : untyped =
-    omni_get_bufsize()
+#Simple template to generate aliases for variables
+template `:=`*(what : untyped, with : untyped) : untyped =
+    template what() : untyped {.dirty.} =
+        with
