@@ -229,8 +229,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         compile_command.add(" " & $new_nim_flag)
 
     #Export IO
+    var omni_io : string
     if exportIO:
         compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\"")
+        omni_io = outDirFullPath & "/omni_io.txt"
 
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
@@ -238,19 +240,23 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Actually execute compilation. execCmdEx works fine on all OSes
     let (compilationString, failedOmniCompilation) = execCmdEx(compile_command)
 
-    #Check for GcMem warnings and print out 
-    let failedParsingOmniCompilationString = parseAndPrintCompilationString(compilationString)
+    #Path to compiled shared / static lib
+    let pathToCompiledLib = outDirFullPath & "/" & $output_name
+    template removeCompiledLib() : untyped =
+        removeFile(pathToCompiledLib)
+        if exportIO: removeFile(omni_io)
 
-    if failedParsingOmniCompilationString:
+    #Check for GcMem warnings and print errors out 
+    if parseAndPrintCompilationString(compilationString):
+        removeCompiledLib()
         return 1
-
-    #error code from execCmd is usually some 8bit number saying what error arises. I don't care which one for now.
+    
+    #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
     if failedOmniCompilation > 0:
         printError("Unsuccessful compilation of " & $originalOmniFileName & $omniFileExt & ".")
+        #No need to removeCompiledLib() as compilation failed anyway
         return 1
-    
-    let pathToCompiledLib = outDirFullPath & "/" & $output_name
-    
+
     #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
     when not defined(Windows):
         let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")            # -q == silent output
@@ -259,10 +265,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         if fileExists("$null"):
             removeFile("$null")
 
-    #grep/findstr return 0 if it finds the string, 1 if it doesnt!
+    #grep / findstr returns 0 if it finds the string, 1 if it doesn't
     if failedOmniCheckPerform > 0:
         printError("Undefined 'perform' or 'sample' blocks.")
-        removeFile(pathToCompiledLib)
+        removeCompiledLib()
         return 1
 
     #Export omni.h too
@@ -270,13 +276,9 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         let 
             omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
             omni_header_out_path = outDirFullPath & "/omni.h"
-        
-        if not omni_header_path.fileExists():
-            printError("exportHeader: " & $omni_header_path & " does not exist.")
-            return 1
-        
         copyFile(omni_header_path, omni_header_out_path)
 
+    #Done!
     printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
 
     return 0
