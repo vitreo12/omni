@@ -170,7 +170,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
     when defined(MacOSX) or defined(MacOS):
-        compile_command.add(" --passC:-\"flto\" --passL:-\"flto\"")
+        compile_command.add(" --passC:\"-flto\" --passL:\"-flto\"")
 
     #Add compiler info if not default compiler (which is passed in already from nim.cfg)
     if compiler != default_compiler:
