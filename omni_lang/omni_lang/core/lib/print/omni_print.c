@@ -31,9 +31,9 @@ OMNI_DLL_EXPORT void Omni_InitPrint(omni_print_func_t* print_func)
     omni_print_func = print_func;
 }
 
-OMNI_DLL_EXPORT void omni_print_C(const char* string, ...)
+OMNI_DLL_EXPORT void omni_print_C(const char* format_string, ...)
 {
-    omni_print_func(string);
+    omni_print_func(format_string);
 }
 
 OMNI_DLL_EXPORT void omni_print_str_C(const char* value)

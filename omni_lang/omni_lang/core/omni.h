@@ -50,7 +50,7 @@ extern "C" {
     typedef void  omni_free_func_t(void *in);
     
     //Print
-    typedef void  omni_print_func_t(const char* string, ...);
+    typedef void  omni_print_func_t(const char* format_string, ...);
 
     /****************************/
     /* Initialization functions */
