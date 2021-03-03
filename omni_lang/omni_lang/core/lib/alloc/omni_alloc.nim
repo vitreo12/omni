@@ -28,23 +28,23 @@
 {.passC: "-O3".}
 
 #C funcs
-proc omni_alloc_C*(size : culong)                     : pointer {.importc: "omni_alloc_C", cdecl.}
-proc omni_realloc_C*(in_ptr : pointer, size : culong) : pointer {.importc: "omni_realloc_C", cdecl.}
+proc omni_alloc_C*(size : csize_t)                     : pointer {.importc: "omni_alloc_C", cdecl.}
+proc omni_realloc_C*(in_ptr : pointer, size : csize_t) : pointer {.importc: "omni_realloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer)                   : void    {.importc: "omni_free_C", cdecl.}
 
-proc omni_alloc*[N : SomeInteger](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
-    return omni_alloc_C(culong(size))
+proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
+    return omni_alloc_C(csize_t(size))
 
-proc omni_alloc0*[N : SomeInteger](size : N) : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, raises:[].} =
     let 
-        long_size = culong(size)
+        long_size = csize_t(size)
         mem = omni_alloc_C(long_size)
     if not isNil(mem):
         zeroMem(mem, long_size)
     return mem
 
-proc omni_realloc*[N : SomeInteger](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
-    return omni_realloc_C(in_ptr, culong(size))
+proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
+    return omni_realloc_C(in_ptr, csize_t(size))
 
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
     omni_free_C(in_ptr)
