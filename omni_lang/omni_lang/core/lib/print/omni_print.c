@@ -23,8 +23,14 @@
 #include "../../omni.h"
 #include <stdio.h>
 
-//Global print function. Defaulted to printf if not defined
-omni_print_func_t* omni_print_func = (omni_print_func_t*)printf;
+#define omni_print_or_printf(...) \
+    if(omni_print_func) \
+        omni_print_func(__VA_ARGS__); \
+    else \
+        printf(__VA_ARGS__);
+
+//Global print function. Defaulted to printf if not defined. (can't cast as printf returns int)
+omni_print_func_t* omni_print_func = NULL;
 
 OMNI_DLL_EXPORT void Omni_InitPrint(omni_print_func_t* print_func)
 {
@@ -33,12 +39,12 @@ OMNI_DLL_EXPORT void Omni_InitPrint(omni_print_func_t* print_func)
 
 OMNI_DLL_EXPORT void omni_print_C(const char* format_string, ...)
 {
-    omni_print_func(format_string);
+    omni_print_or_printf(format_string);
 }
 
 OMNI_DLL_EXPORT void omni_print_str_C(const char* value)
 {
-    omni_print_func("%s\n", value);
+    omni_print_or_printf("%s\n", value);
 }
 
 OMNI_DLL_EXPORT void omni_print_float_C(float value)
@@ -47,7 +53,7 @@ OMNI_DLL_EXPORT void omni_print_float_C(float value)
     //suitable for %f conversion (as it is for omnicollider's, for example)
     char char_value[16];
     snprintf(char_value, sizeof(char_value), "%f", value);
-    omni_print_func("%s\n", char_value);
+    omni_print_or_printf("%s\n", char_value);
 }
 
 OMNI_DLL_EXPORT void omni_print_int_C(int value)
@@ -56,5 +62,5 @@ OMNI_DLL_EXPORT void omni_print_int_C(int value)
     //suitable for %d conversion (as it is for omnicollider's, for example)
     char char_value[16];
     snprintf(char_value, sizeof(char_value), "%d", value);
-    omni_print_func("%s\n", char_value);
+    omni_print_or_printf("%s\n", char_value);
 }
