@@ -26,12 +26,10 @@
 OMNI_DLL_EXPORT void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
         omni_realloc_func_t* realloc_func, 
-        omni_free_func_t* free_func,  
-        omni_print_str_func_t* print_str_func, 
-        omni_print_float_func_t* print_float_func, 
-        omni_print_int_func_t* print_int_func
+        omni_free_func_t* free_func, 
+        omni_print_func_t* print_func 
     )
 {
     Omni_InitAlloc(alloc_func, realloc_func, free_func);
-    Omni_InitPrint(print_str_func, print_float_func, print_int_func);
+    Omni_InitPrint(print_func);
 }
