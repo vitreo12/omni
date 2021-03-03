@@ -30,7 +30,7 @@
 #C funcs
 proc omni_alloc_C*(size : csize_t)                     : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_realloc_C*(in_ptr : pointer, size : csize_t) : pointer {.importc: "omni_realloc_C", cdecl.}
-proc omni_free_C*(in_ptr : pointer)                   : void    {.importc: "omni_free_C", cdecl.}
+proc omni_free_C*(in_ptr : pointer)                    : void    {.importc: "omni_free_C", cdecl.}
 
 proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
     return omni_alloc_C(csize_t(size))
