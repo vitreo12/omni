@@ -25,52 +25,38 @@
 //Reset
 #define omni_reset_alloc_funcs() \
     omni_alloc_func    = (omni_alloc_func_t*)malloc; \
-    omni_realloc_func  = (omni_realloc_func_t*)realloc; \
     omni_free_func     = (omni_free_func_t*)free;     
 
-//Global allocation functions. These are set in Omni_InitAlloc, or defaulted to malloc / realloc / free
+//Global allocation functions. These are set in Omni_InitAlloc, or defaulted to malloc / free
 omni_alloc_func_t*   omni_alloc_func    = (omni_alloc_func_t*)malloc;
-omni_realloc_func_t* omni_realloc_func  = (omni_realloc_func_t*)realloc;
 omni_free_func_t*    omni_free_func     = (omni_free_func_t*)free;    
 
 //To print error
 extern omni_print_func_t* omni_print_func;
 
-//Provide custom alloc/realloc/free
-OMNI_DLL_EXPORT void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func)
+//Provide custom alloc/free
+OMNI_DLL_EXPORT void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_free_func_t* free_func)
 {
     if(!alloc_func)
     {
-        omni_print_func("ERROR: Omni_InitAlloc: null 'alloc_func'. Reverting to 'malloc' / 'realloc' / 'free'.\n");
-        omni_reset_alloc_funcs();
-        return;
-    }
-    else if(!realloc_func)
-    {
-        omni_print_func("ERROR: Omni_InitAlloc: null 'realloc_func'. Reverting to 'malloc' / 'realloc' / 'free'.\n");
+        omni_print_func("ERROR: Omni_InitAlloc: null 'alloc_func'. Reverting to 'malloc' / 'free'.\n");
         omni_reset_alloc_funcs();
         return;
     }
     else if(!free_func)
     {
-        omni_print_func("ERROR: Omni_InitAlloc: null 'free_func'. Reverting to 'malloc' / realloc / free.\n");
+        omni_print_func("ERROR: Omni_InitAlloc: null 'free_func'. Reverting to 'malloc' / 'free'.\n");
         omni_reset_alloc_funcs();
         return;
     }
     
     omni_alloc_func   = alloc_func;
-    omni_realloc_func = realloc_func;
     omni_free_func    = free_func;
 }
 
 OMNI_DLL_EXPORT void* omni_alloc_C(size_t size)
 {
     return omni_alloc_func(size);
-}
-
-OMNI_DLL_EXPORT void* omni_realloc_C(void *in_ptr, size_t size)
-{
-    return omni_realloc_func(in_ptr, size);
 }
 
 OMNI_DLL_EXPORT void omni_free_C(void* in_ptr)

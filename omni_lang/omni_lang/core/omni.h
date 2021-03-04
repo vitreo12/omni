@@ -23,7 +23,7 @@
 #ifndef _OMNI_H_
 #define _OMNI_H_
 
-//For platform's size_t and malloc/realloc/free (defaults for omni's allocator)
+//For platform's size_t and malloc/free (defaults for omni's allocator)
 #include "stdlib.h"
 
 //For bool
@@ -46,7 +46,6 @@ extern "C" {
     
     //Alloc
     typedef void* omni_alloc_func_t(size_t size);
-    typedef void* omni_realloc_func_t(void *in, size_t size);
     typedef void  omni_free_func_t(void *in);
     
     //Print
@@ -59,7 +58,6 @@ extern "C" {
     //Init global (alloc and print)
     OMNI_DLL_EXPORT extern void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
-        omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 
         omni_print_func_t* print_func 
     );
@@ -67,7 +65,6 @@ extern "C" {
     //Init alloc functions only
     OMNI_DLL_EXPORT extern void Omni_InitAlloc(
         omni_alloc_func_t* alloc_func, 
-        omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func
     );
 

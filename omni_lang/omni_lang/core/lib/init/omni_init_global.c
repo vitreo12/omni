@@ -25,11 +25,10 @@
 //Initialize all the function pointers in one place.
 OMNI_DLL_EXPORT void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
-        omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 
         omni_print_func_t* print_func 
     )
 {
     Omni_InitPrint(print_func);
-    Omni_InitAlloc(alloc_func, realloc_func, free_func);
+    Omni_InitAlloc(alloc_func, free_func);
 }

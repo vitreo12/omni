@@ -29,7 +29,6 @@
 
 #C funcs
 proc omni_alloc_C*(size : csize_t)                     : pointer {.importc: "omni_alloc_C", cdecl.}
-proc omni_realloc_C*(in_ptr : pointer, size : csize_t) : pointer {.importc: "omni_realloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer)                    : void    {.importc: "omni_free_C", cdecl.}
 
 proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
@@ -43,8 +42,22 @@ proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, ra
         zeroMem(mem, long_size)
     return mem
 
+#Naive realloc implementation
 proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
-    return omni_realloc_C(in_ptr, csize_t(size))
+    if(in_ptr.isNil):
+        return nil
+
+    let
+        long_size = csize_t(size)
+        new_mem   = omni_alloc0(long_size)
+    
+    if(not new_mem.isNil):
+        copyMem(new_mem, in_ptr, long_size)
+        omni_free_C(in_ptr)
+        return new_mem
+
+    omni_free_C(in_ptr)
+    return nil
 
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
     omni_free_C(in_ptr)
