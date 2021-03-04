@@ -28,7 +28,7 @@ license       = "MIT"
 #Version >= 1.4 but < 1.5.0
 requires "nim >= 1.4.0"
 requires "nim <  1.5.0"
-requires "cligen >= 1.0.0"
+requires "cligen >= 1.5.0"
 
 #Ignore omni_lang
 skipDirs = @["omni_lang"]

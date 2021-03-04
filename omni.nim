@@ -350,6 +350,8 @@ dispatch(
     },
     
     help = {
+        "help" : "CLIGEN-NOHELP",
+        "version" : "CLIGEN-NOHELP",
         "outName" : "Name for the output library. Defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This argument does not work for directories or multiple files.",
         "outDir" : "Output folder. Defaults to the one of the Omni file(s) to compile.",
         "lib" : "Build a shared or static library.",
