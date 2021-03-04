@@ -330,6 +330,9 @@ clCfg.helpSyntax = ""
 #Arguments string
 let arguments = "Arguments:\n  Omni file(s) or folder."
 
+#Ignore clValType
+clCfg.hTabCols = @[ clOptKeys, #[clValType,]# clDflVal, clDescrip ]
+
 #Dispatch the omni function as the CLI one
 dispatch(
     omni,
@@ -354,7 +357,7 @@ dispatch(
         "version" : "CLIGEN-NOHELP",
         "outName" : "Name for the output library. Defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This argument does not work for directories or multiple files.",
         "outDir" : "Output folder. Defaults to the one of the Omni file(s) to compile.",
-        "lib" : "Build a shared or static library.",
+        "lib" : "Build a 'shared' or 'static' library.",
         "architecture" : "Build architecture.",
         "compiler" : "Select a different C backend compiler to use. Omni supports all of Nim's C compilers.",
         "performBits" : "Set precision for 'ins' and 'outs' in the perform block. Accepted values are '32', '64' or '32/64'. Note that this option does not affect Omni's internal floating point precision.",
