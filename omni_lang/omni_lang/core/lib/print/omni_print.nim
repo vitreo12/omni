@@ -27,8 +27,7 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
-#the proc omni_print can't have same name as module!
-proc omni_print_C*(format_string : cstring) : void {.importc: "omni_print_C", varargs, cdecl.}
+proc omni_print*(format_string : cstring) : void {.importc: "omni_print_C", varargs, cdecl.}
 proc omni_print_str*(value : cstring) : void {.importc: "omni_print_str_C", cdecl.}
 proc omni_print_float*(value : cfloat) : void {.importc: "omni_print_float_C", cdecl.}
 proc omni_print_int*(value : cint) : void {.importc: "omni_print_int_C", cdecl.}
