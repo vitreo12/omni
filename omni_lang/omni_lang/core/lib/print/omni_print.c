@@ -28,6 +28,13 @@ omni_print_func_t* omni_print_func = (omni_print_func_t*)printf;
 
 OMNI_DLL_EXPORT void Omni_InitPrint(omni_print_func_t* print_func)
 {
+    if(!print_func)
+    {
+        printf("Omni_InitPrint: null print_func. Reverting to printf.\n");
+        omni_print_func = (omni_print_func_t*)printf;
+        return;
+    }
+    
     omni_print_func = print_func;
 }
 

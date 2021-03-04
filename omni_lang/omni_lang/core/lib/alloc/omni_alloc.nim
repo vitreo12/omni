@@ -58,15 +58,15 @@ from macros import error
 
 proc alloc*[N : SomeInteger](size : N) : void =
     static:
-        error("alloc is not supported. Use Data to allocate memory.")
+        error("'alloc' is not supported. Use 'Data' to allocate memory.")
 
 proc alloc0*[N : SomeInteger](size : N) : void =
     static:
-        error("alloc0 is not supported. Use Data to allocate memory.")
+        error("'alloc0' is not supported. Use 'Data' to allocate memory.")
 
 proc realloc*[N : SomeInteger](in_ptr : pointer, size : N) : void =
     static:
-        error("realloc is not supported. Use Data to allocate memory.")
+        error("'realloc' is not supported. Use 'Data' to allocate memory.")
 
 #Don't know why this doesn't work...
 #[ proc dealloc*(in_ptr : pointer) : void =
