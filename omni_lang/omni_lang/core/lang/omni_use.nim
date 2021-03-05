@@ -267,13 +267,15 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
                 arg_type_str = arg_type[0].strVal()
             
             #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_ptr
-            #[ let inner_type = arg_type.getTypeImpl()
+            #[ 
+            let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
                 if inner_type[0].strVal().endsWith("_omni_struct"):
                     #is this needed? Os is arg_type enough since it's a symbol?
                     let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_ptr")[0]
             
-                    #error astGenRepr new_arg_type  ]#
+                    #error astGenRepr new_arg_type  
+            ]#
 
             #Skip samplerate. bufsize, omni_auto_mem, omni_call_type
             if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "omni_auto_mem" and arg_name_str != "omni_call_type":    
