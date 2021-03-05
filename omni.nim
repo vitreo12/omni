@@ -69,7 +69,7 @@ proc printDone(msg : string) : void =
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
-#parse compilation output for Gc allocations and pretty print it with colors
+#Parse compilation output for Gc allocations and pretty print it with colors
 proc parseAndPrintCompilationString(msg : string) : bool =
     #Turn Error: and Warning: into red bright(1m) Error: (ansi escape codes: https://forum.nim-lang.org/t/7002)
     var colored_msg = msg.multiReplace([("Error:", "\e[31;1mError:\e[0m"), ("Warning:", "\e[31;1mError:\e[0m")])
