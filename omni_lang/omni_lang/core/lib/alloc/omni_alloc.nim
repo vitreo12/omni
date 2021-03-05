@@ -42,7 +42,7 @@ proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, ra
         zeroMem(mem, long_size)
     return mem
 
-#Naive realloc implementation
+#Custom realloc implementation
 proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
     if(in_ptr.isNil):
         return nil
