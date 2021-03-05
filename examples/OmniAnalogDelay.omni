@@ -1,16 +1,13 @@
-ins 5:
-    input
+params:
     delay_length {1, 0, 2}
     delay_time   {0.5, 0, 2}
-    feedback     {0.5, 0, 0.9}
-    damping      {0.5, 0, 0.9}
-
-outs 1
+    feedback     {0.5, 0, 0.98}
+    damping      {0.5, 0, 0.98}
 
 init:
     dl = delay_length * samplerate
     delay = Delay(dl)
-    prev_value = 0.0
+    prev_value = 0
 
     build:
         delay
@@ -20,13 +17,13 @@ sample:
     dt = delay_time * samplerate
 
     #Read
-    delay_value = delay.read(dt)
+    read_value = delay.read(dt)
 
-    out1 = delay_value
+    out1 = read_value
 
     #Apply FB and damping
-    feedback_value = delay_value * feedback
-    write_value = input + feedback_value
+    feedback_value = read_value * feedback
+    write_value = in1 + feedback_value
     write_value = ((1.0 - damping) * write_value) + (damping * prev_value)
 
     #Write
