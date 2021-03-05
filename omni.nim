@@ -91,7 +91,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         omniFileName = omniFile.name
         omniFileExt  = omniFile.ext
     
-    let originalOmniFileName = omniFileName
+    # let originalOmniFileName = omniFileName
 
     #Check file first charcter, must be a capital letter
     if not omniFileName[0].isUpperAscii:
@@ -253,7 +253,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     
     #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
     if failedOmniCompilation > 0:
-        printError("Unsuccessful compilation of " & $originalOmniFileName & $omniFileExt & ".")
+        # printError("Unsuccessful compilation of " & $originalOmniFileName & $omniFileExt & ".")
         #No need to removeCompiledLib() as compilation failed anyway
         return 1
 
@@ -279,7 +279,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
-    printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
+    # printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
