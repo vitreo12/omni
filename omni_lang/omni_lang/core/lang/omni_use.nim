@@ -482,7 +482,8 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
             real_path = newLit(import_name_omni)
 
             #Check if .omni or .oi exist, and use that... doesnt work now cause it will not find the current used omni file
-            #[ let 
+            #[ 
+            let 
                 import_name_omni = import_name_without_extension & ".omni"
                 import_name_oi = import_name_without_extension & ".oi"
 
@@ -499,7 +500,8 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 real_path = newIdentNode(import_name_oi)
             
             else:
-                error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" ]#
+                error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" 
+            ]#
 
         #../../ImportMe
         elif path.kind == nnkPrefix or path.kind == nnkInfix:
