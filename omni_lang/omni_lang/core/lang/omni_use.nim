@@ -777,6 +777,9 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 #use Path
 #OR
 #use Path1, Path2, Path3
+#OR
+#use Path:
+#   Something as Something1
 macro use*(paths : varargs[untyped]) : untyped =
     result = omni_use_inner(paths)
 
