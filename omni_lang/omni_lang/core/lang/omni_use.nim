@@ -267,13 +267,15 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
                 arg_type_str = arg_type[0].strVal()
             
             #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_ptr
-            #[ let inner_type = arg_type.getTypeImpl()
+            #[ 
+            let inner_type = arg_type.getTypeImpl()
             if inner_type.kind == nnkPtrTy:
                 if inner_type[0].strVal().endsWith("_omni_struct"):
                     #is this needed? Os is arg_type enough since it's a symbol?
                     let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_ptr")[0]
             
-                    #error astGenRepr new_arg_type  ]#
+                    #error astGenRepr new_arg_type  
+            ]#
 
             #Skip samplerate. bufsize, omni_auto_mem, omni_call_type
             if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "omni_auto_mem" and arg_name_str != "omni_call_type":    
@@ -480,7 +482,8 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
             real_path = newLit(import_name_omni)
 
             #Check if .omni or .oi exist, and use that... doesnt work now cause it will not find the current used omni file
-            #[ let 
+            #[ 
+            let 
                 import_name_omni = import_name_without_extension & ".omni"
                 import_name_oi = import_name_without_extension & ".oi"
 
@@ -497,7 +500,8 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 real_path = newIdentNode(import_name_oi)
             
             else:
-                error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" ]#
+                error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" 
+            ]#
 
         #../../ImportMe
         elif path.kind == nnkPrefix or path.kind == nnkInfix:
@@ -536,8 +540,8 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
         )
 
 #use Path:
-    #Something as Something1 
-    #someFunc as someFunc1
+#  Something as Something1 
+#  someFunc as someFunc1
 macro use*(path : untyped, stmt_list : untyped) : untyped =
     result = nnkStmtList.newTree()
         
@@ -561,7 +565,8 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
         real_path = newLit(import_name_omni)
 
         #Check if .omni or .oi exist, and use that... doesnt work now cause it will not find the current used omni file
-        #[ let 
+        #[ 
+        let 
             import_name_omni = import_name_without_extension & ".omni"
             import_name_oi = import_name_without_extension & ".oi"
 
@@ -578,7 +583,8 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
             real_path = newIdentNode(import_name_oi)
         
         else:
-            error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" ]#
+            error "Can't find either '" & import_name_oi & "' or '" & import_name_omni & "'" 
+        ]#
     
     #../../ImportMe
     elif path.kind == nnkPrefix or path.kind == nnkInfix:
