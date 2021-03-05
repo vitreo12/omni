@@ -67,14 +67,14 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     let size_data_obj = sizeof(Data_omni_struct[G1])
 
     #Actual object, assigned to result
-    result = cast[Data[G1]](omni_alloc0(culong(size_data_obj)))
+    result = cast[Data[G1]](omni_alloc0(size_data_obj))
     
     #Data of the object (the array)
     let 
         size              = real_length * real_chans
         size_data_type    = sizeof(G1)
-        total_size_culong = culong(size_data_type * size)
-        data              = cast[ArrayPtr[G1]](omni_alloc0(total_size_culong))
+        total_size        = csize_t(size_data_type * size)
+        data              = cast[ArrayPtr[G1]](omni_alloc0(total_size))
 
     #Register both the Data object and its data to the automatic memory management
     omni_auto_mem.omni_auto_mem_register_child(result)

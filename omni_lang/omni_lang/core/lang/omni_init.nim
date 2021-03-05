@@ -335,7 +335,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib, raises:[].} =
             #allocation of "omni_ugen" variable
             let 
-                omni_ugen_ptr {.inject.} = omni_alloc0(culong(sizeof(Omni_UGen_struct)))
+                omni_ugen_ptr {.inject.} = omni_alloc0(sizeof(Omni_UGen_struct))
                 omni_ugen     {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
 
             if isNil(omni_ugen_ptr):

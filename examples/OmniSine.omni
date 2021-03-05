@@ -1,8 +1,6 @@
-ins 1:
-    freq {440, 1, 22000}
+ins:
+    freq {440, 0.01, 22000}
 
-outs 1
- 
 init:
     phase = 0.0
 

@@ -23,7 +23,7 @@
 #ifndef _OMNI_H_
 #define _OMNI_H_
 
-//For platform's size_t and malloc/realloc/free (defaults for omni's allocator)
+//For platform's size_t and malloc/free (defaults for omni's allocator)
 #include "stdlib.h"
 
 //For bool
@@ -46,33 +46,30 @@ extern "C" {
     
     //Alloc
     typedef void* omni_alloc_func_t(size_t size);
-    typedef void* omni_realloc_func_t(void *in, size_t size);
     typedef void  omni_free_func_t(void *in);
     
     //Print
-    typedef void  omni_print_str_func_t(const char* string);
-    typedef void  omni_print_float_func_t(float value);
-    typedef void  omni_print_int_func_t(int value);
+    typedef void  omni_print_func_t(const char* format_string, ...);
 
     /****************************/
     /* Initialization functions */
     /****************************/
 
-    //Global (Alloc + Print)
+    //Init global (alloc and print)
     OMNI_DLL_EXPORT extern void Omni_InitGlobal(
         omni_alloc_func_t* alloc_func, 
-        omni_realloc_func_t* realloc_func, 
         omni_free_func_t* free_func, 
-        omni_print_str_func_t* print_str_func, 
-        omni_print_float_func_t* print_float_func, 
-        omni_print_int_func_t* print_int_func
+        omni_print_func_t* print_func 
     );
 
-    //Alloc
-    OMNI_DLL_EXPORT extern void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_realloc_func_t* realloc_func, omni_free_func_t* free_func);
+    //Init alloc functions only
+    OMNI_DLL_EXPORT extern void Omni_InitAlloc(
+        omni_alloc_func_t* alloc_func, 
+        omni_free_func_t* free_func
+    );
 
-    //Print
-    OMNI_DLL_EXPORT extern void Omni_InitPrint(omni_print_str_func_t* print_str_func, omni_print_float_func_t* print_float_func, omni_print_int_func_t* print_int_func);
+    //Init print function only
+    OMNI_DLL_EXPORT extern void Omni_InitPrint(omni_print_func_t* print_func);
 
     /***************************/
     /* Omni_UGen I/O functions */

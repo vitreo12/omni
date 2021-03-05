@@ -21,44 +21,47 @@
 // SOFTWARE.
 
 #include "../../omni.h"
-#include "stdio.h"
+#include <stdio.h>
 
-//Global print functions. These are set in OmniInitPrint, or defaulted to prinf if not defined
-omni_print_str_func_t*     omni_print_str_func   = NULL;
-omni_print_float_func_t*   omni_print_float_func = NULL;
-omni_print_int_func_t*     omni_print_int_func   = NULL;
+//Global print function. Defaulted to printf if not defined
+omni_print_func_t* omni_print_func = (omni_print_func_t*)printf;
 
-OMNI_DLL_EXPORT void Omni_InitPrint(
-    omni_print_str_func_t*     print_str_func, 
-    omni_print_float_func_t*   print_float_func, 
-    omni_print_int_func_t*     print_int_func
-    )
+OMNI_DLL_EXPORT void Omni_InitPrint(omni_print_func_t* print_func)
 {
-    omni_print_str_func     = print_str_func;
-    omni_print_float_func   = print_float_func;
-    omni_print_int_func     = print_int_func;
+    if(!print_func)
+    {
+        printf("ERROR: Omni_InitPrint: 'print_func' is NULL. Reverting to 'printf'.\n");
+        omni_print_func = (omni_print_func_t*)printf;
+        return;
+    }
+    
+    omni_print_func = print_func;
 }
 
-OMNI_DLL_EXPORT void omni_print_str_C(const char* string)
+OMNI_DLL_EXPORT void omni_print_C(const char* format_string, ...)
 {
-    if(omni_print_str_func)
-        omni_print_str_func(string);
-    else
-        printf("%s\n", string);
+    omni_print_func(format_string);
+}
+
+OMNI_DLL_EXPORT void omni_print_str_C(const char* value)
+{
+    omni_print_func("%s\n", value);
 }
 
 OMNI_DLL_EXPORT void omni_print_float_C(float value)
-{
-    if(omni_print_float_func)
-        omni_print_float_func(value);
-    else
-        printf("%f\n", value);
+{ 
+    //Make sure to run conversions here, as the omni_print_func provided might not be 
+    //suitable for %f conversion (as it is for omnicollider's, for example)
+    char char_value[16];
+    snprintf(char_value, sizeof(char_value), "%f", value);
+    omni_print_func("%s\n", char_value);
 }
 
 OMNI_DLL_EXPORT void omni_print_int_C(int value)
 {
-    if(omni_print_int_func)
-        omni_print_int_func(value);
-    else
-        printf("%d\n", value);
+    //Make sure to run conversions here, as the omni_print_func provided might not be 
+    //suitable for %d conversion (as it is for omnicollider's, for example)
+    char char_value[16];
+    snprintf(char_value, sizeof(char_value), "%d", value);
+    omni_print_func("%s\n", char_value);
 }

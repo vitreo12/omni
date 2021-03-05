@@ -38,13 +38,13 @@ type
 
 proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
     let 
-        auto_mem_ptr = omni_alloc0(culong(sizeof(Omni_AutoMem_struct))) 
+        auto_mem_ptr = omni_alloc0(sizeof(Omni_AutoMem_struct))
         auto_mem = cast[Omni_AutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):
         return auto_mem     #This already is cast[Omni_AutoMem](nil)
 
-    let auto_mem_allocs_ptr = omni_alloc0(culong(sizeof(pointer) * Omni_AutoMemSize))
+    let auto_mem_allocs_ptr = omni_alloc0(sizeof(pointer) * Omni_AutoMemSize)
     
     if isNil(auto_mem_allocs_ptr):
         omni_free(auto_mem_ptr)
@@ -77,7 +77,7 @@ proc omni_auto_mem_register_child*(auto_mem : Omni_AutoMem, child : pointer) : v
             omni_print_str("Omni_AutoMem: reached allocs limit, reallocating memory with new length:")
             omni_print_int(cint(new_length))
         
-        let auto_mem_allocs_ptr = omni_realloc(cast[pointer](auto_mem.allocs), culong(sizeof(pointer) * new_length))
+        let auto_mem_allocs_ptr = omni_realloc(cast[pointer](auto_mem.allocs), sizeof(pointer) * new_length)
         auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
 
 proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : Omni_AutoMem, index : T) : void {.inline.} =

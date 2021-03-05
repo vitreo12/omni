@@ -25,8 +25,10 @@ author        = "Francesco Cameli"
 description   = "omni is a DSL for low-level audio programming."
 license       = "MIT"
 
+#Version >= 1.4 but < 1.5.0
 requires "nim >= 1.4.0"
-requires "cligen >= 1.0.0"
+requires "nim <  1.5.0"
+requires "cligen >= 1.5.0"
 
 #Ignore omni_lang
 skipDirs = @["omni_lang"]
@@ -65,15 +67,3 @@ proc runTestsInFolder(path : string, top_level : bool = false) : void =
 task test, "Execute all tests":
   let testsDir = getPkgDir() & "/tests"
   runTestsInFolder(testsDir, true)
-
-#Install the omni compiler executable before running the tests on CI 
-before testCI:
-  exec "nimble install -Y" 
-
-#CI test running
-task testCI, "Run tests on CI: it installs omni / omni_lang first":
-  exec "nimble test -Y"
-
-#before / after are BOTH needed for any of the two to work
-after testCI:
-  discard

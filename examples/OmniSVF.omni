@@ -1,10 +1,10 @@
-ins 4:
+ins:
     input
-    filter_type {0, 0, 2}
     cutoff {2000, 10, 20000}
     resonance {0.5, 0.005, 1}
 
-outs 1
+params:
+    filter_type {0, 0, 2}
 
 init:
     s1 = 0.0

@@ -28,24 +28,38 @@
 {.passC: "-O3".}
 
 #C funcs
-proc omni_alloc_C*(size : culong)                     : pointer {.importc: "omni_alloc_C", cdecl.}
-proc omni_realloc_C*(in_ptr : pointer, size : culong) : pointer {.importc: "omni_realloc_C", cdecl.}
-proc omni_free_C*(in_ptr : pointer)                   : void    {.importc: "omni_free_C", cdecl.}
+proc omni_alloc_C*(size : csize_t)                     : pointer {.importc: "omni_alloc_C", cdecl.}
+proc omni_free_C*(in_ptr : pointer)                    : void    {.importc: "omni_free_C", cdecl.}
 
-#Wrappers around the C functions
-proc omni_alloc*[N : SomeInteger](size : N)  : pointer {.inline.} =
-    return omni_alloc_C(size)
+proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
+    return omni_alloc_C(csize_t(size))
 
-proc omni_alloc0*[N : SomeInteger](size : N) : pointer {.inline.} =
-    let mem = omni_alloc_C(size)
+proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, raises:[].} =
+    let 
+        long_size = csize_t(size)
+        mem = omni_alloc_C(long_size)
     if not isNil(mem):
-        zeroMem(mem, size)
+        zeroMem(mem, long_size)
     return mem
 
-proc omni_realloc*[N : SomeInteger](in_ptr : pointer, size : N) : pointer {.inline.} =
-    return omni_realloc_C(in_ptr, size)
+#Custom realloc implementation
+proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
+    if(in_ptr.isNil):
+        return nil
 
-proc omni_free*(in_ptr : pointer) : void {.inline.} =
+    let
+        long_size = csize_t(size)
+        new_mem   = omni_alloc0(long_size)
+    
+    if(not new_mem.isNil):
+        copyMem(new_mem, in_ptr, long_size)
+        omni_free_C(in_ptr)
+        return new_mem
+
+    omni_free_C(in_ptr)
+    return nil
+
+proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
     omni_free_C(in_ptr)
 
 
@@ -57,15 +71,15 @@ from macros import error
 
 proc alloc*[N : SomeInteger](size : N) : void =
     static:
-        error("alloc is not supported. Use Data to allocate memory.")
+        error("'alloc' is not supported. Use 'Data' to allocate memory.")
 
 proc alloc0*[N : SomeInteger](size : N) : void =
     static:
-        error("alloc0 is not supported. Use Data to allocate memory.")
+        error("'alloc0' is not supported. Use 'Data' to allocate memory.")
 
 proc realloc*[N : SomeInteger](in_ptr : pointer, size : N) : void =
     static:
-        error("realloc is not supported. Use Data to allocate memory.")
+        error("'realloc' is not supported. Use 'Data' to allocate memory.")
 
 #Don't know why this doesn't work...
 #[ proc dealloc*(in_ptr : pointer) : void =
