@@ -30,7 +30,7 @@ OMNI_DLL_EXPORT void Omni_InitPrint(omni_print_func_t* print_func)
 {
     if(!print_func)
     {
-        printf("ERROR: Omni_InitPrint: null 'print_func'. Reverting to 'printf'.\n");
+        printf("ERROR: Omni_InitPrint: 'print_func' is NULL. Reverting to 'printf'.\n");
         omni_print_func = (omni_print_func_t*)printf;
         return;
     }

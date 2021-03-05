@@ -39,13 +39,13 @@ OMNI_DLL_EXPORT void Omni_InitAlloc(omni_alloc_func_t* alloc_func, omni_free_fun
 {
     if(!alloc_func)
     {
-        omni_print_func("ERROR: Omni_InitAlloc: null 'alloc_func'. Reverting to 'malloc' / 'free'.\n");
+        omni_print_func("ERROR: Omni_InitAlloc: 'alloc_func' is NULL. Reverting to 'malloc' / 'free'.\n");
         omni_reset_alloc_funcs();
         return;
     }
     else if(!free_func)
     {
-        omni_print_func("ERROR: Omni_InitAlloc: null 'free_func'. Reverting to 'malloc' / 'free'.\n");
+        omni_print_func("ERROR: Omni_InitAlloc: 'free_func' is NULL. Reverting to 'malloc' / 'free'.\n");
         omni_reset_alloc_funcs();
         return;
     }
