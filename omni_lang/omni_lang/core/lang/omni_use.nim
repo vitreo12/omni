@@ -540,8 +540,8 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
         )
 
 #use Path:
-    #Something as Something1 
-    #someFunc as someFunc1
+#  Something as Something1 
+#  someFunc as someFunc1
 macro use*(path : untyped, stmt_list : untyped) : untyped =
     result = nnkStmtList.newTree()
         
@@ -777,9 +777,6 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 #use Path
 #OR
 #use Path1, Path2, Path3
-#OR
-#use Path:
-#   Something as Something1
 macro use*(paths : varargs[untyped]) : untyped =
     result = omni_use_inner(paths)
 
