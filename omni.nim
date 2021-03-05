@@ -165,8 +165,8 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     when defined(Linux) or defined(Windows):
         lto = "-d:lto"
     
-    #Actual compile command. Keep the --forceBuild:on in order to recompile omni modules when changing them!
-    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger " & lto & " --opt:speed --gc:none --forceBuild:on --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
+    #Actual compile command.
+    var compile_command = "nim c --app:" & $lib_nim & " --out:" & $output_name & " -d:release -d:danger " & lto & " --opt:speed --gc:none --noMain:on --hints:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on --checks:off --assertions:off --panics:on --passC:-fPIC " & $real_architecture
 
     #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
     when defined(MacOSX) or defined(MacOS):
