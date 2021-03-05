@@ -367,6 +367,6 @@ dispatch(
         "passNim" : "Pass additional flags to the intermediate Nim compiler.",
         "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
         "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib.",
-        "silent" : "Don't print out the success message"
+        "silent" : "CLIGEN-NOHELP"
     }
 )
