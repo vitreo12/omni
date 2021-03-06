@@ -202,11 +202,11 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
                     continue
                 
                 if entry.kind != nnkIdent and entry.kind != nnkSym:
-                    error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
+                    error "'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'"
                 
                 let entry_str = entry.strVal()
                 if (not (entry_str in omni_valid_struct_generics)) and (not(entry in generics_seq)):
-                    error("'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'")
+                    error "'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'"
                 
                 omni_execute_check_valid_types_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
@@ -319,9 +319,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr = nnkBracketExpr.newTree(
             obj_name
         )
-        #ptr_bracket_expr = nnkBracketExpr.newTree(
-        #    ptr_name
-        #)
 
         for index, child in struct_name:
             if index == 0:
@@ -395,7 +392,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
         obj_bracket_expr = obj_name
-        #ptr_bracket_expr = ptr_name
     
     else:
         error "struct: Invalid name: '" & repr(struct_name) & "'"
@@ -515,7 +511,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
 macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     if ptr_struct_name.kind != nnkSym:
-        error("strict: Invalid struct ptr symbol!")
+        error "struct: Invalid struct ptr symbol!"
 
     let 
         ptr_struct_type = ptr_struct_name.getType()
@@ -613,7 +609,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit(ptr_name & ": attempting to allocate memory in the 'perform' or 'sample' blocks")
+                            newLit("struct '" & ptr_name & "': attempting to allocate memory in the 'perform' or 'sample' blocks")
                         )
                     )
                 )
@@ -637,7 +633,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
                             nnkPragma.newTree(
                                 nnkExprColonExpr.newTree(
                                     newIdentNode("fatal"),
-                                    newLit("'" & ptr_name & "': " & $generic_ident.strVal() & " must be some number type.")
+                                    newLit("struct '" & ptr_name & "': " & $generic_ident.strVal() & " must be some number type.")
                                 )
                             )
                         )
@@ -713,7 +709,6 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
         #if no struct, go with auto and have value 0
         if not field_is_struct:
-            #arg_field_type = newIdentNode("auto")
             arg_field_value = newIntLitNode(0)    
 
         #Add to arg list for omni_struct_new proc
