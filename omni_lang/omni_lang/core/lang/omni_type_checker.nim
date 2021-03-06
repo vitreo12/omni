@@ -156,7 +156,6 @@ proc omni_check_valid_type*(var_type : NimNode, var_name : string = "", is_proc_
     else:
         if not ((var_type_str in omni_accepted_var_types) or (var_type.omni_is_struct())):
             error("\'" & $var_name & "\' is of unknown type: \'" & $var_type_str & "\'.")
-
         
 #This is used for def's argument type checking
 #The trick here is the var_type : typed, which will hold all of its type structure when running it through omni_is_struct in omni_check_valid_type
