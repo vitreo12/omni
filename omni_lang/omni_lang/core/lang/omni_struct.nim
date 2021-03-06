@@ -83,13 +83,13 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
 #var_names stores pairs in the form [name, 0] for untyped, [name, 1] for typed
 #fields_untyped are all the fields that have generics in them
 #fields_typed are the fields that do not have generics, and need to be tested to find if they need a "signal" generic initialization
-macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias_type_def : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
+macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias_type_def : untyped, inherit : untyped, var_names : untyped, fields_untyped : untyped, fields_typed : varargs[typed]) : untyped =
     var 
         final_stmt_list = nnkStmtList.newTree()          #return statement
         type_section    = nnkTypeSection.newTree()       #the whole type section (both omni_struct and ptr)
         obj_ty          = nnkObjectTy.newTree(
             newEmptyNode(),
-            newEmptyNode()
+            inherit
         )
 
         rec_list        = nnkRecList.newTree()           #the variable declaration section of Phasor_omni_struct
@@ -160,7 +160,7 @@ macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias
     final_stmt_list.add(type_section)
 
     #error astgenrepr final_stmt_list
-    #echo repr final_stmt_list
+    echo repr final_stmt_list
 
     return quote do:
         `final_stmt_list`
@@ -259,6 +259,10 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
+        struct_name = struct_name
+        struct_name_kind = struct_name.kind
+    
+    var 
         obj_type_def    = nnkTypeDef.newTree()           #the Phasor_omni_struct block
 
         ptr_type_def    = nnkTypeDef.newTree()           #the Phasor = ptr Phasor_omni_struct block
@@ -273,6 +277,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_name : NimNode
         ptr_name : NimNode
         alias_name : NimNode
+        inherit : NimNode = nnkOfInherit.newTree(
+            newIdentNode("RootObj")
+        )
 
         generics = nnkGenericParams.newTree()          #If generics are present in struct definition
 
@@ -284,9 +291,34 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         fields_typed   : seq[NimNode]
 
     var struct_name_str : string
+ 
+    #Check for inheritance
+    if struct_name_kind == nnkInfix:
+        var
+            infix_op = struct_name[0]
+            inherit_name_ident = struct_name[2]
+        
+        struct_name = struct_name[1]
+        struct_name_kind = struct_name.kind
+        
+        if infix_op.kind == nnkIdent:
+            if infix_op.strVal() == "of":
+                #Add inheritance
+                let inherit_name_kind = inherit_name_ident.kind
+                if inherit_name_kind == nnkIdent:
+                    inherit[0] = newIdentNode(inherit_name_ident.strVal() & "_omni_struct")
+                elif inherit_name_kind == nnkBracketExpr:
+                    inherit_name_ident[0] = newIdentNode(inherit_name_ident[0].strVal() & "_omni_struct")
+                    inherit[0] = inherit_name_ident 
+                else:
+                    error "struct: Invalid inheritance: '" & repr(inherit_name_ident) & "'."
+            else:
+                error "struct: Invalid inheritance infix: '" & repr(infix_op) & "'."
+        else:
+            error "struct: Invalid inheritance infix: '" & repr(infix_op) & "'."
 
     #Using generics
-    if struct_name.kind == nnkBracketExpr:
+    if struct_name_kind == nnkBracketExpr:
         struct_name_str = struct_name[0].strVal()
         
         obj_name = newIdentNode(struct_name_str & "_omni_struct")  #Phasor_omni_struct
@@ -319,9 +351,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr = nnkBracketExpr.newTree(
             obj_name
         )
-        #ptr_bracket_expr = nnkBracketExpr.newTree(
-        #    ptr_name
-        #)
 
         for index, child in struct_name:
             if index == 0:
@@ -361,7 +390,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_ty.add(obj_bracket_expr)
 
     #No generics, just name of struct
-    elif struct_name.kind == nnkIdent:
+    elif struct_name_kind == nnkIdent:
         struct_name_str = struct_name.strVal()
         
         obj_name = newIdentNode(struct_name_str & "_omni_struct")              #Phasor_omni_struct
@@ -393,21 +422,21 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         #Add the Phasor_omni_struct[T, Y] to ptr_ty, for object that the pointer points at.
         ptr_ty.add(obj_name)
 
-        #When not using generics, the sections where the bracket generic expression is used are just the normal name of the type
+        #When not using generics, the sections where the bracket generic expression 
+        #is used are just the normal name of the type
         obj_bracket_expr = obj_name
-        #ptr_bracket_expr = ptr_name
-    
+
     else:
-        error "struct: Invalid name: '" & repr(struct_name) & "'"
+        error "struct: Invalid name: '" & repr(struct_name) & "'."
 
     #Detect invalid struct name
     if struct_name_str in omni_invalid_idents:
-        error("struct: Trying to redefine in-built struct '" & struct_name_str & "'")
+        error "struct: Trying to redefine in-built struct '" & struct_name_str & "'"
 
     #Detect invalid ends with
     for invalid_ends_with in omni_invalid_ends_with:
         if struct_name_str.endsWith(invalid_ends_with):
-            error("struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
+            error "struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use."
 
     #Loop over struct's body
     for code_stmt in code_block:
@@ -497,6 +526,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_type_def,
         ptr_type_def,
         alias_type_def,
+        inherit,
         var_names,
         fields_untyped
     )
@@ -515,7 +545,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
 macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
     if ptr_struct_name.kind != nnkSym:
-        error("strict: Invalid struct ptr symbol!")
+        error "struct: Invalid struct ptr symbol!"
 
     let 
         ptr_struct_type = ptr_struct_name.getType()
@@ -637,7 +667,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
                             nnkPragma.newTree(
                                 nnkExprColonExpr.newTree(
                                     newIdentNode("fatal"),
-                                    newLit("'" & ptr_name & "': " & $generic_ident.strVal() & " must be some number type.")
+                                    newLit(ptr_name & ": " & $generic_ident.strVal() & " must be some number type.")
                                 )
                             )
                         )

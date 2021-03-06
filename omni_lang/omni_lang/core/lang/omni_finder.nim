@@ -22,6 +22,21 @@
 
 import macros, strutils, omni_type_checker
 
+proc omni_inherited_rec_list(t : NimNode, rec_list : var NimNode) : void {.inline, compileTime.} =
+    let inherited_struct_type_impl = t.getTypeImpl()
+    if inherited_struct_type_impl.kind == nnkObjectTy:
+        let inherited_inherit = inherited_struct_type_impl[1]
+        if inherited_inherit.kind == nnkOfInherit:
+            var inherited_inherit_name = inherited_inherit[0]
+            while inherited_inherit_name.kind == nnkBracketExpr:
+                inherited_inherit_name = inherited_inherit_name[0]
+            if inherited_inherit_name.kind == nnkSym:
+                omni_inherited_rec_list(inherited_inherit_name, rec_list)
+        let inherited_rec_list = inherited_struct_type_impl[2]
+        if inherited_rec_list.kind == nnkRecList:
+            for inherited_field in inherited_rec_list:
+                rec_list.add(inherited_field)
+            
 macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
@@ -35,10 +50,11 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     #struct     
     else:
         if t.kind != nnkIdent and t.kind != nnkSym:
-            error("Not a valid object type!")
+            error "finder: '" & repr(t) & "' is not a valid object type!"
         t_type = newIdentNode(
             t.strVal()
         )
+
 
     var 
         proc_def = nnkProcDef.newTree(
@@ -79,7 +95,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     
     var actual_type_def : NimNode
 
-    #If it's a pointer, exctract
+    #If it's a pointer, extract
     if type_def.kind == nnkPtrTy:   
         #if generic
         if type_def[0].kind == nnkBracketExpr:
@@ -92,9 +108,23 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
 
     #If it's not an object type, abort the search.
     if actual_type_def.kind != nnkObjectTy:
-        error("Not a valid object type!")
+        error "finder: '" & repr(t) & "' is not a valid object type!"
 
-    let rec_list = actual_type_def[2]
+    var 
+        inheritance = actual_type_def[1]
+        rec_list = actual_type_def[2]
+
+    #Check the inheritance
+    if inheritance.kind == nnkOfInherit:
+        var inheritance_ident = inheritance[0]
+        #Extract from generics
+        while inheritance_ident.kind == nnkBracketExpr:
+            inheritance_ident = inheritance_ident[0]
+
+        #Add inherited's rec_list to rec_list
+        if inheritance_ident.kind == nnkSym:
+            if inheritance_ident.strVal() != "RootObj":
+                omni_inherited_rec_list(inheritance_ident, rec_list)
 
     for ident_defs in rec_list:
         var
@@ -174,7 +204,6 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     data_content_kind = data_content.kind
                     type_name : NimNode
                     is_data = false
-                    is_struct = false
 
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
@@ -349,22 +378,17 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     #Exit loop!
                     break
                 
-                #Increat index counter
+                #Increment index counter
                 counter += 1
                 if counter >= max_count:
                     error("Infinite type inference loop")
             
-            #Add the thingy to result
+            #Add what's been found to result
             if previous_loop_stmt != nil:
                 proc_body.add(previous_loop_stmt)
 
         #Found a struct
         elif type_to_inspect_string.endsWith("_omni_struct") or type_to_inspect.omni_is_struct():
-            
-            #Compile time setting of variable
-            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_omni_struct" or type_to_inspect_string == "Buffer_omni_struct_ptr":
-            #    omni_at_least_one_buffer = true
-
             proc_body.add(
                 nnkIfStmt.newTree(
                     nnkElifBranch.newTree(
@@ -375,8 +399,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                 nnkDotExpr.newTree(
                                     newIdentNode("omni_obj"),
                                     var_name_ident
-                                )#,
-                                #newIdentNode("ugen_auto_buffer")
+                                )
                             )
                         ),
                         nnkStmtList.newTree(
