@@ -9,13 +9,13 @@ process MultiIns:
 chain: in1 >> Sine * 100 + 100 >> Sine | Saw
     
 #Multichannel expansion. [] creates blocks. , creates lists inside of blocks
-chain: [in1, in2] >> Sine #equivalent
+chain: [in1, in2] >> Sine
 
 #(param) maps a param to a param of the process. @ 0 extracts just the first out of MultiOsc
 chain: in1 >> MultiOsc(someParam) @ 0 
 
 #Multiple inputs. {} is a lambda function for param setting. Lambdas don't support processes, but just mathematical operations
-chain: [in1, in2, in3] >> MultiIns({someParam * 100}) #equivalent
+chain: [in1, in2, in3] >> MultiIns({someParam * 100})
 
 #Feedback. 
 chain: in1 >>+ Sine <<* someParam 
