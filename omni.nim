@@ -55,19 +55,20 @@ when defined(Windows):
         shared_lib_extension = ".dll"
         default_compiler     = "gcc(MinGW)"
 
-#Generic error proc
-proc printError(msg : string) : void =
+#Generic error
+template printError(msg : string) : untyped =
     setForegroundColor(fgRed)
-    writeStyled("ERROR [omni]: ", {styleBright}) 
+    writeStyled("ERROR : ", {styleBright}) 
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
-#Generic success proc
-proc printDone(msg : string) : void =
-    setForegroundColor(fgGreen)
-    writeStyled("DONE [omni]: ", {styleBright}) 
-    setForegroundColor(fgWhite, true)
-    writeStyled(msg & "\n")
+#Generic success
+template printDone(msg : string) : untyped =
+    if not silent:
+        setForegroundColor(fgGreen)
+        writeStyled("SUCCESS : ", {styleBright}) 
+        setForegroundColor(fgWhite, true)
+        writeStyled(msg & "\n")
 
 #Parse compilation output for Gc allocations and pretty print it with colors
 proc parseAndPrintCompilationString(msg : string) : bool =
@@ -83,7 +84,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
     return false
 
 #Actual compiler
-proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false) : int =
+proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -253,7 +254,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     
     #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
     if failedOmniCompilation > 0:
-        printError("Unsuccessful compilation of " & $originalOmniFileName & $omniFileExt & ".")
         #No need to removeCompiledLib() as compilation failed anyway
         return 1
 
@@ -279,12 +279,12 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
-    printDone("Successful compilation of \"" & fileFullPath & "\" to folder \"" & $outDirFullPath & "\".")
+    printDone("'" & $originalOmniFileName & $omni_file_ext & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : int =
+proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
     #no files provided, print --version
     if files.len == 0:
         echo version_flag
@@ -298,9 +298,9 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
-                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO)
+                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
             else:
-                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO) > 0:
+                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -312,7 +312,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO) > 0:
+                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                             return 1
 
         else:
@@ -366,6 +366,7 @@ dispatch(
         "importModule" : "Import additional Nim modules to be compiled with the Omni file(s).",
         "passNim" : "Pass additional flags to the intermediate Nim compiler.",
         "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
-        "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib."
+        "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib.",
+        "silent" : "CLIGEN-NOHELP"
     }
 )

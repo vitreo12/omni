@@ -174,7 +174,6 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     data_content_kind = data_content.kind
                     type_name : NimNode
                     is_data = false
-                    is_struct = false
 
                 if data_content_kind == nnkBracketExpr:
                     type_name = data_content[0]
@@ -375,8 +374,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                 nnkDotExpr.newTree(
                                     newIdentNode("omni_obj"),
                                     var_name_ident
-                                )#,
-                                #newIdentNode("ugen_auto_buffer")
+                                )
                             )
                         ),
                         nnkStmtList.newTree(
