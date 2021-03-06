@@ -832,9 +832,7 @@ proc omni_parse_untyped_dot(statement : NimNode, level : var int, declared_vars 
     if dot_right.kind == nnkIdent:
         if dot_right.strVal() == "new":
             let dot_left = parsed_statement[0]
-            parsed_statement = nnkCall.newTree(
-                dot_left
-            )
+            parsed_statement = nnkCall.newTree(dot_left)
             parsed_statement = omni_find_struct_constructor_call(parsed_statement)
 
     return parsed_statement
