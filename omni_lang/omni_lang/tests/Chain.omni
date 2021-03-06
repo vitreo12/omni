@@ -34,7 +34,7 @@ chain: in1 >> Sine <<* someParam / 2    #equivalent
 
 #Returning from a specific path of the feedback loop 
 chain: in1 >> Sine ^ <<* someParam >> LPF           #LPF is applied to the output of Sine, not the delayed version
-chain: in1 >> Sine << [LPF ^ >> Distortion] >> Amp  #Exit path fro after LPF. Amp is applied to this signal
+chain: in1 >> Sine << [LPF ^ >> Distortion] >> Amp  #Exit path after LPF. Amp is applied to this signal
 
 #Multiple exit paths. >>+ specifies to sum them together
 chain: in1 >> Sine << [LPF ^ >> Distortion ^ >> Delay] >>+ Amp  #out from LPF and Distortion are summed before going into amp, which is what is returned.
