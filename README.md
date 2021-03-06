@@ -79,9 +79,9 @@ init:
     phase = 0.0
 
 sample:
-    freq_incr = in1 / samplerate
-    out1 = sin(phase * TWOPI)
-    phase = (phase + freq_incr) % 1.0
+    incr  = in1 / samplerate
+    out1  = sin(phase * TWOPI)
+    phase = (phase + incr) % 1.0
 ```
 
 ## **Website / Docs**
