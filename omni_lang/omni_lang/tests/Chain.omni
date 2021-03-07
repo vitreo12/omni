@@ -1,0 +1,45 @@
+params: someParam
+
+process MultiIns:
+    params: something
+    ins 3
+    sample: discard
+
+#Operators always from left to right. | creates parallelism
+chain: in1 >> Sine * 100 + 100 >> Sine | Saw
+    
+#Multichannel expansion. [] creates blocks. , creates lists inside of blocks
+chain: [in1, in2] >> Sine
+
+#(param) maps a param to a param of the process. @ 0 extracts just the first out of MultiOsc
+chain: in1 >> MultiOsc(someParam) @ 0 
+
+#Multiple inputs. {} is a lambda function for param setting. Lambdas don't support processes, but just mathematical operations
+chain: [in1, in2, in3] >> MultiIns({someParam * 100})
+
+#Feedback. 
+chain: in1 >>+ Sine <<* someParam 
+chain: in1 >>  Sine <<* someParam #equivalent
+
+#A 0 to 1 phasor. Feedback returns the feedback result.
+chain: _ <<+ [freq / samplerate % 1]
+chain: _ <<+ freq / samplerate % 1   #equivalent
+
+#With blocks you can decide where the feeback happens
+chain: in1 >>+ [Sine * 100 + 100 >> Sine] <<* someParam
+
+#Custom operator for feedback with lambdas
+chain: in1 >> Sine << {* someParam / 2}
+chain: in1 >> Sine <<* someParam / 2    #equivalent
+
+#Returning from a specific path of the feedback loop 
+chain: in1 >> Sine ^ <<* someParam >> LPF           #LPF is applied to the output of Sine, not the delayed version
+chain: in1 >> Sine << [LPF ^ >> Distortion] >> Amp  #Exit path after LPF. Amp is applied to this signal
+
+#Multiple exit paths. >>+ specifies to sum them together
+chain: in1 >> Sine << [LPF ^ >> Distortion ^ >> Delay] >>+ Amp  #out from LPF and Distortion are summed before going into amp, which is what is returned.
+
+#Multiple lines
+chain:
+    val = in1 >> Sine
+    val <<* someParam

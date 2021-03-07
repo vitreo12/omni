@@ -325,7 +325,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                             nnkPragma.newTree(
                                 nnkExprColonExpr.newTree(
                                     newIdentNode("fatal"),
-                                    newLit("Buffer: attempting to allocate memory in the 'perform' or 'sample' blocks")
+                                    newLit("struct 'Buffer': attempting to allocate memory in the 'perform' or 'sample' blocks.")
                                 )
                             )
                         )

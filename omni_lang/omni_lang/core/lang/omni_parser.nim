@@ -395,10 +395,11 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
         new_stmt = false
         loop_stmt = false
         command_name = statement[0]
+        command_name_kind = command_name.kind
 
     #Detect out of position "build" calls in "init"
     if is_init_block:
-        if command_name.kind == nnkIdent:
+        if command_name_kind == nnkIdent:
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
 
@@ -408,14 +409,15 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
         
         if command_name_str == "new":
             command_name = statement[1]
+            command_name_kind = command_name.kind
             new_stmt = true
 
             #new Data(1).. Just use the nnkCall
-            if command_name.kind == nnkCall:
+            if command_name_kind == nnkCall:
                 parsed_statement = command_name.copy()
 
             #new Data 1 ... Not so sure if I wanna support this syntax TBH
-            elif command_name.kind == nnkCommand:
+            elif command_name_kind == nnkCommand:
                 parsed_statement = nnkCall.newTree(
                     command_name[0]
                 )
@@ -425,8 +427,11 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
                     if i == 0: continue #skip func name
                     parsed_statement.add(entry)
                 
-                #If choosing not to support this syntax anymore
-                #error "'" & $repr(statement) & "': Invalid 'new' syntax. It requires a normal function call."
+            #new Data
+            elif command_name_kind == nnkIdent:
+                parsed_statement = nnkCall.newTree(
+                    command_name
+                )
             else:
                 error "'" & $repr(statement) & "': Invalid 'new' syntax."
         
@@ -821,6 +826,15 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
 #Parse the dot syntax: .
 proc omni_parse_untyped_dot(statement : NimNode, level : var int, declared_vars : var seq[string], is_init_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
     var parsed_statement = omni_parser_untyped_loop(statement, level, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    
+    #Data.new -> normal Data() constructor call
+    let dot_right = parsed_statement[1]
+    if dot_right.kind == nnkIdent:
+        if dot_right.strVal() == "new":
+            let dot_left = parsed_statement[0]
+            parsed_statement = nnkCall.newTree(dot_left)
+            parsed_statement = omni_find_struct_constructor_call(parsed_statement)
+
     return parsed_statement
 
 #Parse the square bracket syntax: []

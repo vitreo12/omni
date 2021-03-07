@@ -1,0 +1,20 @@
+process Sine:
+    params: 
+        freq
+    
+    init: 
+        phase = 0
+    
+    sample:
+        incr  = freq / samplerate
+        out1  = sin(phase)
+        phase = (phase + incr) % 1
+
+params: 
+    freq [440, 0, 22000] OR freq <440, 0, 22000>
+
+init:
+    sine = Sine({freq * 10}) #Lambda to set param with {}
+
+sample:
+    out1 = sine()
