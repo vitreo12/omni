@@ -609,7 +609,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
                     nnkPragma.newTree(
                         nnkExprColonExpr.newTree(
                             newIdentNode("fatal"),
-                            newLit("struct '" & ptr_name & "': attempting to allocate memory in the 'perform' or 'sample' blocks")
+                            newLit("struct '" & ptr_name & "': attempting to allocate memory in the 'perform' or 'sample' blocks.")
                         )
                     )
                 )
