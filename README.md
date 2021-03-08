@@ -71,6 +71,8 @@ This command will compile an antialiased sawtooth oscillator (part of the exampl
 
 ## **Sine oscillator example**
 
+`Sine.omni`
+
 ```nim
 ins:  1
 outs: 1
@@ -83,6 +85,10 @@ sample:
     out1  = sin(phase * TWOPI)
     phase = (phase + incr) % 1.0
 ```
+
+To compile it, simply run:
+
+    omni Sine.omni
 
 ## **Website / Docs**
 
