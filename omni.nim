@@ -58,7 +58,7 @@ when defined(Windows):
 #Generic error
 template printError(msg : string) : untyped =
     setForegroundColor(fgRed)
-    writeStyled("ERROR : ", {styleBright}) 
+    writeStyled("ERROR: ", {styleBright}) 
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
@@ -66,7 +66,7 @@ template printError(msg : string) : untyped =
 template printDone(msg : string) : untyped =
     if not silent:
         setForegroundColor(fgGreen)
-        writeStyled("SUCCESS : ", {styleBright}) 
+        writeStyled("SUCCESS: ", {styleBright}) 
         setForegroundColor(fgWhite, true)
         writeStyled(msg & "\n")
 
