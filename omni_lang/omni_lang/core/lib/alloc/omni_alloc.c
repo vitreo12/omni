@@ -28,8 +28,8 @@
     omni_free_func     = (omni_free_func_t*)free;     
 
 //Global allocation functions. These are set in Omni_InitAlloc, or defaulted to malloc / free
-omni_alloc_func_t*   omni_alloc_func    = (omni_alloc_func_t*)malloc;
-omni_free_func_t*    omni_free_func     = (omni_free_func_t*)free;    
+omni_alloc_func_t* omni_alloc_func = (omni_alloc_func_t*)malloc;
+omni_free_func_t*  omni_free_func  = (omni_free_func_t*)free;
 
 //To print error
 extern omni_print_func_t* omni_print_func;

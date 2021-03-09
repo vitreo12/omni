@@ -46,7 +46,7 @@ extern "C" {
     
     //Alloc
     typedef void* omni_alloc_func_t(size_t size);
-    typedef void  omni_free_func_t(void *in);
+    typedef void  omni_free_func_t(void* in);
     
     //Print
     typedef void  omni_print_func_t(const char* format_string, ...);
