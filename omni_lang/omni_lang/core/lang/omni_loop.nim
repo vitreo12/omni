@@ -144,6 +144,18 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                             num,
                             code_block
                         )
+                    
+                    #other infixes, like operators
+                    else:
+                        return nnkForStmt.newTree(
+                            index,
+                            nnkInfix.newTree(
+                              newIdentNode("..<"),
+                              newLit(0),
+                              num
+                            ),
+                            code_block
+                        ) 
 
                 #Any other case
                 else:
@@ -240,6 +252,18 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                         num,
                         code_block
                     )
+                
+                #other infixes, like operators
+                else:
+                    return nnkForStmt.newTree(
+                        index,
+                        nnkInfix.newTree(
+                          newIdentNode("..<"),
+                          newLit(0),
+                          num
+                        ),
+                        code_block
+                    ) 
 
             #Any other case
             else:

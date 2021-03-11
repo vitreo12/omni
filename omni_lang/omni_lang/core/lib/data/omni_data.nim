@@ -42,9 +42,8 @@ type
      
 #Having the strings as const as --gc:none is used
 const
-    length_error  = "WARNING: Omni: Data's length must be a positive number. Setting it to 1"
-    chans_error   = "WARNING: Omni: Data's chans must be a positive number. Setting it to 1"
-    #bounds_error = "WARNING: Omni: DatTrying to access out of bounds Data."
+    length_error  = "WARNING: Omni: Data's length must be a positive number. Setting it to 1."
+    chans_error   = "WARNING: Omni: Data's chans must be a positive number. Setting it to 1."
 
 #Constructor interface: Data
 proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], omni_struct_type : typedesc[Data_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
@@ -88,11 +87,11 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
 
 proc omni_check_data_validity*[T](data : Data[T]) : bool =
     when T isnot SomeNumber:
-        for i in 0..(data.chans-1):
-            for y in 0..(data.length-1):
+        for i in 0 ..< data.chans:
+            for y in 0 ..< data.length:
                 let entry = cast[pointer](data[i, y])
                 if isNil(entry):
-                    print("ERROR: Omni: Not all 'Data' entries have been initialized in the 'init' block. This can happen if using a 'Data' containing 'structs', and not having allocated all of the 'Data' entries in 'init'!")
+                    print("ERROR: Omni: Not all 'Data' entries have been initialized in the 'init' block. This happens if using a 'Data' containing 'structs' without allocating all of its entries in 'init'.")
                     return false
     return true
 
@@ -216,11 +215,14 @@ proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I
 proc length*[T](data : Data[T]) : int {.inline.} =
     return data.length
 
-proc len*[T](data : Data[T]) : int {.inline.} =
-    return data.length
+template len*[T](data : Data[T]) : untyped {.dirty.} =
+    data.length
 
 proc chans*[T](data : Data[T]) : int {.inline.} =
     return data.chans
+
+template channels*[T](data : Data[T]) : untyped {.dirty.} =
+    data.chans
 
 proc size*[T](data : Data[T]) : int {.inline.} =
     return data.size
