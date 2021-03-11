@@ -27,7 +27,6 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
-#C funcs
 proc omni_alloc_C*(size : csize_t)                     : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer)                    : void    {.importc: "omni_free_C", cdecl.}
 
@@ -42,7 +41,9 @@ proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, ra
         zeroMem(mem, long_size)
     return mem
 
-#Custom realloc implementation
+#Custom realloc implementation: it is only needed in Omni_AutoMem when surpassing the limit of
+#objects, so it does not need to be performant. It's just more convenient when writing a parser to
+#just pass a "alloc" and a "free" function.
 proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
     if(in_ptr.isNil):
         return nil
@@ -62,26 +63,20 @@ proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inlin
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
     omni_free_C(in_ptr)
 
-
 # ===================================================== #
 # Discard the use of alloc / alloc0 / realloc / dealloc #
 # ===================================================== #
 
-from macros import error
-
 proc alloc*[N : SomeInteger](size : N) : void =
-    static:
-        error("'alloc' is not supported. Use 'Data' to allocate memory.")
+    {.fatal: "'alloc' is not supported. Use 'Data' to allocate memory.".}
 
 proc alloc0*[N : SomeInteger](size : N) : void =
-    static:
-        error("'alloc0' is not supported. Use 'Data' to allocate memory.")
+    {.fatal: "'alloc0' is not supported. Use 'Data' to allocate memory.".}
 
 proc realloc*[N : SomeInteger](in_ptr : pointer, size : N) : void =
-    static:
-        error("'realloc' is not supported. Use 'Data' to allocate memory.")
+    {.fatal:"'realloc' is not supported. Use 'Data' to allocate memory.".}
 
-#Don't know why this doesn't work...
+#This does not work as it's already a proc. The other ones are actually templates in Nim's internals
 #[ proc dealloc*(in_ptr : pointer) : void =
     static:
         error("dealloc is not supported") ]#
