@@ -144,8 +144,18 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                             num,
                             code_block
                         )
+
+                #Any other case
                 else:
-                    error "loop: Invalid number or identifier '" & repr(num) & "' in ' " & repr(loop_block) & "'"
+                    return nnkForStmt.newTree(
+                        index,
+                        nnkInfix.newTree(
+                           newIdentNode("..<"),
+                           newLit(0),
+                           num
+                        ),
+                        code_block
+                    )
             else:
                 error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(loop_block) & "'"
 
@@ -230,8 +240,18 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                         num,
                         code_block
                     )
+
+            #Any other case
             else:
-                error "loop: Invalid number or identifier '" & repr(num) & "' in ' " & repr(index_or_num) & "'"
+                return nnkForStmt.newTree(
+                    index,
+                    nnkInfix.newTree(
+                        newIdentNode("..<"),
+                        newLit(0),
+                        num
+                    ),
+                    code_block
+                )
         else:
             error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(index_or_num) & "'"
     else:
