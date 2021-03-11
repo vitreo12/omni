@@ -11,5 +11,4 @@ perform:
     scaled_rate = buffer.samplerate / samplerate
     sample:
         out1 = buffer.read(phase)
-        phase += (speed * scaled_rate)
-        phase = phase % buffer.len
+        phase = (phase + (speed * scaled_rate)) % buffer.len
