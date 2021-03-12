@@ -540,6 +540,16 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
             )
         )
 
+#Resolve tilde if in nnkPrefix
+proc resolveTilde(path : NimNode) : void {.compileTime.} =
+    for index, statement in path:
+        if statement.kind == nnkPrefix:
+            let prefix = statement[0]
+            if prefix.kind == nnkIdent:
+                if prefix.strVal() == "~/":
+                    statement[0] = newIdentNode(getHomeDir())
+        resolveTilde(statement)
+
 #use Path:
 #  Something as Something1 
 #  someFunc as someFunc1
@@ -603,11 +613,15 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
             #what about .oi?
             let import_name_omni = import_name_without_extension & ".omni" 
             real_path[^1] = newLit(import_name_omni)
+
+        #Look for tilde to resolve
+        real_path.resolveTilde()
+
     else:
         error "use: Invalid path syntax: " & repr(path)
 
     let import_name_omni_module = newIdentNode(import_name_without_extension & "_omni_module")
-
+    
     #Add import
     import_stmt.add(
         nnkInfix.newTree(
