@@ -232,15 +232,18 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
         )   
 
     for generic_param in generic_params:
-        #ignore autos and omni_call_type:type in generics!
-        if not (generic_param.strVal().endsWith(":type")):
-            new_template_generic_params.add(
-                nnkIdentDefs.newTree(
-                    newIdentNode(generic_param.strVal()),
-                    newIdentNode("SomeNumber"), #generics are always SomeNumber (for now)
-                    newEmptyNode()
+        let generic_param_kind = generic_param.kind
+        if generic_param_kind == nnkIdent or generic_param_kind == nnkSym:
+            let generic_param_str = generic_param.strVal()
+            #ignore autos and omni_call_type:type in generics!
+            if not (generic_param_str.endsWith(":type")):
+                new_template_generic_params.add(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(generic_param_str),
+                        newIdentNode("SomeNumber"), #generics are always SomeNumber (for now)
+                        newEmptyNode()
+                    )
                 )
-            )
 
     #If generic params
     if generic_params.len > 1: # 1 because there's always omni_call_type:type
@@ -253,41 +256,30 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
     for i, formal_param in formal_params:
         #skip return type (first formal param)
         if i != 0: 
-            let 
-                arg_name = formal_param[0]
-                arg_name_str = arg_name.strVal()
-                arg_type = formal_param[1]
+            var 
+                arg_name_sym   = formal_param[0]
+                arg_name_str   = arg_name_sym.strVal()
+                arg_name_ident = newIdentNode(arg_name_str) #Use ident version of arg_name, typed causes errors
+                
+                arg_type_sym   = formal_param[1]
+                arg_type_kind  = arg_type_sym.kind
+                arg_type_str   : string
 
-            #echo astGenRepr arg_type.getTypeImpl()
-
-            var arg_type_str : string
-            if arg_type.kind == nnkIdent or arg_type.kind == nnkSym:
-                arg_type_str = arg_type.strVal()
+            if arg_type_kind == nnkIdent or arg_type_kind == nnkSym:
+                arg_type_str = arg_type_sym.strVal()
             else:
-                arg_type_str = arg_type[0].strVal()
-            
-            #ImportMe -> ImportMe_omni_module.ImportMe_omni_struct_ptr
-            #[ 
-            let inner_type = arg_type.getTypeImpl()
-            if inner_type.kind == nnkPtrTy:
-                if inner_type[0].strVal().endsWith("_omni_struct"):
-                    #is this needed? Os is arg_type enough since it's a symbol?
-                    let new_arg_type = parseStmt(module_name.strVal() & "." & arg_type_str & "_omni_struct_ptr")[0]
-            
-                    #error astGenRepr new_arg_type  
-            ]#
+                arg_type_str = arg_type_sym[0].strVal()
 
-            #Skip samplerate. bufsize, omni_auto_mem, omni_call_type
-            if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "omni_auto_mem" and arg_name_str != "omni_call_type":    
+            if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "omni_auto_mem" and arg_name_str != "omni_call_type": 
                 new_template_formal_params.add(
                     nnkIdentDefs.newTree(
-                        arg_name,
-                        arg_type, #pass the symbols, they already have type infos!!
+                        arg_name_ident, #untyped name
+                        arg_type_sym,   #typed: it already has correct type infos!
                         newEmptyNode()
                     )
                 )
-        
-            new_template_call.add(arg_name)
+
+            new_template_call.add(arg_name_ident)
 
     new_template.add(
         new_template_formal_params,
@@ -299,12 +291,15 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
     )
     
     #This will override entries, which is perfect! I need last representation of each duplicate
-    #So that imports of imports are overwritten. (Basically, if a func is defined in two files, and one is imported in the other, only the last one is considered!)
+    #So that imports of imports are overwritten. 
+    #(Basically, if a func is defined in two files, and one is imported in the other, only the last one is considered!)
     #This is only needed to create new omni_def_exports, as templates override each other already 
     let formal_params_repr = repr(new_template_formal_params)
     def_combinations[formal_params_repr] = def_call
 
     result.add(new_template)
+
+    # error astGenRepr result
 
 proc omni_generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
@@ -330,14 +325,13 @@ proc omni_generate_new_module_bindings_for_struct_or_def_inner(module_name : Nim
             let new_template = omni_generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
             result.add(new_template)
 
-        #error repr result
+    # error astGenRepr result
     
 proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, NimNode], def_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
     for key, value in def_combinations:
         let 
             def_call = value
-
             def_new_name_str = def_new_name.strVal()
 
         #omni_def_dummy / omni_def_export
@@ -397,8 +391,8 @@ proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, 
 
         #actual omni_def_export
         var 
-            def_call_typed = def_call.getImpl() #typed
-            def_call_typed_formal_params = def_call_typed[3] #save formal params! they are typed and carry all type infos
+            def_call_typed = def_call.getImpl()
+            def_call_typed_formal_params = def_call_typed[3] 
         
         #Remove the actual function body, it's unneeded
         #and it creates problems too with parsing of some return statements, due to the parsed_untyped_loop being triggered with typed_to_untyped
@@ -420,6 +414,13 @@ proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, 
         for generic_param in generic_params:
             generic_param[1] = newIdentNode("SomeNumber")
 
+        #Convert all formal params' names to idents or compiler will complain about missing symbols
+        for index, ident_def in def_call_typed_formal_params:
+            if ident_def.kind == nnkIdentDefs:
+                let name = ident_def[0]
+                if name.kind == nnkSym:
+                   def_call_typed_formal_params[index][0] = newIdentNode(name.strVal())
+
         #Use typed formal params (so all type information on arguments and return types is preserverd)
         new_omni_def_export[3] = def_call_typed_formal_params
 
@@ -432,7 +433,7 @@ proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, 
             new_omni_def_export
         )
 
-    #error repr result
+    # error astGenRepr result
 
 macro omni_generate_new_module_bindings_for_struct_or_def*(module_name : untyped, struct_or_def_typed : typed, struct_constructor_typed : typed = nil, struct_or_def_new_name : untyped) : untyped =    
     var def_combinations : OrderedTable[string, NimNode]
@@ -457,7 +458,7 @@ macro omni_generate_new_module_bindings_for_struct_or_def*(module_name : untyped
     let new_omni_def_exports = omni_generate_new_omni_def_exports(def_combinations, struct_or_def_new_name)
     result.add(new_omni_def_exports)
 
-    #error repr result
+    # error astGenRepr result
     
 #use with normal import / export
 proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =

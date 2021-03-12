@@ -31,7 +31,7 @@ proc declare_local_setter_proc(field_name : string, field_type : string) : NimNo
         ),
         newEmptyNode(),
         newEmptyNode(),
-         nnkFormalParams.newTree(
+        nnkFormalParams.newTree(
             newIdentNode("void"),
             nnkIdentDefs.newTree(
                 newIdentNode("buffer"),
