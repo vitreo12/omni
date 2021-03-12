@@ -239,7 +239,8 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 )
 
             #Fully parametrize unparametrized arguments...
-            #This is essential for exported modules, as unparametrized arguments might not be found in defs definitions!
+            #This is essential for exported modules, 
+            #as unparametrized arguments might not be found in defs definitions!
             let struct_arg = struct_args[index]
             if struct_arg.kind != nnkNilLit: #already parametrized
                 let struct_arg_impl = struct_arg.getImpl()
