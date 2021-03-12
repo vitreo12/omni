@@ -242,17 +242,17 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             #This is essential for exported modules, as unparametrized arguments might not be found in defs definitions!
             let struct_arg = struct_args[index]
             if struct_arg.kind != nnkNilLit: #already parametrized
-                let 
-                    struct_arg_impl = struct_arg.getImpl()
-                    struct_arg_impl_generic_params = struct_arg_impl[1]
-                if struct_arg_impl_generic_params.kind == nnkGenericParams:
-                    arg_type = nnkBracketExpr.newTree(
-                        arg_type
-                    )
-                    for generic_param in struct_arg_impl_generic_params:
-                        arg_type.add(
-                            newIdentNode("auto")
+                let struct_arg_impl = struct_arg.getImpl()
+                if struct_arg_impl.len > 1:
+                    let struct_arg_impl_generic_params = struct_arg_impl[1]
+                    if struct_arg_impl_generic_params.kind == nnkGenericParams:
+                        arg_type = nnkBracketExpr.newTree(
+                            arg_type
                         )
+                        for generic_param in struct_arg_impl_generic_params:
+                            arg_type.add(
+                                newIdentNode("auto")
+                            )
 
             #error astGenRepr arg_type
 
