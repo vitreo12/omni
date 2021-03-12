@@ -27,8 +27,8 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
-proc omni_alloc_C*(size : csize_t)                     : pointer {.importc: "omni_alloc_C", cdecl.}
-proc omni_free_C*(in_ptr : pointer)                    : void    {.importc: "omni_free_C", cdecl.}
+proc omni_alloc_C*(size : csize_t)  : pointer {.importc: "omni_alloc_C", cdecl.}
+proc omni_free_C*(in_ptr : pointer) : void    {.importc: "omni_free_C", cdecl.}
 
 proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
     return omni_alloc_C(csize_t(size))
@@ -45,6 +45,22 @@ proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, ra
 #objects, so it does not need to be performant. It's just more convenient when writing a parser to
 #just pass a "alloc" and a "free" function.
 proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
+    if(in_ptr.isNil):
+        return nil
+
+    let
+        long_size = csize_t(size)
+        new_mem   = omni_alloc(long_size)
+    
+    if(not new_mem.isNil):
+        copyMem(new_mem, in_ptr, long_size)
+        omni_free_C(in_ptr)
+        return new_mem
+
+    omni_free_C(in_ptr)
+    return nil
+
+proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
     if(in_ptr.isNil):
         return nil
 
