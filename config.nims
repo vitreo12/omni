@@ -1,6 +1,7 @@
+#generic flags
+#--gc:arc
 --panics:on
 --checks:off
-
 --passC:"-flto"
 --passL:"-flto"
 
