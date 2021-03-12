@@ -31,13 +31,20 @@ proc omni_alloc_C*(size : csize_t)  : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer) : void    {.importc: "omni_free_C", cdecl.}
 
 proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
-    return omni_alloc_C(csize_t(size))
+    when N is csize_t:
+      return omni_alloc_C(size)
+    else:
+      return omni_alloc_C(csize_t(size))
 
 proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, raises:[].} =
-    let 
-        long_size = csize_t(size)
-        mem = omni_alloc_C(long_size)
-    if not isNil(mem):
+    when N is csize_t:
+      let long_size = size
+    else:
+      let long_size = csize_t(size)
+    
+    let mem = omni_alloc_C(long_size)
+
+    if not mem.isNil:
         zeroMem(mem, long_size)
     return mem
 
@@ -45,14 +52,17 @@ proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, ra
 #objects, so it does not need to be performant. It's just more convenient when writing a parser to
 #just pass a "alloc" and a "free" function.
 proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
-    if(in_ptr.isNil):
+    if in_ptr.isNil:
         return nil
-
-    let
-        long_size = csize_t(size)
-        new_mem   = omni_alloc(long_size)
     
-    if(not new_mem.isNil):
+    when N is csize_t:
+      let long_size = size
+    else:
+      let long_size = csize_t(size)
+    
+    let new_mem = omni_alloc_C(long_size)
+    
+    if not new_mem.isNil:
         copyMem(new_mem, in_ptr, long_size)
         omni_free_C(in_ptr)
         return new_mem
@@ -61,14 +71,17 @@ proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inlin
     return nil
 
 proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
-    if(in_ptr.isNil):
+    if in_ptr.isNil:
         return nil
 
-    let
-        long_size = csize_t(size)
-        new_mem   = omni_alloc0(long_size)
+    when N is csize_t:
+      let long_size = size
+    else:
+      let long_size = csize_t(size)
     
-    if(not new_mem.isNil):
+    let new_mem = omni_alloc0(long_size)
+    
+    if not new_mem.isNil:
         copyMem(new_mem, in_ptr, long_size)
         omni_free_C(in_ptr)
         return new_mem
@@ -83,13 +96,13 @@ proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
 # Discard the use of alloc / alloc0 / realloc / dealloc #
 # ===================================================== #
 
-proc alloc*[N : SomeInteger](size : N) : void =
+proc alloc*[N : SomeNumber](size : N) : void =
     {.fatal: "'alloc' is not supported. Use 'Data' to allocate memory.".}
 
-proc alloc0*[N : SomeInteger](size : N) : void =
+proc alloc0*[N : SomeNumber](size : N) : void =
     {.fatal: "'alloc0' is not supported. Use 'Data' to allocate memory.".}
 
-proc realloc*[N : SomeInteger](in_ptr : pointer, size : N) : void =
+proc realloc*[N : SomeNumber](in_ptr : pointer, size : N) : void =
     {.fatal:"'realloc' is not supported. Use 'Data' to allocate memory.".}
 
 #This does not work as it's already a proc. The other ones are actually templates in Nim's internals
