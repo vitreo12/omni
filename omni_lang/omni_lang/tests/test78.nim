@@ -1,12 +1,11 @@
 omni_debug_macros:
-  struct Something:
-    a
+  struct Something[T]:
+    a T
 
   struct SomethingElse:
     something = Something(samplerate)
   
-  init:
-    a = SomethingElse()
-    print a.something.a
+init:
+  a = SomethingElse()
 
-  sample: discard
+sample: discard

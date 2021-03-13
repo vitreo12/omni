@@ -147,8 +147,10 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     #Change name in omni_struct_type argument (third last)
     new_struct_formal_params[^3][1][1] = struct_new_name_export_ident
 
-    #Add omni_struct_type, omni_auto_mem and omni_call_type etc...
+    #Add samplerate, bufsize, omni_struct_type, omni_auto_mem and omni_call_type etc...
     new_struct_call.add(
+        newIdentNode("samplrate"),
+        newIdentNode("bufsize"),
         newIdentNode("omni_struct_type"),
         newIdentNode("omni_auto_mem"),
         newIdentNode("omni_call_type"),

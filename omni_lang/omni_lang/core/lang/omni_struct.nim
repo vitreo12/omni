@@ -767,20 +767,21 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                 nnkStmtList.newTree(
                     nnkWhenStmt.newTree(
                         nnkElifBranch.newTree(
-                          nnkInfix.newTree(
-                            newIdentNode("is"),
-                            field_name,
-                            newIdentNode("string")
-                          ),
-                          nnkLetSection.newTree(
-                            nnkIdentDefs.newTree(
-                              field_name,
-                              newEmptyNode(),
-                              omni_find_struct_constructor_call(
-                                field_init
-                              )
+                            nnkInfix.newTree(
+                                newIdentNode("is"),
+                                field_name,
+                                newIdentNode("string")
+                            ),
+                            nnkLetSection.newTree(
+                                nnkIdentDefs.newTree(
+                                    field_name,
+                                    newEmptyNode(),
+                                    #Build the constructor call using the parser function!
+                                    omni_find_struct_constructor_call(
+                                        field_init
+                                    )
+                                )
                             )
-                          )
                         )
                     ),
                   
@@ -817,6 +818,20 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     if generics_ident_defs.len > 0:
         for generic_ident_defs in generics_ident_defs:
             proc_formal_params.add(generic_ident_defs)
+
+    #Add samplerate and bufsize
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("samplerate"),
+            newIdentNode("float"),
+            newEmptyNode()
+        ),
+        nnkIdentDefs.newTree(
+            newIdentNode("bufsize"),
+            newIdentNode("int"),
+            newEmptyNode()
+        )
+    )
 
     #Add omni_struct_type
     proc_formal_params.add(

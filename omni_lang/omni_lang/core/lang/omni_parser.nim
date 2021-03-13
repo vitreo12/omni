@@ -216,8 +216,18 @@ proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compile
                 )
             )
 
-    #Now prepend omni_struct_type, omni_auto_mem and omni_call_type with named access!
+    #Now prepend samplerate, bufsize, omni_struct_type, omni_auto_mem and omni_call_type with named access!
     proc_new_call.add(
+        nnkExprEqExpr.newTree(
+            newIdentNode("samplerate"),
+            newIdentNode("samplerate")
+        ),
+
+        nnkExprEqExpr.newTree(
+            newIdentNode("bufsize"),
+            newIdentNode("bufsize")
+        ),
+
         nnkExprEqExpr.newTree(
             newIdentNode("omni_struct_type"),
             omni_struct_ptr_name
