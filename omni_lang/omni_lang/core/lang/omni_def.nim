@@ -531,7 +531,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     else:
         function_signature_call = function_signature
         function_signature_call_kind = function_signature_kind
-    
+
     #Extract argument types from function signature
     if function_signature_call_kind == nnkCall:
         for i, arg in function_signature_call:
@@ -556,7 +556,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             call_omni_def_inner.add(arg_type)
     else:
-        error "def: invalid function signature: '" & $repr(function_signature) & "'"
+        if function_signature_call_kind != nnkIdent:
+            error "def: invalid function signature: '" & $repr(function_signature) & "'"
 
     return quote do:
         when not declared(omni_current_module_def):
