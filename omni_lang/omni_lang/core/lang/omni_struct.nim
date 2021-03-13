@@ -562,6 +562,18 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         `omni_struct_create_init_proc_and_template`
         `omni_find_structs_and_datas`
 
+#convert a type to standard G1 generics
+proc omni_convert_generic_type(field_type : NimNode, generics_mapping : OrderedTable[string, NimNode]) : void {.compileTime.} =
+    for index, entry in field_type:
+        let entry_kind = entry.kind
+        if entry_kind == nnkIdent or entry_kind == nnkSym:
+              let 
+                entry_str_val = entry.strVal()
+                generic_mapping = generics_mapping.getOrDefault(entry_str_val)
+              if generic_mapping != nil:
+                  field_type[index] = generic_mapping
+        omni_convert_generic_type(entry, generics_mapping)
+
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
 macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_inits : untyped) : untyped =
     if ptr_struct_name.kind != nnkSym:
@@ -772,6 +784,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                 field_init = nnkCall.newTree(field_type)
             
             #Convert Something[T](10) to Something[G1](10)
+            omni_convert_generic_type(field_init, generics_mapping)
 
             arg_field_value = newStrLitNode(repr(field_init))
 
@@ -914,7 +927,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     #Add proc to result
     final_stmt_list.add(proc_def)
 
-    # echo repr final_stmt_list
+    echo repr final_stmt_list
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
