@@ -138,7 +138,7 @@ proc omni_parse_sample_block(sample_block : NimNode) : NimNode {.compileTime.} =
 # ALSO GENERICS: (Data has a different behaviour)
 # Phasor[float]() -> when declared(Phasor_omni_struct) : Phasor[float].struct_new() else: Phasor[float]()
 # Data[int](10) -> when declared(Data_omni_struct) : Data.struct_new(10, dataType=int) else: Data[int](10)
-proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileTime.} =
+proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compileTime.} =
     if statement.kind != nnkCall:
         return statement
 
@@ -247,8 +247,7 @@ proc omni_find_struct_constructor_call(statement : NimNode) : NimNode {.compileT
             ),
         )
 
-    #error repr proc_new_call
-
+    #This happens in normal code
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(
             nnkCall.newTree(

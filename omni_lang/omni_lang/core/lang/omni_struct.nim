@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities
+import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities, omni_parser
 
 const omni_valid_struct_generics = [
     "int", "int32", "int64",
@@ -160,7 +160,7 @@ macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias
     final_stmt_list.add(type_section)
 
     #error astgenrepr final_stmt_list
-    #echo repr final_stmt_list
+    # error repr final_stmt_list
 
     return quote do:
         `final_stmt_list`
@@ -282,6 +282,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var_names      = nnkStmtList.newTree()
         fields_untyped = nnkStmtList.newTree()
         fields_typed   : seq[NimNode]
+        var_inits      = nnkStmtList.newTree()
 
     var struct_name_str : string
 
@@ -412,6 +413,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var 
             var_name : NimNode
             var_type : NimNode
+            var_init : NimNode
 
         #NO type defined, default it to float
         if code_stmt_kind == nnkIdent:
@@ -431,10 +433,39 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             #Type can either be an ident, a bracket expr (generics) or a tuple (par)
             if var_type_kind != nnkIdent:
                 if var_type_kind != nnkBracketExpr and var_type_kind != nnkPar:
-                    error "struct " & repr(ptr_name) & ": Invalid field type in '" & repr(code_stmt) & "'"
+                    error "struct '" & repr(ptr_name) & "': Invalid field type in '" & repr(code_stmt) & "'"
 
+        #phase = 0.0 / phase float = 0.0
+        elif code_stmt_kind == nnkAsgn:
+            let
+                asgn_left  = code_stmt[0]
+                asgn_left_kind = asgn_left.kind
+                asgn_right = code_stmt[1]
+                asgn_right_kind = asgn_right.kind
+
+            #TODO: add support for other calling syntaxes (Data 100, Data.new(), Data.new, new Data, etc...) 
+            #This also has to be reflected later when using var_init in omni_struct_create_init_proc_and_template
+            if asgn_right_kind == nnkCall or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
+                var_init = asgn_right
+                
+                #phase = 0
+                if asgn_left_kind == nnkIdent:
+                    var_name = asgn_left
+                    if asgn_right_kind != nnkFloatLit and asgn_right_kind != nnkIntLit:
+                        var_type = var_init[0] #Naively extract type from constructor call 'Data(100)'
+                    else:
+                        var_type = newIdentNode("float")
+                
+                #phase float = 0
+                elif asgn_left_kind == nnkCommand:
+                    var_name = asgn_left[0]
+                    var_type = asgn_left[1]
+                else:
+                    error "struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'"
+            else:
+                error "struct '" & repr(ptr_name) & "': Invalid field initialization: '" & repr(asgn_right) & "'"
         else:
-            error "struct " & repr(ptr_name) & ": Invalid field '" & repr(code_stmt) & "'"
+            error "struct '" & repr(ptr_name) & "': Invalid field '" & repr(code_stmt) & "'"
 
         var var_type_untyped_or_typed = false
 
@@ -461,6 +492,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
             fields_typed.add(var_type)
 
+        var_inits.add(var_init)
+
     #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to omni_declare_struct
     ptr_type_def.add(ptr_ty)
 
@@ -480,7 +513,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     #The init_struct macro, which will declare the "proc omni_struct_new ..." and the "template new ..."
     let omni_struct_create_init_proc_and_template = nnkCall.newTree(
         newIdentNode("omni_struct_create_init_proc_and_template"),
-        ptr_name
+        ptr_name,
+        var_inits
     )
 
     let omni_find_structs_and_datas = nnkCall.newTree(
@@ -509,7 +543,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         `omni_find_structs_and_datas`
 
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
-macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
+macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_inits : untyped) : untyped =
     if ptr_struct_name.kind != nnkSym:
         error "struct: Invalid struct ptr symbol!"
 
@@ -671,10 +705,12 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
     for index, field in struct_fields:
         assert field.len == 3
+        assert var_inits.len == struct_fields.len
 
         var 
             field_name = field[0]
             field_type = field[1]
+            field_init = var_inits[index]
             field_type_kind = field_type.kind
 
         var field_type_without_generics = field_type
@@ -706,9 +742,14 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         #Always have auto params. The typing will be checked in the body anyway.
         #This solves a lot of problems with generic parameters, and still works (even with structs)
         arg_field_type = newIdentNode("auto")
+        
+        #If field is struct, pass the explicit or default constructor as a string
+        if field_is_struct:
+            if field_init == nil:
+                field_init = nnkCall.newTree(field_type)
+            arg_field_value = newStrLitNode(repr(field_init))
 
-        #if no struct, go with auto and have value 0
-        if not field_is_struct:
+        else:
             arg_field_value = newIntLitNode(0)    
 
         #Add to arg list for omni_struct_new proc
@@ -723,12 +764,33 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         #Add result.phase = phase, etc... assignments... Don't cast
         if field_is_struct:
             proc_body.add(
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("result"),
-                        field_name
+                nnkStmtList.newTree(
+                    nnkWhenStmt.newTree(
+                        nnkElifBranch.newTree(
+                          nnkInfix.newTree(
+                            newIdentNode("is"),
+                            field_name,
+                            newIdentNode("string")
+                          ),
+                          nnkLetSection.newTree(
+                            nnkIdentDefs.newTree(
+                              field_name,
+                              newEmptyNode(),
+                              omni_find_struct_constructor_call(
+                                field_init
+                              )
+                            )
+                          )
+                        )
                     ),
-                    field_name
+                  
+                    nnkAsgn.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("result"),
+                            field_name
+                        ),
+                        field_name
+                    )
                 )
             )
 
@@ -806,10 +868,11 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
     #Add proc to result
     final_stmt_list.add(proc_def)
 
+    # error repr final_stmt_list
+
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
 
-    #error repr final_stmt_list_untyped
+    # error repr final_stmt_list_untyped
     
-    return quote do:
-        `final_stmt_list_untyped`
+    return final_stmt_list_untyped
