@@ -256,6 +256,10 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
                 )
             )
 
+macro omni_struct_parse_call*(block_call : typed) : untyped =
+    let call = block_call[1][^1]
+    error astGenRepr (call[0].getTypeImpl)[0][0]
+
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
@@ -460,6 +464,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 elif asgn_left_kind == nnkCommand:
                     var_name = asgn_left[0]
                     var_type = asgn_left[1]
+
                 else:
                     error "struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'"
             else:
@@ -482,6 +487,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
                 
             fields_untyped.add(var_type)
+        
         else:
             var_names.add(
                 nnkBracketExpr.newTree(
@@ -534,9 +540,23 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     for field_typed in fields_typed:
         omni_declare_struct.add(field_typed)
 
-    #error astGenRepr checkValidTypes
+    # error astGenRepr checkValidTypes
+    
+    let test = quote do:
+        block: 
+            let 
+                bufsize            {.inject.} : int            = 0
+                samplerate         {.inject.} : float          = 0.0
+                buffer_interface   {.inject.} : pointer        = nil
+                omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
+            
+            var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
+
+            newSomething()
 
     return quote do:
+        # omni_struct_parse_call(`test`)
+
         `checkValidTypes`
         `omni_declare_struct`
         `omni_struct_create_init_proc_and_template`
@@ -727,7 +747,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         let 
             field_is_struct  = field_type_without_generics.omni_is_struct()
             field_is_generic = generics_mapping.hasKey(field_type_without_generics_str)
-        
+
         #Use the types without generics, as they are set before the generics are declared.
         #Also, these will be solved when assigning the results... Perhaps I could go with auto anyway?
         #Values are set already in result.a = a
@@ -743,14 +763,25 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         #This solves a lot of problems with generic parameters, and still works (even with structs)
         arg_field_type = newIdentNode("auto")
         
+        # if field_is_generic:
+        echo repr field_type
+        
         #If field is struct, pass the explicit or default constructor as a string
         if field_is_struct:
             if field_init == nil:
                 field_init = nnkCall.newTree(field_type)
+            
+            #Convert Something[T](10) to Something[G1](10)
+
             arg_field_value = newStrLitNode(repr(field_init))
 
         else:
-            arg_field_value = newIntLitNode(0)    
+            if field_init == nil:
+                arg_field_value = newIntLitNode(0)    
+            else:
+                arg_field_value = field_init
+
+        # echo astGenRepr arg_field_value
 
         #Add to arg list for omni_struct_new proc
         proc_formal_params.add(
@@ -883,7 +914,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     #Add proc to result
     final_stmt_list.add(proc_def)
 
-    # error repr final_stmt_list
+    # echo repr final_stmt_list
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)

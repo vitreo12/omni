@@ -1,13 +1,14 @@
-omni_debug_macros:
-  struct Something[T]:
-    a T
+# omni_debug_macros:
+struct Something[T]:
+  a T
 
-  def newSomething:
-    return Something()
+def newSomething:
+  return Data(10)
 
-  struct SomethingElse:
-    something = Something(samplerate)
-    # something2 = newSomething()
+struct SomethingElse[T]:
+  something Something[T]
+  # something = Something[T](samplerate)
+  # something2 = newSomething()
   
 init:
   a = SomethingElse()

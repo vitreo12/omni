@@ -37,6 +37,8 @@ template omni_init_buffer*(name : string) : untyped {.dirty.} =
     Buffer_omni_struct_new(
         buffer_name=name,
         buffer_interface=buffer_interface,
+        samplerate=samplerate,
+        bufsize=bufsize,
         omni_struct_type=Buffer_omni_struct_ptr, 
         omni_auto_mem=omni_auto_mem, 
         omni_call_type=omni_call_type

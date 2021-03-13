@@ -388,6 +388,16 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                             newEmptyNode()
                         ),
                         nnkIdentDefs.newTree(
+                            newIdentNode("samplerate"),
+                            newIdentNode("float"),
+                            newEmptyNode()
+                        ),
+                        nnkIdentDefs.newTree(
+                            newIdentNode("bufsize"),
+                            newIdentNode("int"),
+                            newEmptyNode()
+                        ),
+                        nnkIdentDefs.newTree(
                             newIdentNode("omni_struct_type"),
                             nnkBracketExpr.newTree(
                                 newIdentNode("typedesc"),

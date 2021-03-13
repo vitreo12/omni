@@ -46,7 +46,7 @@ const
     chans_error   = "WARNING: Omni: Data's chans must be a positive number. Setting it to 1."
 
 #Constructor interface: Data
-proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], omni_struct_type : typedesc[Data_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
+proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), chans : C = int(1), G1 : typedesc = typedesc[float], samplerate : float, bufsize : int, omni_struct_type : typedesc[Data_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Data[G1]  {.inline.} =
     #Trying to allocate in perform block! nonono
     when omni_call_type is Omni_PerformCall:
         {.fatal: "struct 'Data': attempting to allocate memory in the 'perform' or 'sample' blocks.".}

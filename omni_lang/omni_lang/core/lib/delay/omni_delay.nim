@@ -37,7 +37,7 @@ type
 
     Delay_omni_struct_ptr* = Delay
 
-proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, omni_struct_type : typedesc[Delay_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
+proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, bufsize : int, omni_struct_type : typedesc[Delay_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when omni_call_type is Omni_PerformCall:
         {.fatal: "struct 'Delay': attempting to allocate memory in the 'perform' or 'sample' blocks.".}
