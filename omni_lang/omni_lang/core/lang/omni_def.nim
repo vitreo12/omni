@@ -31,13 +31,6 @@ proc omni_check_arg_has_generics(arg_type : NimNode, generics_mapping : OrderedT
             return true
     
     for index, statement in arg_type:
-        let 
-            ident_str = statement.strVal()
-            new_generic_mapping = generics_mapping.getOrDefault(ident_str)
-        if new_generic_mapping != nil:
-            arg_type[index] = new_generic_mapping
-            return true
-        
         #There might be more than one, this is the easiest solution!
         result = omni_check_arg_has_generics(statement, generics_mapping)
         if result:
@@ -64,6 +57,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         proc_return_type : NimNode
         proc_name : NimNode
         proc_name_str : string
+        proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
 
         template_def = nnkTemplateDef.newTree()
@@ -152,15 +146,11 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 let new_G_generic_ident = newIdentNode("G" & $index)
                 generics_mapping[entry.strVal()] = new_G_generic_ident
 
-                #Add G1, G2 to proc formal params BEFORE args!
-                proc_formal_params.add(
+                proc_generic_params.add(
                     nnkIdentDefs.newTree(
-                        new_G_generic_ident,
-                        newIdentNode("typedesc"),
-                        nnkBracketExpr.newTree(
-                            newIdentNode("typedesc"),
-                            newIdentNode("float")
-                        )
+                        entry,
+                        newIdentNode("SomeNumber"),
+                        newEmptyNode()
                     )
                 )
         
@@ -243,13 +233,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             if generics.len > 0:
                 if omni_check_arg_has_generics(arg_type_proc, generics_mapping):
                     arg_type_is_generic = true
-                    #Convert T to G1 for proc
-                    if arg_type_proc.kind == nnkIdent:
-                        let 
-                            ident_str = arg_type_proc.strVal()
-                            generic_mapping = generics_mapping.getOrDefault(ident_str)
-                        if generic_mapping != nil:
-                            arg_type_proc = generic_mapping
 
             #only add check for current type if is not a generic one
             if not arg_type_is_generic:
@@ -309,10 +292,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
             #Add arg name to template call and wrap in generic if it was declared as generic!
             template_body_call.add(
-                nnkExprEqExpr.newTree(
-                    arg_name,
-                    arg_name
-                )
+                arg_name
             )
         
         # ========== #
@@ -326,8 +306,17 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 proc_name
             ),
             newEmptyNode(),
-            newEmptyNode()
         )
+
+        #Add generics if needed
+        if generics.len > 0:
+            proc_def.add(
+                proc_generic_params
+            )
+        else:
+            proc_def.add(
+                newEmptyNode()
+            )
         
         #subsitute generics with G1, G2, etc... in both code and formal params!
         var code_block_sub_generics = code_block
@@ -400,8 +389,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #Add function body (with checks for var/lets macro)
         proc_def.add(proc_body)
 
-        # error repr proc_def
-
         # ================= #
         # BUILD EXPORT PROC #
         # ================= #
@@ -442,6 +429,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                     )
               )
         
+        #Add formal params to def
         template_def.add(
             template_formal_params,
             newEmptyNode(),
@@ -460,25 +448,16 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                     template_body_call[0].add(
                         new_generic_mapping
                     )
+            # template_body_call[0].add(
+            #   newIdentNode("Omni_InitCall")
+            # )
                 
         #Add samplerate / bufsize / omni_auto_mem / omni_call_type to template call
         template_body_call.add(
-            nnkExprEqExpr.newTree(
-                newIdentNode("samplerate"),
-                newIdentNode("samplerate")
-            ),
-            nnkExprEqExpr.newTree(
-                newIdentNode("bufsize"),
-                newIdentNode("bufsize")
-            ),
-            nnkExprEqExpr.newTree(
-                newIdentNode("omni_auto_mem"),
-                newIdentNode("omni_auto_mem")
-            ),
-            nnkExprEqExpr.newTree(
-                newIdentNode("omni_call_type"),
-                newIdentNode("omni_call_type")
-            )
+            newIdentNode("samplerate"),
+            newIdentNode("bufsize"),
+            newIdentNode("omni_auto_mem"),
+            newIdentNode("omni_call_type")
         )
         
         #Add body (just call _inner proc, adding "omni_auto_mem" and "omni_call_type" at the end)
@@ -558,7 +537,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
     
     # error astGenRepr proc_and_template
 
-    error repr proc_and_template
+    # error repr proc_and_template
 
     return quote do:
         #Run validity type check on each argument of the def
