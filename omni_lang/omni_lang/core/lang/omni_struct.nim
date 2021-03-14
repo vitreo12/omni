@@ -928,7 +928,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     #Add proc to result
     final_stmt_list.add(proc_def)
 
-    echo repr final_stmt_list
+    # echo repr final_stmt_list
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
