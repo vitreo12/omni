@@ -149,7 +149,7 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
 
     #Add samplerate, bufsize, omni_struct_type, omni_auto_mem and omni_call_type etc...
     new_struct_call.add(
-        newIdentNode("samplrate"),
+        newIdentNode("samplerate"),
         newIdentNode("bufsize"),
         newIdentNode("omni_struct_type"),
         newIdentNode("omni_auto_mem"),
@@ -300,6 +300,8 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
     def_combinations[formal_params_repr] = def_call
 
     result.add(new_template)
+
+    error repr result
 
     # error astGenRepr result
 

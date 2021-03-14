@@ -209,12 +209,31 @@ proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compile
             if i == 0:
                 continue
 
-            proc_new_call.add(
-                nnkExprEqExpr.newTree(
-                    newIdentNode("G" & $i),
+            let 
+                new_G_generic_ident = newIdentNode("G" & $i)
+                generic_eq_expr = nnkExprEqExpr.newTree(
+                    new_G_generic_ident,
                     generic_val
                 )
+
+            #Add generics to constructor
+            proc_new_call.add(
+                generic_eq_expr
             )
+
+            #Add generics to def call: someFunc[int]() -> someFunc(G1 = int)
+            if parsed_statement[0].kind == nnkBracketExpr:
+                parsed_statement[0] = newIdentNode(
+                    parsed_statement[0][0].strVal()
+                )
+
+                parsed_statement.add(
+                    generic_eq_expr
+                )
+            else:
+                parsed_statement.add(
+                    generic_eq_expr
+                )
 
     #Now prepend samplerate, bufsize, omni_struct_type, omni_auto_mem and omni_call_type with named access!
     proc_new_call.add(
@@ -270,14 +289,14 @@ proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compile
         ),
         nnkElseExpr.newTree(
             nnkStmtList.newTree(
-                statement
+                parsed_statement
             )
         )
     )
 
     result = when_statement_struct_new
 
-    #error repr result
+    # error repr result
 
 # ================================ #
 # Stage 1: Untyped code generation #

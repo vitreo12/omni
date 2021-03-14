@@ -775,19 +775,19 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         #This solves a lot of problems with generic parameters, and still works (even with structs)
         arg_field_type = newIdentNode("auto")
         
-        # if field_is_generic:
-        echo repr field_type
-        
         #If field is struct, pass the explicit or default constructor as a string
         if field_is_struct:
+            #If no init provided, use default constructor of the type
             if field_init == nil:
                 field_init = nnkCall.newTree(field_type)
             
             #Convert Something[T](10) to Something[G1](10)
             omni_convert_generic_type(field_init, generics_mapping)
 
-            arg_field_value = newStrLitNode(repr(field_init))
+            #Have a string as arg default value: it's checked later!
+            arg_field_value = newStrLitNode("")
 
+        #Else pass the value through
         else:
             if field_init == nil:
                 arg_field_value = newIntLitNode(0)    
@@ -814,6 +814,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                             nnkInfix.newTree(
                                 newIdentNode("is"),
                                 field_name,
+                                #If arg is string (""),
                                 newIdentNode("string")
                             ),
                             nnkLetSection.newTree(

@@ -2,14 +2,14 @@
 struct Something[T]:
   a T
 
-def newSomething:
-  return Data(10)
+def newData:
+  return Data(samplerate)
 
 struct SomethingElse[T]:
-  # something Something[T]
-  something = Something[T](samplerate)
-  # something2 = newSomething()
-  
+  something Something[T]
+  something2 = Something[T](samplerate) #using a constructor: type is inferred
+  something3 Data = newData() #not calling a constructor: must be explicit on the type!
+
 init:
   a = SomethingElse()
   b = SomethingElse[int]()
