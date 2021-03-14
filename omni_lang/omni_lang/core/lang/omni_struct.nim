@@ -256,10 +256,6 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
                 )
             )
 
-macro omni_struct_parse_call*(block_call : typed) : untyped =
-    let call = block_call[1][^1]
-    error astGenRepr (call[0].getTypeImpl)[0][0]
-
 #Entry point for struct
 macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     var 
@@ -299,8 +295,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
-        if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct '" & $ptr_name & $ "' must start with a capital letter")
+        if ptr_name.strVal[0].isLowerAscii:
+            error("struct '" & $ptr_name & $ "' must start with a capital letter.")
 
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
@@ -335,9 +331,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 if child.len() == 0:
                     ##Also add the name of the generic to the Phasor_omni_struct[T, Y...]
                     obj_bracket_expr.add(child)
-
-                    #Also add the name of the generic to the Phasor[T, Y...]
-                    #ptr_bracket_expr.add(child)
 
                     generic_proc.add(
                         child,
@@ -449,9 +442,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
             #TODO: add support for other calling syntaxes (Data 100, Data.new(), Data.new, new Data, etc...) 
             #This also has to be reflected later when using var_init in omni_struct_create_init_proc_and_template
+            #TODO: naively just checking for a function with capital letter to assume it's a struct
             if asgn_right_kind == nnkCall or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
                 var_init = asgn_right
-                
+
                 #phase = 0
                 if asgn_left_kind == nnkIdent:
                     var_name = asgn_left
@@ -459,6 +453,12 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                         var_type = var_init[0] #Naively extract type from constructor call 'Data(100)'
                     else:
                         var_type = newIdentNode("float")
+                    
+                    #If the func starts with low letter, it's a def: error out.
+                    if var_type.kind == nnkIdent:
+                        let var_type_str = var_type.strVal()
+                        if var_type_str != "float" and var_type_str[0].isLowerAscii:
+                            error "struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "'. This is only allowed if explicitly specifying the type."
                 
                 #phase float = 0
                 elif asgn_left_kind == nnkCommand:
@@ -540,23 +540,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     for field_typed in fields_typed:
         omni_declare_struct.add(field_typed)
 
-    # error astGenRepr checkValidTypes
-    
-    let test = quote do:
-        block: 
-            let 
-                bufsize            {.inject.} : int            = 0
-                samplerate         {.inject.} : float          = 0.0
-                buffer_interface   {.inject.} : pointer        = nil
-                omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
-            
-            var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
-
-            newSomething()
-
     return quote do:
-        # omni_struct_parse_call(`test`)
-
         `checkValidTypes`
         `omni_declare_struct`
         `omni_struct_create_init_proc_and_template`
@@ -793,8 +777,6 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                 arg_field_value = newIntLitNode(0)    
             else:
                 arg_field_value = field_init
-
-        # echo astGenRepr arg_field_value
 
         #Add to arg list for omni_struct_new proc
         proc_formal_params.add(

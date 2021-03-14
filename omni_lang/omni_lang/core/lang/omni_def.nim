@@ -94,7 +94,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         function_signature_kind = nnkCall
     
     if function_signature_kind == nnkCommand or function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall or function_signature_kind == nnkInfix:
-        
         var name_with_args : NimNode
 
         #Missing the return type entirely OR not providing any infos at all.
@@ -174,13 +173,18 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         if proc_name.kind != nnkIdent and proc_name.kind != nnkSym:
             error "def: Invalid name: '" & repr(first_statement) & "'"
 
-        #Check name validity
+        #str
         proc_name_str = proc_name.strVal()
 
+        #Check name validity
         for invalid_ends_with in omni_invalid_ends_with:
             if proc_name_str.endsWith(invalid_ends_with):
                 error("def: Can't define a def that ends with '" & invalid_ends_with & "': it's reserved for internal use.")
         
+        #Only allow low case name
+        if proc_name_str[0].isUpperAscii:
+            error "def '" & proc_name_str & "' must start with a low case letter not to collide names with 'structs'."
+
         #Add template and proc names
         template_name = proc_name
 
