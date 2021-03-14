@@ -35,7 +35,7 @@ proc omni_check_arg_has_generics(arg_type : NimNode, generics_mapping : OrderedT
             ident_str = statement.strVal()
             new_generic_mapping = generics_mapping.getOrDefault(ident_str)
         if new_generic_mapping != nil:
-            arg_type[index] = newIdentNode(new_generic_mapping.strVal() & "_omni_arg")
+            arg_type[index] = new_generic_mapping 
             return true
         
         #There might be more than one, this is the easiest solution!
@@ -50,7 +50,7 @@ proc omni_substitute_generics_code_block(code_block : NimNode, generics_mapping 
                 ident_str = statement.strVal()
                 new_generic_mapping = generics_mapping.getOrDefault(ident_str)
             if new_generic_mapping != nil:
-                code_block[index] = newIdentNode(new_generic_mapping.strVal() & "_omni_arg")
+                code_block[index] = new_generic_mapping
         omni_substitute_generics_code_block(statement, generics_mapping)
 
 macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
@@ -146,9 +146,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 generics.add(entry)
                 
                 #Generate G1, G2 ...
-                let 
-                    new_G_generic_ident = newIdentNode("G" & $index)
-                    new_G_generic_ident_proc = newIdentNode("G" & $index & "_omni_arg")
+                let new_G_generic_ident = newIdentNode("G" & $index)
                 
                 #add to table
                 generics_mapping[entry.strVal()] = new_G_generic_ident
@@ -156,7 +154,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 #Add G1, G2 to proc formal params BEFORE args!
                 proc_formal_params.add(
                     nnkIdentDefs.newTree(
-                        new_G_generic_ident_proc,
+                        new_G_generic_ident,
                         newIdentNode("typedesc"),
                         nnkBracketExpr.newTree(
                             newIdentNode("typedesc"),
@@ -195,16 +193,12 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         template_body_call.add(proc_name)
         
         #THIS IS ESSENTIAL: ANY GENERIC MUST BE ADDED before the arg:
-        #This compiles: test(G1_omni_arg = int, a = 0)
-        #This doesn't : test(a = 0, G1_omni_arg = int)
+        #This compiles: test(G1 = int, a = 0)
+        #This doesn't : test(a = 0, G1 = int)
         if generics.len > 0:
             for _, generic_mapping in generics_mapping:
-                let generic_mapping_proc = newIdentNode(generic_mapping.strVal() & "_omni_arg")
                 template_body_call.add(
-                    nnkExprEqExpr.newTree(
-                        generic_mapping_proc,
-                        generic_mapping
-                    )
+                    generic_mapping,
                 )
         
         let args_block = name_with_args[1..name_with_args.len-1]
@@ -239,9 +233,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             
             #a float -> a : float
             elif statement_kind == nnkCommand:
-                
-                assert statement.len == 2
-
                 arg_name = statement[0]
                 arg_type_proc = statement[1]
                 arg_value = newEmptyNode()
@@ -267,7 +258,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                             ident_str = arg_type_proc.strVal()
                             generic_mapping = generics_mapping.getOrDefault(ident_str)
                         if generic_mapping != nil:
-                            arg_type_proc = newIdentNode(generic_mapping.strVal() & "_omni_arg")
+                            arg_type_proc = generic_mapping 
 
             #only add check for current type if is not a generic one
             if not arg_type_is_generic:
@@ -308,8 +299,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                                 newIdentNode("auto")
                             )
             
-            # var arg_name_proc = newIdentNode(arg_name.strVal() & "_omni_arg")
-
             #new arg
             new_arg_proc = nnkIdentDefs.newTree(
                 arg_name,
@@ -330,10 +319,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             #Add arg name to template call and wrap in generic if it was declared as generic!
             template_body_call.add(
                 arg_name
-                # nnkExprEqExpr.newTree(
-                #     arg_name_proc,
-                #     arg_name
-                # )
             )
 
         #Add name of func (with _inner appended) with * for export
@@ -429,15 +414,13 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #Add generics to template_formal_params!
         if generics_mapping.len > 0:
             for _, generic_mapping in generics_mapping:
-              let generic_mapping_proc = newIdentNode(generic_mapping.strVal() & "_omni_arg")
-
               #Add check for SomeNumber in proc
               proc_body.add(
                   nnkWhenStmt.newTree(
                       nnkElifBranch.newTree(
                           nnkInfix.newTree(
                               newIdentNode("isnot"),
-                              generic_mapping_proc,
+                              generic_mapping,
                               newIdentNode("SomeNumber"),
                           ),
                           nnkStmtList.newTree(
