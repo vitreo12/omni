@@ -86,8 +86,8 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
     if current_module.kind != nnkSym and current_module.kind != nnkIdent:
         error ("def " & repr(function_signature) & ": can't retrieve its current module")
 
-    #def a:
-    if function_signature_kind == nnkIdent:
+    #def a: / def a[T]:
+    if function_signature_kind == nnkIdent or function_signature_kind == nnkBracketExpr:
         function_signature = nnkCall.newTree(
             function_signature
         )
@@ -118,7 +118,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
         var first_statement : NimNode
 
-        #support for def a: instead of def a():
+        #support for def a: instead of def a()
         if name_with_args.kind == nnkIdent:
             first_statement = name_with_args
             name_with_args  = nnkCall.newTree(
@@ -631,7 +631,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             call_omni_def_inner.add(arg_type)
     else:
-        if function_signature_call_kind != nnkIdent:
+        if function_signature_call_kind != nnkIdent and function_signature_call_kind != nnkBracketExpr:
             error "def: invalid function signature: '" & $repr(function_signature) & "'"
 
     return quote do:
