@@ -88,7 +88,7 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
 
 import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities
 
-macro omni_data_generic_default(t : typed, i : int, y : int) : untyped =
+macro omni_data_generic_default(t : typed) : untyped =
   var type_instance = t.getTypeInst[1]
 
   #Convert everything to idents, or omni_find_struct_constructor_call won't work
@@ -100,24 +100,25 @@ macro omni_data_generic_default(t : typed, i : int, y : int) : untyped =
           )
       )
 
+  #Doesn't work with omnicollider, prints garbage for second element
   let print_warning = nnkCall.newTree(
-    newIdentNode("omni_print_str"),
-    newLit("WARNING: Omni: 'Data': an entry has not been explicitly initialized. Setting it to '" & $repr(type_instance) & "()'.")
+      newIdentNode("omni_print"),
+      newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': the entry at index %d has not been explicitly initialized. Setting it to '" & $repr(type_instance) & "()'.\n"),
+      # newIdentNode("i"),
+      newIdentNode("y")
   )
-
-  echo repr omni_type_instance_call
 
   return quote do:
       data[i, y] = `omni_type_instance_call`
       `print_warning`
 
 proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void {.inline.} =
-    when T isnot SomeNumber:
+    when T isnot SomeNumber and T isnot bool:
         for i in 0 ..< data.chans:
             for y in 0 ..< data.length:
                 let entry = cast[pointer](data[i, y])
                 if isNil(entry):
-                    omni_data_generic_default(T, i, y)
+                    omni_data_generic_default(T)
 
 ############
 # ITERATOR #
