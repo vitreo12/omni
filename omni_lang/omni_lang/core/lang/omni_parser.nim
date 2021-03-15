@@ -267,15 +267,6 @@ proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compile
     if proc_call_ident_str == "Buffer":
         error "'" & (repr statement) & "': Buffers can't be created explicitly. Use the 'buffers' interface instead."
 
-    #If Delay, pass samplerate (needed for default)
-    elif proc_call_ident_str == "Delay":
-        proc_new_call.add(
-            nnkExprEqExpr.newTree(
-                newIdentNode("samplerate"),
-                newIdentNode("samplerate")
-            ),
-        )
-
     #This happens in normal code
     let when_statement_struct_new = nnkWhenStmt.newTree(
         nnkElifExpr.newTree(

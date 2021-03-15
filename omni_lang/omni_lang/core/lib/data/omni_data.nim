@@ -85,15 +85,38 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     result.length = real_length
     result.size   = size
 
-proc omni_check_data_validity*[T](data : Data[T]) : bool =
+import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities
+
+macro omni_data_generic_default(t : typed, i : int, y : int) : untyped =
+  var type_instance = t.getTypeInst[1]
+
+  #Convert everything to idents, or omni_find_struct_constructor_call won't work
+  type_instance = typed_to_untyped(type_instance)[0]
+  
+  let omni_type_instance_call = omni_find_struct_constructor_call(
+          nnkCall.newTree(
+              type_instance
+          )
+      )
+
+  let print_warning = nnkCall.newTree(
+    newIdentNode("omni_print_str"),
+    newLit("WARNING: Omni: 'Data': an entry has not been explicitly initialized. Setting it to '" & $repr(type_instance) & "()'.")
+  )
+
+  echo repr omni_type_instance_call
+
+  return quote do:
+      data[i, y] = `omni_type_instance_call`
+      `print_warning`
+
+proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void {.inline.} =
     when T isnot SomeNumber:
         for i in 0 ..< data.chans:
             for y in 0 ..< data.length:
                 let entry = cast[pointer](data[i, y])
                 if isNil(entry):
-                    print("ERROR: Omni: Not all 'Data' entries have been initialized in the 'init' block. This happens if using a 'Data' containing 'structs' without allocating all of its entries in 'init'.")
-                    return false
-    return true
+                    omni_data_generic_default(T, i, y)
 
 ############
 # ITERATOR #
