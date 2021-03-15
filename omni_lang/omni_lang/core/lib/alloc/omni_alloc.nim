@@ -27,26 +27,36 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
+import ../print/omni_print
+
 proc omni_alloc_C*(size : csize_t)  : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer) : void    {.importc: "omni_free_C", cdecl.}
 
 proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
     when N is csize_t:
-      return omni_alloc_C(size)
+        let mem = omni_alloc_C(size)
     else:
-      return omni_alloc_C(csize_t(size))
+        let mem = omni_alloc_C(csize_t(size))
+
+    if mem.isNil:
+        omni_print_str("ERROR: Omni: Nil allocation.")
+
+    return mem
 
 proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, raises:[].} =
     when N is csize_t:
-      let long_size = size
+        let long_size = size
     else:
-      let long_size = csize_t(size)
+        let long_size = csize_t(size)
     
     let mem = omni_alloc_C(long_size)
 
     if not mem.isNil:
         zeroMem(mem, long_size)
-    return mem
+        return mem
+
+    omni_print_str("ERROR: Omni: Nil allocation.")
+    return nil
 
 #Custom realloc implementation: it is only needed in Omni_AutoMem when surpassing the limit of
 #objects, so it does not need to be performant. It's just more convenient when writing a parser to
@@ -56,9 +66,9 @@ proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inlin
         return nil
     
     when N is csize_t:
-      let long_size = size
+        let long_size = size
     else:
-      let long_size = csize_t(size)
+        let long_size = csize_t(size)
     
     let new_mem = omni_alloc_C(long_size)
     
@@ -67,6 +77,7 @@ proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inlin
         omni_free_C(in_ptr)
         return new_mem
 
+    omni_print_str("ERROR: Omni: Nil allocation.")
     omni_free_C(in_ptr)
     return nil
 
@@ -75,9 +86,9 @@ proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inli
         return nil
 
     when N is csize_t:
-      let long_size = size
+        let long_size = size
     else:
-      let long_size = csize_t(size)
+        let long_size = csize_t(size)
     
     let new_mem = omni_alloc0(long_size)
     
@@ -86,6 +97,7 @@ proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inli
         omni_free_C(in_ptr)
         return new_mem
 
+    omni_print_str("ERROR: Omni: Nil allocation.")
     omni_free_C(in_ptr)
     return nil
 
