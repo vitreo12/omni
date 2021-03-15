@@ -584,6 +584,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         proc_def             = nnkProcDef.newTree()      #the omni_struct_new* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
+        proc_result_assignments = nnkStmtList.newTree()  #result.data = data
 
     #The name of the function with the asterisk, in case of supporting modules in the future
     #proc Phasor_omni_struct_new
@@ -810,21 +811,23 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                                 )
                             )
                         )
-                    ),
-                  
-                    nnkAsgn.newTree(
-                        nnkDotExpr.newTree(
-                            newIdentNode("result"),
-                            field_name
-                        ),
-                        field_name
                     )
+                )
+            )
+        
+            proc_result_assignments.add(
+                nnkAsgn.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("result"),
+                        field_name
+                    ),
+                    field_name
                 )
             )
 
         #If it's not a struct, convert the value too (so that generics and types are applied)
         else:
-            proc_body.add(
+            proc_result_assignments.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
                         newIdentNode("result"),
@@ -836,7 +839,23 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                     )
                 )
             )
-
+    
+    #Add the result stuff
+    proc_body.add(
+        nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+                nnkPrefix.newTree(
+                    newIdentNode("not"),
+                    nnkDotExpr.newTree(
+                      newIdentNode("result"),
+                      newIdentNode("isNil")
+                    )
+                ),
+                proc_result_assignments
+            )
+        )
+    )
+    
     # ===================== #
     # omni_struct_new PROC  #
     # ===================== #

@@ -80,10 +80,11 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     omni_auto_mem.omni_auto_mem_register_child(data)
     
     #Fill the object layout
-    result.data   = data
-    result.chans  = real_chans
-    result.length = real_length
-    result.size   = size
+    if not result.isNil:
+        result.data   = data
+        result.chans  = real_chans
+        result.length = real_length
+        result.size   = size
 
 import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities
 
