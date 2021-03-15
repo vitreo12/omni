@@ -25,7 +25,7 @@
         b int = 3
         something Something[T]
         something2 = Something[T](samplerate) #using a constructor: type is inferred
-        data Data[T] = newData[T](100) #not calling a constructor: must be explicit on the type!
+        data Data[T] = newData[T](100)        #not calling a constructor: must be explicit on the type!
     ```
 
 ## 0.3.0
