@@ -47,8 +47,8 @@ macro compareOmniNim_inner*(omni_parsed_code : typed, nim_code_block : typed) : 
   else:
     result = newLit(false)
 
-#compare omni and nim code for equality
-macro compareOmniNim*(code : untyped) : untyped =
+#re-use template to delare same things
+template omni_code_block() {.dirty.} =
   var 
     omni_code = code[0][1]
     
@@ -58,7 +58,41 @@ macro compareOmniNim*(code : untyped) : untyped =
       code[1][1]
     )
 
-  #echo repr omni_code
+#generic code comparison
+macro compareOmniNim*(code : untyped) : untyped =
+  omni_code_block()
 
   return quote do:
-    compareOmniNim_inner(omni_parse_block_untyped(`omni_code`), `nim_code`)
+    block:
+      var
+        samplerate     {.inject.} = 0.0
+        bufsize        {.inject.} = 0
+        omni_auto_mem  {.inject.} = cast[Omni_AutoMem](0) 
+        omni_call_type {.inject.} : typedesc[Omni_InitCall]
+      compareOmniNim_inner(omni_parse_block_untyped(`omni_code`), `nim_code`)
+
+#init comparison
+macro compareOmniNim_init*(code : untyped) : untyped =
+  omni_code_block()
+
+  return quote do:
+    block:
+      var
+        samplerate     {.inject.} = 0.0
+        bufsize        {.inject.} = 0
+        omni_auto_mem  {.inject.} = cast[Omni_AutoMem](0) 
+        omni_call_type {.inject.} : typedesc[Omni_InitCall]
+      compareOmniNim_inner(omni_parse_block_untyped(`omni_code`, is_init_block_typed=true), `nim_code`)
+
+#perform comparison
+macro compareOmniNim_perform*(code : untyped) : untyped =
+  omni_code_block()
+  
+  return quote do:
+    block:
+      var
+        samplerate     {.inject.} = 0.0
+        bufsize        {.inject.} = 0
+        omni_auto_mem  {.inject.} = cast[Omni_AutoMem](0) 
+        omni_call_type {.inject.} : typedesc[Omni_PerformCall]
+      compareOmniNim_inner(omni_parse_block_untyped(`omni_code`, is_perform_block_typed=true), `nim_code`)
