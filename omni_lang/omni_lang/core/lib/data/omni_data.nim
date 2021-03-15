@@ -102,18 +102,19 @@ macro omni_data_generic_default(t : typed) : untyped =
 
   #Doesn't work with omnicollider, prints garbage for second element
   let print_warning = nnkCall.newTree(
-      newIdentNode("omni_print"),
-      newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': the entry at index %d has not been explicitly initialized. Setting it to '" & $repr(type_instance) & "()'.\n"),
-      # newIdentNode("i"),
-      newIdentNode("y")
+      newIdentNode("omni_print_str"),
+      newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Not all entries have been explicitly initialized. Setting uninitialized entries to '" & $repr(type_instance) & "()'"),
   )
 
   return quote do:
       data[i, y] = `omni_type_instance_call`
-      `print_warning`
+      if not print_once:
+          `print_warning`
+          print_once = true
 
 proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void {.inline.} =
     when T isnot SomeNumber and T isnot bool:
+        var print_once = false
         for i in 0 ..< data.chans:
             for y in 0 ..< data.length:
                 let entry = cast[pointer](data[i, y])
