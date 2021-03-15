@@ -2,8 +2,8 @@
 struct Something[T]:
   a T
 
-def newData[T]():
-  return Data[T](samplerate)
+def newData[T](size = 200):
+  return Data[T](size)
 
 omni_debug_macros:
   struct SomethingElse[T]:

@@ -1,3 +1,33 @@
+## 0.4.0
+
+1) `def` now supports generics instantiation:
+    
+    ```nim
+    def something[T](a T):
+        return a * 2
+
+    init:
+        a = something(1)          #like structs: no generics == float
+        a int = something[int](1) #explicit int
+    ```
+
+2) `struct` now supports default initialization for fields.
+
+    ```nim
+    struct Something[T]:
+        a T
+    
+    def newData[T](size):
+        return Data[T](size)
+    
+    struct SomethingElse[T]:
+        a = 0.5
+        b int = 3
+        something Something[T]
+        something2 = Something[T](samplerate) #using a constructor: type is inferred
+        data Data[T] = newData[T](100) #not calling a constructor: must be explicit on the type!
+    ```
+
 ## 0.3.0
 
 1) Deprecate `nim < 1.4`.
