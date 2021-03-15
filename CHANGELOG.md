@@ -28,6 +28,8 @@
         data Data[T] = newData[T](100)        #not calling a constructor: must be explicit on the type!
     ```
 
+3) `Data[T]` will compile even with uninitialized fields: they will be defaulted to the default constructor of the type, but a warning will be printed.
+
 ## 0.3.0
 
 1) Deprecate `nim < 1.4`.
