@@ -22,7 +22,7 @@
 
 import macros, strutils, omni_type_checker
 
-macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped =
+macro omni_generate_check_datas_validity*(t : typed, is_ugen : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
     let is_ugen_bool = is_ugen.boolVal()
@@ -35,7 +35,8 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     #struct     
     else:
         if t.kind != nnkIdent and t.kind != nnkSym:
-            error("Not a valid object type!")
+            error("omni_generate_check_datas_validity: Not a valid object type!")
+        
         t_type = newIdentNode(
             t.strVal()
         )
@@ -44,17 +45,40 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
         proc_def = nnkProcDef.newTree(
             nnkPostfix.newTree(
                 newIdentNode("*"),
-                newIdentNode("omni_check_struct_validity")
+                newIdentNode("omni_check_datas_validity")
             ),
             newEmptyNode(),
             newEmptyNode(),
             nnkFormalParams.newTree(
-                newIdentNode("bool"),
+                newIdentNode("void"),
                 nnkIdentDefs.newTree(
                     newIdentNode("omni_obj"),
                     t_type,
                     newEmptyNode()
-                )
+                ),
+                nnkIdentDefs.newTree(
+                    newIdentNode("samplerate"),
+                    newIdentNode("float"),
+                    newEmptyNode()
+                ),
+                nnkIdentDefs.newTree(
+                    newIdentNode("bufsize"),
+                    newIdentNode("int"),
+                    newEmptyNode()
+                ),
+                nnkIdentDefs.newTree(
+                    newIdentNode("omni_auto_mem"),
+                    newIdentNode("Omni_AutoMem"),
+                    newEmptyNode()
+                ),
+                nnkIdentDefs.newTree(
+                        newIdentNode("omni_call_type"),
+                        nnkBracketExpr.newTree(
+                            newIdentNode("typedesc"),
+                            newIdentNode("Omni_CallType")
+                        ),
+                        newIdentNode("Omni_InitCall")
+                    )
             ),
             nnkPragma.newTree(
                 newIdentNode("inline")
@@ -65,11 +89,14 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
         proc_body = nnkStmtList.newTree()
     
     var type_def : NimNode
+    #Omni_UGen
     if is_ugen_bool:
         let type_impl = t.getImpl()
         if type_impl.len < 2:
             return
         type_def = type_impl[2]
+
+    #omni_struct
     else:
         let type_impl = t.getType()[1][1]
         if type_impl.kind == nnkBracketExpr:
@@ -79,7 +106,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     
     var actual_type_def : NimNode
 
-    #If it's a pointer, exctract
+    #If it's a pointer, extract it
     if type_def.kind == nnkPtrTy:   
         #if generic
         if type_def[0].kind == nnkBracketExpr:
@@ -92,7 +119,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
 
     #If it's not an object type, abort the search.
     if actual_type_def.kind != nnkObjectTy:
-        error("Not a valid object type!")
+        error("omni_generate_check_datas_validity: Not a valid object type!")
 
     let rec_list = actual_type_def[2]
 
@@ -134,24 +161,16 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
 
             #Add the data itself first
             proc_body.add(
-                nnkIfStmt.newTree(
-                    nnkElifBranch.newTree(
-                        nnkPrefix.newTree(
-                            newIdentNode("not"),
-                            nnkCall.newTree(
-                                newIdentNode("omni_check_data_validity"),
-                                nnkDotExpr.newTree(
-                                    newIdentNode("omni_obj"),
-                                    var_name_ident
-                                )
-                            )
-                        ),
-                        nnkStmtList.newTree(
-                            nnkReturnStmt.newTree(
-                                newIdentNode("false")
-                            )
-                        )
-                    )
+                nnkCall.newTree(
+                    newIdentNode("omni_check_datas_validity"),
+                    nnkDotExpr.newTree(
+                        newIdentNode("omni_obj"),
+                        var_name_ident,
+                    ),
+                    newIdentNode("samplerate"),
+                    newIdentNode("bufsize"),
+                    newIdentNode("omni_auto_mem"),
+                    newIdentNode("omni_call_type")
                 )
             )
 
@@ -181,9 +200,6 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     if type_name_str == "Data" or type_name_str == "Data_omni_struct" or type_name_str == "Data_omni_struct_ptr":
                         is_data = true
                         interim_type = data_content   
-                    
-                    #elif type_name_str == "Buffer" or type_name_str == "Buffer_omni_struct" or type_name_str == "Buffer_omni_struct_ptr": 
-                    #    omni_at_least_one_buffer = true
                 
                 elif data_content_kind == nnkSym or data_content_kind == nnkIdent:
                     #Check for structs, otherwise, get out!
@@ -201,7 +217,8 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     index_ident = newIdentNode("i" & $counter)
                     index_entry = newIdentNode("entry" & $counter)
 
-                #If it hits a Data, add "omni_check_data_validity"
+                #If it hits a Data, add "omni_check_datas_validity" for each entry!
+                #for i in 0..<data.size: omni_check_datas_validity(data[i])
                 if is_data:
                     if counter == 0:
                         previous_body_stmt = nnkStmtList.newTree(
@@ -215,21 +232,13 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                     )
                                 )
                             ),
-                            nnkIfStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    nnkPrefix.newTree(
-                                        newIdentNode("not"),
-                                        nnkCall.newTree(
-                                            newIdentNode("omni_check_data_validity"),
-                                            index_entry
-                                        )
-                                    ),
-                                    nnkStmtList.newTree(
-                                        nnkReturnStmt.newTree(
-                                            newIdentNode("false")
-                                        )
-                                    )
-                                )
+                            nnkCall.newTree(
+                                newIdentNode("omni_check_datas_validity"),
+                                index_entry,
+                                newIdentNode("samplerate"),
+                                newIdentNode("bufsize"),
+                                newIdentNode("omni_auto_mem"),
+                                newIdentNode("omni_call_type")
                             )
                         )
 
@@ -269,21 +278,13 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                             )
                                         )
                                     ),
-                                    nnkIfStmt.newTree(
-                                        nnkElifBranch.newTree(
-                                            nnkPrefix.newTree(
-                                                newIdentNode("not"),
-                                                nnkCall.newTree(
-                                                    newIdentNode("omni_check_data_validity"),
-                                                    index_entry
-                                                )
-                                            ),
-                                            nnkStmtList.newTree(
-                                                nnkReturnStmt.newTree(
-                                                    newIdentNode("false")
-                                                )
-                                            )
-                                        )
+                                    nnkCall.newTree(
+                                        newIdentNode("omni_check_datas_validity"),
+                                        index_entry,
+                                        newIdentNode("samplerate"),
+                                        newIdentNode("bufsize"),
+                                        newIdentNode("omni_auto_mem"),
+                                        newIdentNode("omni_call_type")
                                     )
                                 )
                             )
@@ -295,7 +296,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     prev_index_ident = index_ident
                     prev_index_entry = index_entry
 
-                #If it hits a struct add "omni_check_struct_validity" and exit the loop
+                #If it hits a struct add "omni_check_datas_validity" and exit the loop
                 else:
                     if previous_body_stmt == nil:
                         prev_index_entry = data_name
@@ -325,21 +326,13 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                         )
                                     )
                                 ),
-                                nnkIfStmt.newTree(
-                                    nnkElifBranch.newTree(
-                                        nnkPrefix.newTree(
-                                            newIdentNode("not"),
-                                            nnkCall.newTree(
-                                                newIdentNode("omni_check_struct_validity"),
-                                                index_entry
-                                            )
-                                        ),
-                                        nnkStmtList.newTree(
-                                            nnkReturnStmt.newTree(
-                                                newIdentNode("false")
-                                            )
-                                        )
-                                    )
+                                nnkCall.newTree(
+                                    newIdentNode("omni_check_datas_validity"),
+                                    index_entry,
+                                    newIdentNode("samplerate"),
+                                    newIdentNode("bufsize"),
+                                    newIdentNode("omni_auto_mem"),
+                                    newIdentNode("omni_call_type")
                                 )
                             )
                         )
@@ -348,50 +341,38 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     #Exit loop!
                     break
                 
-                #Increat index counter
+                #Increase index counter
                 counter += 1
                 if counter >= max_count:
-                    error("Infinite type inference loop")
+                    error("omni_check_datas_validity: Infinite type inference loop.")
             
-            #Add the thingy to result
+            #Add to result
             if previous_loop_stmt != nil:
                 proc_body.add(previous_loop_stmt)
 
         #Found a struct
         elif type_to_inspect_string.endsWith("_omni_struct") or type_to_inspect.omni_is_struct():
-            
-            #Compile time setting of variable
-            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_omni_struct" or type_to_inspect_string == "Buffer_omni_struct_ptr":
-            #    omni_at_least_one_buffer = true
-
             proc_body.add(
-                nnkIfStmt.newTree(
-                    nnkElifBranch.newTree(
-                        nnkPrefix.newTree(
-                            newIdentNode("not"),
-                            nnkCall.newTree(
-                                newIdentNode("omni_check_struct_validity"),
-                                nnkDotExpr.newTree(
-                                    newIdentNode("omni_obj"),
-                                    var_name_ident
-                                )
-                            )
-                        ),
-                        nnkStmtList.newTree(
-                            nnkReturnStmt.newTree(
-                                newIdentNode("false")
-                            )
-                        )
-                    )
+                nnkCall.newTree(
+                    newIdentNode("omni_check_datas_validity"),
+                    nnkDotExpr.newTree(
+                        newIdentNode("omni_obj"),
+                        var_name_ident,
+                    ),
+                    newIdentNode("samplerate"),
+                    newIdentNode("bufsize"),
+                    newIdentNode("omni_auto_mem"),
+                    newIdentNode("omni_call_type")
                 )
             )
 
     #Add all the stuff to the result
     proc_body.add(
-        nnkReturnStmt.newTree(
-            newIdentNode("true")
+        nnkDiscardStmt.newTree(
+            newEmptyNode()
         )
     )
 
     proc_def.add(proc_body)
+    
     result.add(proc_def)

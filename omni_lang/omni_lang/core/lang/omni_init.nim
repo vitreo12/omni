@@ -361,8 +361,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             omni_free(omni_ugen_ptr)
 
-        #Generate the proc to find all datas and structs in Omni_UGen
-        omni_find_structs_and_datas(Omni_UGen, true)
+        #Generate the omni_check_datas_validity proc
+        omni_generate_check_datas_validity(Omni_UGen, true)
 
         #Generate the UGen_SetParam procs
         omni_generate_params_set_procs()
@@ -412,13 +412,18 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             #Assign omni_ugen fields
             `assign_ugen_fields`
 
-            #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
-            if not omni_check_struct_validity(omni_ugen):
-                Omni_UGenFree(omni_ugen)
-                return false
+            #omni_check_datas_validity triggers the checks for correct initialization of all Datas entries,
+            omni_check_datas_validity(omni_ugen, samplerate, bufsize, omni_auto_mem, omni_call_type)
             
-            return true
+            #check omni_auto_mem's alloc for validity, else false. 
+            #This happens if any allocation of structs failed.
+            if not omni_check_auto_mem_validity(omni_auto_mem):
+                Omni_UGenFree(omni_ugen_ptr)
+                return false
 
+            #All good!
+            return true
+            
 macro init*(code_block : untyped) : untyped =
     return quote do:
         #Define that init exists, so perform doesn't create an empty one automatically

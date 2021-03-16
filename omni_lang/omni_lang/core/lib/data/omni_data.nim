@@ -80,44 +80,110 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     omni_auto_mem.omni_auto_mem_register_child(data)
     
     #Fill the object layout
-    result.data   = data
-    result.chans  = real_chans
-    result.length = real_length
-    result.size   = size
+    if not result.isNil:
+        if not data.isNil:
+            result.data = data
+        result.chans  = real_chans
+        result.length = real_length
+        result.size   = size
 
-proc omni_check_data_validity*[T](data : Data[T]) : bool =
+#Import stuff for type manipulation
+import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities
+
+#Initialize object of type T at entry
+macro omni_data_generic_default(t : typed, validity_or_getter : bool = false) : untyped =
+  let validity_or_getter_bool = validity_or_getter.boolVal
+  
+  var type_instance = t.getTypeInst[1]
+
+  #Convert everything to idents, or omni_find_struct_constructor_call won't work
+  type_instance = typed_to_untyped(type_instance)[0]
+  
+  let omni_type_instance_call = omni_find_struct_constructor_call(
+          nnkCall.newTree(
+              type_instance
+          )
+      )
+  
+  #omni_check_datas_validity
+  if not validity_or_getter_bool:
+      let print_warning = nnkCall.newTree(
+          newIdentNode("omni_print_str"),
+          newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Not all entries have been explicitly initialized. Setting uninitialized entries to '" & $repr(type_instance) & "()'"),
+      )
+
+      return quote do:
+          data[i, y] = `omni_type_instance_call`
+          if not print_once:
+              `print_warning`
+              print_once = true
+
+  #getter
+  else:
+      let print_warning = nnkCall.newTree(
+          newIdentNode("omni_print"),
+          newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Uninitialized entry at %d. Initializing it to '" & $repr(type_instance) & "()'\n"),
+          newIdentNode("actual_index")
+      )
+
+      return quote do:
+          data.data[actual_index] = `omni_type_instance_call`
+          `print_warning`
+
+#Core of omni_check_datas_validity
+proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void {.inline.} =
     when T isnot SomeNumber:
+        var print_once = false
         for i in 0 ..< data.chans:
             for y in 0 ..< data.length:
-                let entry = cast[pointer](data[i, y])
-                if isNil(entry):
-                    print("ERROR: Omni: Not all 'Data' entries have been initialized in the 'init' block. This happens if using a 'Data' containing 'structs' without allocating all of its entries in 'init'.")
-                    return false
-    return true
+                #Use Omni_PerformCall not to initialize the entry (as it would with Omni_InitCall)
+                #I'm doing this in order to print the correct message just once, instead of at each read
+                let entry = data.getter(i, y, 0.0, 0, cast[Omni_AutoMem](nil), Omni_PerformCall)
+                if entry.isNil:
+                    omni_data_generic_default(T)
 
 ############
 # ITERATOR #
 ############
 
 iterator items*[T](data : Data[T]) : T {.inline.} =
-    for chan in 0..(data.chans-1):
+    for chan in 0 ..< data.chans:
         var i = 0
         while i < data.length:
-            yield data[chan, i]
+            #Use Omni_PerformCall not to initialize the entry
+            yield data.getter(chan, i, 0.0, 0, cast[Omni_AutoMem](nil), Omni_PerformCall)
             inc(i)
 
 iterator pairs*[T](data: Data[T]) : tuple[key: int, val : T] {.inline.} =
-    for chan in 0..(data.chans-1):
+    for chan in 0 ..< data.chans:
         var i = 0
         while i < data.length:
-            yield (i, data[i])
+            #Use Omni_PerformCall not to initialize the entry
+            yield (i, data.getter(chan, i, 0.0, 0, cast[Omni_AutoMem](nil), Omni_PerformCall))
             inc(i)
 
 ##########
 # GETTER #
 ##########
 
-proc getter[T](data : Data[T], channel : int = 0, index : int = 0) : T {.inline.} =
+#Print warning on out of bounds access
+macro omni_data_out_of_bounds_getter(t : typed, first_or_last : bool = false) : untyped =
+    var type_instance = t.getTypeInst[1]
+    
+    var first_or_last_str = "first"
+    if first_or_last.boolVal:
+        first_or_last_str = "last"
+
+    let print_warning = nnkCall.newTree(
+        newIdentNode("omni_print"),
+        newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Trying to access out of bounds element at %d. Returning " & first_or_last_str & " element instead.\n"),
+        newIdentNode("actual_index")
+    )
+
+    return print_warning
+
+#Get element at chan, index
+proc getter*[T](data : Data[T], channel : int = 0, index : int = 0, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : T {.inline, noSideEffect, raises:[].} =
     let chans = data.chans
     
     var actual_index : int
@@ -128,61 +194,74 @@ proc getter[T](data : Data[T], channel : int = 0, index : int = 0) : T {.inline.
         actual_index = (index * chans) + channel
     
     if actual_index >= 0 and actual_index < data.size:
+        #Dynamic allocation on access in init block IF entry is nil!
+        #This means that, if trying to access a nil entry, it will initialized with the default
+        #constructor of type T, same as it's done for omni_check_datas_validity.
+        when omni_call_type is Omni_InitCall:
+            let value = data.data[actual_index]
+            when T isnot SomeNumber:
+                if value.isNil:
+                    omni_data_generic_default(T, true)
+                    return data.data[actual_index] #This is the newly allocated object!
+            
+        #in perform, everything is SURELY initialized. No need to check
         return data.data[actual_index]
     
-    when T is SomeNumber:
-        return T(0)
+    #return first / last entry not to crash! this hints the coder to a bug in his code
+    if actual_index < 0:
+        omni_data_out_of_bounds_getter(T)
+        return data[0, 0] #use data[,] access so it goes to .getter again, in case it needs init
     else:
-        return nil
+        omni_data_out_of_bounds_getter(T, true)
+        return data[chans - 1, data.len - 1]
 
 #1 channel 
-proc `[]`*[I : SomeNumber, T](a : Data[T], i : I) : T {.inline.} =
-    return a.getter(0, int(i))
+template `[]`*[I : SomeNumber, T](a : Data[T], i : I) : untyped =
+    a.getter(0, int(i), samplerate, bufsize, omni_auto_mem, omni_call_type)
 
-#more than 1 channel (i1 == channel, i2 == index)
-proc `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : T {.inline.} =
-    return a.getter(int(i1), int(i2))
+#multi channel
+template `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I2) : untyped =
+    a.getter(int(i1), int(i2), samplerate, bufsize, omni_auto_mem, omni_call_type)
 
-#cubic interp read (1 channel)
-proc read*[I : SomeNumber; T : SomeNumber](data : Data[T], index : I) : float {.inline.} =
-    let data_len = data.length
-    
-    if data_len <= 0:
-        return 0.0
-
-    let 
-        index_int = int(index)
-        index1 : int = index_int mod data_len
-        index2 : int = (index_int + 1) mod data_len
-        index3 : int = (index_int + 2) mod data_len
-        index4 : int = (index_int + 3) mod data_len
-        frac : float = float(index) - float(index_int)
-    
-    return float(cubic_interp(frac, data.getter(0, index1), data.getter(0, index2), data.getter(0, index3), data.getter(0, index4)))
-
-#cubic interp read (more than 1 channel) (i1 == channel, i2 == index)
-proc read*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T], chan : I1, index : I2) : float {.inline.} =
-    let data_len = data.length
-    
-    if data_len <= 0:
-        return 0.0
-    
+#read with cubic interp
+proc read_inner*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T], chan : I1, index : I2, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline, noSideEffect, raises:[].} =
     let
+        data_len = data.length
         chan_int = int(chan)
         index_int = int(index)
-        index1 : int = index_int mod data_len
-        index2 : int = (index_int + 1) mod data_len
-        index3 : int = (index_int + 2) mod data_len
-        index4 : int = (index_int + 3) mod data_len
+        index1 = index_int mod data_len
+        index2 = (index_int + 1) mod data_len
+        index3 = (index_int + 2) mod data_len
+        index4 = (index_int + 3) mod data_len
         frac : float = float(index) - float(index_int)
     
-    return float(cubic_interp(frac, data.getter(chan_int, index1), data.getter(chan_int, index2), data.getter(chan_int, index3), data.getter(chan_int, index4)))
+    return float(cubic_interp(frac, data[chan_int, index1], data[chan_int, index2], data[chan_int, index3], data[chan_int, index4])) 
+
+#1 channel
+template read*[I : SomeNumber; T : SomeNumber](data : Data[T], index : I) : untyped =
+    data.read_inner(index, samplerate, bufsize, omni_auto_mem, omni_call_type)
+
+#multi channel
+template read*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T], chan : I1, index : I2) : untyped =
+    data.read_inner(chan, index, samplerate, bufsize, omni_auto_mem, omni_call_type)
 
 ##########
 # SETTER #
 ##########
 
-proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : void {.inline.} =
+#Print warning when trying to redefine
+macro omni_data_redefinition_setter(t : typed) : untyped =
+    var type_instance = t.getTypeInst[1]
+
+    let print_warning = nnkCall.newTree(
+        newIdentNode("omni_print"),
+        newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Trying to re-instantiate an already allocated element at %d. This is not allowed.\n"),
+        newIdentNode("actual_index")
+    )
+
+    return print_warning
+
+proc setter*[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall ) : void {.inline, noSideEffect, raises:[].} =
     let chans = data.chans
     
     var actual_index : int
@@ -196,33 +275,38 @@ proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : 
         when T is SomeNumber and Y is SomeNumber:
             data.data[actual_index] = T(x)
         elif T is Y:
+            when omni_call_type is Omni_InitCall:
+                let value = data.data[actual_index]
+                if not value.isNil:
+                    omni_data_redefinition_setter(T)
+                    return
             data.data[actual_index] = x
         else:
-            {.fatal: "Data: '" & $T & "' is an invalid type for the setter function".}
+            {.fatal: "Data: '" & $T & "' is an invalid type for the setter function.".}
 
 #1 channel     
-proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
-    a.setter(int(0), int(i), x)
+template `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : untyped =
+    a.setter(int(0), int(i), x, omni_call_type)
 
-#more than 1 channel (i1 == channel, i2 == index)
-proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void {.inline.} =
-    a.setter(int(i1), int(i2), x)
+#multi channel
+template `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : untyped =
+    a.setter(int(i1), int(i2), x, omni_call_type)
 
 #########
 # INFOS #
 #########
 
-proc length*[T](data : Data[T]) : int {.inline.} =
+proc length*[T](data : Data[T]) : int {.inline, noSideEffect, raises:[].} =
     return data.length
 
-template len*[T](data : Data[T]) : untyped {.dirty.} =
+template len*[T](data : Data[T]) : untyped =
     data.length
 
-proc chans*[T](data : Data[T]) : int {.inline.} =
+proc chans*[T](data : Data[T]) : int {.inline, noSideEffect, raises:[].} =
     return data.chans
 
-template channels*[T](data : Data[T]) : untyped {.dirty.} =
+template channels*[T](data : Data[T]) : untyped =
     data.chans
 
-proc size*[T](data : Data[T]) : int {.inline.} =
+proc size*[T](data : Data[T]) : int {.inline, noSideEffect, raises:[].} =
     return data.size

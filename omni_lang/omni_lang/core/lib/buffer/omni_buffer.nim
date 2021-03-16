@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import ../auto_mem/omni_auto_mem, ../../lang/omni_call_types
+
 type
     Buffer_inherit* = object of RootObj
         name        : string
@@ -45,8 +47,8 @@ template omni_init_buffer*(name : string) : untyped {.dirty.} =
     )
 
 #Internal checking for structs. Buffer doesn't allocate more than itself, so just return true.
-proc omni_check_struct_validity*(obj : Buffer) : bool =
-    return true
+proc omni_check_datas_validity*(obj : Buffer, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void =
+    discard 
 
 #used in omniBufferInterface
 proc omni_set_name_buffer*(buffer : Buffer, name : string) : void {.inline.} =

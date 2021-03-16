@@ -36,6 +36,7 @@ type
     
     Omni_AutoMem* = ptr Omni_AutoMem_struct
 
+#Create an instance of Omni_AutoMem
 proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
     let 
         auto_mem_ptr = omni_alloc0(sizeof(Omni_AutoMem_struct))
@@ -54,16 +55,13 @@ proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
     auto_mem.num_allocs = 0
     return auto_mem
 
+#Register an allocated obj
 proc omni_auto_mem_register_child*(auto_mem : Omni_AutoMem, child : pointer) : void {.inline.} =
     if isNil(auto_mem):
         return
 
     if isNil(auto_mem.allocs):
         return
-
-    when defined(omni_debug):
-        omni_print_str("Omni_AutoMem: registering child:")
-        omni_print_int(cint(cast[uint](child)))
     
     #Increment after assignment (so it starts at 0, and realloc will happen when last allocation in the array is reached)
     auto_mem.allocs[auto_mem.num_allocs] = child
@@ -73,13 +71,10 @@ proc omni_auto_mem_register_child*(auto_mem : Omni_AutoMem, child : pointer) : v
     if (auto_mem.num_allocs mod Omni_AutoMemSize) == 0:
         let new_length = int(auto_mem.num_allocs + Omni_AutoMemSize)
         
-        when defined(omni_debug):
-            omni_print_str("Omni_AutoMem: reached allocs limit, reallocating memory with new length:")
-            omni_print_int(cint(new_length))
-        
         let auto_mem_allocs_ptr = omni_realloc(cast[pointer](auto_mem.allocs), sizeof(pointer) * new_length)
         auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
 
+#Remove one entry
 proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : Omni_AutoMem, index : T) : void {.inline.} =
     if isNil(auto_mem):
         return
@@ -91,15 +86,12 @@ proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : Omni_AutoMem, index
     
     if isNil(child):
         return
-
-    when defined(omni_debug):
-        omni_print_debug("Omni_AutoMem: deleting child:")
-        omni_print_int(cint(cast[uint](child)))
     
     omni_free(child)
     auto_mem.allocs[index] = cast[pointer](nil) #reset previus entry with nil ptr
     auto_mem.num_allocs -= 1
 
+#Remove all entries
 proc omni_auto_mem_remove_children*(auto_mem : Omni_AutoMem) : void {.inline.} =
     if isNil(auto_mem):
         return
@@ -109,12 +101,13 @@ proc omni_auto_mem_remove_children*(auto_mem : Omni_AutoMem) : void {.inline.} =
 
     let num_allocs = auto_mem.num_allocs
     if num_allocs > 0:
-        for i in 0..(num_allocs-1):
+        for i in 0..<num_allocs:
             auto_mem.omni_auto_mem_remove_child(i)
     
     #Reset count
     auto_mem.num_allocs = 0
 
+#Free omni_auto_mem
 proc omni_auto_mem_free*(auto_mem : Omni_AutoMem, free_children : bool = true) : void {.inline.} =
     if isNil(auto_mem):
         return
@@ -127,3 +120,12 @@ proc omni_auto_mem_free*(auto_mem : Omni_AutoMem, free_children : bool = true) :
     
     omni_free(cast[pointer](auto_mem.allocs))
     omni_free(cast[pointer](auto_mem))
+
+#Check that all allocations are not nil
+proc omni_check_auto_mem_validity*(auto_mem : Omni_AutoMem) : bool {.inline.} =
+    for i in 0..<auto_mem.num_allocs:
+        let entry = auto_mem.allocs[i]
+        if entry.isNil:
+            omni_print_str("ERROR: Omni: Corrupted allocation! Omni_UGenInit will return false.")
+            return false
+    return true
