@@ -39,8 +39,39 @@
     ```
 
 3) `Data[T]` will compile even with uninitialized fields: they will be initialized with the default constructor of `T`, and a warning will be printed.
+    
+    ```nim
+    struct Something:
+        data Data
+        delay Delay
+
+    init:
+        c = new Data[Data[Data[Data[Data[Something]]]]](3)
+
+    sample: 
+        out1 = c[0][0][0][0][0].data[0]
+    ```
 
 4) Accessing an uninitialized `Data[T]` field in the `init` block will initialize it to the default `T` constructor.
+    
+    ```nim
+    struct Something:
+        data Data
+
+    init:
+        a = Data[Something](10)
+        
+        #Will initialize a[1] to Something()
+        print a[1].data[0]
+
+        #Will initialize a[9] to Something() and .data[1000] will return 0
+        print a[1000].data[1000]
+
+        #a[1] is already initialized, will not re-initialize it and print warning
+        a[1] = Something()
+
+    sample: discard
+    ```
 
 ## 0.3.0
 
