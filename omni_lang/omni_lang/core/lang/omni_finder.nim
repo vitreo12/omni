@@ -35,7 +35,8 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     #struct     
     else:
         if t.kind != nnkIdent and t.kind != nnkSym:
-            error("Not a valid object type!")
+            error("omni_find_structs_and_datas: Not a valid object type!")
+        
         t_type = newIdentNode(
             t.strVal()
         )
@@ -88,11 +89,14 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
         proc_body = nnkStmtList.newTree()
     
     var type_def : NimNode
+    #Omni_UGen
     if is_ugen_bool:
         let type_impl = t.getImpl()
         if type_impl.len < 2:
             return
         type_def = type_impl[2]
+
+    #omni_struct
     else:
         let type_impl = t.getType()[1][1]
         if type_impl.kind == nnkBracketExpr:
@@ -102,7 +106,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     
     var actual_type_def : NimNode
 
-    #If it's a pointer, exctract
+    #If it's a pointer, extract it
     if type_def.kind == nnkPtrTy:   
         #if generic
         if type_def[0].kind == nnkBracketExpr:
@@ -115,7 +119,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
 
     #If it's not an object type, abort the search.
     if actual_type_def.kind != nnkObjectTy:
-        error("Not a valid object type!")
+        error("omni_find_structs_and_datas: Not a valid object type!")
 
     let rec_list = actual_type_def[2]
 
@@ -213,7 +217,8 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     index_ident = newIdentNode("i" & $counter)
                     index_entry = newIdentNode("entry" & $counter)
 
-                #If it hits a Data, add "omni_check_datas_validity"
+                #If it hits a Data, add "omni_check_datas_validity" for each entry!
+                #for i in 0..<data.size: omni_check_datas_validity(data[i])
                 if is_data:
                     if counter == 0:
                         previous_body_stmt = nnkStmtList.newTree(
@@ -281,7 +286,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                                         newIdentNode("omni_auto_mem"),
                                         newIdentNode("omni_call_type")
                                     )
-                              )
+                                )
                             )
                         )
                         
@@ -336,22 +341,17 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
                     #Exit loop!
                     break
                 
-                #Increat index counter
+                #Increase index counter
                 counter += 1
                 if counter >= max_count:
-                    error("Infinite type inference loop")
+                    error("omni_check_datas_validity: Infinite type inference loop.")
             
-            #Add the thingy to result
+            #Add to result
             if previous_loop_stmt != nil:
                 proc_body.add(previous_loop_stmt)
 
         #Found a struct
         elif type_to_inspect_string.endsWith("_omni_struct") or type_to_inspect.omni_is_struct():
-            
-            #Compile time setting of variable
-            #if type_to_inspect_string == "Buffer" or type_to_inspect_string == "Buffer_omni_struct" or type_to_inspect_string == "Buffer_omni_struct_ptr":
-            #    omni_at_least_one_buffer = true
-
             proc_body.add(
                 nnkCall.newTree(
                     newIdentNode("omni_check_datas_validity"),
@@ -374,6 +374,5 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     )
 
     proc_def.add(proc_body)
+    
     result.add(proc_def)
-
-    # error repr result

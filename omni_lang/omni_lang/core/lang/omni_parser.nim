@@ -446,11 +446,12 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
                     if i == 0: continue #skip func name
                     parsed_statement.add(entry)
                 
-            #new Data
-            elif command_name_kind == nnkIdent:
+            #new Data / new Data[float]
+            elif command_name_kind == nnkIdent or command_name_kind == nnkBracketExpr:
                 parsed_statement = nnkCall.newTree(
                     command_name
                 )
+            
             else:
                 error "'" & $repr(statement) & "': Invalid 'new' syntax."
         
