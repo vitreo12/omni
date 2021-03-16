@@ -523,8 +523,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var_inits
     )
 
-    let omni_find_structs_and_datas = nnkCall.newTree(
-        newIdentNode("omni_find_structs_and_datas"),
+    let omni_generate_check_datas_validity = nnkCall.newTree(
+        newIdentNode("omni_generate_check_datas_validity"),
         ptr_name
     )
 
@@ -544,7 +544,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         `checkValidTypes`
         `omni_declare_struct`
         `omni_struct_create_init_proc_and_template`
-        `omni_find_structs_and_datas`
+        `omni_generate_check_datas_validity`
 
 #convert a type to standard G1 generics
 proc omni_convert_generic_type(field_type : NimNode, generics_mapping : OrderedTable[string, NimNode]) : void {.compileTime.} =

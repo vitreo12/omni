@@ -361,8 +361,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             omni_free(omni_ugen_ptr)
 
-        #Generate the proc to find all datas and structs in Omni_UGen
-        omni_find_structs_and_datas(Omni_UGen, true)
+        #Generate the omni_check_datas_validity proc
+        omni_generate_check_datas_validity(Omni_UGen, true)
 
         #Generate the UGen_SetParam procs
         omni_generate_params_set_procs()

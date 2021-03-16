@@ -22,7 +22,7 @@
 
 import macros, strutils, omni_type_checker
 
-macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped =
+macro omni_generate_check_datas_validity*(t : typed, is_ugen : typed = false) : untyped =
     result = nnkStmtList.newTree()
 
     let is_ugen_bool = is_ugen.boolVal()
@@ -35,7 +35,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
     #struct     
     else:
         if t.kind != nnkIdent and t.kind != nnkSym:
-            error("omni_find_structs_and_datas: Not a valid object type!")
+            error("omni_generate_check_datas_validity: Not a valid object type!")
         
         t_type = newIdentNode(
             t.strVal()
@@ -119,7 +119,7 @@ macro omni_find_structs_and_datas*(t : typed, is_ugen : typed = false) : untyped
 
     #If it's not an object type, abort the search.
     if actual_type_def.kind != nnkObjectTy:
-        error("omni_find_structs_and_datas: Not a valid object type!")
+        error("omni_generate_check_datas_validity: Not a valid object type!")
 
     let rec_list = actual_type_def[2]
 
