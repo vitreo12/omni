@@ -1,7 +1,7 @@
-# omni_debug_macros:
-struct Something:
-  data Data
-  delay Delay
+omni_debug_macros:
+  struct Something:
+    data Data
+    delay Delay
 
 init:
   # a = Data[Data[float]](10)

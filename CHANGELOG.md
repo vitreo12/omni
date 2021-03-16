@@ -11,7 +11,7 @@
         a int = something[int](1) #explicit int
     ```
 
-2) `struct` now supports default initialization for fields.
+2) `struct` now supports default initialization for fields. Also, it automagically figures out the default constructor in case the user does not specify it
 
     ```nim
     struct Something[T]:
@@ -26,6 +26,16 @@
         something Something[T]
         something2 = Something[T](samplerate) #using a constructor: type is inferred
         data Data[T] = newData[T](100)        #not calling a constructor: must be explicit on the type!
+    ```
+
+    ```nim
+    struct Something:
+        data Data
+        delay Delay
+
+    init:
+        something = Something() #automatically calls Data() and Delay() if user does not pass his own
+
     ```
 
 3) `Data[T]` will compile even with uninitialized fields: they will be initialized with the default constructor of `T`, and a warning will be printed.
