@@ -30,7 +30,7 @@
 
 3) `Data[T]` will compile even with uninitialized fields: they will be initialized with the default constructor of `T`, and a warning will be printed.
 
-4) Accessing a `Data[T]` field in the `init` block will initialize it to the default `T` constructor.
+4) Accessing an uninitialized `Data[T]` field in the `init` block will initialize it to the default `T` constructor.
 
 ## 0.3.0
 
