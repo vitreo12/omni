@@ -67,11 +67,11 @@ proc valid_lock*(buffer : Buffer) : bool {.inline.} =
     return buffer.valid_lock
 
 #short for length
-template len*(buffer : Buffer) : untyped {.dirty.} =
+template len*(buffer : Buffer) : untyped =
     buffer.length
 
 #short for channels
-template chans*(buffer : Buffer) : untyped {.dirty.} =
+template chans*(buffer : Buffer) : untyped =
     buffer.channels
     
 #size = chans * length
@@ -79,25 +79,25 @@ template size*(buffer : Buffer) : untyped =
     buffer.channels * buffer.length
 
 #1 channel
-template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped {.dirty.} =
+template `[]`*[I : SomeNumber](buffer : Buffer, i : I) : untyped =
     omni_get_value_buffer(buffer, 0, int(i), omni_call_type)
     
 #more than 1 channel (i1 == channel, i2 == index)
-template `[]`*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2) : untyped {.dirty.} =
+template `[]`*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2) : untyped =
     omni_get_value_buffer(buffer, int(i1), int(i2), omni_call_type)
 
 #1 channel
-template `[]=`*[I : SomeNumber, S : SomeNumber](buffer : Buffer, i : I, x : S) : untyped {.dirty.} =
+template `[]=`*[I : SomeNumber, S : SomeNumber](buffer : Buffer, i : I, x : S) : untyped =
     omni_set_value_buffer(buffer, 0, int(i), x, omni_call_type)
 
 #more than 1 channel (i1 == channel, i2 == index)
-template `[]=`*[I1 : SomeNumber, I2 : SomeNumber, S : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2, x : S) : untyped {.dirty.} =
+template `[]=`*[I1 : SomeNumber, I2 : SomeNumber, S : SomeNumber](buffer : Buffer, i1 : I1, i2 : I2, x : S) : untyped =
     omni_set_value_buffer(buffer, int(i1), int(i2), x, omni_call_type)
 
 #interp read
-template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped {.dirty.} =
+template read*[I : SomeNumber](buffer : Buffer, index : I) : untyped =
     omni_read_value_buffer(buffer, index, omni_call_type)
 
 #interp read
-template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped {.dirty.} =
+template read*[I1 : SomeNumber, I2 : SomeNumber](buffer : Buffer, chan : I1, index : I2) : untyped =
     omni_read_value_buffer(buffer, chan, index, omni_call_type)
