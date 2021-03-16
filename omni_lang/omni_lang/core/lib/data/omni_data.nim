@@ -140,7 +140,7 @@ proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize :
                 #I'm doing this in order to print the correct message just once, instead of at each read
                 let entry = data.getter(i, y, 0.0, 0, cast[Omni_AutoMem](nil), Omni_PerformCall)
                 if entry.isNil:
-                    omni_data_generic_default_validity(T)
+                    omni_data_generic_default(T)
 
 ############
 # ITERATOR #
@@ -224,7 +224,7 @@ template `[]`*[I1 : SomeNumber, I2 : SomeNumber; T](a : Data[T], i1 : I1, i2 : I
     a.getter(int(i1), int(i2), samplerate, bufsize, omni_auto_mem, omni_call_type)
 
 #read with cubic interp
-proc read_inner*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T], chan : I1, index : I2, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline, noSideEffect, raises:[].} =
+proc read_inner*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T], chan : I1, index : I2, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : float {.inline, noSideEffect, raises:[].} =
     let
         data_len = data.length
         chan_int = int(chan)
@@ -249,7 +249,19 @@ template read*[I1 : SomeNumber, I2 : SomeNumber; T : SomeNumber](data : Data[T],
 # SETTER #
 ##########
 
-proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : void {.inline, noSideEffect, raises:[].} =
+#Print warning when trying to redefine
+macro omni_data_redefinition_setter(t : typed) : untyped =
+    var type_instance = t.getTypeInst[1]
+
+    let print_warning = nnkCall.newTree(
+        newIdentNode("omni_print"),
+        newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Trying to re-instantiate an already allocated element at %d. This is not allowed.\n"),
+        newIdentNode("actual_index")
+    )
+
+    return print_warning
+
+proc setter*[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall ) : void {.inline, noSideEffect, raises:[].} =
     let chans = data.chans
     
     var actual_index : int
@@ -263,33 +275,38 @@ proc setter[T, Y](data : Data[T], channel : int = 0, index : int = 0,  x : Y) : 
         when T is SomeNumber and Y is SomeNumber:
             data.data[actual_index] = T(x)
         elif T is Y:
+            when omni_call_type is Omni_InitCall:
+                let value = data.data[actual_index]
+                if not value.isNil:
+                    omni_data_redefinition_setter(T)
+                    return
             data.data[actual_index] = x
         else:
             {.fatal: "Data: '" & $T & "' is an invalid type for the setter function.".}
 
 #1 channel     
-proc `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : void {.inline.} =
-    a.setter(int(0), int(i), x)
+template `[]=`*[I : SomeNumber, T, S](a : Data[T], i : I, x : S) : untyped =
+    a.setter(int(0), int(i), x, omni_call_type)
 
-#more than 1 channel (i1 == channel, i2 == index)
-proc `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : void {.inline.} =
-    a.setter(int(i1), int(i2), x)
+#multi channel
+template `[]=`*[I1 : SomeNumber, I2 : SomeNumber; T, S](a : Data[T], i1 : I1, i2 : I2, x : S) : untyped =
+    a.setter(int(i1), int(i2), x, omni_call_type)
 
 #########
 # INFOS #
 #########
 
-proc length*[T](data : Data[T]) : int {.inline.} =
+proc length*[T](data : Data[T]) : int {.inline, noSideEffect, raises:[].} =
     return data.length
 
-template len*[T](data : Data[T]) : untyped {.dirty.} =
+template len*[T](data : Data[T]) : untyped =
     data.length
 
-proc chans*[T](data : Data[T]) : int {.inline.} =
+proc chans*[T](data : Data[T]) : int {.inline, noSideEffect, raises:[].} =
     return data.chans
 
-template channels*[T](data : Data[T]) : untyped {.dirty.} =
+template channels*[T](data : Data[T]) : untyped =
     data.chans
 
-proc size*[T](data : Data[T]) : int {.inline.} =
+proc size*[T](data : Data[T]) : int {.inline, noSideEffect, raises:[].} =
     return data.size
