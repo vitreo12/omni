@@ -12,6 +12,6 @@ struct Something:
   l = Data[float](100)
 
 init:
-  a = Something()
+  a = Something(g = Data())
 
 sample: discard
