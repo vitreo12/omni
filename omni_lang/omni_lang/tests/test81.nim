@@ -11,6 +11,8 @@ omni_debug_macros:
     i = Data(100)
     l = Data[float](100)
 
+    k Data = new Data
+
   init:
     a = Something()
 

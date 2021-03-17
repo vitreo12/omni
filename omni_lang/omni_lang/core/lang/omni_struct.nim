@@ -541,6 +541,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                             error "struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "'. This is only allowed if explicitly specifying the type."
                 
                 #phase float = 0
+                #no need to parse var_init: it's going to be done later
                 elif asgn_left_kind == nnkCommand:
                     var_name = asgn_left[0]
                     var_type = asgn_left[1]
