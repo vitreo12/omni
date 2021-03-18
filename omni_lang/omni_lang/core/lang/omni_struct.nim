@@ -412,6 +412,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type : NimNode
             var_init : NimNode
 
+            explicit_type = false
+            is_bool = false
+
         #NO type defined, default it to float
         if code_stmt_kind == nnkIdent:
             var_name = code_stmt
@@ -440,111 +443,28 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 asgn_right = code_stmt[1]
                 asgn_right_kind = asgn_right.kind
 
-            #TODO: add support for other calling syntaxes (Data 100, Data.new(), Data.new, new Data, etc...) 
-            #This also has to be reflected later when using var_init in omni_struct_create_init_proc_and_template
-            if asgn_right_kind == nnkCall or asgn_right_kind == nnkCommand or asgn_right_kind == nnkDotExpr or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
+            #Support all calling syntaxes and int / float literals
+            if asgn_right_kind == nnkIdent or asgn_right_kind == nnkCall or asgn_right_kind == nnkCommand or asgn_right_kind == nnkDotExpr or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
+                #bool support
+                if asgn_right_kind == nnkIdent:
+                    let bool_val = asgn_right.strVal()
+                    if bool_val != "false" and bool_val != "true":
+                        error "struct '" & repr(ptr_name) & "': Invalid ident: '" & repr(asgn_right) & "'"
+                    var_type = newIdentNode("bool")
+                    is_bool  = true
+                        
+                #Temporarily set var_init, it's parsed later
                 var_init = asgn_right
 
                 #phase = 0
                 if asgn_left_kind == nnkIdent:
                     var_name = asgn_left
-                    
-                    if asgn_right_kind != nnkFloatLit and asgn_right_kind != nnkIntLit:
-                        #Data(100) / Data.new(100)
-                        if asgn_right_kind == nnkCall:
-                            let 
-                                caller = var_init[0]
-                                caller_kind = caller.kind
-
-                            #Data(100) / Data[float](100)
-                            if caller_kind == nnkIdent or caller_kind == nnkBracketExpr:
-                                var_type = caller
-
-                            #Data.new(100) / Data[float].new(100)
-                            elif caller_kind == nnkDotExpr:
-                                let 
-                                    caller_left  = caller[0]
-                                    caller_left_kind = caller_left.kind
-                                    caller_right = caller[1]
-
-                                if caller_right.kind != nnkIdent:
-                                    error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported."
-                                
-                                if caller_right.strVal != "new":
-                                    error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported."
-
-                                #Data.new() / Data[float].new()
-                                if caller_left_kind == nnkIdent or caller_left_kind == nnkBracketExpr:
-                                    var_init[0] = caller_left
-                                    var_type    = caller_left
-
-                                else:
-                                    error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
-
-                            else:
-                                error "struct '" & repr(ptr_name) & "': Invalid call '" & repr(var_init) & "'"
-
-                        #new Data / new Data(100)
-                        elif asgn_right_kind == nnkCommand:
-                            let 
-                                command_left  = var_init[0]
-                                command_right = var_init[1]
-                                command_right_kind = command_right.kind
-
-                            if command_left.kind != nnkIdent:
-                                error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
-                            
-                            if command_left.strVal != "new":
-                                error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
-                            
-                            #new Data / new Data[float]
-                            if command_right_kind == nnkIdent or command_right_kind == nnkBracketExpr:
-                                var_init = nnkCall.newTree( command_right )
-                                var_type = command_right
-                            
-                            #new Data(100) / new Data[float]()
-                            elif command_right_kind == nnkCall:
-                                var_init = command_right
-                                var_type = command_right[0]
-                            
-                            else:
-                                error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
-
-                        #Data.new 
-                        elif asgn_right_kind == nnkDotExpr:
-                            let
-                                dot_left  = var_init[0]
-                                dot_left_kind = dot_left.kind
-                                dot_right = var_init[1]
-
-                            if dot_right.kind != nnkIdent:
-                                error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported."
-                            
-                            if dot_right.strVal != "new":
-                                error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported."
-
-                            #Data.new / Data[float].new
-                            if dot_left_kind == nnkIdent or dot_left_kind == nnkBracketExpr:
-                                var_init = nnkCall.newTree( dot_left )
-                                var_type = dot_left
-
-                            else:
-                                error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
-
-                    else:
-                        var_type = newIdentNode("float")
-                    
-                    #If the func starts with low case letter, it's a def: error out: it can only happen if the type is explicitly set.
-                    if var_type.kind == nnkIdent:
-                        let var_type_str = var_type.strVal()
-                        if var_type_str != "float" and var_type_str[0].isLowerAscii:
-                            error "struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "'. This is only allowed if explicitly specifying the type."
                 
                 #phase float = 0
-                #no need to parse var_init: it's going to be done later
                 elif asgn_left_kind == nnkCommand:
                     var_name = asgn_left[0]
                     var_type = asgn_left[1]
+                    explicit_type = true
 
                 else:
                     error "struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'"
@@ -552,12 +472,119 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 error "struct '" & repr(ptr_name) & "': Invalid field initialization: '" & repr(asgn_right) & "'"
         else:
             error "struct '" & repr(ptr_name) & "': Invalid field '" & repr(code_stmt) & "'"
+        
+        #Parse var_init... var_type is only set if it's nil, meaning it's a 'a = Data()' construct,
+        #and not an 'a Data = Data()' / 'a Data = whateverDef()' one
+        let var_init_kind = var_init.kind
+        if var_init_kind != nnkFloatLit and var_init_kind != nnkIntLit:
+            #Data(100) / Data.new(100)
+            if var_init_kind == nnkCall:
+                let 
+                    caller = var_init[0]
+                    caller_kind = caller.kind
 
+                #Data(100) / Data[float](100)
+                if caller_kind == nnkIdent or caller_kind == nnkBracketExpr:
+                    if var_type.isNil:
+                        var_type = caller
+
+                #Data.new(100) / Data[float].new(100)
+                elif caller_kind == nnkDotExpr:
+                    let 
+                        caller_left  = caller[0]
+                        caller_left_kind = caller_left.kind
+                        caller_right = caller[1]
+
+                    if caller_right.kind != nnkIdent:
+                        error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported."
+                    
+                    if caller_right.strVal != "new":
+                        error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported."
+
+                    #Data.new() / Data[float].new()
+                    if caller_left_kind == nnkIdent or caller_left_kind == nnkBracketExpr:
+                        var_init[0] = caller_left
+                        if var_type.isNil:
+                            var_type = caller_left
+
+                    else:
+                        error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
+
+                else:
+                    error "struct '" & repr(ptr_name) & "': Invalid call '" & repr(var_init) & "'"
+
+            #new Data / new Data(100)
+            elif var_init_kind == nnkCommand:
+                let 
+                    command_left  = var_init[0]
+                    command_right = var_init[1]
+                    command_right_kind = command_right.kind
+
+                if command_left.kind != nnkIdent:
+                    error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
+                
+                if command_left.strVal != "new":
+                    error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
+                
+                #new Data / new Data[float]
+                if command_right_kind == nnkIdent or command_right_kind == nnkBracketExpr:
+                    var_init = nnkCall.newTree( command_right )
+                    if var_type.isNil:
+                        var_type = command_right
+                
+                #new Data(100) / new Data[float]()
+                elif command_right_kind == nnkCall:
+                    var_init = command_right
+                    if var_type.isNil:
+                        var_type = command_right[0]
+                
+                else:
+                    error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
+
+            #Data.new 
+            elif var_init_kind == nnkDotExpr:
+                let
+                    dot_left  = var_init[0]
+                    dot_left_kind = dot_left.kind
+                    dot_right = var_init[1]
+
+                if dot_right.kind != nnkIdent:
+                    error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported."
+                
+                if dot_right.strVal != "new":
+                    error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported."
+
+                #Data.new / Data[float].new
+                if dot_left_kind == nnkIdent or dot_left_kind == nnkBracketExpr:
+                    var_init = nnkCall.newTree( dot_left )
+                    if var_type.isNil:
+                        var_type = dot_left
+
+                else:
+                    error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
+
+        else:
+            if var_type.isNil:
+                var_type = newIdentNode("float")
+
+        #Check if trying to 'a = someFunc()'. This isn't allowed, must 'a Data = someFunc()'
+        #If the func starts with lower case letter, it's a def: error out: 
+        #it can only happen if the type is explicitly set (asgn_left_kind == nnkCommand)
+        if not explicit_type and not is_bool and var_type.kind == nnkIdent:
+            let var_type_str = var_type.strVal()
+            if var_type_str != "float" and var_type_str[0].isLowerAscii:
+                error "struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "' in '" & repr(code_stmt) & "'. This is only allowed if explicitly specifying the type of the field."
+
+        #Check validity of type
         var var_type_untyped_or_typed = false
-
         var_type_untyped_or_typed = omni_struct_untyped_or_typed_generics(var_type, generics_seq)
-
-        omni_execute_check_valid_types_macro_and_check_struct_fields_generics(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
+        omni_execute_check_valid_types_macro_and_check_struct_fields_generics(
+          var_type, 
+          var_name, 
+          ptr_name, 
+          generics_seq, 
+          checkValidTypes
+        )
 
         if var_type_untyped_or_typed:
             var_names.add(
@@ -1011,6 +1038,8 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     final_stmt_list.add(proc_def)
 
     # echo repr final_stmt_list
+    
+    # error repr final_stmt_list
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
