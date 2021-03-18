@@ -556,7 +556,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             call_omni_def_inner.add(arg_type)
     else:
-        if function_signature_call_kind != nnkIdent:
+        if function_signature_call_kind != nnkIdent and function_signature_call_kind != nnkBracketExpr:
             error "def: invalid function signature: '" & $repr(function_signature) & "'"
 
     return quote do:
