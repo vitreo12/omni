@@ -22,5 +22,6 @@ struct Something:
 
 init:
   a = Something()
+  print a.q
 
 sample: discard
