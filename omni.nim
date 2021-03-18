@@ -92,8 +92,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         omniFileName = omniFile.name
         omniFileExt  = omniFile.ext
     
-    let originalOmniFileName = omniFileName
-
     #Check file first charcter, must be a capital letter
     if not omniFileName[0].isUpperAscii:
         omniFileName[0] = omniFileName[0].toUpperAscii()
@@ -283,7 +281,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
-    printDone("'" & $originalOmniFileName & $omni_file_ext & "' has been compiled to folder \"" & $outDirFullPath & "\".")
+    printDone("'" & output_name & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
