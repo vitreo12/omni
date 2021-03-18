@@ -412,7 +412,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type : NimNode
             var_init : NimNode
 
-            explicit_type = false
+            explicit_type = true
             is_bool = false
 
         #NO type defined, default it to float
@@ -459,12 +459,12 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 #phase = 0
                 if asgn_left_kind == nnkIdent:
                     var_name = asgn_left
+                    explicit_type = false
                 
                 #phase float = 0
                 elif asgn_left_kind == nnkCommand:
                     var_name = asgn_left[0]
                     var_type = asgn_left[1]
-                    explicit_type = true
 
                 else:
                     error "struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'"
@@ -563,6 +563,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 else:
                     error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
 
+        #The default var_type, float
         else:
             if var_type.isNil:
                 var_type = newIdentNode("float")
@@ -579,11 +580,11 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var var_type_untyped_or_typed = false
         var_type_untyped_or_typed = omni_struct_untyped_or_typed_generics(var_type, generics_seq)
         omni_execute_check_valid_types_macro_and_check_struct_fields_generics(
-          var_type, 
-          var_name, 
-          ptr_name, 
-          generics_seq, 
-          checkValidTypes
+            var_type, 
+            var_name, 
+            ptr_name, 
+            generics_seq, 
+            checkValidTypes
         )
 
         if var_type_untyped_or_typed:

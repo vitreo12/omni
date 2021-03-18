@@ -20,6 +20,11 @@ struct Something:
   p bool = false
   q = true
 
+  data Data
+  val int
+  val2 float
+  val3 bool
+
 init:
   a = Something()
   print a.q
