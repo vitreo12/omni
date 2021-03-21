@@ -265,7 +265,7 @@ proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compile
 
     #Can't create a Buffer explicitly
     if proc_call_ident_str == "Buffer":
-        error "'" & (repr statement) & "': Buffers can't be created explicitly. Use the 'buffers' interface instead."
+        error("'" & (repr(statement)) & "': Buffers can't be created explicitly. Use the 'buffers' interface instead.", statement)
 
     #This happens in normal code
     let when_statement_struct_new = nnkWhenStmt.newTree(
@@ -333,7 +333,7 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
         
         #Detect out of position "build" calls in "init"
         if is_init_block and call_name_str == "build":
-            error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
+            error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.", statement)
         
     #Something weird happened with Data[Something]() in a def.. It returned a call to a
     #nnkOpenSymChoice with symbols.. Re-interpret it and re-run parser (NEEDS MORE TESTING!)
@@ -420,7 +420,7 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
     if is_init_block:
         if command_name_kind == nnkIdent:
             if command_name.strVal() == "build":
-                error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.")
+                error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.", statement)
 
     #ident statements: "loop", "new"
     if command_name.kind == nnkIdent:
@@ -453,7 +453,7 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
                 )
             
             else:
-                error "'" & $repr(statement) & "': Invalid 'new' syntax."
+                error("'" & $repr(statement) & "': Invalid 'new' syntax.", statement)
         
         #loop 4 / loop i 4
         elif command_name_str == "loop":
@@ -508,9 +508,6 @@ proc omni_tuple_untyped_assign(tuple_type : NimNode, tuple_val : NimNode) : void
 
 #Parse the assign syntax: a float = 10 OR a = 10
 proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_vars : var seq[string], is_init_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
-    if statement.len > 3:
-        error("Invalid variable assignment.")
-
     #Don't keep the parsed things before the = (so that commands will only be parsed in the asgn_right)
     var parsed_statement = statement.copy() 
     parsed_statement = omni_parser_untyped_loop(parsed_statement, level, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
@@ -534,14 +531,14 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
         
         #Tryin to declare a variable named "tuple" or "type"
         if asgn_left_kind == nnkTupleClassTy:
-            error("Can't declare a variable named 'tuple'. It's a keyword for internal use.")
+            error("Can't declare a variable named 'tuple'. It's a keyword for internal use.", asgn_left)
         elif asgn_left_kind == nnkTypeClassTy:
-            error("Can't declare a variable named 'type'. It's a keyword for internal use.")
+            error("Can't declare a variable named 'type'. It's a keyword for internal use.", asgn_left)
         
         #Command assignment: a float = 0.0
         if asgn_left_kind == nnkCommand:
             if asgn_left.len != 2:
-                error("Invalid variable type declaration.")
+                error("Invalid variable type declaration.", asgn_left)
 
             let 
                 var_name = asgn_left[0]
@@ -659,13 +656,13 @@ proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_va
             #in1.. / in10.. / in100
             if var_name_str_len == 3:
                 if var_name_str[2].isDigit:
-                    error("Trying to redefine input variable: '" & $var_name_str & "'")
+                    error("Trying to redefine input variable: '" & $var_name_str & "'", var_name)
             elif var_name_str_len == 4:
                 if var_name_str[2].isDigit and var_name_str[3].isDigit:
-                    error("Trying to redefine input variable: '" & $var_name_str & "'")
+                    error("Trying to redefine input variable: '" & $var_name_str & "'", var_name)
             elif var_name_str_len == 5:
                 if var_name_str[2].isDigit and var_name_str[3].isDigit and var_name_str[5].isDigit:
-                    error("Trying to redefine input variable: '" & $var_name_str & "'")
+                    error("Trying to redefine input variable: '" & $var_name_str & "'", var_name)
 
         if is_command_or_ident:
             if not is_out_variable:          
@@ -1027,7 +1024,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
             
         #couldn't find sample block IN perform block
         if not found_sample_block:
-            error "'perform': no 'sample' block provided, or not at top level."
+            error("'perform': no 'sample' block provided, or not at top level.", code_block)
         
     var build_statement : NimNode
     if is_init_block:
@@ -1326,7 +1323,7 @@ proc omni_convert_float_tuples(parsed_statement : NimNode, ident_defs : NimNode,
         real_var_content = var_content
 
     if var_content_kind == nnkEmpty:
-        error("'" & $var_name & "': trying to build an empty tuple")
+        error("'" & $var_name & "': trying to build an empty tuple", parsed_statement)
     
     #Detect if it's a proper tuple construct (e.g. a = (1, 2), and not a = someTupleFunc())
     if var_content_kind == nnkTupleConstr:
@@ -1355,7 +1352,7 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
         var_name      = var_symbol.strVal()        
 
     if var_name in omni_invalid_variable_names:
-        error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.")
+        error("'" & $var_name & "' is an invalid variable name: it's the name of an in-built type.", statement)
 
     #Check if it's a valid type
     omni_check_valid_type(var_type, var_name)
@@ -1367,7 +1364,7 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
             #Detect if it's a non-initialized struct variable (e.g "data Data[float]")
             if ident_defs.len == 3:
                 if var_content.kind == nnkEmpty:
-                    error("'" & var_name & "': structs must be instantiated on declaration.")
+                    error("'" & var_name & "': structs must be instantiated on declaration.", statement)
             
             #All good, create new let statement
             let new_let_statement = nnkLetSection.newTree(
@@ -1516,9 +1513,9 @@ proc omni_parse_typed_asgn(statement : NimNode, level : var int, is_init_block :
 
     if omni_is_struct(asgn_left):
         if asgn_left_kind == nnkDotExpr:
-            error("'" & asgn_left.repr & "': trying to re-assign an already allocated struct field.")
+            error("'" & repr(asgn_left) & "': trying to re-assign an already allocated struct field.", asgn_left)
         else:
-            error("'" & asgn_left.repr & "': trying to re-assign an already allocated struct.")
+            error("'" & repr(asgn_left) & "': trying to re-assign an already allocated struct.", asgn_left)
 
     #Check if trying to re-assign length / samplerate / channels of a Buffer
     if asgn_left_kind == nnkDotExpr:
@@ -1533,7 +1530,7 @@ proc omni_parse_typed_asgn(statement : NimNode, level : var int, is_init_block :
                 if right_dot.kind == nnkSym:
                     let right_dot_str = right_dot.strVal()
                     if right_dot_str == "samplerate" or right_dot_str == "length" or right_dot_str == "channels":
-                        error "'" & repr(parsed_statement) & "': can't reassign a Buffer's '" & right_dot_str & "'"
+                        error("'" & repr(parsed_statement) & "': can't reassign a Buffer's '" & right_dot_str & "'", right_dot)
 
     ##########################################################################
     #CHECK FOR SAME TYPE TO REMOVE EVENTUAL EXCESSIVE TYPEOF() CALLS HERE !!!!

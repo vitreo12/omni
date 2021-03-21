@@ -39,7 +39,7 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
                 how_many_datas += 1
                 return omni_find_data_generics_bottom(statement[1], how_many_datas)
             else:
-                error("Invalid type: '" & repr(statement) & "'")
+                error("Invalid type: '" & repr(statement) & "'", statement)
     
     elif statement.kind == nnkSym:
         let 
@@ -202,11 +202,11 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
                     continue
                 
                 if entry.kind != nnkIdent and entry.kind != nnkSym:
-                    error "'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'"
+                    error("struct '" & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'", statement)
                 
                 let entry_str = entry.strVal()
                 if (not (entry_str in omni_valid_struct_generics)) and (not(entry in generics_seq)):
-                    error "'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'"
+                    error("struct '" & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'", statement)
                 
                 omni_execute_check_valid_types_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
@@ -296,7 +296,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #If struct name doesn't start with capital letter, error out
         if ptr_name.strVal[0].isLowerAscii:
-            error("struct '" & $ptr_name & $ "' must start with a capital letter.")
+            error("struct '" & $ptr_name & $ "' must start with a capital letter.", struct_name)
 
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
@@ -344,7 +344,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
                 #If [T : Something etc...]
                 else:
-                    error("\'" & $ptr_name.strVal() & $ "\'s generic type \'" & $(child[0].strVal()) & "\' contains subtypes. These are not supported.")
+                    error("\'" & $ptr_name.strVal() & $ "\'s generic type \'" & $(child[0].strVal()) & "\' contains subtypes. These are not supported.", child)
         
         #Add generics to obj type
         obj_type_def.add(generics)
@@ -365,7 +365,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct '" & $ptr_name & $ "' must start with a capital letter")
+            error("struct '" & $ptr_name & $ "' must start with a capital letter", struct_name)
         
         #Add name to obj_type_def. Needs to be aliased for proper working!
         obj_type_def.add(
@@ -392,16 +392,16 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr = obj_name
     
     else:
-        error "struct: Invalid name: '" & repr(struct_name) & "'"
+        error("struct: Invalid name: '" & repr(struct_name) & "'", struct_name)
 
     #Detect invalid struct name
     if struct_name_str in omni_invalid_idents:
-        error("struct: Trying to redefine in-built struct '" & struct_name_str & "'")
+        error("struct: Trying to redefine in-built struct '" & struct_name_str & "'", struct_name)
 
     #Detect invalid ends with
     for invalid_ends_with in omni_invalid_ends_with:
         if struct_name_str.endsWith(invalid_ends_with):
-            error("struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
+            error("struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use.", struct_name)
 
     #Loop over struct's body
     for code_stmt in code_block:
@@ -426,14 +426,14 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = code_stmt[1]
 
             if var_name.kind != nnkIdent:
-                error "struct " & repr(ptr_name) & ": Invalid field name in '" & repr(code_stmt) & "'"
+                error("struct " & repr(ptr_name) & ": Invalid field name in '" & repr(code_stmt) & "'", code_stmt)
             
             let var_type_kind = var_type.kind
 
             #Type can either be an ident, a bracket expr (generics) or a tuple (par)
             if var_type_kind != nnkIdent:
                 if var_type_kind != nnkBracketExpr and var_type_kind != nnkPar:
-                    error "struct '" & repr(ptr_name) & "': Invalid field type in '" & repr(code_stmt) & "'"
+                    error("struct '" & repr(ptr_name) & "': Invalid field type in '" & repr(code_stmt) & "'", code_stmt)
 
         #phase = 0.0 / phase float = 0.0
         elif code_stmt_kind == nnkAsgn:
@@ -449,7 +449,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 if asgn_right_kind == nnkIdent:
                     let bool_val = asgn_right.strVal()
                     if bool_val != "false" and bool_val != "true":
-                        error "struct '" & repr(ptr_name) & "': Invalid ident: '" & repr(asgn_right) & "'"
+                        error("struct '" & repr(ptr_name) & "': Invalid ident: '" & repr(asgn_right) & "'", asgn_right)
                     var_type = newIdentNode("bool")
                     is_bool  = true
                         
@@ -467,9 +467,9 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     var_type = asgn_left[1]
 
                 else:
-                    error "struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'"
+                    error("struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'", asgn_left)
             else:
-                error "struct '" & repr(ptr_name) & "': Invalid field initialization: '" & repr(asgn_right) & "'"
+                error("struct '" & repr(ptr_name) & "': Invalid field initialization: '" & repr(asgn_right) & "'", asgn_right)
         else:
             error "struct '" & repr(ptr_name) & "': Invalid field '" & repr(code_stmt) & "'"
         
@@ -496,10 +496,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                         caller_right = caller[1]
 
                     if caller_right.kind != nnkIdent:
-                        error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported."
+                        error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported.", caller_right)
                     
                     if caller_right.strVal != "new":
-                        error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported."
+                        error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported.", caller_right)
 
                     #Data.new() / Data[float].new()
                     if caller_left_kind == nnkIdent or caller_left_kind == nnkBracketExpr:
@@ -508,10 +508,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                             var_type = caller_left
 
                     else:
-                        error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
+                        error("struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'", var_init)
 
                 else:
-                    error "struct '" & repr(ptr_name) & "': Invalid call '" & repr(var_init) & "'"
+                    error("struct '" & repr(ptr_name) & "': Invalid call '" & repr(var_init) & "'", var_init)
 
             #new Data / new Data(100)
             elif var_init_kind == nnkCommand:
@@ -521,7 +521,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     command_right_kind = command_right.kind
 
                 if command_left.kind != nnkIdent:
-                    error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
+                    error("struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported.", command_left)
                 
                 if command_left.strVal != "new":
                     error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
@@ -539,7 +539,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                         var_type = command_right[0]
                 
                 else:
-                    error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
+                    error("struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'", var_init)
 
             #Data.new 
             elif var_init_kind == nnkDotExpr:
@@ -549,10 +549,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     dot_right = var_init[1]
 
                 if dot_right.kind != nnkIdent:
-                    error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported."
+                    error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported.", dot_right)
                 
                 if dot_right.strVal != "new":
-                    error "struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported."
+                    error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported.", dot_right)
 
                 #Data.new / Data[float].new
                 if dot_left_kind == nnkIdent or dot_left_kind == nnkBracketExpr:
@@ -561,7 +561,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                         var_type = dot_left
 
                 else:
-                    error "struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'"
+                    error("struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'", var_init)
 
         #The default var_type, float
         else:
@@ -574,7 +574,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         if not explicit_type and not is_bool and var_type.kind == nnkIdent:
             let var_type_str = var_type.strVal()
             if var_type_str != "float" and var_type_str[0].isLowerAscii:
-                error "struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "' in '" & repr(code_stmt) & "'. This is only allowed if explicitly specifying the type of the field."
+                error("struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "' in '" & repr(code_stmt) & "'. This is only allowed if explicitly specifying the type of the field.", var_init)
 
         #Check validity of type
         var var_type_untyped_or_typed = false
@@ -670,7 +670,7 @@ proc omni_convert_generic_type(field_type : NimNode, generics_mapping : OrderedT
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
 macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_inits : untyped) : untyped =
     if ptr_struct_name.kind != nnkSym:
-        error "struct: Invalid struct ptr symbol!"
+        error("struct: Invalid struct ptr symbol", ptr_struct_name)
 
     let 
         ptr_struct_type = ptr_struct_name.getType()

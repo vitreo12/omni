@@ -104,7 +104,7 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                     )
                 
                 else:
-                    error "loop: invalid infix: '" & infix_str & "'"
+                    error("loop: invalid infix: '" & infix_str & "'", num)
             
         #loop(i, 4) / loop(i, 0..4) / loop i, 4 / loop i, 0..4
         elif loop_block_len == 4:
@@ -169,10 +169,10 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                         code_block
                     )
             else:
-                error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(loop_block) & "'"
+                error("loop: Invalid identifier '" & repr(index) & "' in ' " & repr(loop_block) & "'", index)
 
     if loop_block_len != 3:
-        error "loop: Invalid syntax: '" & repr(loop_block) & "'"
+        error("loop: Invalid syntax: '" & repr(loop_block) & "'", loop_block)
 
     let 
         index_or_num = loop_block[1]
@@ -277,6 +277,6 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                     code_block
                 )
         else:
-            error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(index_or_num) & "'"
+            error("loop: Invalid identifier '" & repr(index) & "' in ' " & repr(index_or_num) & "'", index)
     else:
-        error "loop: Invalid syntax: '" & repr(loop_block) & "'"
+        error("loop: Invalid syntax: '" & repr(loop_block) & "'", loop_block)

@@ -496,7 +496,7 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 path_last_kind = path_last.kind
 
             if path_last_kind != nnkIdent and path_last_kind != nnkStrLit:
-                error "use: Invalid path syntax: " & repr(path)
+                error("use: Invalid path syntax: " & repr(path), path)
             
             #strLit already has Something/"Module.omni" figured out
             if path_last_kind == nnkIdent:
@@ -507,7 +507,7 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 real_path[^1] = newLit(import_name_omni)
             
         else:
-            error "use: Invalid path syntax: " & repr(path)
+            error("use: Invalid path syntax: " & repr(path), path)
 
         let omni_module = newIdentNode(import_name_without_extension & "_omni_module")
 
@@ -589,7 +589,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
             path_last_kind = path_last.kind
 
         if path_last_kind != nnkIdent and path_last_kind != nnkStrLit:
-            error "use: Invalid path syntax: " & repr(path)
+            error("use: Invalid path syntax: " & repr(path), path)
             
         #strLit already has Something/"Module.omni" figured out
         if path_last_kind == nnkIdent:
@@ -603,7 +603,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
         real_path.resolveTilde()
 
     else:
-        error "use: Invalid path syntax: " & repr(path)
+        error("use: Invalid path syntax: " & repr(path), path)
 
     let import_name_omni_module = newIdentNode(import_name_without_extension & "_omni_module")
     
@@ -732,10 +732,10 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 #elif dot expr
                 elif infix_first_val.kind == nnkDotExpr:
-                    error "use: Import with submodules is not yet implemented: '" & repr(statement) & "'"
+                    error("use: Import with submodules is not yet implemented: '" & repr(statement) & "'", statement)
                 
                 else:
-                    error "use: Invalid first infix value '" & repr(infix_first_val) & "' in '" & repr(statement) & "'"
+                    error("use: Invalid first infix value '" & repr(infix_first_val) & "' in '" & repr(statement) & "'", infix_first_val)
 
                 #Add the structs / defs to check: second entry of infix
                 if infix_second_val.kind == nnkIdent:
@@ -748,7 +748,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                             invalid_ends_with_bool = true
 
                     if infix_second_val_str in omni_invalid_idents or invalid_ends_with_bool:
-                        error "use: Invalid second infix value '" & infix_second_val_str & "' in '" & repr(statement) & "'. It's an in-built identifier." 
+                        error("use: Invalid second infix value '" & infix_second_val_str & "' in '" & repr(statement) & "'. It's an in-built identifier." , infix_second_val)
 
                     generate_new_module_bindings_for_struct_or_def_call.add(
                         infix_second_val
@@ -759,11 +759,11 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     )
 
                 else:
-                    error "use: Invalid second infix value in '" & repr(statement) & "'"
+                    error("use: Invalid second infix value in '" & repr(statement) & "'", statement)
             else:
                 #Don't print error for / and \ ... These are used for paths when only 2 are provided (the case of export_stmt.len == 1)
                 if infix_ident_str != "/" and infix_ident_str != "\\":
-                    error "use: Invalid infix: '" & repr(infix_ident) & "' in '" & repr(statement) & "'"
+                    error("use: Invalid infix: '" & repr(infix_ident) & "' in '" & repr(statement) & "'", infix_ident)
 
     #This means it was a use Path1, Path2 (which would still be treated as use with two untyped)
     if export_stmt.len == 1:

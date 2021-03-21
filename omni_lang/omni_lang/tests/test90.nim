@@ -1,0 +1,2 @@
+struct Ah:
+  a.sometn

@@ -84,7 +84,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
     let current_module = omni_current_module_def.owner
 
     if current_module.kind != nnkSym and current_module.kind != nnkIdent:
-        error ("def " & repr(function_signature) & ": can't retrieve its current module")
+        error("def '" & repr(function_signature) & "': can't retrieve its current module", function_signature)
 
     #def a: / def a[T]:
     if function_signature_kind == nnkIdent or function_signature_kind == nnkBracketExpr:
@@ -110,7 +110,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #def a() -> float:
         elif function_signature_kind == nnkInfix:
             if function_signature[0].strVal() != "->":
-                error "def: Invalid return operator: '" & $function_signature[0] & "'. Use '->'."
+                error("def: Invalid return operator: '" & $repr(function_signature[0]) & "'. Use '->'.", function_signature)
             
             name_with_args   = function_signature[1]
             proc_return_type = function_signature[2]
@@ -141,7 +141,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                     continue
 
                 if entry.kind != nnkIdent:
-                    error "def " & repr(proc_name) & ": Invalid generic '" & repr(entry) & "'"
+                    error("def '" & repr(proc_name) & "': Invalid generic '" & repr(entry) & "'", entry)
                 
                 generics.add(entry)
                 
@@ -169,7 +169,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
         #Perhaps at least support `+` in the future (nnkAccQuoted)
         if proc_name.kind != nnkIdent and proc_name.kind != nnkSym:
-            error "def: Invalid name: '" & repr(first_statement) & "'"
+            error("def: Invalid name: '" & repr(proc_name) & "'", proc_name)
 
         #str
         proc_name_str = proc_name.strVal()
@@ -177,11 +177,11 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #Check name validity
         for invalid_ends_with in omni_invalid_ends_with:
             if proc_name_str.endsWith(invalid_ends_with):
-                error("def: Can't define a def that ends with '" & invalid_ends_with & "': it's reserved for internal use.")
+                error("def '" & proc_name_str & "': Can't define a def that ends with '" & invalid_ends_with & "': it's reserved for internal use.", proc_name)
         
         #Only allow low case name
         if proc_name_str[0].isUpperAscii:
-            error "def '" & proc_name_str & "' must start with a low case letter not to collide names with 'structs'."
+            error("def '" & proc_name_str & "' must start with a low case letter not to collide names with 'structs'.", proc_name)
 
         #Add template and proc names
         template_name = proc_name
@@ -244,7 +244,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 arg_value = newEmptyNode()
                 
             else:
-                error("def " & proc_name_str & ": Invalid syntax for argument '" & repr(statement) & "'")
+                error("def '" & proc_name_str & "': Invalid syntax for argument '" & repr(statement) & "'", proc_name)
 
             var arg_type_is_generic = false
 
@@ -485,7 +485,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         )
 
     else:
-        error "def: Invalid syntax for 'def " & repr(function_signature) & "'"
+        error("def '" & proc_name_str & "': Invalid syntax for 'def " & repr(function_signature) & "'", proc_name)
 
     #This dummy stuff is needed for nim to catch all the references to defs when using modules... Weird bug
     #Otherwise, proc won't overload and import on modules won't work correctly! Trust me, don't delete this!!!
@@ -619,7 +619,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             call_omni_def_inner.add(arg_type)
     else:
         if function_signature_call_kind != nnkIdent and function_signature_call_kind != nnkBracketExpr:
-            error "def: invalid function signature: '" & $repr(function_signature) & "'"
+            error("def: invalid function signature: '" & $repr(function_signature) & "'", function_signature)
 
     return quote do:
         when not declared(omni_current_module_def):

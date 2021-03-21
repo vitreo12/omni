@@ -35,7 +35,7 @@ macro omni_generate_check_datas_validity*(t : typed, is_ugen : typed = false) : 
     #struct     
     else:
         if t.kind != nnkIdent and t.kind != nnkSym:
-            error("omni_generate_check_datas_validity: Not a valid object type!")
+            error("omni_generate_check_datas_validity: '" & $repr(t) & "' is not a valid object type", t)
         
         t_type = newIdentNode(
             t.strVal()
@@ -119,7 +119,7 @@ macro omni_generate_check_datas_validity*(t : typed, is_ugen : typed = false) : 
 
     #If it's not an object type, abort the search.
     if actual_type_def.kind != nnkObjectTy:
-        error("omni_generate_check_datas_validity: Not a valid object type!")
+        error("omni_generate_check_datas_validity: '" & $repr(actual_type_def) & "' is not a valid object type!", actual_type_def)
 
     let rec_list = actual_type_def[2]
 
@@ -344,7 +344,7 @@ macro omni_generate_check_datas_validity*(t : typed, is_ugen : typed = false) : 
                 #Increase index counter
                 counter += 1
                 if counter >= max_count:
-                    error("omni_check_datas_validity: Infinite type inference loop.")
+                    error("omni_check_datas_validity: Infinite type inference loop.", t)
             
             #Add to result
             if previous_loop_stmt != nil:

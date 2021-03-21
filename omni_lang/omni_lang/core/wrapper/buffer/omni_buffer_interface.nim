@@ -283,7 +283,7 @@ proc declare_lock_unlock_proc(statement_block : NimNode, is_lock : bool = false)
 #This is quite an overhead
 macro omniBufferInterface*(code_block : untyped) : untyped =
     if code_block.kind != nnkStmtList:
-        error "omniBufferInterface: Invalid syntax. It must be a statement list."
+        error("omniBufferInterface: Invalid syntax. It must be a statement list.", code_block)
     
     result = nnkStmtList.newTree()
 
@@ -300,7 +300,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
 
     for statement in code_block:
         if statement.kind != nnkCall or statement.len > 2:
-            error "omniBufferInterface: Invalid statement: '" & repr(statement) & "'. It must be a code block."
+            error("omniBufferInterface: Invalid statement: '" & repr(statement) & "'. It must be a code block.", statement)
 
         let 
             statement_name = statement[0].strVal()
@@ -600,32 +600,32 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     if true_or_false.strVal == "true":
                         debug = true
                 else:
-                    error "omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'."
+                    error("omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'.", statement)
             else:
-                error "omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'."
+                error("omniBufferInterface: 'debug' must be a single ident, 'true' or 'false'.", statement)
         else:
-            error "omniBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'update', 'lock', 'unlock', 'getter', 'setter'"
+            error("omniBufferInterface: Invalid block name: '" & statement_name & "'. Valid names are: 'struct', 'init', 'update', 'lock', 'unlock', 'getter', 'setter'", statement)
 
     if struct == nil:
-        error "omniBufferInterface: Missing 'struct'"
+        error("omniBufferInterface: Missing 'struct'", code_block)
 
     if init == nil:
-        error "omniBufferInterface: Missing 'init'"
+        error("omniBufferInterface: Missing 'init'", code_block)
 
     if update == nil:
-        error "omniBufferInterface: Missing 'update'"
+        error("omniBufferInterface: Missing 'update'", code_block)
     
     if lock == nil:
-        error "omniBufferInterface: Missing 'lock'"
+        error("omniBufferInterface: Missing 'lock'", code_block)
 
     if unlock == nil:
-        error "omniBufferInterface: Missing 'unlock'"
+        error("omniBufferInterface: Missing 'unlock'", code_block)
         
     if getter == nil:
-        error "omniBufferInterface: Missing 'getter'"
+        error("omniBufferInterface: Missing 'getter'", code_block)
         
     if setter == nil:
-        error "omniBufferInterface: Missing 'setter'"
+        error("omniBufferInterface: Missing 'setter'", code_block)
 
     let omni_read_value_buffer = omni_read_value_buffer()
 

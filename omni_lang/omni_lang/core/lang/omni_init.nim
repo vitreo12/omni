@@ -185,7 +185,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
         else:
-            error("build: invalid syntax: '" & repr(call_to_build_macro) & "'")
+            error("build: Invalid syntax: '" & repr(call_to_build_macro) & "'", call_to_build_macro)
 
         #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
         code_block.del(code_block.len() - 1)
@@ -261,7 +261,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     for index, var_name in call_to_build_macro:
         #In case user is trying to not insert a variable with name in, like "build(1)"
         if var_name.kind != nnkIdent:
-            error("'build': Trying to use a literal value at index " & $index & ". Use a named variable instead.")
+            error("build: Trying to use a literal value at index " & $index & ". Use a named variable instead.", var_name)
 
         #Standard case, an nnkIdent with the variable name
         if index > 0: 
@@ -548,7 +548,7 @@ macro build*(var_names : varargs[typed]) =
                 newEmptyNode()
             )
         else:
-            error("Omni_UGen: can't build Omni_UGen, invalid type '" & repr(var_type) & "'")
+            error("Omni_UGen: can't build Omni_UGen, invalid type '" & repr(var_type) & "'", var_type)
 
         var_names_and_types.add(
             var_name_and_type
