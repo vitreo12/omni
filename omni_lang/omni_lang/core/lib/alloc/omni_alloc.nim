@@ -90,6 +90,7 @@ proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inli
     return nil
 
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
+    if in_ptr.isNil: return
     omni_free_C(in_ptr)
 
 # ===================================================== #
