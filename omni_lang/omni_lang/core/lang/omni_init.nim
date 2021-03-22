@@ -385,9 +385,6 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 print("ERROR: Omni: invalid omni_ugen_ptr to free.")
                 return
             
-            when defined(omni_debug):
-                print("Calling Omni_UGen's destructor")
-            
             let omni_ugen {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
             
             if not isNil(omni_ugen.omni_auto_mem):

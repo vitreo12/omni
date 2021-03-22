@@ -39,7 +39,7 @@ proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, ra
         let mem = omni_alloc_C(csize_t(size))
 
     if mem.isNil:
-        omni_print_str("ERROR: Omni: Nil allocation.")
+        omni_print_str("ERROR: Omni: omni_alloc failed to allocate memory.")
 
     return mem
 
@@ -55,7 +55,7 @@ proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, ra
         zeroMem(mem, long_size)
         return mem
 
-    omni_print_str("ERROR: Omni: Nil allocation.")
+    omni_print_str("ERROR: Omni: omni_alloc failed to allocate memory.")
     return nil
 
 #Custom realloc implementation: it is only needed in Omni_AutoMem when surpassing the limit of
@@ -77,7 +77,7 @@ proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inlin
         omni_free_C(in_ptr)
         return new_mem
 
-    omni_print_str("ERROR: Omni: Nil allocation.")
+    omni_print_str("ERROR: Omni: omni_alloc failed to allocate memory.")
     omni_free_C(in_ptr)
     return nil
 
@@ -97,11 +97,12 @@ proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inli
         omni_free_C(in_ptr)
         return new_mem
 
-    omni_print_str("ERROR: Omni: Nil allocation.")
+    omni_print_str("ERROR: Omni: omni_alloc failed to allocate memory.")
     omni_free_C(in_ptr)
     return nil
 
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
+    if in_ptr.isNil: return
     omni_free_C(in_ptr)
 
 # ===================================================== #

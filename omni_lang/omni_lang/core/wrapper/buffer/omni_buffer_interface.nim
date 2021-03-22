@@ -354,14 +354,46 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                     ),
                     newIdentNode("buffer")
                 ),
-                nnkAsgn.newTree(
-                    nnkDotExpr.newTree(
-                        newIdentNode("buffer"),
-                        newIdentNode("name"),
-                    ),
-                    newIdentNode("buffer_name")
+                nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_auto_mem"),
+                            newIdentNode("valid")
+                        ),
+                        nnkStmtList.newTree(
+                            nnkIfStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    nnkPrefix.newTree(
+                                        newIdentNode("not"),
+                                        nnkCall.newTree(
+                                            newIdentNode("isNil"),
+                                            newIdentNode("buffer")
+                                        )
+                                    ),
+                                    nnkAsgn.newTree(
+                                        nnkDotExpr.newTree(
+                                            newIdentNode("buffer"),
+                                            newIdentNode("name"),
+                                        ),
+                                        newIdentNode("buffer_name")
+                                    ),
+                                    statement_block
+                                ),
+                                nnkElse.newTree(
+                                    nnkStmtList.newTree(
+                                        nnkAsgn.newTree(
+                                          nnkDotExpr.newTree(
+                                              newIdentNode("omni_auto_mem"),
+                                              newIdentNode("valid")
+                                          ),
+                                          newIdentNode("false")
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
                 ),
-                statement_block,
                 nnkReturnStmt.newTree(
                     newIdentNode("buffer")
                 )

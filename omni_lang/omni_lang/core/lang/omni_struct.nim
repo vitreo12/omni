@@ -953,14 +953,35 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     proc_body.add(
         nnkIfStmt.newTree(
             nnkElifBranch.newTree(
-                nnkPrefix.newTree(
-                    newIdentNode("not"),
-                    nnkDotExpr.newTree(
-                      newIdentNode("result"),
-                      newIdentNode("isNil")
-                    )
+                nnkDotExpr.newTree(
+                  newIdentNode("omni_auto_mem"),
+                  newIdentNode("valid")
                 ),
-                proc_result_assignments
+                nnkStmtList.newTree(
+                    nnkIfStmt.newTree(
+                        nnkElifBranch.newTree(
+                            nnkPrefix.newTree(
+                                newIdentNode("not"),
+                                nnkDotExpr.newTree(
+                                  newIdentNode("result"),
+                                  newIdentNode("isNil")
+                                )
+                            ),
+                            proc_result_assignments
+                        )
+                    ),
+                    nnkElse.newTree(
+                        nnkStmtList.newTree(
+                            nnkAsgn.newTree(
+                                nnkDotExpr.newTree(
+                                    newIdentNode("omni_auto_mem"),
+                                    newIdentNode("valid")
+                                ),
+                                newIdentNode("false")
+                            )
+                        )
+                    )
+                )
             )
         )
     )

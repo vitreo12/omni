@@ -60,10 +60,13 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
     omni_auto_mem.omni_auto_mem_register_child(result)
 
     #Assign values
-    if not result.isNil:
-        result.mask = mask
-        result.phase = 0
-        result.data = data
+    if omni_auto_mem.valid:
+        if not result.isNil:
+            result.mask = mask
+            result.phase = 0
+            result.data = data
+        else:
+            omni_auto_mem.valid = false
 
 #As any other struct
 proc omni_check_datas_validity*(obj : Delay, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void =
