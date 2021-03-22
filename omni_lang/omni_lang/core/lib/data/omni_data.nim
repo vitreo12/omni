@@ -144,7 +144,7 @@ proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize :
                 #Use Omni_PerformCall not to initialize the entry (as it would with Omni_InitCall)
                 #I'm doing this in order to print the correct message just once, instead of at each read
                 let entry = data.getter(i, y, 0.0, 0, cast[Omni_AutoMem](nil), Omni_PerformCall)
-                if entry.isNil:
+                if entry.isNil and omni_auto_mem.valid:
                     omni_data_generic_default(T)
 
 ############
@@ -205,7 +205,7 @@ proc getter*[T](data : Data[T], channel : int = 0, index : int = 0, samplerate :
         when omni_call_type is Omni_InitCall:
             let value = data.data[actual_index]
             when T isnot SomeNumber:
-                if value.isNil:
+                if value.isNil and omni_auto_mem.valid:
                     omni_data_generic_default(T, true)
                     return data.data[actual_index] #This is the newly allocated object!
             
