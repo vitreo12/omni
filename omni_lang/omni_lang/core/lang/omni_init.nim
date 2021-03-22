@@ -446,8 +446,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             #omni_check_datas_validity triggers the checks for correct initialization of all Datas entries,
             omni_check_datas_validity(omni_ugen, samplerate, bufsize, omni_auto_mem, omni_call_type)
             
-            #Check omni_auto_mem's alloc for validity, else false. 
-            #This happens if any allocation of structs failed.
+            #Check validity one more time, as datas might have allocated more memory
             if not omni_auto_mem.valid:
                 omni_print_str("ERROR: Omni: nil allocation! Omni_UGenInit will return false.")
                 Omni_UGenFree(omni_ugen_ptr)
