@@ -987,35 +987,35 @@ proc omni_parse_untyped_block_inner(code_block : NimNode, declared_vars : var se
                             newIdentNode("is"),
                             newIdentNode("omni_call_type"),
                             newIdentNode("Omni_InitCall")
-                          ),
+                        ),
                         nnkStmtList.newTree(
                             nnkIfStmt.newTree(
                                 nnkElifBranch.newTree(
                                     nnkPrefix.newTree(
                                         newIdentNode("not"),
                                         nnkDotExpr.newTree(
-                                          newIdentNode("omni_auto_mem"),
-                                          newIdentNode("valid")
+                                            newIdentNode("omni_auto_mem"),
+                                            newIdentNode("valid")
                                         )
                                     ),
                                     nnkStmtList.newTree(
                                         nnkWhenStmt.newTree(
                                             nnkElifBranch.newTree(
                                                 nnkInfix.newTree(
-                                                  newIdentNode("is"),
-                                                  newIdentNode("result"),
-                                                  newIdentNode("void")
+                                                    newIdentNode("is"),
+                                                    newIdentNode("result"),
+                                                    newIdentNode("void")
                                                 ),
                                                 nnkStmtList.newTree(
-                                                  nnkReturnStmt.newTree(
-                                                    newEmptyNode()
-                                                  )
+                                                    nnkReturnStmt.newTree(
+                                                        newEmptyNode()
+                                                    )
                                                 )
                                             ),
                                             nnkElse.newTree(
                                                 nnkStmtList.newTree(
                                                     nnkReturnStmt.newTree(
-                                                      newIdentNode("result")
+                                                        newIdentNode("result")
                                                     )
                                                 )
                                             )

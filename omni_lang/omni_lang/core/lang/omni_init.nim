@@ -43,34 +43,30 @@ macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
 
 #Check memory validity before each statement. This can't be done in parser as `return false` would be out of context!
 proc omni_init_add_memory_checks(code_block : NimNode) : void {.compileTime.} =
-  for index, statement in code_block:
-      code_block[index] = nnkStmtList.newTree(
-            nnkIfStmt.newTree(
-              nnkElifBranch.newTree(
-                  nnkPrefix.newTree(
-                      newIdentNode("not"),
-                      nnkDotExpr.newTree(
-                          newIdentNode("omni_auto_mem"),
-                          newIdentNode("valid")
-                      )
-                  ),
-                  nnkStmtList.newTree(
-                      nnkCall.newTree(
-                          newIdentNode("omni_print_str"),
-                          newLit("ERROR: Omni: nil allocation! Omni_UGenInit will return false.")
-                      ),
-                      nnkCall.newTree(
-                          newIdentNode("Omni_UGenFree"),
-                          newIdentNode("omni_ugen_ptr")
-                      ),
-                      nnkReturnStmt.newTree(
-                          newIdentNode("false")
-                      )
-                  )
-              )
-          ),
-          statement
-      )
+    for index, statement in code_block:
+        code_block[index] = nnkStmtList.newTree(
+              nnkIfStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkPrefix.newTree(
+                        newIdentNode("not"),
+                        nnkDotExpr.newTree(
+                            newIdentNode("omni_auto_mem"),
+                            newIdentNode("valid")
+                        )
+                    ),
+                    nnkStmtList.newTree(
+                        nnkCall.newTree(
+                            newIdentNode("omni_invalid_omni_auto_mem"),
+                            newIdentNode("omni_ugen_ptr")
+                        ),
+                        nnkReturnStmt.newTree(
+                            newIdentNode("false")
+                        )
+                    )
+                )
+            ),
+            statement
+        )
 
 #This has been correctly parsed!
 macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
@@ -400,7 +396,13 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
         #Generate the UGen_BufferSet procs
         omni_generate_buffers_set_procs()
+
+        #This function is what is used to error out on bad memory allocations
+        proc omni_invalid_omni_auto_mem*(omni_ugen_ptr {.inject.} : pointer) : void {.inline, noSideEffect, raises:[]} =
+            omni_print_str("ERROR: Omni: nil allocation! Omni_UGenInit will return false.")
+            Omni_UGenFree(omni_ugen_ptr)
         
+        #Run initializations and allocations
         proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : bool {.exportc: "Omni_UGenInit", dynlib, raises:[].} =
             if isNil(omni_ugen_ptr):
                 print("ERROR: Omni: invalid omni_ugen object pointer")
@@ -448,8 +450,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             
             #Check validity one more time, as datas might have allocated more memory
             if not omni_auto_mem.valid:
-                omni_print_str("ERROR: Omni: nil allocation! Omni_UGenInit will return false.")
-                Omni_UGenFree(omni_ugen_ptr)
+                omni_invalid_omni_auto_mem(omni_ugen_ptr)
                 return false
 
             #All good!
