@@ -177,7 +177,7 @@ proc omni_find_struct_constructor_call*(statement : NimNode) : NimNode {.compile
 
     var explicit_generics = false
 
-    for index, arg in statement.pairs():
+    for index, arg in statement:
         var arg_temp = arg
         
         if index == 0:
@@ -305,13 +305,71 @@ proc omni_print_parser_stage(statement : NimNode, level : int) : void {.compileT
         echo ""
     echo $val_spaces & $level & ": " & $statement.kind & " -> " & repr(statement)
 
+#Add memory checks for all statements in a stmtlist for def block
+proc omni_def_add_memory_checks(code_block : NimNode) : void {.compileTime.} =
+    for index, statement in code_block:
+        code_block[index] = nnkStmtList.newTree(
+            nnkWhenStmt.newTree(
+                nnkElifBranch.newTree(
+                    nnkInfix.newTree(
+                        newIdentNode("is"),
+                        newIdentNode("omni_call_type"),
+                        newIdentNode("Omni_InitCall")
+                    ),
+                    nnkStmtList.newTree(
+                        nnkIfStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkPrefix.newTree(
+                                    newIdentNode("not"),
+                                    nnkDotExpr.newTree(
+                                        newIdentNode("omni_auto_mem"),
+                                        newIdentNode("valid")
+                                    )
+                                ),
+                                nnkStmtList.newTree(
+                                    nnkWhenStmt.newTree(
+                                        nnkElifBranch.newTree(
+                                            nnkInfix.newTree(
+                                                newIdentNode("is"),
+                                                newIdentNode("result"),
+                                                newIdentNode("void")
+                                            ),
+                                            nnkStmtList.newTree(
+                                                nnkReturnStmt.newTree(
+                                                    newEmptyNode()
+                                                )
+                                            )
+                                        ),
+                                        nnkElse.newTree(
+                                            nnkStmtList.newTree(
+                                                nnkReturnStmt.newTree(
+                                                    newIdentNode("result")
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            statement
+        )
+
 #Loop around statement and trigger dispatch, performing code substitution
 proc omni_parser_untyped_loop(statement : NimNode, level : var int, declared_vars : var seq[string], is_init_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
     var parsed_statement = statement
     if statement.len > 0:
-        for index, statement_inner in statement.pairs():
+        for index, statement_inner in statement:
             #Substitute old content with the parsed one
             parsed_statement[index] = omni_parser_untyped_dispatcher(statement_inner, level, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+    
+    #Add memory checks for def block
+    if is_def_block:
+        if parsed_statement.kind == nnkStmtList:
+            omni_def_add_memory_checks(parsed_statement)
+
     return parsed_statement
 
 #Parse the call syntax: function(arg)
@@ -973,61 +1031,10 @@ proc omni_parser_untyped_dispatcher(statement : NimNode, level : var int, declar
     
 #Entry point: Parse entire block
 proc omni_parse_untyped_block_inner(code_block : NimNode, declared_vars : var seq[string], is_init_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : void {.compileTime.} =
-    for index, statement in code_block.pairs():
+    for index, statement in code_block:
         #Initial level, 0
         var level : int = 0
-        var parsed_statement = omni_parser_untyped_dispatcher(statement, level, declared_vars,  is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
-
-        #Check memory validity before each statement in def block.
-        if is_def_block:
-            parsed_statement = nnkStmtList.newTree(
-                nnkWhenStmt.newTree(
-                    nnkElifBranch.newTree(
-                        nnkInfix.newTree(
-                            newIdentNode("is"),
-                            newIdentNode("omni_call_type"),
-                            newIdentNode("Omni_InitCall")
-                        ),
-                        nnkStmtList.newTree(
-                            nnkIfStmt.newTree(
-                                nnkElifBranch.newTree(
-                                    nnkPrefix.newTree(
-                                        newIdentNode("not"),
-                                        nnkDotExpr.newTree(
-                                            newIdentNode("omni_auto_mem"),
-                                            newIdentNode("valid")
-                                        )
-                                    ),
-                                    nnkStmtList.newTree(
-                                        nnkWhenStmt.newTree(
-                                            nnkElifBranch.newTree(
-                                                nnkInfix.newTree(
-                                                    newIdentNode("is"),
-                                                    newIdentNode("result"),
-                                                    newIdentNode("void")
-                                                ),
-                                                nnkStmtList.newTree(
-                                                    nnkReturnStmt.newTree(
-                                                        newEmptyNode()
-                                                    )
-                                                )
-                                            ),
-                                            nnkElse.newTree(
-                                                nnkStmtList.newTree(
-                                                    nnkReturnStmt.newTree(
-                                                        newIdentNode("result")
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                ),
-                parsed_statement
-            )
+        let parsed_statement = omni_parser_untyped_dispatcher(statement, level, declared_vars,  is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
         #Replaced the parsed_statement
         if parsed_statement != nil:
@@ -1059,7 +1066,7 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
         var found_sample_block = false
         
         #Perhaps this loop can easily be moved in the parse_block function altogether
-        for index, statement in code_block.pairs():
+        for index, statement in code_block:
             if statement.kind == nnkCall:
                 let 
                     var_ident = statement[0]
@@ -1181,9 +1188,6 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
             perform_untyped_block
         )
 
-    # if is_init_block:
-        # error repr final_block
-
     #Run the typed version of the macro on the produced code
     return quote do:
         omni_parse_block_typed(
@@ -1205,7 +1209,7 @@ proc omni_parser_typed_dispatcher(statement : NimNode, level : var int, is_init_
 proc omni_parser_typed_loop(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     var parsed_statement = statement
     if statement.len > 0:
-        for index, statement_inner in statement.pairs():
+        for index, statement_inner in statement:
             #Substitute old content with the parsed one
             parsed_statement[index] = omni_parser_typed_dispatcher(statement_inner, level, is_init_block, is_perform_block, is_def_block)
     return parsed_statement
@@ -1289,7 +1293,7 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
         #Ignore function ending in _min_max (the one used for input min/max conditional) OR omni_get_dynamic_input
         #THIS IS NOT SAFE! min_max could be assigned by user to another def
         elif parsed_statement.len > 1 and not(function_name.endsWith("_omni_min_max")) and not(function_name == "omni_get_dynamic_input"):
-            for i, arg in parsed_statement.pairs():
+            for i, arg in parsed_statement:
                 #ignore i == 0 (the function_name)
                 if i == 0:
                     continue
@@ -1845,7 +1849,7 @@ proc omni_parser_typed_dispatcher(statement : NimNode, level : var int, is_init_
     
 #Entry point: Parse entire block
 proc omni_parse_typed_block_inner(code_block : NimNode, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : void {.compileTime.} =
-    for index, statement in code_block.pairs():
+    for index, statement in code_block:
         #Initial level, 0
         var level : int = 0
         let parsed_statement = omni_parser_typed_dispatcher(statement, level, is_init_block, is_perform_block, is_def_block)

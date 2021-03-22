@@ -41,32 +41,40 @@ macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
 
     #error repr result
 
-#Check memory validity before each statement. This can't be done in parser as `return false` would be out of context!
+#Check memory validity before each statement. 
+#This can't be done in parser as `return false` would be out of context!
 proc omni_init_add_memory_checks(code_block : NimNode) : void {.compileTime.} =
+    var is_stmt = false
+    if code_block.kind == nnkStmtList:
+        is_stmt = true
+
     for index, statement in code_block:
-        code_block[index] = nnkStmtList.newTree(
-              nnkIfStmt.newTree(
-                nnkElifBranch.newTree(
-                    nnkPrefix.newTree(
-                        newIdentNode("not"),
-                        nnkDotExpr.newTree(
-                            newIdentNode("omni_auto_mem"),
-                            newIdentNode("valid")
-                        )
-                    ),
-                    nnkStmtList.newTree(
-                        nnkCall.newTree(
-                            newIdentNode("omni_invalid_omni_auto_mem"),
-                            newIdentNode("omni_ugen_ptr")
+        omni_init_add_memory_checks(statement)
+        if is_stmt:
+            code_block[index] = nnkStmtList.newTree(
+                  nnkIfStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkPrefix.newTree(
+                            newIdentNode("not"),
+                            nnkDotExpr.newTree(
+                                newIdentNode("omni_auto_mem"),
+                                newIdentNode("valid")
+                            )
                         ),
-                        nnkReturnStmt.newTree(
-                            newIdentNode("false")
+                        nnkStmtList.newTree(
+                            nnkCall.newTree(
+                                newIdentNode("omni_invalid_omni_auto_mem"),
+                                newIdentNode("omni_ugen_ptr")
+                            ),
+                            nnkReturnStmt.newTree(
+                                newIdentNode("false")
+                            )
                         )
                     )
-                )
-            ),
-            statement
-        )
+                ),
+                statement
+            )
+
 
 #This has been correctly parsed!
 macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
@@ -344,7 +352,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         call_to_build_macro
     )
 
-    #Check memory validity before each statement. This can't be done in parser as `return false` would be out of context!
+    #Check memory validity before each statement. 
+    #This can't be done in parser as `return false` would be out of context!
     omni_init_add_memory_checks(code_block)
 
     result = quote do:
