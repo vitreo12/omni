@@ -976,7 +976,58 @@ proc omni_parse_untyped_block_inner(code_block : NimNode, declared_vars : var se
     for index, statement in code_block.pairs():
         #Initial level, 0
         var level : int = 0
-        let parsed_statement = omni_parser_untyped_dispatcher(statement, level, declared_vars,  is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+        var parsed_statement = omni_parser_untyped_dispatcher(statement, level, declared_vars,  is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
+
+        #Check memory validity before each statement in def block.
+        if is_def_block:
+            parsed_statement = nnkStmtList.newTree(
+                nnkWhenStmt.newTree(
+                    nnkElifBranch.newTree(
+                        nnkInfix.newTree(
+                            newIdentNode("is"),
+                            newIdentNode("omni_call_type"),
+                            newIdentNode("Omni_InitCall")
+                          ),
+                        nnkStmtList.newTree(
+                            nnkIfStmt.newTree(
+                                nnkElifBranch.newTree(
+                                    nnkPrefix.newTree(
+                                        newIdentNode("not"),
+                                        nnkDotExpr.newTree(
+                                          newIdentNode("omni_auto_mem"),
+                                          newIdentNode("valid")
+                                        )
+                                    ),
+                                    nnkStmtList.newTree(
+                                        nnkWhenStmt.newTree(
+                                            nnkElifBranch.newTree(
+                                                nnkInfix.newTree(
+                                                  newIdentNode("is"),
+                                                  newIdentNode("result"),
+                                                  newIdentNode("void")
+                                                ),
+                                                nnkStmtList.newTree(
+                                                  nnkReturnStmt.newTree(
+                                                    newEmptyNode()
+                                                  )
+                                                )
+                                            ),
+                                            nnkElse.newTree(
+                                                nnkStmtList.newTree(
+                                                    nnkReturnStmt.newTree(
+                                                      newIdentNode("result")
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                parsed_statement
+            )
 
         #Replaced the parsed_statement
         if parsed_statement != nil:
@@ -1129,6 +1180,9 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
             declare_outs,   
             perform_untyped_block
         )
+
+    # if is_init_block:
+        # error repr final_block
 
     #Run the typed version of the macro on the produced code
     return quote do:
@@ -1378,7 +1432,6 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
     #Should they be "let" or "var" ???
     elif var_type_kind == nnkTupleConstr:
         parsed_statement = omni_convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_decl_type, var_content, var_name, var_type)
-        #error repr parsed_statement
 
         #Look for consts: capital letters.
         #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))
@@ -1764,7 +1817,7 @@ proc omni_parse_typed_if_expr_case_stmt(statement : NimNode, level : var int, is
         parsed_statement
     )
     return parsed_statement
-    
+
 #Dispatcher logic
 proc omni_parser_typed_dispatcher(statement : NimNode, level : var int, is_init_block : bool = false, is_perform_block : bool = false, is_def_block : bool = false) : NimNode {.compileTime.} =
     let statement_kind = statement.kind
@@ -1828,6 +1881,7 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
 
     #if init block, run the omni_init_inner macro on the resulting block.
     if is_init_block:
+        # error repr result
         #If old untyped code in constructor constructor had a "build" call as last call, 
         #it must be the old untyped "build" call for all parsing to work properly.
         #Otherwise all the _let / _var declaration in Omni_UGen body are screwed

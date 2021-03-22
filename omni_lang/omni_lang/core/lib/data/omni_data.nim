@@ -78,14 +78,20 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     #Register both the Data object and its data to the automatic memory management
     omni_auto_mem.omni_auto_mem_register_child(result)
     omni_auto_mem.omni_auto_mem_register_child(data)
-    
+
+    omni_auto_mem.valid = false
+
     #Fill the object layout
     if not result.isNil:
         if not data.isNil:
             result.data = data
+        else:
+            omni_auto_mem.valid = false
         result.chans  = real_chans
         result.length = real_length
         result.size   = size
+    else:
+        omni_auto_mem.valid = false
 
 #Import stuff for type manipulation
 import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities

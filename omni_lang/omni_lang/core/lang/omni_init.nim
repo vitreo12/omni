@@ -41,6 +41,37 @@ macro omni_clenup_build_statement_scope(code_block : typed) : untyped =
 
     #error repr result
 
+#Check memory validity before each statement. This can't be done in parser as `return false` would be out of context!
+proc omni_init_add_memory_checks(code_block : NimNode) : void {.compileTime.} =
+  for index, statement in code_block:
+      code_block[index] = nnkStmtList.newTree(
+            nnkIfStmt.newTree(
+              nnkElifBranch.newTree(
+                  nnkPrefix.newTree(
+                      newIdentNode("not"),
+                      nnkDotExpr.newTree(
+                          newIdentNode("omni_auto_mem"),
+                          newIdentNode("valid")
+                      )
+                  ),
+                  nnkStmtList.newTree(
+                      nnkCall.newTree(
+                          newIdentNode("omni_print_str"),
+                          newLit("ERROR: Omni: nil allocation! Omni_UGenInit will return false.")
+                      ),
+                      nnkCall.newTree(
+                          newIdentNode("Omni_UGenFree"),
+                          newIdentNode("omni_ugen_ptr")
+                      ),
+                      nnkReturnStmt.newTree(
+                          newIdentNode("false")
+                      )
+                  )
+              )
+          ),
+          statement
+      )
+
 #This has been correctly parsed!
 macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     #Extract the actual parsed code_block from the nnkStmtList
@@ -317,6 +348,9 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         call_to_build_macro
     )
 
+    #Check memory validity before each statement. This can't be done in parser as `return false` would be out of context!
+    omni_init_add_memory_checks(code_block)
+
     result = quote do:
         #Template that, when called, will generate the template for the name mangling of "_var" variables in the Omni_UGenPerform proc.
         #This is a fast way of passing the `omni_templates_for_perform_var_declarations` block of code over another section of the code, by simply evaluating the "omni_generate_templates_for_perform_var_declarations()" macro
@@ -415,9 +449,10 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             #omni_check_datas_validity triggers the checks for correct initialization of all Datas entries,
             omni_check_datas_validity(omni_ugen, samplerate, bufsize, omni_auto_mem, omni_call_type)
             
-            #check omni_auto_mem's alloc for validity, else false. 
+            #Check omni_auto_mem's alloc for validity, else false. 
             #This happens if any allocation of structs failed.
-            if not omni_check_auto_mem_validity(omni_auto_mem):
+            if not omni_auto_mem.valid:
+                omni_print_str("ERROR: Omni: nil allocation! Omni_UGenInit will return false.")
                 Omni_UGenFree(omni_ugen_ptr)
                 return false
 

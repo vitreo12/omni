@@ -33,6 +33,7 @@ type
     Omni_AutoMem_struct* = object
         num_allocs* : int
         allocs*     : C_void_ptr_ptr 
+        valid*      : bool
     
     Omni_AutoMem* = ptr Omni_AutoMem_struct
 
@@ -53,6 +54,7 @@ proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
 
     auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
     auto_mem.num_allocs = 0
+    auto_mem.valid = true
     return auto_mem
 
 #Register an allocated obj
@@ -120,12 +122,3 @@ proc omni_auto_mem_free*(auto_mem : Omni_AutoMem, free_children : bool = true) :
     
     omni_free(cast[pointer](auto_mem.allocs))
     omni_free(cast[pointer](auto_mem))
-
-#Check that all allocations are not nil
-proc omni_check_auto_mem_validity*(auto_mem : Omni_AutoMem) : bool {.inline.} =
-    for i in 0..<auto_mem.num_allocs:
-        let entry = auto_mem.allocs[i]
-        if entry.isNil:
-            omni_print_str("ERROR: Omni: Corrupted allocation! Omni_UGenInit will return false.")
-            return false
-    return true
