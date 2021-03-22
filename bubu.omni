@@ -1,7 +1,0 @@
-init:
-    a Data[float](10)
-    b 10
-
-sample: 
-    a 10
-    out1 20
