@@ -354,7 +354,7 @@ proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : str
     let default_min_max_len = default_min_max.len
 
     #Extract def / min / max values
-    for index, value in default_min_max.pairs():
+    for index, value in default_min_max:
         let value_kind = value.kind
 
         #{0, 0, 1} / {0, 1} / {0}

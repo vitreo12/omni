@@ -133,7 +133,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
         #Generics
         if first_statement_kind == nnkBracketExpr:
-            for index, entry in first_statement.pairs():
+            for index, entry in first_statement:
                 #Name of function
                 if index == 0:
                     proc_name = entry
@@ -202,7 +202,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 )
         
         let args_block = name_with_args[1..name_with_args.len-1]
-        for index, statement in args_block.pairs():
+        for index, statement in args_block:
             var 
                 arg_name  : NimNode
                 arg_type_proc  : NimNode

@@ -716,7 +716,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         ptr_bracket_expr = nnkBracketExpr.newTree(ptr_struct_name)
 
         #Retrieve generics
-        for index, generic_ident in obj_struct_name.pairs():
+        for index, generic_ident in obj_struct_name:
             if index == 0:
                 continue
 
