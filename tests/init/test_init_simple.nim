@@ -67,8 +67,8 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit":
     ugen_ptr = Omni_UGenAlloc()
     ugen = cast[Omni_UGen](ugen_ptr)
 
-  test "omni_auto_mem is nil":
-    check (ugen.omni_auto_mem == nil)
+  test "omni_auto_mem is not nil":
+    check (ugen.omni_auto_mem != nil)
 
   alloc_ins_Nim(1)
 
@@ -77,9 +77,6 @@ suite "init: Omni_UGenAlloc + Omni_UGenInit":
 
   test "omni_ugen init":
     check (init_ugen == true)
-
-  test "omni_auto_mem is not nil":
-    check (ugen.omni_auto_mem != nil)
 
   test "omni_ugen's field values":
     check (ugen.a_var == 4.0)
