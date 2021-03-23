@@ -41,7 +41,8 @@ export omni_alloc
 
 #Automatic memory management
 import omni_lang/core/lib/auto_mem/omni_auto_mem
-export omni_auto_mem
+import omni_lang/core/lib/auto_mem/omni_auto_mem_funcs
+export omni_auto_mem, omni_auto_mem_funcs
 
 #Buffer
 import omni_lang/core/lib/buffer/omni_buffer
