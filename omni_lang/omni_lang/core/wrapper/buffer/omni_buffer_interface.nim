@@ -342,7 +342,8 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                                 nnkCall.newTree(
                                     newIdentNode("sizeof"),
                                     newIdentNode("Buffer_omni_struct")
-                                )
+                                ),
+                                newIdentNode("omni_auto_mem")
                             )
                         )
                     )

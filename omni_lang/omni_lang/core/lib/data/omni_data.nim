@@ -66,26 +66,24 @@ proc Data_omni_struct_new*[S : SomeNumber, C : SomeNumber](length : S = int(1), 
     let size_data_obj = sizeof(Data_omni_struct[G1])
 
     #Actual object, assigned to result
-    result = cast[Data[G1]](omni_alloc0(size_data_obj))
+    result = cast[Data[G1]](omni_alloc0(size_data_obj, omni_auto_mem))
     
     #Data of the object (the array)
     let 
         size              = real_length * real_chans
         size_data_type    = sizeof(G1)
         total_size        = csize_t(size_data_type * size)
-        data              = cast[ArrayPtr[G1]](omni_alloc0(total_size))
+        data              = cast[ArrayPtr[G1]](omni_alloc0(total_size, omni_auto_mem))
 
     #Register both the Data object and its data to the automatic memory management
     omni_auto_mem.omni_auto_mem_register_child(result)
     omni_auto_mem.omni_auto_mem_register_child(data)
     
     #Fill the object layout
-    if not result.isNil:
-        if not data.isNil:
-            result.data = data
-        result.chans  = real_chans
-        result.length = real_length
-        result.size   = size
+    result.data = data
+    result.chans  = real_chans
+    result.length = real_length
+    result.size   = size
 
 #Import stuff for type manipulation
 import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities

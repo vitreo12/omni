@@ -20,22 +20,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#Handling of allocation errors
-type Omni_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>".} = object
-proc omni_longjmp*(jmpb: Omni_JmpBuf, retval: cint) {.header: "<setjmp.h>", importc: "longjmp".}
-proc omni_setjmp*(jmpb: Omni_JmpBuf): cint {.header: "<setjmp.h>", importc: "setjmp".}
-
-const Omni_AutoMemSize* = 50
-
-type
-    C_void_ptr_ptr* = ptr UncheckedArray[pointer] #void**
-
-    #use Omni_AutoMem_struct and not _omni_struct because _omni_struct is 
-    #reserved for the REAL omni `struct` handling!
-    Omni_AutoMem_struct* = object
-        num_allocs* : int
-        allocs*     : C_void_ptr_ptr 
-        jmp_buf*    : Omni_JmpBuf
-    
-    Omni_AutoMem* = ptr Omni_AutoMem_struct
-
+import omni_auto_mem_objs, omni_auto_mem_funcs
+export omni_auto_mem_objs, omni_auto_mem_funcs

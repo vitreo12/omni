@@ -337,14 +337,16 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 omni_ugen_ptr {.inject.} = omni_alloc0(sizeof(Omni_UGen_struct))
                 omni_ugen     {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
 
-            if isNil(omni_ugen_ptr):
+            if omni_ugen_ptr.isNil:
                 print("ERROR: Omni_UGenAlloc: could not allocate memory for omni_ugen")
+                return nil
             
             omni_ugen.omni_auto_mem = omni_create_omni_auto_mem()
 
-            if isNil(omni_ugen.omni_auto_mem):
+            if omni_ugen.omni_auto_mem.isNil:
                 print("ERROR: Omni_UGenAlloc: could not allocate omni_auto_mem")
                 omni_free(omni_ugen_ptr)
+                return nil
 
             return omni_ugen_ptr
         
@@ -387,7 +389,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             #try
             if not bool(omni_setjmp(omni_auto_mem.jmp_buf)):
-
+                
                 #Unpack params and set default values
                 omni_unpack_params_init()
 
@@ -415,7 +417,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             
             #catch
             else:
-                omni_print_str("ERROR: Omni_UGenInit: Invalid allocation. Omni_UGenInit will return false.")
+                omni_print_str("ERROR: Omni_UGenInit: Invalid allocation. Calling Omni_UGenFree and returning false from Omni_UGenInit.")
+                Omni_UGenFree(omni_ugen_ptr) #Should this not be called and left to the wrapper handler?
                 return false
             
 macro init*(code_block : untyped) : untyped =

@@ -20,9 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import omni_auto_mem as omni_auto_mem_module #this collides with omni_alloc otherwise, as it takse omni_auto_mem parameter
+import omni_auto_mem_objs
 import ../alloc/omni_alloc
-import ../print/omni_print
 
 #Create an instance of Omni_AutoMem
 proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
@@ -31,7 +30,7 @@ proc omni_create_omni_auto_mem*() : Omni_AutoMem {.inline.} =
         auto_mem = cast[Omni_AutoMem](auto_mem_ptr)
     
     if isNil(auto_mem_ptr):
-        return auto_mem     #This already is cast[Omni_AutoMem](nil)
+        return auto_mem 
 
     let auto_mem_allocs_ptr = omni_alloc0(sizeof(pointer) * Omni_AutoMemSize)
     
@@ -59,7 +58,12 @@ proc omni_auto_mem_register_child*(auto_mem : Omni_AutoMem, child : pointer) : v
     if (auto_mem.num_allocs mod Omni_AutoMemSize) == 0:
         let new_length = int(auto_mem.num_allocs + Omni_AutoMemSize)
         
-        let auto_mem_allocs_ptr = omni_realloc(cast[pointer](auto_mem.allocs), sizeof(pointer) * new_length)
+        let auto_mem_allocs_ptr = omni_realloc0(
+            cast[pointer](auto_mem.allocs), 
+            sizeof(pointer) * new_length, 
+            auto_mem #Pass auto mem! memory could potentially crash here
+        )
+
         auto_mem.allocs = cast[C_void_ptr_ptr](auto_mem_allocs_ptr)
 
 #Remove one entry
@@ -73,10 +77,11 @@ proc omni_auto_mem_remove_child*[T : SomeInteger](auto_mem : Omni_AutoMem, index
     let child = auto_mem.allocs[index]
     
     if isNil(child):
+        auto_mem.num_allocs -= 1
         return
     
     omni_free(child)
-    auto_mem.allocs[index] = cast[pointer](nil) #reset previus entry with nil ptr
+    auto_mem.allocs[index] = nil
     auto_mem.num_allocs -= 1
 
 #Remove all entries

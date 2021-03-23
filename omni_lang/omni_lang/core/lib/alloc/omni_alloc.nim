@@ -28,12 +28,12 @@
 {.passC: "-O3".}
 
 import ../print/omni_print
-import ../auto_mem/omni_auto_mem
+import ../auto_mem/omni_auto_mem_objs
 
 proc omni_alloc_C*(size : csize_t)  : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer) : void    {.importc: "omni_free_C", cdecl.}
 
-proc omni_alloc_inner*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = nil)  : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_alloc*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = nil)  : pointer {.inline, noSideEffect, raises:[].} =
     when N is csize_t:
         let mem = omni_alloc_C(size)
     else:
@@ -46,16 +46,7 @@ proc omni_alloc_inner*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = 
 
     return mem
 
-template omni_alloc*(size) : untyped =
-    when declared(omni_auto_mem):
-        when omni_auto_mem is Omni_AutoMem:
-            omni_alloc_inner(size, omni_auto_mem)
-        else:
-            omni_alloc_inner(size)
-    else:
-        omni_alloc_inner(size)
-
-proc omni_alloc0_inner*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_alloc0*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
     when N is csize_t:
         let long_size = size
     else:
@@ -71,19 +62,10 @@ proc omni_alloc0_inner*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem =
     if not omni_auto_mem.isNil:
         omni_longjmp(omni_auto_mem.jmp_buf, 1)
 
-template omni_alloc0*(size) : untyped =
-    when declared(omni_auto_mem):
-        when omni_auto_mem is Omni_AutoMem:
-            omni_alloc0_inner(size, omni_auto_mem)
-        else:
-            omni_alloc0_inner(size)
-    else:
-        omni_alloc0_inner(size)
-
 #Custom realloc implementation: it is only needed in Omni_AutoMem when surpassing the limit of
 #objects, so it does not need to be performant. It's just more convenient when writing a parser to
 #just pass a "alloc" and a "free" function.
-proc omni_realloc_inner*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
     if in_ptr.isNil:
         return nil
     
@@ -104,16 +86,7 @@ proc omni_realloc_inner*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_m
     if not omni_auto_mem.isNil:
         omni_longjmp(omni_auto_mem.jmp_buf, 1)
 
-template omni_realloc*(size) : untyped =
-    when declared(omni_auto_mem):
-        when omni_auto_mem is Omni_AutoMem:
-            omni_realloc_inner(size, omni_auto_mem)
-        else:
-            omni_realloc_inner(size)
-    else:
-        omni_realloc_inner(size)
-
-proc omni_realloc0_inner*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
     if in_ptr.isNil:
         return nil
 
@@ -133,15 +106,6 @@ proc omni_realloc0_inner*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_
     omni_free_C(in_ptr)
     if not omni_auto_mem.isNil:
         omni_longjmp(omni_auto_mem.jmp_buf, 1)
-
-template omni_realloc0*(size) : untyped =
-    when declared(omni_auto_mem):
-        when omni_auto_mem is Omni_AutoMem:
-            omni_realloc0_inner(size, omni_auto_mem)
-        else:
-            omni_realloc0_inner(size)
-    else:
-        omni_realloc0_inner(size)
 
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
     if in_ptr.isNil: return

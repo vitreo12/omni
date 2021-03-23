@@ -812,7 +812,8 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                         nnkCall.newTree(
                             newIdentNode("sizeof"),
                             obj_bracket_expr
-                        )              
+                        ),
+                        newIdentNode("omni_auto_mem")
                     )
                 )
             )
@@ -897,7 +898,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
             )
         )
 
-        #Add result.phase = phase, etc... assignments... Don't cast
+        #Check if it needs default constructor (if arg is string). Otherwise, assign
         if field_is_struct:
             proc_body.add(
                 nnkStmtList.newTree(
@@ -924,6 +925,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                 )
             )
         
+            #Assign without casting
             proc_result_assignments.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
@@ -949,20 +951,9 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
                 )
             )
     
-    #Add the result stuff
+    #Add the 'result.phase = phase' stuff
     proc_body.add(
-        nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-                nnkPrefix.newTree(
-                    newIdentNode("not"),
-                    nnkDotExpr.newTree(
-                      newIdentNode("result"),
-                      newIdentNode("isNil")
-                    )
-                ),
-                proc_result_assignments
-            )
-        )
+        proc_result_assignments
     )
     
     # ===================== #
