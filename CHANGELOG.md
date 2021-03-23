@@ -73,6 +73,8 @@
     sample: discard
     ```
 
+5) Complete memory safety. If any allocation fail, `Omni_UGenInit` will return false and print out a nice error message.
+
 ## 0.3.0
 
 1) Deprecate `nim < 1.4`.
