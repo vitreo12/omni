@@ -387,7 +387,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
-            #try
+            #Try statement, inspired by http://groups.di.unipi.it/~nids/docs/longjump_try_trow_catch.html
             if not bool(omni_setjmp(omni_auto_mem.jmp_buf)):
                 
                 #Unpack params and set default values
@@ -415,7 +415,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 #All good!
                 return true
             
-            #catch
+            #Catch statement, inspired by http://groups.di.unipi.it/~nids/docs/longjump_try_trow_catch.html
             else:
                 omni_print_str("ERROR: Omni_UGenInit: Invalid allocation. Calling Omni_UGenFree and returning false from Omni_UGenInit.")
                 Omni_UGenFree(omni_ugen_ptr) #Should this not be called and left to the wrapper handler?
