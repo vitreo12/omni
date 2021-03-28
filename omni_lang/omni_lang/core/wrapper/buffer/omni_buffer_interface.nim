@@ -440,7 +440,7 @@ macro omniBufferInterface*(code_block : untyped) : untyped =
                         ),
                         nnkIdentDefs.newTree(
                             newIdentNode("value"),
-                            newIdentNode("cstring"),
+                            newIdentNode("pointer"),
                             newLit("")
                         )
                     ),

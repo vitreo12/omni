@@ -1887,7 +1887,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
             ),
             nnkIdentDefs.newTree(
                 newIdentNode("value"),
-                newIdentNode("cstring"),
+                newIdentNode("pointer"),
                 newEmptyNode()
             )
             ),
@@ -2016,7 +2016,7 @@ proc omni_buffers_generate_set_templates() : NimNode {.compileTime.} =
                         ),
                         nnkIdentDefs.newTree(
                             newIdentNode("value"),
-                            newIdentNode("cstring"),
+                            newIdentNode("pointer"),
                             newEmptyNode()
                         )
                     ),
