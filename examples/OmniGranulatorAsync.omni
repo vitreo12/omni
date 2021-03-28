@@ -38,8 +38,8 @@ perform:
                 length_audio_buffer, position_samples, position_range_samples,
                 length_samples, length_range_samples, pitch, pitch_range_semitone
             )
-            new_grain_phase  = 0
-            
+
+            new_grain_phase     = 0
             new_grain_increment = rand() * inverse_samplerate * 1.5
 
         out_values = grains.get_active_grains(audio_buffer, window_buffer, stereo)
