@@ -27,7 +27,7 @@ import ../math/omni_math
 # ================= #
 
 {.compile: "./omni_random.c".}
-#
+
 #Pass optimization flag to C compiler
 {.localPassc: "-O3".}
 {.passC: "-O3".}
