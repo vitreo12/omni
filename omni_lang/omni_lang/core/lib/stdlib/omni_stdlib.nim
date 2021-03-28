@@ -34,8 +34,11 @@ import ../math/omni_math
 
 proc omni_random_double() : cdouble {.importc, cdecl.}
 
+proc rand*()  : float {.inline.} =
+    return float(omni_random_double())
+
 proc noise*() : float {.inline.} =
-  return float(omni_random_double())
+    return (2.0 * float(omni_random_double())) - 1.0
 
 # ================== #
 # WRAPPING / FOLDING #
