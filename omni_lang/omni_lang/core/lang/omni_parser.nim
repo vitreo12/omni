@@ -357,6 +357,11 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
     if is_def_block and statement.kind == nnkReturnStmt:
         var return_val = parsed_statement[0]
 
+        #return without a val (e.g. to break a loop)...
+        #this works as defs are {.discardable.}
+        if return_val.kind == nnkEmpty:
+            return_val = newLit(0)
+
         #Retrieve return type of def from extra_data
         var 
             return_type = extra_data
@@ -375,7 +380,7 @@ proc omni_parse_untyped_call(statement : NimNode, level : var int, declared_vars
         #This is needed to avoid type checking weirdness in the def block!
         parsed_statement = nnkLetSection.newTree(
             nnkIdentDefs.newTree(
-                genSym(ident="omni_temp_result"),
+                genSymUntyped("omni_temp_result"),
                 newEmptyNode(),
                 return_val
             )
@@ -1361,7 +1366,6 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
     #Should they be "let" or "var" ???
     elif var_type_kind == nnkTupleConstr:
         parsed_statement = omni_convert_float_tuples(parsed_statement, ident_defs, var_symbol, var_decl_type, var_content, var_name, var_type)
-        #error repr parsed_statement
 
         #Look for consts: capital letters.
         #Same rules apply: MYCONST = (1, 2) -> MYCONST = (float(1), float(2)) / MYCONST (int, float) = (1, 2) -> MYCONST (int, float) = (1, float(2))

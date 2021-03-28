@@ -26,10 +26,16 @@ import ../math/omni_math
 # Simple noise func #
 # ================= #
 
-from random import rand
+{.compile: "./omni_random.c".}
+#
+#Pass optimization flag to C compiler
+{.localPassc: "-O3".}
+{.passC: "-O3".}
+
+proc omni_random_double() : cdouble {.importc, cdecl.}
 
 proc noise*() : float {.inline.} =
-    return rand(2.0) - 1.0
+  return float(omni_random_double())
 
 # ================== #
 # WRAPPING / FOLDING #
