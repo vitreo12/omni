@@ -1217,28 +1217,8 @@ proc omni_parse_typed_call(statement : NimNode, level : var int, is_init_block :
         elif function_name.endsWith("_omni_struct_new"):
             discard
 
-            #[ #omni_struct_type is the third last argument, retrieve it
-            var omni_struct_type = parsed_statement[^3]
-
-            #Ok, some generics input from user. Attach it to the func call
-            if omni_struct_type.kind == nnkBracketExpr:
-                let struct_impl = omni_struct_type[0].getImpl()
-            
-                if struct_impl.kind != nnkNilLit:
-                    #Need to offset in order to find starting argument potition of generics.
-                    #-2 is to take in account _struc_new_inner name in parsed_statement and _omni_struct_ptr name in omni_struct_type
-                    let parsed_statement_offset = parsed_statement.len - omni_struct_type.len - 2
-
-                    for i, generic_type in omni_struct_type:
-                        #Skip _omni_struct_ptr name
-                        if i == 0:
-                            continue
-
-                        parsed_statement[i-1 + parsed_statement_offset] = generic_type ]#
-
         #Check type of all arguments for other function calls (not array access related) 
         #Ignore function ending in _min_max (the one used for input min/max conditional) OR omni_get_dynamic_input
-        #THIS IS NOT SAFE! min_max could be assigned by user to another def
         elif parsed_statement.len > 1 and not(function_name.endsWith("_omni_min_max")) and not(function_name == "omni_get_dynamic_input"):
             for i, arg in parsed_statement:
                 #ignore i == 0 (the function_name)
@@ -1303,10 +1283,36 @@ proc omni_build_new_tuple_recursive(tuple_constr : NimNode, tuple_type : NimNode
 
                 #Run conversion to float if type is not explicitly set with a conversion
                 if not explicit_conversions and tuple_entry_type_str in omni_tuple_convert_types:
-                    tuple_constr[i] = nnkCall.newTree(
+                    #Optimize tuple declaration... C code looks the same, Nim takes already care of this!
+                    # let tuple_conv = nnkPar.newTree(
+                    #     nnkStmtListExpr.newTree(
+                    #         nnkWhenStmt.newTree(
+                    #             nnkElifBranch.newTree(
+                    #                 nnkInfix.newTree(
+                    #                     newIdentNode("is"),
+                    #                     nnkPar.newTree(
+                    #                         tuple_entry_val
+                    #                     ),
+                    #                     newIdentNode("float")
+                    #                 ),
+                    #                 tuple_entry_val
+                    #             ),
+                    #             nnkElse.newTree(
+                    #                 nnkCall.newTree(
+                    #                     newIdentNode("float"),
+                    #                     tuple_entry_val
+                    #                 )
+                    #             )
+                    #         )
+                    #     )
+                    # )
+                    
+                    let tuple_conv = nnkCall.newTree(
                         newIdentNode("float"),
                         tuple_entry_val
                     )
+
+                    tuple_constr[i] = tuple_conv
 
 #Convert all float types (float32, cfloat, etc...) to float.
 #statement comes in as a nnkVarSection
@@ -1411,9 +1417,6 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
         #This makes a = int(1.5) + int(0.432) work!! Lets nim figure out typing if nnkConv are present in the var decl
         let explicit_conversions = omni_find_explicit_conversions(var_content)
 
-        #if explicit_conversions:
-        #    error var_name
-
         #if var_content.kind != nnkConv makes sure that
         #conversion calls are kept as they are! e.g. a = int(0) should still be int.
         #This won't make this an int though: a = int(1.5) + int(0.5).
@@ -1422,6 +1425,38 @@ proc omni_parse_typed_var_section(statement : NimNode, level : var int, is_init_
         
         #This works even with a = int(1.5) + int(0.5)
         if not explicit_conversions and var_decl_type.kind == nnkEmpty and is_bool.not:
+            #Optimize variable declaration... C code looks the same, Nim takes already care of this!
+            # let when_stmt = nnkWhenStmt.newTree(
+            #     nnkElifBranch.newTree(
+            #         nnkInfix.newTree(
+            #             newIdentNode("is"),
+            #             nnkPar.newTree(
+            #                 var_content
+            #             ),
+            #             newIdentNode("float")
+            #           ),
+            #           nnkStmtList.newTree(
+            #               var_content
+            #           )
+            #       ),
+            #     nnkElse.newTree(
+            #         nnkStmtList.newTree(
+            #             nnkCall.newTree(
+            #                 newIdentNode("float"),
+            #                 var_content
+            #             )
+            #         )
+            #     )
+            # )
+
+            # parsed_statement = nnkVarSection.newTree(
+            #     nnkIdentDefs.newTree(
+            #         var_symbol,
+            #         newIdentNode("float"),
+            #         when_stmt
+            #     )
+            # )
+
             parsed_statement = nnkVarSection.newTree(
                 nnkIdentDefs.newTree(
                     var_symbol,
@@ -1509,6 +1544,8 @@ proc omni_parse_typed_asgn(statement : NimNode, level : var int, is_init_block :
         parsed_statement = omni_parser_typed_loop(statement, level, is_init_block, is_perform_block, is_def_block)
         asgn_left  = parsed_statement[0]
         asgn_left_kind = asgn_left.kind
+        # asgn_right = parsed_statement[1]
+        # asgn_right_kind = asgn_right.kind
 
     #Ignore 'result' (which is used in return stmt)
     if asgn_left_kind == nnkSym:
@@ -1536,9 +1573,35 @@ proc omni_parse_typed_asgn(statement : NimNode, level : var int, is_init_block :
                     if right_dot_str == "samplerate" or right_dot_str == "length" or right_dot_str == "channels":
                         error("'" & repr(parsed_statement) & "': can't reassign a Buffer's '" & right_dot_str & "'", right_dot)
 
-    ##########################################################################
-    #CHECK FOR SAME TYPE TO REMOVE EVENTUAL EXCESSIVE TYPEOF() CALLS HERE !!!!
-    ##########################################################################
+    # Optimize typeof() calls
+    # Actually ... the C generated code looks the same, Nim already takes care of this!
+    #if asgn_right_kind == nnkConv:
+    #    let
+    #        typeof_call = asgn_right[0]
+    #        asgn_val = asgn_right[1]
+
+    #    let when_stmt = nnkWhenStmt.newTree(
+    #        nnkElifExpr.newTree(
+    #            nnkInfix.newTree(
+    #              newIdentNode("is"),
+    #              nnkPar.newTree(
+    #                  asgn_val
+    #              ),
+    #              typeof_call
+    #          ),
+    #          nnkStmtList.newTree(
+    #              asgn_val
+    #          )
+    #        ),
+    #        nnkElse.newTree(
+    #            nnkStmtList.newTree(
+    #                asgn_right
+    #            )
+    #        )
+    #    )
+
+    #    #Replace
+    #    parsed_statement[1] = when_stmt
 
     return parsed_statement
 
