@@ -7,7 +7,7 @@ struct Grain:
 
 struct Grains:
     max_num_grains int
-    grain_array Data[Grain] = Data[Grain](max_num_grains)
+    grain_array = Data[Grain](max_num_grains)
 
 def trigger_new_grain(grains, length_audio_buffer, position_samples, position_range_samples, length_samples, length_range_samples, pitch, pitch_range):
     loop(grain, grains.grain_array):
