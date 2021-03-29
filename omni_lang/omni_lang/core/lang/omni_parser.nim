@@ -1673,30 +1673,48 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                             is_data = true
 
             if is_data:
-                var for_loop_body = parsed_statement[3]
-                if for_loop_body.kind == nnkLetSection or for_loop_body.kind == nnkVarSection:
+                var 
+                    for_loop_body_init = parsed_statement[3]
+                    for_loop_body_kind = for_loop_body_init.kind
+
+                if for_loop_body_kind == nnkLetSection or for_loop_body_kind == nnkVarSection:
                     let 
-                        ident_defs = for_loop_body[0]
+                        ident_defs = for_loop_body_init[0]
                         let_variable = ident_defs[0]
                         asgnment = ident_defs[2] #1 is empty node
+
                     if let_variable.kind == nnkSym or let_variable.kind == nnkIdent:
                         if let_variable.strVal() == entry.strVal():
                             let asgn_stmt = nnkAsgn.newTree(
                                 bracket_expr,
                                 asgnment
                             )
-                            for_loop_body = asgn_stmt
+                            for_loop_body_init = asgn_stmt
 
-                omni_substitute_for_loop(for_loop_body, entry, bracket_expr)
-
-                for_loop_body = nnkStmtList.newTree(
-                    for_loop_body,
+                #Advance index
+                for_loop_body_init = nnkStmtList.newTree(
+                    for_loop_body_init,
                     nnkInfix.newTree(
                         newIdentNode("+="),
                         index,
                         newLit(1)
                     )
                 )
+                
+                #Declare immutable Data entry
+                var for_loop_body_perform = nnkStmtList.newTree(
+                    nnkLetSection.newTree(
+                        nnkIdentDefs.newTree(
+                            entry,
+                            newEmptyNode(),
+                            bracket_expr
+                        )
+                    ),
+                    for_loop_body_init.copy
+                )
+
+                #Replace all entries with Data access
+                omni_substitute_for_loop(for_loop_body_init, entry, bracket_expr)
 
                 parsed_statement = nnkBlockStmt.newTree(
                     newEmptyNode(),
@@ -1727,7 +1745,19 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                         data_name
                                     )
                                 ),
-                                for_loop_body,
+                                nnkWhenStmt.newTree(
+                                    nnkElifBranch.newTree(
+                                        nnkInfix.newTree(
+                                            newIdentNode("is"),
+                                            newIdentNode("omni_call_type"),
+                                            newIdentNode("Omni_PerformCall")
+                                        ),
+                                        for_loop_body_perform
+                                    ),
+                                    nnkElse.newTree(
+                                        for_loop_body_init
+                                    )
+                                )
                             )
                         )
                     )
@@ -1766,21 +1796,40 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                             is_data = true
             
             if is_data:
-                var for_loop_body = parsed_statement[2]
-                if for_loop_body.kind == nnkLetSection or for_loop_body.kind == nnkVarSection:
+                var 
+                    for_loop_body_init = parsed_statement[2]
+                    for_loop_body_kind = for_loop_body_init.kind
+                    for_loop_body_perform = for_loop_body_init.copy
+
+                if for_loop_body_kind == nnkLetSection or for_loop_body_kind == nnkVarSection:
                     let 
-                        ident_defs = for_loop_body[0]
+                        ident_defs = for_loop_body_init[0]
                         let_variable = ident_defs[0]
                         asgnment = ident_defs[2] #1 is empty node
+
                     if let_variable.kind == nnkSym or let_variable.kind == nnkIdent:
                         if let_variable.strVal() == entry.strVal():
                             let asgn_stmt = nnkAsgn.newTree(
                                 bracket_expr,
                                 asgnment
                             )
-                            for_loop_body = asgn_stmt
+                            
+                            for_loop_body_init = asgn_stmt
 
-                omni_substitute_for_loop(for_loop_body, entry, bracket_expr)
+                #Replace all entries with Data access
+                omni_substitute_for_loop(for_loop_body_init, entry, bracket_expr)
+
+                #Declare immutable Data entry
+                for_loop_body_perform = nnkStmtList.newTree(
+                    nnkLetSection.newTree(
+                        nnkIdentDefs.newTree(
+                            entry,
+                            newEmptyNode(),
+                            bracket_expr
+                        )
+                    ),
+                    for_loop_body_perform
+                )
 
                 parsed_statement = nnkForStmt.newTree(
                     data_chan,
@@ -1802,7 +1851,19 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                 data_name
                             )
                         ),
-                        for_loop_body
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode("is"),
+                                    newIdentNode("omni_call_type"),
+                                    newIdentNode("Omni_PerformCall")
+                                ),
+                                for_loop_body_perform
+                            ),
+                            nnkElse.newTree(
+                                for_loop_body_init
+                            )
+                        )
                     )
                 )
 
@@ -1912,8 +1973,8 @@ macro omni_parse_block_typed*(typed_code_block : typed, build_statement : untype
             )
         )
 
-    #if is_def_block:
-    #    error repr result
+    # if is_def_block:
+    #     error repr result
 
     #if is_perform_block:
     #   error repr result
