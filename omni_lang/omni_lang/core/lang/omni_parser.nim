@@ -1691,6 +1691,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                             )
                             for_loop_body_init = asgn_stmt
 
+
                 #Advance index
                 for_loop_body_init = nnkStmtList.newTree(
                     for_loop_body_init,
@@ -1740,6 +1741,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                 data_index,
                                 nnkInfix.newTree(
                                     newIdentNode("..<"),
+                                    newLit(0),
                                     nnkCall.newTree(
                                         newIdentNode("len"),
                                         data_name
@@ -1762,7 +1764,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                         )
                     )
                 )
-        
+
     #for entry in data:
     else:
         if parsed_statement[1].kind != nnkInfix:
