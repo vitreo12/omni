@@ -7,10 +7,10 @@ struct Grain:
 
 struct Grains:
     max_num_grains int
-    grain_array = Data[Grain](max_num_grains)
+    grains_data = Data[Grain](max_num_grains)
 
 def trigger_new_grain(grains, length_audio_buffer, position_samples, position_range_samples, length_samples, length_range_samples, pitch, pitch_range):
-    loop(grain, grains.grain_array):
+    for grain in grains.grains_data:
         if not grain.busy:
             grain_pitch_range    = noise() * pitch_range
             grain_pitch          = pow(2, pitch + (grain_pitch_range / 12)) #semitone conversion
@@ -38,7 +38,7 @@ def trigger_new_grain(grains, length_audio_buffer, position_samples, position_ra
 
 def get_active_grains(grains, audio_buffer, window_buffer, stereo):
     out_value1 = 0; out_value2 = 0
-    loop(grain, grains.grain_array):
+    for grain in grains.grains_data:
         if grain.busy:
             phasor_audio_buffer  = (grain.phase * grain.length) + grain.position
             phasor_window_buffer = grain.phase * (window_buffer.length - 1)
