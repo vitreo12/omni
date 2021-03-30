@@ -105,16 +105,16 @@ macro omni_data_generic_default(t : typed, validity_or_getter : bool = false) : 
   
   #omni_check_datas_validity
   if not validity_or_getter_bool:
-      let print_warning = nnkCall.newTree(
-          newIdentNode("omni_print_str"),
-          newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Not all entries have been explicitly initialized. Setting uninitialized entries to '" & $repr(type_instance) & "()'"),
-      )
+      # let print_warning = nnkCall.newTree(
+      #     newIdentNode("omni_print_str"),
+      #     newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Not all entries have been explicitly initialized. Setting uninitialized entries to '" & $repr(type_instance) & "()'"),
+      # )
 
       return quote do:
           data[i, y] = `omni_type_instance_call`
-          if not print_once:
-              `print_warning`
-              print_once = true
+          # if not print_once:
+              # `print_warning`
+              # print_once = true
 
   #getter
   else:
