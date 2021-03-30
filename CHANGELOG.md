@@ -38,7 +38,7 @@
 
     ```
 
-3) `Data[T]` will compile even with uninitialized fields: they will be initialized with the default constructor of `T`, and a warning will be printed.
+3) `Data[T]` will compile even with uninitialized fields: they will be initialized with the default constructor of `T`.
     
     ```nim
     struct Something:
@@ -190,11 +190,11 @@
 
     init:
         something = Something(Data())
-        bubu := something.data
+        myData := something.data
 
     sample:
-        out1 = bubu[0]
-        bubu[0] = in1
+        out1 = myData[0]
+        myData[0] = in1
     ```
 
 9) `def` can now be used without arguments, if needed:
@@ -253,6 +253,16 @@
         data2 = Data[Something](10)
         loop data2:
             _ = Something()
+        
+        #Together with the standard for loop syntax
+        data3 = Data[Something](10)
+        for entry in data3:
+            entry = Something()
+
+        data4 = Data[Something](10)
+        for i, entry in data4:
+            print i
+            entry = Something()
     ```
 
     Infinite loops:
