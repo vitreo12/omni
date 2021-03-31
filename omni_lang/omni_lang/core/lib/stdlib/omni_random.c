@@ -22,7 +22,14 @@
 
 #include <stdlib.h>
 
+/*
+ This implementation is awful and slow, but it works for now.
+ TODO: rework it entirely
+*/
+
+static const double rand_max_inv = 1.0 / (double)RAND_MAX;
+
 double omni_random_double()
 {
-    return (double)rand() / (double)RAND_MAX;
+    return (double)rand() * rand_max_inv;
 }
