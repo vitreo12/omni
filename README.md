@@ -49,7 +49,7 @@ After `chocolatey` has been installed, open `PowerShell` as administrator and ru
 
 To install `omni`, simply use the `nimble` package manager (it comes bundled with the `nim` installation):
 
-    nimble install omni
+    nimble install omni -y
 
 ## **Usage**
 
