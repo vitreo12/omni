@@ -161,8 +161,11 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Add -d:lto only on Linux and Windows (not working on OSX + Clang yet: https://github.com/nim-lang/Nim/issues/15578)
     var lto = ""
-    when defined(Linux) or defined(Windows):
+    when defined(Linux):
         lto = "-d:lto"
+    elif defined(Windows):
+        #-ffat-lto-objects fixes issues with MinGW
+        lto = "-d:lto --passC:\"-ffat-lto-objects\" --passL:\"-ffat-lto-objects\""
     
     #Actual compile command.
     var compile_command = 
