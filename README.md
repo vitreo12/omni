@@ -33,9 +33,9 @@ After `brew` has been installed, run the following command in the `Terminal` app
     brew install nim
 
 Then, make sure that the `~/.nimble/bin` directory is set in your shell `$PATH`.
-If using bash (the default shell in MacOS), simply edit (or create if it doesn't exist) the `~/.bash_profile` file and add this line to it: 
+If using bash (the default shell in MacOS), you can simply run this command:
 
-    export PATH=$PATH:~/.nimble/bin
+    echo "export PATH=\$PATH:~/.nimble/bin" >> ~/.bash_profile
 
 ### **Windows:**
 
