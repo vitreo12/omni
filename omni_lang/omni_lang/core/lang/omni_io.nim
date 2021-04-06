@@ -45,7 +45,7 @@ var omni_params_defaults_list* {.compileTime.} : seq[float]
 
 var omni_at_least_one_buffer*  {.compileTime.} = false
 
-proc omni_check_valid_name(param_name : string, which_call : string = "ins") : void =
+proc omni_check_valid_name(param_name : string, which_call : string = "ins") : void {.compileTime, inline.} =
     if param_name[0].isUpperAscii():
         error(which_call & ": input name '" & $param_name & "' must start with a lower case letter.")
 
@@ -318,7 +318,7 @@ proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : str
             explicit_defined_max     = false
 
         if default_min_max_in.len > 3:
-            error ins_or_params & ": invalid { } syntax for '" & $param_name & "'. Too many elements: " & $default_min_max.len & ". They must be less than 3."
+            error(ins_or_params & ": invalid { } syntax for '" & $param_name & "'. Too many elements: " & $default_min_max.len & ". They must be less than 3.", default_min_max_in)
 
         for index, value in default_min_max_in:
             if value.kind == nnkExprColonExpr:
@@ -337,7 +337,7 @@ proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : str
                         default_min_max_curly[2] = value_right
                         explicit_defined_max = true
                     else:
-                        error ins_or_params & ": invalid identifier for '" & $param_name & "': '" & $value_left_str & "'. Valid ones are 'default', 'min' and 'max'"
+                        error(ins_or_params & ": invalid identifier for '" & $param_name & "': '" & $value_left_str & "'. Valid ones are 'default', 'min' and 'max'", value_left)
             else:
                 if index == 0 and not explicit_defined_default:
                     default_min_max_curly[0] = value
@@ -354,7 +354,7 @@ proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : str
     let default_min_max_len = default_min_max.len
 
     #Extract def / min / max values
-    for index, value in default_min_max.pairs():
+    for index, value in default_min_max:
         let value_kind = value.kind
 
         #{0, 0, 1} / {0, 1} / {0}
@@ -367,14 +367,14 @@ proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : str
             else:
                 #negative number
                 if value[0].strVal() != "-":
-                    error ins_or_params & ": invalid prefix for '" & param_name & "': " & $repr(value) & "'"
+                    error(ins_or_params & ": invalid prefix for '" & param_name & "': " & $repr(value) & "'", value)
                 let number = value[1]
                 if number.kind == nnkIntLit:
                     value_num = float(-1 * number.intVal())
                 elif number.kind == nnkFloatLit:
                     value_num = (-1 * number.floatVal())
                 else:
-                    error ins_or_params & ": invalid value for '" & param_name & "': '" & $repr(value) & "'"
+                    error(ins_or_params & ": invalid value for '" & param_name & "': '" & $repr(value) & "'", value)
 
             if default_min_max_len == 3:
                 case index:
@@ -398,7 +398,7 @@ proc omni_extract_default_min_max(default_min_max_in : NimNode, param_name : str
                 default_num = float32(value_num)
 
         else:
-            error ins_or_params & ": invalid syntax for '" & $param_name & "': '" & repr(value) & "'"
+            error(ins_or_params & ": invalid syntax for '" & $param_name & "': '" & repr(value) & "'", value)
 
     return (default_num, min_num, max_num)
 
@@ -415,7 +415,7 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
 
     #Find mismatch. Perhaps user hasn't defined def/min/max for some params
     if num_of_inputs != default_vals_len:
-        error inputs_or_params & ": got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values."
+        error(inputs_or_params & ": got " & $num_of_inputs & " number of inputs but only " & $default_vals_len & " default / min / max values.")
 
     result = nnkStmtList.newTree()
 
@@ -534,10 +534,10 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     elif ins_number.kind == nnkStmtListExpr:
         ins_number_VAL = int(ins_number[0].intVal)    
     else:
-        error("ins: Expected the number of inputs to be expressed as an integer literal value")
+        error("ins: Expected the number of inputs to be expressed as an integer literal value", ins_number)
 
     if ins_names_kind != nnkStmtList and ins_names_kind != nnkStrLit and ins_names_kind != nnkCommand and ins_names_kind != nnkNilLit:
-        error("ins: Expected a block statement after the number of inputs")
+        error("ins: Expected a block statement after the number of inputs", ins_names)
 
     var zero_ins = false
 
@@ -545,9 +545,9 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         ins_number_VAL = 1
         zero_ins = true
     elif ins_number_VAL < 0:
-        error("ins: Expected a positive number for inputs number")
+        error("ins: Expected a positive number for inputs number", ins_number)
     elif ins_number_VAL > omni_max_inputs_outputs_const:
-        error("ins: Exceeded maximum number of inputs, " & $omni_max_inputs_outputs_const)
+        error("ins: Exceeded maximum number of inputs, " & $omni_max_inputs_outputs_const, ins_number)
 
     #init the seqs
     default_vals = newSeq[float32](ins_number_VAL)
@@ -566,7 +566,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
     #input 2, "freq", "stmt" is covered in the other macro
     if ins_names_kind == nnkStrLit or ins_names_kind == nnkIdent:
         if zero_ins:
-            error("ins: Can't assign names when declaring 0 inputs.")
+            error("ins: Can't assign names when declaring 0 inputs.", ins_names)
         let in_name = ins_names.strVal()
         omni_check_valid_name(in_name, "ins")
         ins_names_string.add(in_name & ",")
@@ -578,7 +578,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if ins_names_kind == nnkStmtList:
             if zero_ins:
-                error("ins: Can't assign names when declaring 0 inputs.")
+                error("ins: Can't assign names when declaring 0 inputs.", ins_names)
             
             for statement in ins_names.children():
                 let statement_kind = statement.kind
@@ -601,7 +601,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                         in_name_node = statement[0]
                         in_name_node_kind = in_name_node.kind
                     if in_name_node_kind != nnkStrLit and in_name_node_kind != nnkIdent:
-                        error("ins: Expected input name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+                        error("ins: Expected input name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value", statement)
 
                     let in_name = in_name_node.strVal()
                     omni_check_valid_name(in_name, "ins")
@@ -628,7 +628,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                         let default_min_max_curly = nnkCurly.newTree(default_min_max)
                         (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, in_name)
                     else:
-                        error("ins: Expected default / min / max values for '" & $in_name & "' to be wrapped in curly brackets.")
+                        error("ins: Expected default / min / max values for '" & $in_name & "' to be wrapped in curly brackets.", default_min_max)
 
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
@@ -648,13 +648,13 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                     max_vals[statement_counter] = max_val
 
                 else:
-                    error("ins: Invalid syntax: '" & $(repr(statement)) & "'")
+                    error("ins: Invalid syntax: '" & $(repr(statement)) & "'", statement)
 
                 statement_counter += 1
                     
         #Single "freq" {440, 0, 22000} OR "freq" on same line: ins 1, "freq" {440, 0, 22000}
         elif ins_names_kind == nnkCommand:
-            error("ins: command syntax not implemented yet")
+            error("ins: command syntax not implemented yet", ins_names)
 
     #inputs count mismatch
     if not zero_ins:
@@ -665,7 +665,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                 omni_ins_names_list.add(in_name)
         else:
             if statement_counter != ins_number_VAL:
-                error("ins: Expected " & $ins_number_VAL & " input names, got " & $statement_counter)
+                error("ins: Expected " & $ins_number_VAL & " input names, got " & $statement_counter, ins_number)
 
         #Remove trailing coma
         if ins_names_string.len > 1:
@@ -735,7 +735,7 @@ macro ins*(args : varargs[untyped]) : untyped =
             ins_names = args_first
             ins_number = ins_names.len
         else:
-            error("ins: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+            error("ins: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
     # ins 1: ...
     elif args.len == 2:
@@ -745,12 +745,12 @@ macro ins*(args : varargs[untyped]) : untyped =
             if args_second.kind == nnkStmtList:
                 ins_names = args_second
             else:
-                error("ins: invalid statement list: '" & repr(args_second) & "'.")
+                error("ins: invalid statement list: '" & repr(args_second) & "'.", args_second)
         else:
-            error("ins: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+            error("ins: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.", args_first)
 
     else:
-        error("ins: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+        error("ins: invalid syntax: '" & repr(args) & "'. Too many arguments.", args)
 
     return quote do:
         omni_ins_inner(`ins_number`, `ins_names`)
@@ -811,18 +811,18 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
     elif outs_number.kind == nnkStmtListExpr:
         outs_number_VAL = int(outs_number[0].intVal)    
     else:
-        error("outs: Expected the number of outputs to be expressed as an integer literal value")
+        error("outs: Expected the number of outputs to be expressed as an integer literal value", outs_number)
 
     if outs_names_kind != nnkStmtList and outs_names_kind != nnkStrLit and outs_names_kind != nnkCommand and outs_names_kind != nnkNilLit:
-        error("outs: Expected a block statement after the number of outputs")
+        error("outs: Expected a block statement after the number of outputs", outs_names)
 
     #Always have at least one output
     if outs_number_VAL == 0:
         outs_number_VAL = 1
     elif outs_number_VAL < 0:
-        error("outs: Expected a positive number for outputs number")
+        error("outs: Expected a positive number for outputs number", outs_number)
     elif outs_number_VAL > omni_max_inputs_outputs_const:
-        error("outs: Exceeded maximum number of outputs, " & $omni_max_inputs_outputs_const)
+        error("outs: Exceeded maximum number of outputs, " & $omni_max_inputs_outputs_const, outs_number)
 
     var statement_counter = 0
 
@@ -832,7 +832,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
         
         for individualChar in param_name:
             if not (individualChar in omni_accepted_chars):
-                error("outs: Invalid character " & $individualChar & $ " in output name " & $param_name)
+                error("outs: Invalid character " & $individualChar & $ " in output name " & $param_name, outs_names)
         
         outs_names_string.add($param_name & ",")
         statement_counter = 1
@@ -843,7 +843,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
             let statement_kind = statement.kind
 
             if statement_kind != nnkStrLit and statement_kind != nnkIdent:
-                error("outs: Expected output name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+                error("outs: Expected output name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value", statement)
         
             let param_name = statement.strVal()
 
@@ -858,7 +858,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
             outs_names_string.add("out" & $(i + 1) & ",")
     else:
         if statement_counter != outs_number_VAL:
-            error("outs: Expected " & $outs_number_VAL & " input names, got " & $statement_counter)
+            error("outs: Expected " & $outs_number_VAL & " input names, got " & $statement_counter, outs_number)
     
     #Remove trailing coma
     if outs_names_string.len > 1:
@@ -903,7 +903,7 @@ macro outs*(args : varargs[untyped]) : untyped =
             outs_names = args_first
             outs_number = outs_names.len
         else:
-            error("outs: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+            error("outs: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
     # outs 1: ...
     elif args.len == 2:
@@ -913,12 +913,12 @@ macro outs*(args : varargs[untyped]) : untyped =
             if args_second.kind == nnkStmtList:
                 outs_names = args_second
             else:
-                error("outs: invalid statement list: '" & repr(args_second) & "'.")
+                error("outs: invalid statement list: '" & repr(args_second) & "'.", args_second)
         else:
-            error("outs: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+            error("outs: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.", args_first)
 
     else:
-        error("outs: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+        error("outs: invalid syntax: '" & repr(args) & "'. Too many arguments.", args)
 
     return quote do:
         omni_outs_inner(`outs_number`, `outs_names`)
@@ -1646,10 +1646,10 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
     elif params_number.kind == nnkStmtListExpr:
         params_number_VAL = int(params_number[0].intVal)    
     else:
-        error("params: Expected the number of params to be expressed as an integer literal value")
+        error("params: Expected the number of params to be expressed as an integer literal value", params_number)
 
     if params_names_kind != nnkStmtList and params_names_kind != nnkStrLit and params_names_kind != nnkCommand and params_names_kind != nnkNilLit:
-        error("params: Expected a block statement after the number of params")
+        error("params: Expected a block statement after the number of params", params_names)
 
     var zero_params = false
     
@@ -1657,7 +1657,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
         params_number_VAL = 1
         zero_params = true
     elif params_number_VAL < 0:
-        error("params: Expected a positive number for params number")
+        error("params: Expected a positive number for params number", params_number)
 
     #init the seqs
     default_vals = newSeq[float32](params_number_VAL)
@@ -1676,7 +1676,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
     #param 2, "freq", "stmt" is covered in the other macro
     if params_names_kind == nnkStrLit or params_names_kind == nnkIdent:
         if zero_params:
-            error("params: Can't assign names when declaring 0 params.")
+            error("params: Can't assign names when declaring 0 params.", params_number)
         let param_name = params_names.strVal()
         omni_check_valid_name(param_name, "params")
         params_names_string.add($param_name & ",")
@@ -1687,7 +1687,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
         #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if params_names_kind == nnkStmtList:
             if zero_params:
-                error("params: Can't assign names when declaring 0 params.")
+                error("params: Can't assign names when declaring 0 params.", params_number)
             
             for statement in params_names.children():
                 let statement_kind = statement.kind
@@ -1710,7 +1710,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                         param_name_node = statement[0]
                         param_name_node_kind = param_name_node.kind
                     if param_name_node_kind != nnkStrLit and param_name_node_kind != nnkIdent:
-                        error("params: Expected param name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value")
+                        error("params: Expected param name number " & $(statement_counter + 1) & " to be either an identifier or a string literal value", statement)
 
                     let param_name = param_name_node.strVal()
                     omni_check_valid_name(param_name, "params")
@@ -1738,7 +1738,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                         (default_val, min_val, max_val) = omni_extract_default_min_max(default_min_max_curly, param_name, "params")
         
                     else:
-                        error("params: Expected default / min / max values for '" & $param_name & "' to be wrapped in curly brackets.")
+                        error("params: Expected default / min / max values for '" & $param_name & "' to be wrapped in curly brackets.", default_min_max)
 
                     default_vals[statement_counter] = default_val
                     min_vals[statement_counter] = min_val
@@ -1746,16 +1746,16 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                 
                 #Just {0, 0, 1} / {0 0 1}, no param name provided!
                 elif statement_kind == nnkCurly:
-                    error("params: can't only use default / min / max without a name.")
+                    error("params: Can't use default / min / max without a name.", statement)
 
                 else:
-                    error("params: Invalid syntax: '" & $(repr(statement)) & "'")
+                    error("params: Invalid syntax: '" & $(repr(statement)) & "'", statement)
 
                 statement_counter += 1
                     
         #Single "freq" {440, 0, 22000} OR "freq" on same line: params 1, "freq" {440, 0, 22000}
         elif params_names_kind == nnkCommand:
-            error("params: command syntax not implemented yet")
+            error("params: command syntax not implemented yet", params_names)
 
     #params count mismatch
     if not zero_params:
@@ -1766,7 +1766,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                 omni_params_names_list.add(param_name)
         else:
             if statement_counter != params_number_VAL:
-                error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter)
+                error("params: Expected " & $params_number_VAL & " param names, got " & $statement_counter, params_number)
 
         #Remove trailing coma
         if params_names_string.len > 1:
@@ -1836,7 +1836,7 @@ macro params*(args : varargs[untyped]) : untyped =
             params_names = args_first
             params_number = params_names.len
         else:
-            error("params: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+            error("params: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
     # params 1: ...
     elif args.len == 2:
@@ -1846,12 +1846,12 @@ macro params*(args : varargs[untyped]) : untyped =
             if args_second.kind == nnkStmtList:
                 params_names = args_second
             else:
-                error("params: invalid statement list: '" & repr(args_second) & "'.")
+                error("params: invalid statement list: '" & repr(args_second) & "'.", args_second)
         else:
-            error("params: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+            error("params: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.", args_first)
 
     else:
-        error("params: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+        error("params: invalid syntax: '" & repr(args) & "'. Too many arguments.", args)
 
     return quote do:
         omni_params_inner(`params_number`, `params_names`)
@@ -2604,10 +2604,10 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
     elif buffers_number.kind == nnkStmtListExpr:
         buffers_number_VAL = int(buffers_number[0].intVal)    
     else:
-        error("buffers: Expected the number of buffers to be expressed as an integer literal value")
+        error("buffers: Expected the number of buffers to be expressed as an integer literal value", buffers_number)
 
     if buffers_names_kind != nnkStmtList and buffers_names_kind != nnkStrLit and buffers_names_kind != nnkCommand and buffers_names_kind != nnkNilLit:
-        error("buffers: Expected a block statement after the number of buffers")
+        error("buffers: Expected a block statement after the number of buffers", buffers_names)
 
     var zero_buffers = false
 
@@ -2619,14 +2619,14 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
         zero_buffers = true
     
     elif buffers_number_VAL < 0:
-        error("buffers: Expected a positive number for buffers number")
+        error("buffers: Expected a positive number for buffers number", buffers_number)
 
     var statement_counter = 0
 
     #This is for the buffers 1, buf case. (where buf is not viewed as varargs)
     if buffers_names_kind == nnkIdent:
         if zero_buffers:
-            error("buffers: Can't assign names when declaring 0 buffers.")
+            error("buffers: Can't assign names when declaring 0 buffers.", buffers_number)
         let buffer_name = buffers_names.strVal()
         omni_check_valid_name(buffer_name, "buffers")
         buffers_names_string.add($buffer_name & ",")
@@ -2639,7 +2639,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
         #multiple statements: "freq" {440} OR "freq" {0, 22000} OR "freq" {0 22000} OR "freq" {440, 0, 22000} OR "freq" {440 0 22000}
         if buffers_names_kind == nnkStmtList:
             if zero_buffers:
-                error("buffers: Can't assign names when declaring 0 buffers.")
+                error("buffers: Can't assign names when declaring 0 buffers.", buffers_number)
             for statement in buffers_names.children():
                 let statement_kind = statement.kind
 
@@ -2662,7 +2662,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                         buffer_default_kind = buffer_default.kind
                     
                     if buffer_name_node_kind != nnkIdent:
-                        error("buffers: Expected Buffer name number " & $(statement_counter + 1) & " to be either an identifier.")
+                        error("buffers: Expected Buffer name number " & $(statement_counter + 1) & " to be either an identifier.", statement)
 
                     let buffer_name = buffer_name_node.strVal()
                     omni_check_valid_name(buffer_name, "buffers")
@@ -2670,20 +2670,20 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                     omni_buffers_names_list.add(buffer_name)
 
                     if buffer_default_kind != nnkStrLit:
-                        error("buffers: Buffer '" & $buffer_name & "' must have a string literal as default value.")
+                        error("buffers: Buffer '" & $buffer_name & "' must have a string literal as default value.", buffer_default)
 
                     let buffer_default_name = buffer_default.strVal()
                     if buffer_default_name == OMNI_DEFAULT_NIL_BUFFER or buffer_default_name == OMNI_NIL:
-                        error("buffers: the '" & OMNI_DEFAULT_NIL_BUFFER & "' name is reserved")
+                        error("buffers: the '" & OMNI_DEFAULT_NIL_BUFFER & "' name is reserved", buffer_default)
                     buffer_defaults.add(buffer_default_name)
 
                 else:
-                    error("buffers: Invalid syntax: '" & $(repr(statement)) & "'")
+                    error("buffers: Invalid syntax: '" & $(repr(statement)) & "'", statement)
 
                 statement_counter += 1
                     
         elif buffers_names_kind == nnkCommand:
-            error("buffers: command syntax not implemented yet")
+            error("buffers: command syntax not implemented yet", buffers_names)
 
     #buffers count mismatch
     if not zero_buffers:
@@ -2694,7 +2694,7 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                 omni_buffers_names_list.add(buffer_name)
         else:
             if statement_counter != buffers_number_VAL:
-                error("buffers: Expected " & $buffers_number_VAL & " buffer names, got " & $statement_counter)
+                error("buffers: Expected " & $buffers_number_VAL & " buffer names, got " & $statement_counter, buffers_number)
 
         #Remove trailing coma
         if buffers_names_string.len > 1:
@@ -2802,7 +2802,7 @@ macro buffers*(args : varargs[untyped]) : untyped =
             buffers_names = args_first
             buffers_number = buffers_names.len
         else:
-            error("buffers: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.")
+            error("buffers: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
     # buffers 1: ...
     elif args.len == 2:
@@ -2812,12 +2812,12 @@ macro buffers*(args : varargs[untyped]) : untyped =
             if args_second.kind == nnkStmtList:
                 buffers_names = args_second
             else:
-                error("buffers: invalid statement list: '" & repr(args_second) & "'.")
+                error("buffers: invalid statement list: '" & repr(args_second) & "'.", args_second)
         else:
-            error("buffers: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.")
+            error("buffers: invalid first argument: '" & repr(args_first) & "'. First entry must be an integer literal.", args_first)
 
     else:
-        error("buffers: invalid syntax: '" & repr(args) & "'. Too many arguments.")
+        error("buffers: invalid syntax: '" & repr(args) & "'. Too many arguments.", args)
 
     return quote do:
         omni_buffers_inner(`buffers_number`, `buffers_names`)

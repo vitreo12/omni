@@ -55,9 +55,10 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
         
     stuct_typed_rec_list = struct_typed_inner[2]
 
-    let 
+    var 
         struct_new_name_str = struct_new_name.strVal()
         struct_new_name_ident = newIdentNode(struct_new_name_str)
+        struct_new_name_ident_with_generics = struct_new_name_ident
         struct_new_name_export_ident = newIdentNode(struct_new_name_str & "_omni_struct_ptr")
         struct_new_name_omni_struct_new_ident = newIdentNode(struct_new_name_str & "_omni_struct_new")
         old_struct_name_export_ident = newIdentNode(struct_typed_name_str & "_omni_struct_ptr")
@@ -70,7 +71,9 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     let 
         stuct_typed_constuctor_impl = struct_typed_constructor.getImpl()
 
-        #Untyped translation, to retrieve formal params from (and modify them)
+        #Untyped translation, to retrieve formal params without having to deal with typed resolution 
+        #This is quite a bad solution, find a leaner way to achieve this, perhaps similarly to what
+        #is done for def
         stuct_untyped_constuctor_impl = typed_to_untyped(stuct_typed_constuctor_impl)[0]
         struct_untyped_formal_params = stuct_untyped_constuctor_impl[3]
 
@@ -98,11 +101,17 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
             old_struct_name_export
         )
 
+        #Add generics to new names
+        struct_new_name_ident_with_generics = nnkBracketExpr.newTree(
+            struct_new_name_ident_with_generics
+        )
+
         for i, generic_param in struct_typed_generic_params: 
             #Must be untyped here!
             let generic_param_untyped = newIdentNode(generic_param.strVal())
 
             old_struct_name_export.add(generic_param_untyped)
+            struct_new_name_ident_with_generics.add(generic_param_untyped)
 
             #No specification for type declarations
             let new_generic_ident_def = nnkIdentDefs.newTree(
@@ -112,8 +121,6 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
             )
 
             generics_ident_defs.add(new_generic_ident_def)
-
-    #error astGenRepr stuct_typed_constuctor_impl
 
     #Final return stmt
     var 
@@ -147,8 +154,10 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
     #Change name in omni_struct_type argument (third last)
     new_struct_formal_params[^3][1][1] = struct_new_name_export_ident
 
-    #Add omni_struct_type, omni_auto_mem and omni_call_type etc...
+    #Add samplerate, bufsize, omni_struct_type, omni_auto_mem and omni_call_type etc...
     new_struct_call.add(
+        newIdentNode("samplerate"),
+        newIdentNode("bufsize"),
         newIdentNode("omni_struct_type"),
         newIdentNode("omni_auto_mem"),
         newIdentNode("omni_call_type"),
@@ -172,12 +181,9 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
                 struct_new_name_export_ident
             ),
             generics_ident_defs,
-            struct_new_name_ident
+            struct_new_name_ident_with_generics
         )
     )
-
-    #Copy the old func's body? Not really needed
-    #return_stmt = stuct_typed_constuctor_impl[^1]
 
     var new_omni_struct_new = nnkProcDef.newTree(
         nnkPostfix.newTree(
@@ -200,21 +206,14 @@ proc omni_generate_new_module_bindings_for_struct(module_name : NimNode, struct_
         new_omni_struct_new
     )
 
-    #error astGenRepr new_struct
     #error repr result
 
-
 proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : NimNode, def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
-    result = nnkStmtList.newTree()
-
     let 
         def_call_proc_def_typed = def_call.getImpl()
-        generic_params = def_call_proc_def_typed[2]
         formal_params = def_call_proc_def_typed[3]
 
     var
-        new_template_generic_params = nnkGenericParams.newTree()
-        
         new_template_formal_params = nnkFormalParams.newTree(
             newIdentNode("untyped"),
         )
@@ -228,30 +227,11 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
                 newIdentNode("*"),
                 newIdentNode(def_new_name.strVal())
             ),
+            newEmptyNode(),
             newEmptyNode()
         )   
 
-    for generic_param in generic_params:
-        let generic_param_kind = generic_param.kind
-        if generic_param_kind == nnkIdent or generic_param_kind == nnkSym:
-            let generic_param_str = generic_param.strVal()
-            #ignore autos and omni_call_type:type in generics!
-            if not (generic_param_str.endsWith(":type")):
-                new_template_generic_params.add(
-                    nnkIdentDefs.newTree(
-                        newIdentNode(generic_param_str),
-                        newIdentNode("SomeNumber"), #generics are always SomeNumber (for now)
-                        newEmptyNode()
-                    )
-                )
-
-    #If generic params
-    if generic_params.len > 1: # 1 because there's always omni_call_type:type
-        new_template.add(new_template_generic_params)
-    
-    #no generics
-    else:
-        new_template.add(newEmptyNode())
+    var generic_params : seq[NimNode]
 
     for i, formal_param in formal_params:
         #skip return type (first formal param)
@@ -259,11 +239,13 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
             var 
                 arg_name_sym   = formal_param[0]
                 arg_name_str   = arg_name_sym.strVal()
-                arg_name_ident = newIdentNode(arg_name_str) #Use ident version of arg_name, typed causes errors
+                arg_name_ident = newIdentNode(arg_name_str) #Use ident version of arg_name, sym causes errors
                 
                 arg_type_sym   = formal_param[1]
                 arg_type_kind  = arg_type_sym.kind
                 arg_type_str   : string
+
+                arg_default_val = formal_param[2]
 
             if arg_type_kind == nnkIdent or arg_type_kind == nnkSym:
                 arg_type_str = arg_type_sym.strVal()
@@ -271,15 +253,29 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
                 arg_type_str = arg_type_sym[0].strVal()
 
             if arg_name_str != "samplerate" and arg_name_str != "bufsize" and arg_name_str != "omni_auto_mem" and arg_name_str != "omni_call_type": 
-                new_template_formal_params.add(
-                    nnkIdentDefs.newTree(
-                        arg_name_ident, #untyped name
-                        arg_type_sym,   #typed: it already has correct type infos!
-                        newEmptyNode()
-                    )
+                #Look for G1:type ... convert it to auto!
+                if arg_type_str.endsWith(":type"):
+                    arg_type_sym = newIdentNode("auto")
+                
+                var ident_def = nnkIdentDefs.newTree(
+                    arg_name_ident, #untyped name
+                    arg_type_sym,   #typed: it already has correct type infos!
+                    arg_default_val
                 )
+                
+                #Look for G1 : typedesc. These have to be moved AFTER normal ones 
+                if arg_type_str == "typedesc":
+                    generic_params.add(ident_def)
+                
+                #Normal arg, add right away
+                else: 
+                    new_template_formal_params.add(ident_def)
 
             new_template_call.add(arg_name_ident)
+    
+    #Add the G1, etc...
+    for generic_param in generic_params:
+        new_template_formal_params.add(generic_param)
 
     new_template.add(
         new_template_formal_params,
@@ -297,10 +293,10 @@ proc omni_generate_new_modue_bindings_for_def(module_name : NimNode, def_call : 
     let formal_params_repr = repr(new_template_formal_params)
     def_combinations[formal_params_repr] = def_call
 
-    result.add(new_template)
+    # error repr new_template
 
-    # error astGenRepr result
-
+    return new_template
+    
 proc omni_generate_new_module_bindings_for_struct_or_def_inner(module_name : NimNode, struct_or_def_typed : NimNode, struct_constructor_typed : NimNode, struct_or_def_new_name : NimNode, def_combinations : var OrderedTable[string, NimNode]) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
 
@@ -325,7 +321,7 @@ proc omni_generate_new_module_bindings_for_struct_or_def_inner(module_name : Nim
             let new_template = omni_generate_new_modue_bindings_for_def(module_name, actual_def_call, struct_or_def_new_name, def_combinations)
             result.add(new_template)
 
-    # error astGenRepr result
+    # error repr result 
     
 proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, NimNode], def_new_name : NimNode) : NimNode {.compileTime.} =
     result = nnkStmtList.newTree()
@@ -391,17 +387,14 @@ proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, 
 
         #actual omni_def_export
         var 
-            def_call_typed = def_call.getImpl()
-            def_call_typed_formal_params = def_call_typed[3] 
+            new_omni_def_export = def_call.getImpl()
+            new_omni_def_export_formal_params = new_omni_def_export[3] 
         
         #Remove the actual function body, it's unneeded
         #and it creates problems too with parsing of some return statements, due to the parsed_untyped_loop being triggered with typed_to_untyped
-        def_call_typed[^1] = nnkDiscardStmt.newTree(
+        new_omni_def_export[^1] = nnkDiscardStmt.newTree(
             newEmptyNode()
         )
-
-        #This is only needed to change name to omni_def_export, tbh... Find a cleaner solution
-        var new_omni_def_export = typed_to_untyped(def_call_typed)[0] #typed to untyped
 
         #Change name
         new_omni_def_export[0] = nnkPostfix.newTree(
@@ -409,20 +402,12 @@ proc omni_generate_new_omni_def_exports(def_combinations : OrderedTable[string, 
             omni_def_export
         )
 
-        #If it has generics, need to be SomeNumber! Or type info won't work
-        var generic_params = new_omni_def_export[2]
-        for generic_param in generic_params:
-            generic_param[1] = newIdentNode("SomeNumber")
-
         #Convert all formal params' names to idents or compiler will complain about missing symbols
-        for index, ident_def in def_call_typed_formal_params:
+        for index, ident_def in new_omni_def_export_formal_params:
             if ident_def.kind == nnkIdentDefs:
                 let name = ident_def[0]
                 if name.kind == nnkSym:
-                   def_call_typed_formal_params[index][0] = newIdentNode(name.strVal())
-
-        #Use typed formal params (so all type information on arguments and return types is preserverd)
-        new_omni_def_export[3] = def_call_typed_formal_params
+                   new_omni_def_export_formal_params[index][0] = newIdentNode(name.strVal())
 
         #Use the actual def_call in order to maintain all type information and module belonging!
         #This must be put here (and not before typed_to_untyped) in order for the nnkSym to be maintained after the typed_to_untyped
@@ -458,7 +443,7 @@ macro omni_generate_new_module_bindings_for_struct_or_def*(module_name : untyped
     let new_omni_def_exports = omni_generate_new_omni_def_exports(def_combinations, struct_or_def_new_name)
     result.add(new_omni_def_exports)
 
-    # error astGenRepr result
+    # error repr result
     
 #use with normal import / export
 proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
@@ -511,7 +496,7 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 path_last_kind = path_last.kind
 
             if path_last_kind != nnkIdent and path_last_kind != nnkStrLit:
-                error "use: Invalid path syntax: " & repr(path)
+                error("use: Invalid path syntax: " & repr(path), path)
             
             #strLit already has Something/"Module.omni" figured out
             if path_last_kind == nnkIdent:
@@ -522,7 +507,7 @@ proc omni_use_inner(paths : NimNode) : NimNode {.compileTime.} =
                 real_path[^1] = newLit(import_name_omni)
             
         else:
-            error "use: Invalid path syntax: " & repr(path)
+            error("use: Invalid path syntax: " & repr(path), path)
 
         let omni_module = newIdentNode(import_name_without_extension & "_omni_module")
 
@@ -604,7 +589,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
             path_last_kind = path_last.kind
 
         if path_last_kind != nnkIdent and path_last_kind != nnkStrLit:
-            error "use: Invalid path syntax: " & repr(path)
+            error("use: Invalid path syntax: " & repr(path), path)
             
         #strLit already has Something/"Module.omni" figured out
         if path_last_kind == nnkIdent:
@@ -618,7 +603,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
         real_path.resolveTilde()
 
     else:
-        error "use: Invalid path syntax: " & repr(path)
+        error("use: Invalid path syntax: " & repr(path), path)
 
     let import_name_omni_module = newIdentNode(import_name_without_extension & "_omni_module")
     
@@ -747,10 +732,10 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
 
                 #elif dot expr
                 elif infix_first_val.kind == nnkDotExpr:
-                    error "use: Import with submodules is not yet implemented: '" & repr(statement) & "'"
+                    error("use: Import with submodules is not yet implemented: '" & repr(statement) & "'", statement)
                 
                 else:
-                    error "use: Invalid first infix value '" & repr(infix_first_val) & "' in '" & repr(statement) & "'"
+                    error("use: Invalid first infix value '" & repr(infix_first_val) & "' in '" & repr(statement) & "'", infix_first_val)
 
                 #Add the structs / defs to check: second entry of infix
                 if infix_second_val.kind == nnkIdent:
@@ -763,7 +748,7 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                             invalid_ends_with_bool = true
 
                     if infix_second_val_str in omni_invalid_idents or invalid_ends_with_bool:
-                        error "use: Invalid second infix value '" & infix_second_val_str & "' in '" & repr(statement) & "'. It's an in-built identifier." 
+                        error("use: Invalid second infix value '" & infix_second_val_str & "' in '" & repr(statement) & "'. It's an in-built identifier." , infix_second_val)
 
                     generate_new_module_bindings_for_struct_or_def_call.add(
                         infix_second_val
@@ -774,11 +759,11 @@ macro use*(path : untyped, stmt_list : untyped) : untyped =
                     )
 
                 else:
-                    error "use: Invalid second infix value in '" & repr(statement) & "'"
+                    error("use: Invalid second infix value in '" & repr(statement) & "'", statement)
             else:
                 #Don't print error for / and \ ... These are used for paths when only 2 are provided (the case of export_stmt.len == 1)
                 if infix_ident_str != "/" and infix_ident_str != "\\":
-                    error "use: Invalid infix: '" & repr(infix_ident) & "' in '" & repr(statement) & "'"
+                    error("use: Invalid infix: '" & repr(infix_ident) & "' in '" & repr(statement) & "'", infix_ident)
 
     #This means it was a use Path1, Path2 (which would still be treated as use with two untyped)
     if export_stmt.len == 1:

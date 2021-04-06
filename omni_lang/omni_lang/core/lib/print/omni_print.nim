@@ -27,10 +27,11 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
-proc omni_print*(format_string : cstring) : void {.importc: "omni_print_C", varargs, cdecl.}
+proc omni_print*(format_string : cstring) : void {.importc: "omni_print_C", cdecl, varargs.}
 proc omni_print_str*(value : cstring) : void {.importc: "omni_print_str_C", cdecl.}
 proc omni_print_float*(value : cfloat) : void {.importc: "omni_print_float_C", cdecl.}
 proc omni_print_int*(value : cint) : void {.importc: "omni_print_int_C", cdecl.}
+proc omni_print_bool*(value : cint) : void {.importc: "omni_print_bool_C", cdecl.}
 
 #string
 template print*(str : string) : untyped =
@@ -43,3 +44,7 @@ template print*[T : SomeFloat](val : T) : untyped =
 #int
 template print*[T : SomeInteger](val : T) : untyped =
     omni_print_int(cint(val))
+
+#bool
+template print*(val : bool) : untyped =
+    omni_print_bool(cint(val))

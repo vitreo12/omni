@@ -69,7 +69,7 @@ proc omni_unpack_ugen_fields_inner(t : NimNode) : NimNode {.compileTime.} =
             
             #If a struct is declared as var, it's an error! This should be fixed to still allow to do it.
             if var_name_string.endsWith("var"):
-                error($(var_name_string[0 .. len(var_name_string) - 5]) & " is declared as 'var'. This is not allowed for structs. Use 'let' instead.")
+                error($(var_name_string[0 .. len(var_name_string) - 5]) & " is declared as 'var'. This is not allowed for structs. Use 'let' instead.", var_name)
                 
             ident_def_stmt = nnkIdentDefs.newTree(
                 newIdentNode(var_name_string[0 .. len(var_name_string) - 5]),   #name of the variable, stripped off the "_var" and "_let" strings

@@ -1,10 +1,10 @@
-ins:
+params:
     freq {440, 0.01, 22000}
 
 init:
     phase = 0.0
     prev_value = 0.0
-    SAMPLERATE_MINUS_ONE = samplerate - 1.0
+    samplerate_minus_one = samplerate - 1.0
 
 sample:
     #0.0 would result in 0 / 0 -> NaN
@@ -20,8 +20,7 @@ sample:
     freq_over_samplerate = (freq * TWOPI) / samplerate * 0.25
     out_value = (freq_over_samplerate * (blit - prev_value)) + prev_value
     
-    out1 = out_value
-    
-    phase += freq / SAMPLERATE_MINUS_ONE
-    phase = phase % 1.0
+    phase = (phase + (freq / samplerate_minus_one)) % 1
     prev_value = out_value
+
+    out1 = out_value

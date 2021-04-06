@@ -37,7 +37,7 @@ type
 
     Delay_omni_struct_ptr* = Delay
 
-proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, omni_struct_type : typedesc[Delay_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
+proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : float, bufsize : int, omni_struct_type : typedesc[Delay_omni_struct_ptr], omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : Delay {.inline.} =
     #Trying to allocate in perform block!
     when omni_call_type is Omni_PerformCall:
         {.fatal: "struct 'Delay': attempting to allocate memory in the 'perform' or 'sample' blocks.".}
@@ -48,12 +48,12 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
         actual_size = int(samplerate)
 
     #Allocate obj
-    result = cast[Delay](omni_alloc0(sizeof(Delay_omni_struct)))
+    result = cast[Delay](omni_alloc0(sizeof(Delay_omni_struct), omni_auto_mem))
 
     #Allocate data
     let 
         delay_length = int(nextPowerOfTwo(actual_size))
-        data  = Data_omni_struct_new(delay_length, G1=float, omni_struct_type=Data_omni_struct_ptr, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
+        data  = Data_omni_struct_new(delay_length, G1=float, samplerate=samplerate, bufsize=bufsize, omni_struct_type=Data_omni_struct_ptr, omni_auto_mem=omni_auto_mem, omni_call_type=omni_call_type)
         mask  = int(delay_length - 1)
 
     #Register obj (data has already been registered in Data.omni_struct_new)
@@ -65,8 +65,8 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
     result.data = data
 
 #As any other struct
-proc omni_check_struct_validity*(obj : Delay) : bool =
-    return true
+proc omni_check_datas_validity*(obj : Delay, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void =
+    discard
 
 #Read proc (uses cubic interp)
 proc read*[Y : SomeNumber](delay : Delay, delay_time : Y) : float {.inline.} =

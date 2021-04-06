@@ -1,3 +1,80 @@
+## 0.4.0
+
+1) `def` now supports generics instantiation:
+    
+    ```nim
+    def something[T](a T):
+        return a * 2
+
+    init:
+        a = something(1)          #like structs: no generics == float
+        a int = something[int](1) #explicit int
+    ```
+
+2) `struct` now supports default initialization for fields. Also, it automagically figures out the default constructor in case the user does not specify it
+
+    ```nim
+    struct Something[T]:
+        a T
+    
+    def newData[T](size):
+        return Data[T](size)
+    
+    struct SomethingElse[T]:
+        a = 0.5
+        b int = 3
+        something Something[T]
+        something2 = Something[T](samplerate) #using a constructor: type is inferred
+        data Data[T] = newData[T](100)        #not calling a constructor: must be explicit on the type!
+    ```
+
+    ```nim
+    struct Something:
+        data Data
+        delay Delay
+
+    init:
+        something = Something() #automatically calls Data() and Delay() if user does not pass his own
+
+    ```
+
+3) `Data[T]` will compile even with uninitialized fields: they will be initialized with the default constructor of `T`.
+    
+    ```nim
+    struct Something:
+        data Data
+        delay Delay
+
+    init:
+        c = new Data[Data[Data[Data[Data[Something]]]]](3)
+
+    sample: 
+        out1 = c[0][0][0][0][0].data[0]
+    ```
+
+4) Accessing an uninitialized `Data[T]` field in the `init` block will initialize it to the default `T` constructor.
+    
+    ```nim
+    struct Something:
+        data Data
+
+    init:
+        a = Data[Something](10)
+        
+        #Will initialize a[1] to Something()
+        print a[1].data[0]
+
+        #Will initialize a[9] to Something() and .data[1000] will return 0
+        print a[1000].data[1000]
+
+        #a[1] is already initialized, will not re-initialize it and print warning
+        a[1] = Something()
+
+    sample: discard
+    ```
+
+5) Complete memory safety. If any allocation fail, `Omni_UGenInit` will return false and print out a nice error message.
+
 ## 0.3.0
 
 1) Deprecate `nim < 1.4`.
@@ -113,11 +190,11 @@
 
     init:
         something = Something(Data())
-        bubu := something.data
+        myData := something.data
 
     sample:
-        out1 = bubu[0]
-        bubu[0] = in1
+        out1 = myData[0]
+        myData[0] = in1
     ```
 
 9) `def` can now be used without arguments, if needed:
@@ -176,6 +253,16 @@
         data2 = Data[Something](10)
         loop data2:
             _ = Something()
+        
+        #Together with the standard for loop syntax
+        data3 = Data[Something](10)
+        for entry in data3:
+            entry = Something()
+
+        data4 = Data[Something](10)
+        for i, entry in data4:
+            print i
+            entry = Something()
     ```
 
     Infinite loops:

@@ -185,7 +185,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             #Substitute the original code block with the new one.
             call_to_build_macro = temp_call_to_build_macro
         else:
-            error("build: invalid syntax: '" & repr(call_to_build_macro) & "'")
+            error("build: Invalid syntax: '" & repr(call_to_build_macro) & "'", call_to_build_macro)
 
         #remove the call to "build" macro from code_block. It will then be just the body of constructor function.
         code_block.del(code_block.len() - 1)
@@ -261,7 +261,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
     for index, var_name in call_to_build_macro:
         #In case user is trying to not insert a variable with name in, like "build(1)"
         if var_name.kind != nnkIdent:
-            error("'build': Trying to use a literal value at index " & $index & ". Use a named variable instead.")
+            error("build: Trying to use a literal value at index " & $index & ". Use a named variable instead.", var_name)
 
         #Standard case, an nnkIdent with the variable name
         if index > 0: 
@@ -333,26 +333,28 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
         #This is just allocating memory, not running constructor
         proc Omni_UGenAlloc*() : pointer {.exportc: "Omni_UGenAlloc", dynlib, raises:[].} =
-            #allocation of "omni_ugen" variable
             let 
                 omni_ugen_ptr {.inject.} = omni_alloc0(sizeof(Omni_UGen_struct))
                 omni_ugen     {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
 
-            if isNil(omni_ugen_ptr):
-                print("ERROR: Omni: could not allocate memory")
+            if omni_ugen_ptr.isNil:
+                print("ERROR: Omni_UGenAlloc: could not allocate memory for omni_ugen")
+                return nil
             
-            omni_ugen.omni_auto_mem = nil
+            omni_ugen.omni_auto_mem = omni_create_omni_auto_mem()
+
+            if omni_ugen.omni_auto_mem.isNil:
+                print("ERROR: Omni_UGenAlloc: could not allocate omni_auto_mem")
+                omni_free(omni_ugen_ptr)
+                return nil
 
             return omni_ugen_ptr
         
         #Define Omni_UGenFree
         proc Omni_UGenFree*(omni_ugen_ptr {.inject.} : pointer) : void {.exportc: "Omni_UGenFree", dynlib, raises:[].} =
             if isNil(omni_ugen_ptr):
-                print("ERROR: Omni: invalid omni_ugen_ptr to free.")
+                print("ERROR: Omni_UGenFree: invalid omni_ugen_ptr to free.")
                 return
-            
-            when defined(omni_debug):
-                print("Calling Omni_UGen's destructor")
             
             let omni_ugen {.inject.} = cast[Omni_UGen](omni_ugen_ptr)
             
@@ -361,8 +363,8 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
 
             omni_free(omni_ugen_ptr)
 
-        #Generate the proc to find all datas and structs in Omni_UGen
-        omni_find_structs_and_datas(Omni_UGen, true)
+        #Generate the omni_check_datas_validity proc
+        omni_generate_check_datas_validity(Omni_UGen, true)
 
         #Generate the UGen_SetParam procs
         omni_generate_params_set_procs()
@@ -372,7 +374,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
         
         proc Omni_UGenInit*(omni_ugen_ptr {.inject.} : pointer, bufsize_in {.inject.} : cint, samplerate_in {.inject.} : cdouble, buffer_interface_in {.inject.} : pointer) : bool {.exportc: "Omni_UGenInit", dynlib, raises:[].} =
             if isNil(omni_ugen_ptr):
-                print("ERROR: Omni: invalid omni_ugen object pointer")
+                print("ERROR: Omni_UGenInit: invalid omni_ugen pointer")
                 return false
             
             let 
@@ -381,44 +383,44 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
                 samplerate       {.inject.} : float         = float(samplerate_in)
                 buffer_interface {.inject.} : pointer       = buffer_interface_in
             
-            #Initialize auto_mem
-            omni_ugen.omni_auto_mem = omni_create_omni_auto_mem()
-
-            if isNil(cast[pointer](omni_ugen.omni_auto_mem)):
-                print("ERROR: Omni: could not allocate auto_mem")
-                return false
-
             let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
 
-            #Needed to be passed to all defs
             var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
 
-            #Unpack params and set default values
-            omni_unpack_params_init()
+            #Try statement, inspired by http://groups.di.unipi.it/~nids/docs/longjump_try_trow_catch.html
+            if not bool(omni_setjmp(omni_auto_mem.jmp_buf)):
+                
+                #Unpack params and set default values
+                omni_unpack_params_init()
 
-            #Unpack buffers and set default values
-            omni_unpack_buffers_init()
-            omni_set_buffers_defaults()
+                #Unpack buffers and set default values
+                omni_unpack_buffers_init()
+                omni_set_buffers_defaults()
 
-            #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
-            `templates_for_init_var_declarations`
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "var" (different from the one in Omni_UGenPerform, which uses unsafeAddr)
+                `templates_for_init_var_declarations`
 
-            #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
-            `templates_for_init_let_declarations`
+                #Add the templates needed for Omni_UGenConstructor to unpack variable names declared with "let"
+                `templates_for_init_let_declarations`
+                
+                #Actual body of the constructor
+                `code_block`
+
+                #Assign omni_ugen fields
+                `assign_ugen_fields`
+
+                #omni_check_datas_validity triggers the checks for correct initialization of all Datas entries,
+                omni_check_datas_validity(omni_ugen, samplerate, bufsize, omni_auto_mem, omni_call_type)
+                
+                #All good!
+                return true
             
-            #Actual body of the constructor
-            `code_block`
-
-            #Assign omni_ugen fields
-            `assign_ugen_fields`
-
-            #omni_check_struct_validity triggers the checks for correct initialization of all Datas entries,
-            if not omni_check_struct_validity(omni_ugen):
-                Omni_UGenFree(omni_ugen)
+            #Catch statement, inspired by http://groups.di.unipi.it/~nids/docs/longjump_try_trow_catch.html
+            else:
+                omni_print_str("ERROR: Omni_UGenInit: Invalid allocation. Calling Omni_UGenFree and returning false from Omni_UGenInit.")
+                Omni_UGenFree(omni_ugen_ptr) #Should this not be called and left to the wrapper handler?
                 return false
             
-            return true
-
 macro init*(code_block : untyped) : untyped =
     return quote do:
         #Define that init exists, so perform doesn't create an empty one automatically
@@ -543,7 +545,7 @@ macro build*(var_names : varargs[typed]) =
                 newEmptyNode()
             )
         else:
-            error("Omni_UGen: can't build Omni_UGen, invalid type '" & repr(var_type) & "'")
+            error("Omni_UGen: can't build Omni_UGen, invalid type '" & repr(var_type) & "'", var_type)
 
         var_names_and_types.add(
             var_name_and_type

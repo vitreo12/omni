@@ -20,57 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-##########
-## LANG ##
-##########
+#Handling of allocation errors
+type Omni_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+proc omni_longjmp*(jmpb: Omni_JmpBuf, retval: cint) {.header: "<setjmp.h>", importc: "longjmp".}
+proc omni_setjmp*(jmpb: Omni_JmpBuf): cint {.header: "<setjmp.h>", importc: "setjmp".}
 
-import omni_lang/core/lang/omni_macros
-export omni_macros
+const Omni_AutoMemSize* = 50
 
-#########
-## LIB ##
-#########
+type
+    C_void_ptr_ptr* = ptr UncheckedArray[pointer] #void**
 
-#Global init of C functions for Alloc/Print/GetSamplerate/Bufsize
-import omni_lang/core/lib/init/omni_init_global
-export omni_init_global
+    #use Omni_AutoMem_struct and not _omni_struct because _omni_struct is 
+    #reserved for the REAL omni `struct` handling!
+    Omni_AutoMem_struct* = object
+        num_allocs* : int
+        allocs*     : C_void_ptr_ptr 
+        jmp_buf*    : Omni_JmpBuf
+    
+    Omni_AutoMem* = ptr Omni_AutoMem_struct
 
-#Allocation
-import omni_lang/core/lib/alloc/omni_alloc
-export omni_alloc
-
-#Automatic memory management
-import omni_lang/core/lib/auto_mem/omni_auto_mem
-export omni_auto_mem
-
-#Buffer
-import omni_lang/core/lib/buffer/omni_buffer
-export omni_buffer
-
-#Param
-import omni_lang/core/lib/param/omni_param
-export omni_param
-
-#Data
-import omni_lang/core/lib/data/omni_data
-export omni_data
-
-#Delay
-import omni_lang/core/lib/delay/omni_delay
-export omni_delay
-
-#Print
-import omni_lang/core/lib/print/omni_print
-export omni_print
-
-#math
-import omni_lang/core/lib/math/omni_math
-export omni_math
-
-#tables
-import omni_lang/core/lib/math/omni_tables
-export omni_tables
-
-#stdlib
-import omni_lang/core/lib/stdlib/omni_stdlib
-export omni_stdlib

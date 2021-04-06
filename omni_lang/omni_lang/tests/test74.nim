@@ -4,6 +4,7 @@ outs 1
 omni_debug_macros:
     init:
         a = 4
+        c = Data(10)
         
         loop(i, 4):
             print i
@@ -31,3 +32,14 @@ omni_debug_macros:
             loop 4:
                 print _ + a
             print _
+
+        loop c:
+            print c[0]
+
+        loop(element, c):
+            print element
+
+        loop element c:
+            print element
+
+    sample: discard
