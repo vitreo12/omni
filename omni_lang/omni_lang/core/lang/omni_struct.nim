@@ -623,8 +623,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     else:
         alias_type_def[^1] = ptr_name
 
-    #error repr alias_type_def
-
     #The init_struct macro, which will declare the "proc omni_struct_new ..." and the "template new ..."
     let omni_struct_create_init_proc_and_template = nnkCall.newTree(
         newIdentNode("omni_struct_create_init_proc_and_template"),
@@ -666,6 +664,32 @@ proc omni_convert_generic_type(field_type : NimNode, generics_mapping : OrderedT
               if generic_mapping != nil:
                   field_type[index] = generic_mapping
         omni_convert_generic_type(entry, generics_mapping)
+
+#This is called to check typeof() of structs
+macro omni_check_correct_typeof_field*(struct_name : untyped, field_type : typed, arg_field_type : typed) : untyped =
+  result = nnkWhenStmt.newTree(
+      nnkElifBranch.newTree(
+          nnkInfix.newTree(
+              newIdentNode("isnot"),
+              nnkCall.newTree(
+                  newIdentNode("typeof"),
+                  field_type
+              ),
+              nnkCall.newTree(
+                  newIdentNode("typeof"),
+                  arg_field_type
+              )
+          ),
+          nnkStmtList.newTree(
+              nnkPragma.newTree(
+                  nnkExprColonExpr.newTree(
+                      newIdentNode("fatal"),
+                      newLit("Trying to call constructor for '" & repr(struct_name) & "' with invalid argument for field '" & repr(arg_field_type) & "'. Expected '" & repr(field_type.getTypeInst) & "' but got '" & repr(arg_field_type.getTypeInst) & "'.")
+                  )
+              )
+          )
+      )
+  )
 
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
 macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_inits : untyped) : untyped =
@@ -854,6 +878,9 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         let 
             field_is_struct  = field_type_without_generics.omni_is_struct()
             field_is_generic = generics_mapping.hasKey(field_type_without_generics_str)
+        
+        #Buffers shouldn't have a default consructor
+        var field_is_buffer = false
 
         #Use the types without generics, as they are set before the generics are declared.
         #Also, these will be solved when assigning the results... Perhaps I could go with auto anyway?
@@ -861,6 +888,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         var 
             arg_field_type  = field_type_without_generics
             arg_field_value = newEmptyNode()
+
         
         #If field is generic, change T to G1
         if field_is_generic:
@@ -872,8 +900,12 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
         
         #If field is struct, pass the explicit or default constructor as a string
         if field_is_struct:
-            #If no init provided, use default constructor of the type
+            #If no init provided, use default constructor of the type, except for Buffer, which
+            #does not have a constructor to call
             if field_init == nil:
+                if field_type.kind == nnkSym:
+                    if field_type.strVal() == "Buffer":
+                        field_is_buffer = true 
                 field_init = nnkCall.newTree(field_type)
             
             #Convert Something[T](10) to Something[G1](10)
@@ -900,28 +932,43 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
 
         #Check if it needs default constructor (if arg is string). Otherwise, assign
         if field_is_struct:
-            proc_body.add(
-                nnkStmtList.newTree(
-                    nnkWhenStmt.newTree(
-                        nnkElifBranch.newTree(
-                            nnkInfix.newTree(
-                                newIdentNode("is"),
-                                field_name,
-                                #If arg is string (""),
-                                newIdentNode("string")
-                            ),
-                            nnkLetSection.newTree(
-                                nnkIdentDefs.newTree(
+            #Buffers don't have a default constructor
+            if not field_is_buffer:
+                proc_body.add(
+                    nnkStmtList.newTree(
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode("is"),
                                     field_name,
-                                    newEmptyNode(),
-                                    #Build the constructor call using the parser function!
-                                    omni_find_struct_constructor_call(
-                                        field_init
+                                    #If arg is string (""),
+                                    newIdentNode("string")
+                                ),
+                                nnkLetSection.newTree(
+                                    nnkIdentDefs.newTree(
+                                        field_name,
+                                        newEmptyNode(),
+                                        #Build the constructor call using the parser function!
+                                        omni_find_struct_constructor_call(
+                                            field_init
+                                        )
                                     )
                                 )
                             )
                         )
                     )
+                )
+
+            #Error checking at function dispatch
+            proc_body.add(
+              nnkCall.newTree(
+                  newIdentNode("omni_check_correct_typeof_field"),
+                  ptr_struct_name,
+                  nnkDotExpr.newTree(
+                      newIdentNode("result"),
+                      field_name
+                  ),
+                  field_name
                 )
             )
         
@@ -955,7 +1002,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     proc_body.add(
         proc_result_assignments
     )
-    
+
     # ===================== #
     # omni_struct_new PROC  #
     # ===================== #
@@ -1029,13 +1076,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_in
     #Add proc to result
     final_stmt_list.add(proc_def)
 
-    # echo repr final_stmt_list
-    
-    # error repr final_stmt_list
-
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
-
-    # error repr final_stmt_list_untyped
     
     return final_stmt_list_untyped

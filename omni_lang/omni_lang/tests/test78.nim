@@ -13,8 +13,8 @@ omni_debug_macros:
     something2 = Something[T](samplerate) #using a constructor: type is inferred
     data Data[T] = newData[T]() #not calling a constructor: must be explicit on the type!
 
-  init:
-    a = SomethingElse()
-    b = SomethingElse[int]()
+init:
+  a = SomethingElse()
+  b = SomethingElse[int]()
 
-  sample: discard
+sample: discard
