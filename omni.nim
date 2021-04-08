@@ -84,7 +84,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
     return false
 
 #Actual compiler
-proc omni_single_file(is_multi = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -301,7 +301,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
-        #If it's a file, compile it
+        #If it's a file or list of files, compile it / them
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
