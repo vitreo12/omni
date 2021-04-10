@@ -8,7 +8,7 @@ Omni encourages the re-use of code. Portions of code, especially the declaration
 ## Example 1
 
 ### *Vector.omni*:
-```nim
+```
 struct Vector[X, Y, Z]:
     x X
     y Y
@@ -21,7 +21,7 @@ def setValues(vec Vector, x, y, z):
 ```
 
 ### *VecTest.omni*:
-```nim
+```
 use "Vector.omni"
 
 ins:  3
@@ -41,7 +41,7 @@ Consider the case where you want to implement an oscillator engine with multiple
 
 ### *Sine.omni*
 
-```nim
+```
 struct Sine:
     phase
     
@@ -54,7 +54,7 @@ def process(sine Sine, freq = 440.0):
 
 ### *Saw.omni*
 
-```nim
+```
 struct Saw:
     phase
     prev_value
@@ -78,7 +78,7 @@ def process(saw Saw, freq = 440.0):
 
 ### *Oscillator.omni*
 
-```nim
+```
 #equivalent to -> use "Sine.omni", "Saw.omni"
 use Sine, Saw
 
@@ -105,7 +105,7 @@ In the case of name collisions across modules, this syntax will allow the import
 
 ### *One.omni*
 
-```nim
+```
 struct Something:
     a
 
@@ -115,7 +115,7 @@ def someFunc():
 
 ### *Two.omni*
 
-```nim
+```
 struct Something:
     a
 
@@ -125,7 +125,7 @@ def someFunc():
 
 ### *Three.omni*
 
-```nim
+```
 #equivalent to -> use "One.omni":
 use One:
     Something as Something1

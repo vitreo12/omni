@@ -5,10 +5,9 @@ title: struct
 
 A `struct` is a way to create custom object with custom fields. 
 
-```nim
-ins:  1
-outs: 1
+`structs` can only be declared in the `init` block. To declare a `struct`, simply call the name of the `struct`. It will take the elements of the struct as arguments and initialize the struct for you.
 
+```
 struct Vector:
     x float
     y float
@@ -18,17 +17,11 @@ init:
     myVec = Vector(0.0, 0.0, 0.0)
 ```
 
-`structs` can only be created in the `init` block. To create a `struct`, simply call the name of the `struct`. It will take the elements of the struct as arguments and initialize the struct for you.
-An alternative constructor syntax, is by using the `new` keyword.
-
 **_NOTE_:** If no type is defined for a field, it's defaulted to `float`.
 
 **_NOTE_:** For number types (`int`, `int32`, `int64`, `float` / `sig`, `float32` / `sig32`, `float64` / `sig64`) a default value of `0` is given to the constructor arguments.
 
-```nim
-ins:  1
-outs: 1
-
+```
 #When no types are specified for struct fields, they are defaulted to 'float'
 struct Vector:
     x
@@ -47,7 +40,7 @@ init:
 
 `structs`, just like `defs`, support generics. Generics, as of now, only support number types.
 
-```nim
+```
 struct Vector[X, Y, Z]:
     x X
     y Y
@@ -95,10 +88,7 @@ init:
 
 `structs` can store other `structs`, allowing the creation of complex data structures.
 
-```nim
-ins  1
-outs 1
-
+```
 struct FirstStruct:
     data Data[float]
 
@@ -112,7 +102,7 @@ init:
 
 When not otherwise specified, `structs` with generics will default to `float`:
 
-```nim
+```
 struct MyStruct:
     data Data #defaulted to Data[float]
 
@@ -121,6 +111,40 @@ init:
     myStruct = MyStruct(data)  
 ```
 
+It is possible to declare default values for a `struct`. These will be used when not providing the specific argument when declaring the `struct`:
+
+```
+struct Something[T]:
+    a T
+    
+def newData[T](size):
+    return Data[T](size)
+
+struct SomethingElse[T]:
+    a = 0.5
+    b int = 3 
+    something Something[T] #will call default Something[T]()
+    something2   = Something[T](samplerate) #using a constructor: type is inferred
+    data Data[T] = newData[T](100)          #not calling a constructor: must be explicit on the type!
+
+init:
+    #This will call the defaults provided   
+    myVar = SomethingElse()
+
+    #This will call the defaults except for something2, which is explicitly set
+    myOtherVar = SomethingElse[int](something2 = Something[int](10)) 
+```
+
+*Omni* will always use the default constructor of a `struct` if not explicitly set otherwise:
+
+```
+struct Something:
+    data Data
+    delay Delay
+
+init:
+    something = Something() #automatically calls Data() and Delay() if user does not pass his own
+```
 <br>
 
 ## [Next: 07 - Memory allocation: Data](07_data.md)

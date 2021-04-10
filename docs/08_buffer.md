@@ -19,7 +19,7 @@ These are methods that only work in the `perform` or `sample` blocks. If used in
 To access a `Buffer`, one of the `ins` has to be used in order for omni to point at the specified external buffer. In the example below, the first `in`, named `buffer`, is declared as a `Buffer`. This makes the `buffer` variable available in the `sample` block to be accessed and used.
 
 ### *MyBuffer.omni*:
-```nim
+```
 ins 2:
     buffer Buffer
     speed  {1, 0.1, 10}

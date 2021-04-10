@@ -5,7 +5,7 @@ title: Delay
 
 `Delay` is a convenient implementation of a linearly interpolated delay line. It provides two methods to be used in the `sample` block: `read` and `write`.
 
-```nim
+```
 ins 2:
     input
     delayTime {0.5, 0, 1}

@@ -5,10 +5,7 @@ title: Data
 
 `Data` is an in-built `struct` that allows to allocate a certain amount of memory to be used and accessed as an array.
 
-```nim
-ins:  2
-outs: 1
-
+```
 init:
     dataLength = 1000
 
@@ -49,7 +46,7 @@ sample:
 
 `Data` can store any user defined `struct`, as long as each entry is also initialized. If they are not, a runtime error will be thrown, and the code will output silence.
 
-```nim
+```
 ins  3
 outs 1
 
