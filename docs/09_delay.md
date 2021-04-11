@@ -6,20 +6,17 @@ title: Delay
 `Delay` is a convenient implementation of a linearly interpolated delay line. It provides two methods to be used in the `sample` block: `read` and `write`.
 
 ```
-ins 2:
-    input
-    delayTime {0.5, 0, 1}
+ins: input
 
-outs 1
+params: delayTime {0.5, 0, 1}
 
 init:
-    delayLength = samplerate
-    myDelay = Delay(delayLength) #length is expressed in samples
+    myDelay = Delay(samplerate)
 
 sample:
-    delayVal = myDelay.read(delayTime * samplerate) #delay time is expressed in samples
-    out1 = input + delayVal
     myDelay.write(input)
+    delayVal = myDelay.read(delayTime * samplerate)
+    out1 = input + delayVal
 ```
 
 <br>

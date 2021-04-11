@@ -5,71 +5,58 @@ title: Data
 
 `Data` is an in-built `struct` that allows to allocate a certain amount of memory to be used and accessed as an array.
 
-```
-init:
-    dataLength = 1000
+``` 
+params: 
+    numOfPhasors {1, 1, 100}
 
-    #Allocate an array of 1000 float (Data's default type) elements.
-    myData = Data(dataLength)
-
-    #Allocate an array of 1000 int elements.
-    myDataInt = Data[int](dataLength)
-
-    #Allocate a 2 channels array of 1000 float elements.
-    myTwoChansData = Data(dataLength, 2)
-
-    #Allocate a 2 channels array of 1000 int elements.
-    myTwoChansDataInt = Data[int](dataLength, 2)
-
-    readIndex = 0
-
-sample:
-    #Assign new value
-    myData[readIndex] = in1
-
-    #Read value
-    value = myData[readIndex]
-
-    #Assign value to first/second channel
-    myTwoChansData[0, readIndex] = in1
-    myTwoChansData[1, readIndex] = in2
-
-    #Read value1 from first channel and value2 from second
-    value1 = myTwoChansData[0, readIndex]
-    value2 = myTwoChansData[1, readIndex]
-
-    #Mix them at output
-    out1 = (value1 * 0.5) + (value2 * 0.5)
-
-    readIndex = (readIndex + 1) % dataLength
-```
-
-`Data` can store any user defined `struct`, as long as each entry is also initialized. If they are not, a runtime error will be thrown, and the code will output silence.
-
-```
-ins  3
-outs 1
-
-struct Vector:
-    x; y; z
+struct Phasor: 
+    phase
 
 init:
-    dataLength = 100
-    data = Data[Vector](dataLength)
+    data  = Data(10)                   # 10 float elements: Data() defaults to Data[float]()
     
-    #Initialize the entries of the Data. 
-    #If these are not initialized, a runtime error will be raised
-    #and the code will output silence.
-    for vector in data:
-        vector = Vector()
+    data2 = Data[float](10)            # 10 float elements
+    
+    data3 = Data[int](10)              # 10 int elements
+    
+    data4 = Data[Data[float]](10)      # 10 Data[float] elements
+    loop data4:                        # loop around all elements and initialize Datas
+        _ = Data(10)  
+    
+    data5 = Data[Phasor](numOfPhasors) # dynamic count according to value of param 'numOfPhasors'
+    #[ 
+    Note that there is no need of looping around data5 to initialize all entries explicitly by
+    calling 'Phasor()', Omni will detect all non-initialized entries and automatically initialize
+    them at the end of the init block. However, if one needs to initialize the entries with a
+    value that is not the default 'Phasor()', perhaps 'Phasor(10)', this must be done explicitly 
+    ]#
 
-    #Alternatively, one can define an index for the loop like this:
-    for i, vector in data:
-        vector = Vector(i, i+1, i+2)
+    data6 = Data(10, 2)                # 20 total elements: 10 float elements per channel
 
-    #One other way to use loops around Data is by using the standard for-loop counting syntax:
-    for i in 0..<data.len:
-        data[i] = Vector()
+    print data[0]                      # single channel access
+
+    print data6[0, 0]                  # multichannel access: [chan, index]
+
+```
+
+`Data` can store any user defined `struct`. If the entries are not explicitly initialized, *Omni* will do it for you at the end of the `init` block using the default constructor of the specific `struct`. Furthermore, if you try to access a non-initialized field, *Omni* will initialize it at the moment of access:
+
+```
+struct Something:
+    data Data
+
+init:
+    a = Data[Something](10)
+    
+    #Will initialize a[1] to Something()
+    print a[1].data[0]
+
+    #Will initialize a[9] to Something(). a[1000] is out of bounds, so it returns the last entry, which is a[9]
+    #data[1000] is also out bounds, so it will return 0 
+    print a[1000].data[1000]
+
+    #a[1] is already initialized, will not re-initialize it and print warning
+    a[1] = Something()
 ```
 
 <br>

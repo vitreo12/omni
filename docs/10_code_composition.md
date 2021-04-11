@@ -3,29 +3,26 @@ layout: page
 title: Code composition
 ---
 
-Omni encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `use` / `require` statements (they are analogous, the choice of the final name will come at a later stage).
+*Omni* encourages the re-use of code. Portions of code, especially the declaration of `structs` and `defs`, can easily be packaged in individual source files that can be included into different projects thanks to the `use` / `require` statements (they are analogous, the choice of the final name will come at a later stage).
 
 ## Example 1
 
-### *Vector.omni*:
-```
-struct Vector[X, Y, Z]:
-    x X
-    y Y
-    z Z
+### *Vector.omni*
 
-def setValues(vec Vector, x, y, z):
+```
+struct Vector:
+    x; y; z
+
+def setValues(vec, x, y, z):
     vec.x = x
     vec.y = y
     vec.z = z
 ```
 
-### *VecTest.omni*:
+### *VecTest.omni*
+
 ```
 use "Vector.omni"
-
-ins:  3
-outs: 1
 
 init:
     myVec = Vector()
@@ -45,10 +42,10 @@ Consider the case where you want to implement an oscillator engine with multiple
 struct Sine:
     phase
     
-def process(sine Sine, freq = 440.0):
+def process(sine, freq = 440.0):
+    out_value  = sin(sine.phase * twopi)
     freq_increment = freq / samplerate
-    out_value = sin(sine.phase * 2 * PI)
-    sine.phase = (sine.phase + freq_increment) % 1.0
+    sine.phase = (sine.phase + freq_increment) % 1
     return out_value
 ```
 
@@ -59,14 +56,14 @@ struct Saw:
     phase
     prev_value
 
-def process(saw Saw, freq = 440.0):
+def process(saw, freq = 440.0):
     #BLIT
     n = trunc((samplerate * 0.5) / freq)
-    phase_2pi = saw.phase * 2 * PI
+    phase_2pi = saw.phase * twopi
     blit = 0.5 * (sin(phase_2pi * (n + 0.5)) / (sin(phase_2pi * 0.5)) - 1.0)
 
     #Leaky integrator
-    freq_over_samplerate = (freq * 2 * PI) / samplerate * 0.25
+    freq_over_samplerate = (freq * twopi) / samplerate * 0.25
     out_value = (freq_over_samplerate * (blit - saw.prev_value)) + saw.prev_value
     
     #Update entries in struct
@@ -79,29 +76,26 @@ def process(saw Saw, freq = 440.0):
 ### *Oscillator.omni*
 
 ```
-#equivalent to -> use "Sine.omni", "Saw.omni"
+#equivalent to: use "Sine.omni", "Saw.omni"
 use Sine, Saw
 
-ins 1:
-    sineOrSaw {0, 0, 1}
-    freq {440, 0.01, 22000}
+#Audio rate freq control
+ins: freq {440, 0.01, 22000}
 
-outs 1
+#Control rate to choose oscillator
+params: sineOrSaw {0, 0, 1}
 
 init:
     sine = Sine()
     saw  = Saw()
 
 sample:
-    if sineOrSaw < 1:
-        out1 = sine.process(freq)
-    else:
-        out1 = saw.process(freq)
+    out1 = if sineOrSaw < 1: sine.process(freq) else: saw.process(freq)
 ```
 
 ## Example 3
 
-In the case of name collisions across modules, this syntax will allow the import of specific `structs` and `defs` with specific names, allowing, for example, multiple implementations with same name of some algorithms to coexist in the same project:
+In the case of name collisions across modules, `use` / `require`, thanks to the `as` syntax, can be used to import `structs` and `defs` with specific names. This allows, for example, multiple implementations with the same name to coexist in the same project:
 
 ### *One.omni*
 
