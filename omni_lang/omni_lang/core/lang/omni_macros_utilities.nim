@@ -32,4 +32,4 @@ proc genSymUntyped*(str : string) : NimNode {.inline, compileTime.} =
 
 #Use it in place of expandMacros
 macro omni_debug_macros*(code : typed) =
-    error($(code.toStrLit))
+    error($(code.toStrLit), code)

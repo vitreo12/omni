@@ -121,7 +121,7 @@ proc omni_check_valid_type*(var_type : NimNode, var_name : string = "", is_proc_
         if var_name == "2":
             return
 
-        error "Type checker: invalid kind '" & $var_type_kind & "'"
+        error("Type checker: Invalid kind '" & $var_type_kind & "'", var_type)
 
     #echo "omni_check_valid_type"
     #echo astGenRepr var_type
@@ -135,27 +135,27 @@ proc omni_check_valid_type*(var_type : NimNode, var_name : string = "", is_proc_
                 proc_name_real = proc_name[0..(proc_name.len - 10)] #remove _omni_def
             else:
                 proc_name_real = proc_name
-            error("Call to \'" & $proc_name_real & "\' : argument number " & $var_name & " is of unknown type: \'" & $var_type_str & "\'.")
+            error("Call to '" & $proc_name_real & "' : argument number " & $var_name & " is of unknown type: '" & $var_type_str & "'.", var_type)
     
     #proc argument (static)
     elif is_proc_arg:
         if not ((var_type_str in omni_accepted_var_types) or (var_type_str in omni_additional_accepted_arg_types) or (var_type.omni_is_struct())):
-            error("\'def " & $proc_name & "\' : argument \'" & $var_name & "\' is of unknown type: \'" & $var_type_str & "\'.")
+            error("def '" & $proc_name & "' : argument '" & $var_name & "' is of unknown type: '" & $var_type_str & "'.", var_type)
 
     #struct field
     elif is_struct_field:
         if not ((var_type_str in omni_accepted_var_types) or (var_type_str in omni_additional_accepted_arg_types) or (var_type.omni_is_struct())):
-            error("\'struct " & $proc_name & "\' : field \'" & $var_name & $ "\' contains unknown type: \'" & $var_type_str & "\'.")
+            error("struct '" & $proc_name & "' : field '" & $var_name & $ "' contains unknown type: '" & $var_type_str & "'.", var_type)
 
     #tuple field
     elif is_tuple_entry:
         if not ((var_type_str in omni_accepted_var_types)):
-            error("tuple '" & $var_name & "' contains an invalid type: '" & $var_type_str & "'. Tuples only support number types.")
+            error("tuple '" & $var_name & "' contains an invalid type: '" & $var_type_str & "'. Tuples only support number types.", var_type)
 
     #variable declaration
     else:
         if not ((var_type_str in omni_accepted_var_types) or (var_type.omni_is_struct())):
-            error("\'" & $var_name & "\' is of unknown type: \'" & $var_type_str & "\'.")
+            error("'" & $var_name & "' is of unknown type: '" & $var_type_str & "'.", var_type)
         
 #This is used for def's argument type checking
 #The trick here is the var_type : typed, which will hold all of its type structure when running it through omni_is_struct in omni_check_valid_type

@@ -20,7 +20,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils, omni_invalid
+import macros, strutils, omni_invalid, tables
+
+proc omni_check_arg_has_generics(arg_type : NimNode, generics_mapping : OrderedTable[string, NimNode]) : bool {.compileTime, inline.} =
+    if arg_type.kind == nnkIdent:
+        let 
+            ident_str = arg_type.strVal()
+            new_generic_mapping = generics_mapping.getOrDefault(ident_str)
+        if new_generic_mapping != nil:
+            return true
+    
+    for index, statement in arg_type:
+        let 
+            ident_str = statement.strVal()
+            new_generic_mapping = generics_mapping.getOrDefault(ident_str)
+        if new_generic_mapping != nil:
+            arg_type[index] = new_generic_mapping 
+            return true
+        
+        #There might be more than one, this is the easiest solution!
+        result = omni_check_arg_has_generics(statement, generics_mapping)
+        if result:
+            return true
+            
+proc omni_substitute_generics_code_block(code_block : NimNode, generics_mapping : OrderedTable[string, NimNode]) : void {.compileTime, inline.} =
+    for index, statement in code_block:
+        if statement.kind == nnkIdent:
+            let 
+                ident_str = statement.strVal()
+                new_generic_mapping = generics_mapping.getOrDefault(ident_str)
+            if new_generic_mapping != nil:
+                code_block[index] = new_generic_mapping
+        omni_substitute_generics_code_block(statement, generics_mapping)
 
 macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_current_module_def : typed, struct_args : varargs[typed] = nil) : untyped =
     var 
@@ -33,34 +64,36 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         proc_return_type : NimNode
         proc_name : NimNode
         proc_name_str : string
-        proc_generic_params = nnkGenericParams.newTree()
         proc_formal_params  = nnkFormalParams.newTree()
 
         template_def = nnkTemplateDef.newTree()
         template_name : NimNode
-        #template_proc_call : NimNode
         template_body_call = nnkCall.newTree()
+        template_formal_params = nnkFormalParams.newTree(
+            newIdentNode("untyped")
+        )
 
         proc_omni_def_export : NimNode
 
         generics : seq[NimNode]
         checkValidTypes = nnkStmtList.newTree()   
 
+        generics_mapping : OrderedTable[string, NimNode]
+
     #module where def is defined
     let current_module = omni_current_module_def.owner
 
     if current_module.kind != nnkSym and current_module.kind != nnkIdent:
-        error ("def " & repr(function_signature) & ": can't retrieve its current module")
+        error("def '" & repr(function_signature) & "': can't retrieve its current module", function_signature)
 
-    #def a:
-    if function_signature_kind == nnkIdent:
+    #def a: / def a[T]:
+    if function_signature_kind == nnkIdent or function_signature_kind == nnkBracketExpr:
         function_signature = nnkCall.newTree(
             function_signature
         )
         function_signature_kind = nnkCall
     
     if function_signature_kind == nnkCommand or function_signature_kind == nnkObjConstr or function_signature_kind == nnkCall or function_signature_kind == nnkInfix:
-        
         var name_with_args : NimNode
 
         #Missing the return type entirely OR not providing any infos at all.
@@ -77,14 +110,14 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         #def a() -> float:
         elif function_signature_kind == nnkInfix:
             if function_signature[0].strVal() != "->":
-                error "def: Invalid return operator: '" & $function_signature[0] & "'. Use '->'."
+                error("def: Invalid return operator: '" & $repr(function_signature[0]) & "'. Use '->'.", function_signature)
             
             name_with_args   = function_signature[1]
             proc_return_type = function_signature[2]
 
         var first_statement : NimNode
 
-        #support for def a: instead of def a():
+        #support for def a: instead of def a()
         if name_with_args.kind == nnkIdent:
             first_statement = name_with_args
             name_with_args  = nnkCall.newTree(
@@ -95,11 +128,12 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
 
         let first_statement_kind = first_statement.kind
 
+        #Formal params
+        proc_formal_params.add(proc_return_type) 
+
         #Generics
         if first_statement_kind == nnkBracketExpr:
-            #template_proc_call = nnkBracketExpr.newTree()
-
-            for index, entry in first_statement.pairs():
+            for index, entry in first_statement:
                 #Name of function
                 if index == 0:
                     proc_name = entry
@@ -107,69 +141,75 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                     continue
 
                 if entry.kind != nnkIdent:
-                    error "def " & repr(proc_name) & ": Invalid generic '" & repr(entry) & "'"
+                    error("def '" & repr(proc_name) & "': Invalid generic '" & repr(entry) & "'", entry)
                 
-                #Generics (for now) can only be SomeNumber
-                proc_generic_params.add(
+                generics.add(entry)
+                
+                #Generate G1, G2 ...
+                let new_G_generic_ident = newIdentNode("G" & $index)
+                
+                #add to table
+                generics_mapping[entry.strVal()] = new_G_generic_ident
+
+                #Add G1, G2 to proc formal params BEFORE args!
+                proc_formal_params.add(
                     nnkIdentDefs.newTree(
-                        entry,
-                        newIdentNode("SomeNumber"),
-                        newEmptyNode()
+                        new_G_generic_ident,
+                        newIdentNode("typedesc"),
+                        nnkBracketExpr.newTree(
+                            newIdentNode("typedesc"),
+                            newIdentNode("float")
+                        )
                     )
                 )
-
-                generics.add(entry)
-                #template_proc_call.add(entry)
-        
+                
         #No Generics
         elif first_statement_kind == nnkIdent:
             proc_name = first_statement
 
         #Perhaps at least support `+` in the future (nnkAccQuoted)
         if proc_name.kind != nnkIdent and proc_name.kind != nnkSym:
-            error "def: Invalid name: '" & repr(first_statement) & "'"
+            error("def: Invalid name: '" & repr(proc_name) & "'", proc_name)
 
-        #Check name validity
+        #str
         proc_name_str = proc_name.strVal()
 
+        #Check name validity
         for invalid_ends_with in omni_invalid_ends_with:
             if proc_name_str.endsWith(invalid_ends_with):
-                error("def: Can't define a def that ends with '" & invalid_ends_with & "': it's reserved for internal use.")
-
-        #Formal params
-        proc_formal_params.add(proc_return_type) 
+                error("def '" & proc_name_str & "': Can't define a def that ends with '" & invalid_ends_with & "': it's reserved for internal use.", proc_name)
+        
+        #Only allow low case name
+        if proc_name_str[0].isUpperAscii:
+            error("def '" & proc_name_str & "' must start with a low case letter not to collide names with 'structs'.", proc_name)
 
         #Add template and proc names
         template_name = proc_name
 
-        #moduleName_procName_omni_def121241231 (if needing a unique identifier for any reason)
-        #let proc_name_sym = genSym(ident=current_module.strVal() & "_" & proc_name_str & "_omni_def)
-        #proc_name = parseStmt(repr(proc_name_sym))[0]
-
         #new name for proc_name: moduleName_procName_omni_def
         proc_name = newIdentNode(current_module.strVal() & "_" & proc_name_str & "_omni_def")
-        
-        #This is for the WIP generics defs: https://github.com/vitreo12/omni/issues/118
-        #[ if generics.len > 0:
-            template_proc_call[0] = proc_name
-        else:
-            template_proc_call = proc_name 
-        
-        template_body_call.add(
-            template_proc_call
-        ) ]#
         
         #Add proc name to template call
         template_body_call.add(proc_name)
         
-        let args_block = name_with_args[1..name_with_args.len-1]
+        #THIS IS ESSENTIAL: ANY GENERIC MUST BE ADDED before the arg:
+        #This compiles: test(G1 = int, a = 0)
+        #This doesn't : test(a = 0, G1 = int)
+        if generics.len > 0:
+            for _, generic_mapping in generics_mapping:
+                template_body_call.add(
+                    generic_mapping,
+                )
         
-        for index, statement in args_block.pairs():
+        let args_block = name_with_args[1..name_with_args.len-1]
+        for index, statement in args_block:
             var 
                 arg_name  : NimNode
-                arg_type  : NimNode
+                arg_type_proc  : NimNode
+                arg_type_templ = newIdentNode("auto")
                 arg_value : NimNode
-                new_arg   : NimNode
+                new_arg_proc  : NimNode
+                new_arg_templ : NimNode
 
             let statement_kind = statement.kind
 
@@ -182,48 +222,52 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                     assert statement[0].len == 2
                     
                     arg_name = statement[0][0]
-                    arg_type = statement[0][1]
+                    arg_type_proc = statement[0][1]
                 
                 #a = 0.5
                 else:
                     arg_name = statement[0]
-                    arg_type = newIdentNode("auto")
+                    arg_type_proc = newIdentNode("auto")
                 
                 arg_value = statement[1]
             
             #a float -> a : float
             elif statement_kind == nnkCommand:
-                
-                assert statement.len == 2
-
                 arg_name = statement[0]
-                arg_type = statement[1]
+                arg_type_proc = statement[1]
                 arg_value = newEmptyNode()
 
             #a -> a : auto
             elif statement_kind == nnkIdent:
                 arg_name = statement
-                arg_type = newIdentNode("auto")
+                arg_type_proc = newIdentNode("auto")
                 arg_value = newEmptyNode()
                 
             else:
-                error("def " & proc_name_str & ": Invalid syntax for argument '" & repr(statement) & "'")
+                error("def '" & proc_name_str & "': Invalid syntax for argument '" & repr(statement) & "'", proc_name)
 
             var arg_type_is_generic = false
 
-            #Check if any of the argument is a generic (e.g, phase T, freq Y)
+            #Check if any of the argument is contains generics (e.g, phase T, freq Y).
             if generics.len > 0:
-                if arg_type in generics:
+                if omni_check_arg_has_generics(arg_type_proc, generics_mapping):
                     arg_type_is_generic = true
+                    #Convert T to G1 for proc
+                    if arg_type_proc.kind == nnkIdent:
+                        let 
+                            ident_str = arg_type_proc.strVal()
+                            generic_mapping = generics_mapping.getOrDefault(ident_str)
+                        if generic_mapping != nil:
+                            arg_type_proc = generic_mapping 
 
             #only add check for current type if is not a generic one
             if not arg_type_is_generic:
                 #This is a struct that has generics in it (e.g, Phasor[T])
                 var arg_type_without_generics : NimNode
-                if arg_type.kind == nnkBracketExpr:
-                    arg_type_without_generics = arg_type[0]
+                if arg_type_proc.kind == nnkBracketExpr:
+                    arg_type_without_generics = arg_type_proc[0]
                 else:
-                    arg_type_without_generics = arg_type
+                    arg_type_without_generics = arg_type_proc
 
                 #Add validity type checks to output. arg_name needs to be passed as a string literal.
                 checkValidTypes.add(
@@ -247,52 +291,49 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 if struct_arg_impl.len > 1:
                     let struct_arg_impl_generic_params = struct_arg_impl[1]
                     if struct_arg_impl_generic_params.kind == nnkGenericParams:
-                        arg_type = nnkBracketExpr.newTree(
-                            arg_type
+                        arg_type_proc = nnkBracketExpr.newTree(
+                            arg_type_proc
                         )
                         for generic_param in struct_arg_impl_generic_params:
-                            arg_type.add(
+                            arg_type_proc.add(
                                 newIdentNode("auto")
                             )
-
-            #error astGenRepr arg_type
-
+            
             #new arg
-            new_arg = nnkIdentDefs.newTree(
+            new_arg_proc = nnkIdentDefs.newTree(
                 arg_name,
-                arg_type,
+                arg_type_proc,
                 arg_value
             )
-            
-            #add to formal params
-            proc_formal_params.add(new_arg)
 
-            #Add arg name to template call
-            template_body_call.add(arg_name)
-        
-        # ========== #
-        # BUILD PROC #
-        # ========== #
+            new_arg_templ = nnkIdentDefs.newTree(
+                arg_name,
+                arg_type_templ,
+                arg_value
+            )
+
+            #add to formal params
+            proc_formal_params.add(new_arg_proc)
+            template_formal_params.add(new_arg_templ)
+
+            #Add arg name to template call and wrap in generic if it was declared as generic!
+            template_body_call.add(
+                arg_name
+            )
 
         #Add name of func (with _inner appended) with * for export
         proc_def.add(
             nnkPostfix.newTree(
                 newIdentNode("*"),
                 proc_name
-            )
+            ),
+            newEmptyNode(),
+            newEmptyNode()
         )
-
-        #Add generics
-        if proc_generic_params.len > 0:
-            proc_def.add(
-                newEmptyNode(),
-                proc_generic_params
-            )
-        else:
-            proc_def.add(
-                newEmptyNode(),
-                newEmptyNode()
-            )
+        
+        #subsitute generics with G1, G2, etc... in both code and formal params!
+        var code_block_sub_generics = code_block
+        omni_substitute_generics_code_block(code_block_sub_generics, generics_mapping)
 
         #Add samplerate / bufsize / omni_auto_mem : Omni_AutoMem / omni_call_type : Omni_CallType = Omni_InitCall
         proc_formal_params.add(
@@ -341,11 +382,76 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             newEmptyNode()
         )   
 
+        #It will be filled later
+        var proc_body = nnkStmtList.newTree()
+        
+        #Add function body (with checks for var/lets macro)
+        proc_def.add(proc_body)
+
+        # error repr proc_def
+
+        # ================= #
+        # BUILD EXPORT PROC #
+        # ================= #
+
+        proc_omni_def_export       = proc_def.copy()
+        proc_omni_def_export[4]    = newEmptyNode() #remove pragmas
+        proc_omni_def_export[0][1] = newIdentNode(proc_name_str & "_omni_def_export") #change name
+        
+        #Don't remove formal params because the generated code will then be == to the one generated in the dummy proc with a def with no args!!
+        proc_omni_def_export[^1] = proc_name 
+
+        #Add name with * for export
+        template_def.add(
+            nnkPostfix.newTree(
+                newIdentNode("*"),
+                template_name
+            ),
+            newEmptyNode(),
+            newEmptyNode()
+        )
+
+        #Add generics to template_formal_params!
+        if generics_mapping.len > 0:
+            for _, generic_mapping in generics_mapping:
+              #Add check for SomeNumber in proc
+              proc_body.add(
+                  nnkWhenStmt.newTree(
+                      nnkElifBranch.newTree(
+                          nnkInfix.newTree(
+                              newIdentNode("isnot"),
+                              generic_mapping,
+                              newIdentNode("SomeNumber"),
+                          ),
+                          nnkStmtList.newTree(
+                              nnkPragma.newTree(
+                                  nnkExprColonExpr.newTree(
+                                      newIdentNode("fatal"),
+                                      newLit("def '" & proc_name_str & "': only SomeNumber types are accepted as generics.")
+                                )
+                              )
+                          )
+                      )
+                  )
+              )
+
+              #Add to template's arguments
+              template_formal_params.add(
+                    nnkIdentDefs.newTree(
+                        generic_mapping,
+                        newIdentNode("typedesc"),
+                        nnkBracketExpr.newTree(
+                            newIdentNode("typedesc"),
+                            newIdentNode("float")
+                        )
+                    )
+              )
+
         #Pass the proc body to the omni_parse_block_untyped macro to parse it
-        let proc_body = nnkStmtList.newTree(
+        proc_body.add(
             nnkCall.newTree(
                 newIdentNode("omni_parse_block_untyped"),
-                code_block,
+                code_block_sub_generics,
                 nnkExprEqExpr.newTree(
                     newIdentNode("is_def_block_typed"),
                     newLit(true)
@@ -357,52 +463,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             )
         ) 
         
-        #Add function body (with checks for var/lets macro)
-        proc_def.add(proc_body)
-
-        # ================= #
-        # BUILD EXPORT PROC #
-        # ================= #
-
-        proc_omni_def_export       = proc_def.copy()
-        proc_omni_def_export[4]    = newEmptyNode() #remove pragmas
-        proc_omni_def_export[0][1] = newIdentNode(proc_name_str & "_omni_def_export") #change name
-        
-        #Don't remove formal params because the generated code will then be == to the one generated in the dummy proc with a def with no args!!
-        
-        proc_omni_def_export[^1] = proc_name #template_body_call.copy()
-
-        # ============== #
-        # BUILD TEMPLATE #
-        # ============== #
-
-        #Add name with * for export
-        template_def.add(
-            nnkPostfix.newTree(
-                newIdentNode("*"),
-                template_name
-            )
-        )
-
-        #Add generics
-        if proc_generic_params.len > 0:
-            template_def.add(
-                newEmptyNode(),
-                proc_generic_params
-            )
-        else:
-            template_def.add(
-                newEmptyNode(),
-                newEmptyNode()
-            )
-
-        #re-use proc's formal params, but replace the fist entry (return type) with untyped and remove last two entries, which are omni_auto_mem and omni_call_type
-        let template_formal_params = proc_formal_params.copy
-        template_formal_params.del(template_formal_params.len - 1) #delete omni_call_type
-        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete omni_auto_mem now
-        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete bufsize now
-        template_formal_params.del(template_formal_params.len - 1) #table shifted, delete samplerate now
-        template_formal_params[0] = newIdentNode("untyped")
         template_def.add(
             template_formal_params,
             newEmptyNode(),
@@ -425,7 +485,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         )
 
     else:
-        error "def: Invalid syntax for 'def " & repr(function_signature) & "'"
+        error("def '" & proc_name_str & "': Invalid syntax for 'def " & repr(function_signature) & "'", proc_name)
 
     #This dummy stuff is needed for nim to catch all the references to defs when using modules... Weird bug
     #Otherwise, proc won't overload and import on modules won't work correctly! Trust me, don't delete this!!!
@@ -485,12 +545,14 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             )
         )
 
-    proc_and_template.add(proc_dummy)
-    proc_and_template.add(proc_def)
-    proc_and_template.add(proc_omni_def_export)
-    proc_and_template.add(template_def)
-
-    #error repr proc_and_template
+    proc_and_template.add(
+        proc_dummy,
+        proc_def,
+        proc_omni_def_export,
+        template_def
+    )
+    
+    # error repr proc_and_template
 
     return quote do:
         #Run validity type check on each argument of the def
@@ -531,7 +593,7 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
     else:
         function_signature_call = function_signature
         function_signature_call_kind = function_signature_kind
-    
+
     #Extract argument types from function signature
     if function_signature_call_kind == nnkCall:
         for i, arg in function_signature_call:
@@ -556,8 +618,8 @@ macro def*(function_signature : untyped, code_block : untyped) : untyped =
             
             call_omni_def_inner.add(arg_type)
     else:
-        if function_signature_call_kind != nnkIdent:
-            error "def: invalid function signature: '" & $repr(function_signature) & "'"
+        if function_signature_call_kind != nnkIdent and function_signature_call_kind != nnkBracketExpr:
+            error("def: invalid function signature: '" & $repr(function_signature) & "'", function_signature)
 
     return quote do:
         when not declared(omni_current_module_def):

@@ -1,0 +1,46 @@
+use Grain
+
+ins 1:
+    sync
+
+params:
+    position       {0, 0, 1}
+    position_range {0, 0, 1}
+    length         {0.1, 0, 1}
+    length_range   {0, 0, 1}
+    pitch          {0, -12, 12}
+    pitch_range    {0, 0, 1}
+
+buffers:
+    audio_buffer
+    window_buffer
+
+init:
+    prev_sync      = 0
+    max_num_grains = 30
+    grains         = Grains(max_num_grains) 
+
+perform:
+    stereo bool          = audio_buffer.chans == 2
+    length_audio_buffer  = audio_buffer.length
+    length_window_buffer = window_buffer.length
+
+    position_samples       = position * length_audio_buffer
+    position_range_samples = (position_range * 0.3333) * length_audio_buffer
+    length_samples         = length * samplerate
+    length_range_samples   = (length_range * 0.5) * samplerate
+    pitch_range_semitone   = pitch_range * 12
+    
+    sample:
+        if sync - prev_sync > 0.5:
+            grains.trigger_new_grain(
+                length_audio_buffer, position_samples, position_range_samples,
+                length_samples, length_range_samples, pitch, pitch_range_semitone
+            )
+
+        out_values = grains.get_active_grains(audio_buffer, window_buffer, stereo)
+        out1 = out_values[0]
+        out2 = out_values[1]
+
+        prev_sync = sync
+

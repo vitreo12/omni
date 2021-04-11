@@ -84,7 +84,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
     return false
 
 #Actual compiler
-proc omni_single_file(fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -92,8 +92,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         omniFileName = omniFile.name
         omniFileExt  = omniFile.ext
     
-    let originalOmniFileName = omniFileName
-
     #Check file first charcter, must be a capital letter
     if not omniFileName[0].isUpperAscii:
         omniFileName[0] = omniFileName[0].toUpperAscii()
@@ -120,10 +118,6 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     if performBits != "32" and performBits != "64" and performBits != "32/64":
         printError("performBits: " & $performBits & " is invalid. Valid values are '32', '64' and '32/64'.")
         return 1
-
-    #This is the path to the original omni file to be used in shell.
-    #Using this one in omni command so that errors are shown on this one when CTRL+Click on terminal
-    #let fullPathToNewFolder = $outDirFullPath & "/" & $omniFileName
 
     #Check lib argument
     var 
@@ -163,8 +157,11 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #Add -d:lto only on Linux and Windows (not working on OSX + Clang yet: https://github.com/nim-lang/Nim/issues/15578)
     var lto = ""
-    when defined(Linux) or defined(Windows):
+    when defined(Linux):
         lto = "-d:lto"
+    elif defined(Windows):
+        #-ffat-lto-objects fixes issues with MinGW
+        lto = "-d:lto --passC:\"-ffat-lto-objects\" --passL:\"-ffat-lto-objects\""
     
     #Actual compile command.
     var compile_command = 
@@ -254,11 +251,15 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
     #Check for GcMem warnings and print errors out 
     if parseAndPrintCompilationString(compilationString):
         removeCompiledLib()
+        if is_multi:
+            printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
         return 1
     
     #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
     if failedOmniCompilation > 0:
         #No need to removeCompiledLib() as compilation failed anyway
+        if is_multi:
+            printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
         return 1
 
     #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
@@ -271,8 +272,10 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
 
     #grep / findstr returns 0 if it finds the string, 1 if it doesn't
     if failedOmniCheckPerform > 0:
-        printError("Undefined 'perform' or 'sample' blocks.")
+        printError("Undefined 'perform' or 'sample' blocks.\n")
         removeCompiledLib()
+        if is_multi:
+            printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
         return 1
 
     #Export omni.h too
@@ -283,7 +286,7 @@ proc omni_single_file(fileFullPath : string, outName : string = "", outDir : str
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
-    printDone("'" & $originalOmniFileName & $omni_file_ext & "' has been compiled to folder \"" & $outDirFullPath & "\".")
+    printDone("'" & output_name & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
@@ -298,13 +301,13 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         #Get full extended path
         let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
 
-        #If it's a file, compile it
+        #If it's a file or list of files, compile it / them
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
-                return omni_single_file(omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
+                return omni_single_file(false, omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
             else:
-                if omni_single_file(omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
+                if omni_single_file(true, omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -316,7 +319,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
+                        if omni_single_file(true, dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                             return 1
 
         else:

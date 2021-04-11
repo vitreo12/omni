@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities
+import macros, strutils, tables, omni_invalid, omni_type_checker, omni_macros_utilities, omni_parser
 
 const omni_valid_struct_generics = [
     "int", "int32", "int64",
@@ -39,7 +39,7 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
                 how_many_datas += 1
                 return omni_find_data_generics_bottom(statement[1], how_many_datas)
             else:
-                error("Invalid type: '" & repr(statement) & "'")
+                error("Invalid type: '" & repr(statement) & "'", statement)
     
     elif statement.kind == nnkSym:
         let 
@@ -160,7 +160,7 @@ macro omni_declare_struct*(obj_type_def : untyped, ptr_type_def : untyped, alias
     final_stmt_list.add(type_section)
 
     #error astgenrepr final_stmt_list
-    #echo repr final_stmt_list
+    # error repr final_stmt_list
 
     return quote do:
         `final_stmt_list`
@@ -202,11 +202,11 @@ proc omni_execute_check_valid_types_macro_and_check_struct_fields_generics(state
                     continue
                 
                 if entry.kind != nnkIdent and entry.kind != nnkSym:
-                    error "'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'"
+                    error("struct '" & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'", statement)
                 
                 let entry_str = entry.strVal()
                 if (not (entry_str in omni_valid_struct_generics)) and (not(entry in generics_seq)):
-                    error "'struct " & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'"
+                    error("struct '" & ptr_name_str & "': invalid field '" & var_name_str &  "': it contains invalid type '" & repr(statement) & "'", statement)
                 
                 omni_execute_check_valid_types_macro_and_check_struct_fields_generics(entry, var_name, ptr_name, generics_seq, checkValidTypes)
                 
@@ -282,6 +282,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var_names      = nnkStmtList.newTree()
         fields_untyped = nnkStmtList.newTree()
         fields_typed   : seq[NimNode]
+        var_inits      = nnkStmtList.newTree()
 
     var struct_name_str : string
 
@@ -294,8 +295,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         ptr_name = struct_name[0]                                     #Phasor
 
         #If struct name doesn't start with capital letter, error out
-        if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct '" & $ptr_name & $ "' must start with a capital letter")
+        if ptr_name.strVal[0].isLowerAscii:
+            error("struct '" & $ptr_name & $ "' must start with a capital letter.", struct_name)
 
         #NOTE THE DIFFERENCE BETWEEN obj_type_def here with generics and without, different number of newEmptyNode()
         #Add name to obj_type_def (with asterisk, in case of supporting modules in the future)
@@ -331,9 +332,6 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                     ##Also add the name of the generic to the Phasor_omni_struct[T, Y...]
                     obj_bracket_expr.add(child)
 
-                    #Also add the name of the generic to the Phasor[T, Y...]
-                    #ptr_bracket_expr.add(child)
-
                     generic_proc.add(
                         child,
                         newEmptyNode(),
@@ -346,7 +344,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
                 #If [T : Something etc...]
                 else:
-                    error("\'" & $ptr_name.strVal() & $ "\'s generic type \'" & $(child[0].strVal()) & "\' contains subtypes. These are not supported.")
+                    error("\'" & $ptr_name.strVal() & $ "\'s generic type \'" & $(child[0].strVal()) & "\' contains subtypes. These are not supported.", child)
         
         #Add generics to obj type
         obj_type_def.add(generics)
@@ -367,7 +365,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
 
         #If struct name doesn't start with capital letter, error out
         if not(ptr_name.strVal[0] in {'A'..'Z'}):
-            error("struct '" & $ptr_name & $ "' must start with a capital letter")
+            error("struct '" & $ptr_name & $ "' must start with a capital letter", struct_name)
         
         #Add name to obj_type_def. Needs to be aliased for proper working!
         obj_type_def.add(
@@ -394,16 +392,16 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr = obj_name
     
     else:
-        error "struct: Invalid name: '" & repr(struct_name) & "'"
+        error("struct: Invalid name: '" & repr(struct_name) & "'", struct_name)
 
     #Detect invalid struct name
     if struct_name_str in omni_invalid_idents:
-        error("struct: Trying to redefine in-built struct '" & struct_name_str & "'")
+        error("struct: Trying to redefine in-built struct '" & struct_name_str & "'", struct_name)
 
     #Detect invalid ends with
     for invalid_ends_with in omni_invalid_ends_with:
         if struct_name_str.endsWith(invalid_ends_with):
-            error("struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use.")
+            error("struct: Name can't end with '" & invalid_ends_with & "': it's reserved for internal use.", struct_name)
 
     #Loop over struct's body
     for code_stmt in code_block:
@@ -412,6 +410,10 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         var 
             var_name : NimNode
             var_type : NimNode
+            var_init : NimNode
+
+            explicit_type = true
+            is_bool = false
 
         #NO type defined, default it to float
         if code_stmt_kind == nnkIdent:
@@ -424,23 +426,166 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             var_type = code_stmt[1]
 
             if var_name.kind != nnkIdent:
-                error "struct " & repr(ptr_name) & ": Invalid field name in '" & repr(code_stmt) & "'"
+                error("struct " & repr(ptr_name) & ": Invalid field name in '" & repr(code_stmt) & "'", code_stmt)
             
             let var_type_kind = var_type.kind
 
             #Type can either be an ident, a bracket expr (generics) or a tuple (par)
             if var_type_kind != nnkIdent:
                 if var_type_kind != nnkBracketExpr and var_type_kind != nnkPar:
-                    error "struct " & repr(ptr_name) & ": Invalid field type in '" & repr(code_stmt) & "'"
+                    error("struct '" & repr(ptr_name) & "': Invalid field type in '" & repr(code_stmt) & "'", code_stmt)
 
+        #phase = 0.0 / phase float = 0.0
+        elif code_stmt_kind == nnkAsgn:
+            let
+                asgn_left  = code_stmt[0]
+                asgn_left_kind = asgn_left.kind
+                asgn_right = code_stmt[1]
+                asgn_right_kind = asgn_right.kind
+
+            #Support all calling syntaxes and int / float literals
+            if asgn_right_kind == nnkIdent or asgn_right_kind == nnkCall or asgn_right_kind == nnkCommand or asgn_right_kind == nnkDotExpr or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
+                #bool support
+                if asgn_right_kind == nnkIdent:
+                    let bool_val = asgn_right.strVal()
+                    if bool_val != "false" and bool_val != "true":
+                        error("struct '" & repr(ptr_name) & "': Invalid ident: '" & repr(asgn_right) & "'", asgn_right)
+                    var_type = newIdentNode("bool")
+                    is_bool  = true
+                        
+                #Temporarily set var_init, it's parsed later
+                var_init = asgn_right
+
+                #phase = 0
+                if asgn_left_kind == nnkIdent:
+                    var_name = asgn_left
+                    explicit_type = false
+                
+                #phase float = 0
+                elif asgn_left_kind == nnkCommand:
+                    var_name = asgn_left[0]
+                    var_type = asgn_left[1]
+
+                else:
+                    error("struct '" & repr(ptr_name) & "': Invalid field assignment: '" & repr(asgn_left) & "'", asgn_left)
+            else:
+                error("struct '" & repr(ptr_name) & "': Invalid field initialization: '" & repr(asgn_right) & "'", asgn_right)
         else:
-            error "struct " & repr(ptr_name) & ": Invalid field '" & repr(code_stmt) & "'"
+            error "struct '" & repr(ptr_name) & "': Invalid field '" & repr(code_stmt) & "'"
+        
+        #Parse var_init... var_type is only set if it's nil, meaning it's a 'a = Data()' construct,
+        #and not an 'a Data = Data()' / 'a Data = whateverDef()' one
+        let var_init_kind = var_init.kind
+        if var_init_kind != nnkFloatLit and var_init_kind != nnkIntLit:
+            #Data(100) / Data.new(100)
+            if var_init_kind == nnkCall:
+                let 
+                    caller = var_init[0]
+                    caller_kind = caller.kind
 
+                #Data(100) / Data[float](100)
+                if caller_kind == nnkIdent or caller_kind == nnkBracketExpr:
+                    if var_type.isNil:
+                        var_type = caller
+
+                #Data.new(100) / Data[float].new(100)
+                elif caller_kind == nnkDotExpr:
+                    let 
+                        caller_left  = caller[0]
+                        caller_left_kind = caller_left.kind
+                        caller_right = caller[1]
+
+                    if caller_right.kind != nnkIdent:
+                        error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported.", caller_right)
+                    
+                    if caller_right.strVal != "new":
+                        error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(caller_right) & "'. Only 'new' is supported.", caller_right)
+
+                    #Data.new() / Data[float].new()
+                    if caller_left_kind == nnkIdent or caller_left_kind == nnkBracketExpr:
+                        var_init[0] = caller_left
+                        if var_type.isNil:
+                            var_type = caller_left
+
+                    else:
+                        error("struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'", var_init)
+
+                else:
+                    error("struct '" & repr(ptr_name) & "': Invalid call '" & repr(var_init) & "'", var_init)
+
+            #new Data / new Data(100)
+            elif var_init_kind == nnkCommand:
+                let 
+                    command_left  = var_init[0]
+                    command_right = var_init[1]
+                    command_right_kind = command_right.kind
+
+                if command_left.kind != nnkIdent:
+                    error("struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported.", command_left)
+                
+                if command_left.strVal != "new":
+                    error "struct '" & repr(ptr_name) & "': Invalid command ident '" & repr(command_left) & "'. Only 'new' is supported."
+                
+                #new Data / new Data[float]
+                if command_right_kind == nnkIdent or command_right_kind == nnkBracketExpr:
+                    var_init = nnkCall.newTree( command_right )
+                    if var_type.isNil:
+                        var_type = command_right
+                
+                #new Data(100) / new Data[float]()
+                elif command_right_kind == nnkCall:
+                    var_init = command_right
+                    if var_type.isNil:
+                        var_type = command_right[0]
+                
+                else:
+                    error("struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'", var_init)
+
+            #Data.new 
+            elif var_init_kind == nnkDotExpr:
+                let
+                    dot_left  = var_init[0]
+                    dot_left_kind = dot_left.kind
+                    dot_right = var_init[1]
+
+                if dot_right.kind != nnkIdent:
+                    error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported.", dot_right)
+                
+                if dot_right.strVal != "new":
+                    error("struct '" & repr(ptr_name) & "': Invalid right dot ident '" & repr(dot_right) & "'. Only 'new' is supported.", dot_right)
+
+                #Data.new / Data[float].new
+                if dot_left_kind == nnkIdent or dot_left_kind == nnkBracketExpr:
+                    var_init = nnkCall.newTree( dot_left )
+                    if var_type.isNil:
+                        var_type = dot_left
+
+                else:
+                    error("struct '" & repr(ptr_name) & "': Invalid 'new' command call '" & repr(var_init) & "'", var_init)
+
+        #The default var_type, float
+        else:
+            if var_type.isNil:
+                var_type = newIdentNode("float")
+
+        #Check if trying to 'a = someFunc()'. This isn't allowed, must 'a Data = someFunc()'
+        #If the func starts with lower case letter, it's a def: error out: 
+        #it can only happen if the type is explicitly set (asgn_left_kind == nnkCommand)
+        if not explicit_type and not is_bool and var_type.kind == nnkIdent:
+            let var_type_str = var_type.strVal()
+            if var_type_str != "float" and var_type_str[0].isLowerAscii:
+                error("struct '" & repr(ptr_name) & "': Attempting to call def '" & repr(var_init) & "' in '" & repr(code_stmt) & "'. This is only allowed if explicitly specifying the type of the field.", var_init)
+
+        #Check validity of type
         var var_type_untyped_or_typed = false
-
         var_type_untyped_or_typed = omni_struct_untyped_or_typed_generics(var_type, generics_seq)
-
-        omni_execute_check_valid_types_macro_and_check_struct_fields_generics(var_type, var_name, ptr_name, generics_seq, checkValidTypes)
+        omni_execute_check_valid_types_macro_and_check_struct_fields_generics(
+            var_type, 
+            var_name, 
+            ptr_name, 
+            generics_seq, 
+            checkValidTypes
+        )
 
         if var_type_untyped_or_typed:
             var_names.add(
@@ -451,6 +596,7 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
                 
             fields_untyped.add(var_type)
+        
         else:
             var_names.add(
                 nnkBracketExpr.newTree(
@@ -460,6 +606,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
             )
 
             fields_typed.add(var_type)
+
+        var_inits.add(var_init)
 
     #Add the ptr_ty inners to ptr_type_def, so that it is completed when sent to omni_declare_struct
     ptr_type_def.add(ptr_ty)
@@ -475,16 +623,15 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     else:
         alias_type_def[^1] = ptr_name
 
-    #error repr alias_type_def
-
     #The init_struct macro, which will declare the "proc omni_struct_new ..." and the "template new ..."
     let omni_struct_create_init_proc_and_template = nnkCall.newTree(
         newIdentNode("omni_struct_create_init_proc_and_template"),
-        ptr_name
+        ptr_name,
+        var_inits
     )
 
-    let omni_find_structs_and_datas = nnkCall.newTree(
-        newIdentNode("omni_find_structs_and_datas"),
+    let omni_generate_check_datas_validity = nnkCall.newTree(
+        newIdentNode("omni_generate_check_datas_validity"),
         ptr_name
     )
 
@@ -500,18 +647,54 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
     for field_typed in fields_typed:
         omni_declare_struct.add(field_typed)
 
-    #error astGenRepr checkValidTypes
-
     return quote do:
         `checkValidTypes`
         `omni_declare_struct`
         `omni_struct_create_init_proc_and_template`
-        `omni_find_structs_and_datas`
+        `omni_generate_check_datas_validity`
+
+#convert a type to standard G1 generics
+proc omni_convert_generic_type(field_type : NimNode, generics_mapping : OrderedTable[string, NimNode]) : void {.compileTime.} =
+    for index, entry in field_type:
+        let entry_kind = entry.kind
+        if entry_kind == nnkIdent or entry_kind == nnkSym:
+              let 
+                entry_str_val = entry.strVal()
+                generic_mapping = generics_mapping.getOrDefault(entry_str_val)
+              if generic_mapping != nil:
+                  field_type[index] = generic_mapping
+        omni_convert_generic_type(entry, generics_mapping)
+
+#This is called to check typeof() of structs
+macro omni_check_correct_typeof_field*(struct_name : untyped, field_type : typed, arg_field_type : typed) : untyped =
+  result = nnkWhenStmt.newTree(
+      nnkElifBranch.newTree(
+          nnkInfix.newTree(
+              newIdentNode("isnot"),
+              nnkCall.newTree(
+                  newIdentNode("typeof"),
+                  field_type
+              ),
+              nnkCall.newTree(
+                  newIdentNode("typeof"),
+                  arg_field_type
+              )
+          ),
+          nnkStmtList.newTree(
+              nnkPragma.newTree(
+                  nnkExprColonExpr.newTree(
+                      newIdentNode("fatal"),
+                      newLit("Trying to call constructor for '" & repr(struct_name) & "' with invalid argument for field '" & repr(arg_field_type) & "'. Expected '" & repr(field_type.getTypeInst) & "' but got '" & repr(arg_field_type.getTypeInst) & "'.")
+                  )
+              )
+          )
+      )
+  )
 
 #Declare the "proc omni_struct_new ..." and the "template new ...", doing all sorts of type checks
-macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : untyped =
+macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed, var_inits : untyped) : untyped =
     if ptr_struct_name.kind != nnkSym:
-        error "struct: Invalid struct ptr symbol!"
+        error("struct: Invalid struct ptr symbol", ptr_struct_name)
 
     let 
         ptr_struct_type = ptr_struct_name.getType()
@@ -534,6 +717,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         proc_def             = nnkProcDef.newTree()      #the omni_struct_new* proc
         proc_formal_params   = nnkFormalParams.newTree() #the whole [T](args..) : returntype 
         proc_body            = nnkStmtList.newTree()     #body of the proc
+        proc_result_assignments = nnkStmtList.newTree()  #result.data = data
 
     #The name of the function with the asterisk, in case of supporting modules in the future
     #proc Phasor_omni_struct_new
@@ -556,7 +740,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         ptr_bracket_expr = nnkBracketExpr.newTree(ptr_struct_name)
 
         #Retrieve generics
-        for index, generic_ident in obj_struct_name.pairs():
+        for index, generic_ident in obj_struct_name:
             if index == 0:
                 continue
 
@@ -652,7 +836,8 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
                         nnkCall.newTree(
                             newIdentNode("sizeof"),
                             obj_bracket_expr
-                        )              
+                        ),
+                        newIdentNode("omni_auto_mem")
                     )
                 )
             )
@@ -671,10 +856,12 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
     for index, field in struct_fields:
         assert field.len == 3
+        assert var_inits.len == struct_fields.len
 
         var 
             field_name = field[0]
             field_type = field[1]
+            field_init = var_inits[index]
             field_type_kind = field_type.kind
 
         var field_type_without_generics = field_type
@@ -692,12 +879,16 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             field_is_struct  = field_type_without_generics.omni_is_struct()
             field_is_generic = generics_mapping.hasKey(field_type_without_generics_str)
         
+        #Buffers shouldn't have a default consructor
+        var field_is_buffer = false
+
         #Use the types without generics, as they are set before the generics are declared.
         #Also, these will be solved when assigning the results... Perhaps I could go with auto anyway?
         #Values are set already in result.a = a
         var 
             arg_field_type  = field_type_without_generics
             arg_field_value = newEmptyNode()
+
         
         #If field is generic, change T to G1
         if field_is_generic:
@@ -706,10 +897,29 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
         #Always have auto params. The typing will be checked in the body anyway.
         #This solves a lot of problems with generic parameters, and still works (even with structs)
         arg_field_type = newIdentNode("auto")
+        
+        #If field is struct, pass the explicit or default constructor as a string
+        if field_is_struct:
+            #If no init provided, use default constructor of the type, except for Buffer, which
+            #does not have a constructor to call
+            if field_init == nil:
+                if field_type.kind == nnkSym:
+                    if field_type.strVal() == "Buffer":
+                        field_is_buffer = true 
+                field_init = nnkCall.newTree(field_type)
+            
+            #Convert Something[T](10) to Something[G1](10)
+            omni_convert_generic_type(field_init, generics_mapping)
 
-        #if no struct, go with auto and have value 0
-        if not field_is_struct:
-            arg_field_value = newIntLitNode(0)    
+            #Have a string as arg default value: it's checked later!
+            arg_field_value = newStrLitNode("")
+
+        #Else pass the value through
+        else:
+            if field_init == nil:
+                arg_field_value = newIntLitNode(0)    
+            else:
+                arg_field_value = field_init
 
         #Add to arg list for omni_struct_new proc
         proc_formal_params.add(
@@ -720,9 +930,50 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
             )
         )
 
-        #Add result.phase = phase, etc... assignments... Don't cast
+        #Check if it needs default constructor (if arg is string). Otherwise, assign
         if field_is_struct:
+            #Buffers don't have a default constructor
+            if not field_is_buffer:
+                proc_body.add(
+                    nnkStmtList.newTree(
+                        nnkWhenStmt.newTree(
+                            nnkElifBranch.newTree(
+                                nnkInfix.newTree(
+                                    newIdentNode("is"),
+                                    field_name,
+                                    #If arg is string (""),
+                                    newIdentNode("string")
+                                ),
+                                nnkLetSection.newTree(
+                                    nnkIdentDefs.newTree(
+                                        field_name,
+                                        newEmptyNode(),
+                                        #Build the constructor call using the parser function!
+                                        omni_find_struct_constructor_call(
+                                            field_init
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+
+            #Error checking at function dispatch
             proc_body.add(
+              nnkCall.newTree(
+                  newIdentNode("omni_check_correct_typeof_field"),
+                  ptr_struct_name,
+                  nnkDotExpr.newTree(
+                      newIdentNode("result"),
+                      field_name
+                  ),
+                  field_name
+                )
+            )
+        
+            #Assign without casting
+            proc_result_assignments.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
                         newIdentNode("result"),
@@ -734,7 +985,7 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
         #If it's not a struct, convert the value too (so that generics and types are applied)
         else:
-            proc_body.add(
+            proc_result_assignments.add(
                 nnkAsgn.newTree(
                     nnkDotExpr.newTree(
                         newIdentNode("result"),
@@ -746,6 +997,11 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
                     )
                 )
             )
+    
+    #Add the 'result.phase = phase' stuff
+    proc_body.add(
+        proc_result_assignments
+    )
 
     # ===================== #
     # omni_struct_new PROC  #
@@ -755,6 +1011,20 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
     if generics_ident_defs.len > 0:
         for generic_ident_defs in generics_ident_defs:
             proc_formal_params.add(generic_ident_defs)
+
+    #Add samplerate and bufsize
+    proc_formal_params.add(
+        nnkIdentDefs.newTree(
+            newIdentNode("samplerate"),
+            newIdentNode("float"),
+            newEmptyNode()
+        ),
+        nnkIdentDefs.newTree(
+            newIdentNode("bufsize"),
+            newIdentNode("int"),
+            newEmptyNode()
+        )
+    )
 
     #Add omni_struct_type
     proc_formal_params.add(
@@ -808,8 +1078,5 @@ macro omni_struct_create_init_proc_and_template*(ptr_struct_name : typed) : unty
 
     #Convert the typed statement to an untyped one
     let final_stmt_list_untyped = typed_to_untyped(final_stmt_list)
-
-    #error repr final_stmt_list_untyped
     
-    return quote do:
-        `final_stmt_list_untyped`
+    return final_stmt_list_untyped

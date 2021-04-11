@@ -33,11 +33,6 @@ struct Test2:
 struct Test3:
   data Data
 
-#Dummy vars. Only checking correct parsing here
-var 
-  omni_auto_mem = cast[Omni_AutoMem](0) 
-  omni_call_type : typedesc[Omni_InitCall]
-
 suite "parser: variable declarations":
   test "simple declarations":    
     let test = compareOmniNim:
@@ -74,7 +69,7 @@ suite "parser: struct allocs":
         a = Test1()
         
       nim:
-        let a = Test1_omni_struct_new(0, 0, 0, Test1_omni_struct_ptr, omni_auto_mem, omni_call_type) 
+        let a = Test1_omni_struct_new(0, 0, 0, samplerate, bufsize, Test1_omni_struct_ptr, omni_auto_mem, omni_call_type) 
 
     check test
 
@@ -86,9 +81,9 @@ suite "parser: struct allocs":
         c = Test2(b)
 
       nim:
-        let a = Test2_omni_struct_new(Test1_omni_struct_new(0, 0, 0, Test1_omni_struct_ptr, omni_auto_mem, omni_call_type), Test2_omni_struct_ptr, omni_auto_mem, omni_call_type)
-        let b = Test1_omni_struct_new(0, 0, 0, Test1_omni_struct_ptr, omni_auto_mem, omni_call_type) 
-        let c = Test2_omni_struct_new(b, Test2_omni_struct_ptr, omni_auto_mem, omni_call_type)
+        let a = Test2_omni_struct_new(Test1_omni_struct_new(0, 0, 0, samplerate, bufsize, Test1_omni_struct_ptr, omni_auto_mem, omni_call_type), samplerate, bufsize,Test2_omni_struct_ptr, omni_auto_mem, omni_call_type)
+        let b = Test1_omni_struct_new(0, 0, 0, samplerate, bufsize, Test1_omni_struct_ptr, omni_auto_mem, omni_call_type) 
+        let c = Test2_omni_struct_new(b, samplerate, bufsize, Test2_omni_struct_ptr, omni_auto_mem, omni_call_type)
 
     check test
 
@@ -99,7 +94,7 @@ suite "parser: struct allocs":
         a = Test3(data) 
 
       nim:
-        let data = Data_omni_struct_new(1, int(1), typedesc[float], Data_omni_struct_ptr, omni_auto_mem, omni_call_type)
-        let a = Test3_omni_struct_new(data, Test3_omni_struct_ptr, omni_auto_mem, omni_call_type)
+        let data = Data_omni_struct_new(1, int(1), typedesc[float], samplerate, bufsize, Data_omni_struct_ptr, omni_auto_mem, omni_call_type)
+        let a = Test3_omni_struct_new(data, samplerate, bufsize, Test3_omni_struct_ptr, omni_auto_mem, omni_call_type)
 
     check test

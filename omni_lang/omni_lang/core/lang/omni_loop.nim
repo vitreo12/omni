@@ -104,7 +104,7 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                     )
                 
                 else:
-                    error "loop: invalid infix: '" & infix_str & "'"
+                    error("loop: invalid infix: '" & infix_str & "'", num)
             
         #loop(i, 4) / loop(i, 0..4) / loop i, 4 / loop i, 0..4
         elif loop_block_len == 4:
@@ -114,7 +114,7 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                 num = loop_block[2]
                 num_kind = num.kind
                 code_block = loop_block[3]
-            
+
             if index_kind == nnkIdent:
                 #loop(i, 4)
                 if num_kind == nnkIntLit:
@@ -129,11 +129,6 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                         ),
                         code_block
                     )
-                    
-                #loop(i, a)... This returns a when statement to allow to use
-                #loop(i, a) when a is not a number, but for example is Data
-                elif num_kind == nnkIdent:
-                    return when_stmt_loop(index, num)
                 
                 #loop(i, 0..4)
                 elif num_kind == nnkInfix:
@@ -157,22 +152,14 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                             code_block
                         ) 
 
-                #Any other case
+                #Any other case (including Datas)
                 else:
-                    return nnkForStmt.newTree(
-                        index,
-                        nnkInfix.newTree(
-                           newIdentNode("..<"),
-                           newLit(0),
-                           num
-                        ),
-                        code_block
-                    )
+                    return when_stmt_loop(index, num)
             else:
-                error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(loop_block) & "'"
+                error("loop: Invalid identifier '" & repr(index) & "' in ' " & repr(loop_block) & "'", index)
 
     if loop_block_len != 3:
-        error "loop: Invalid syntax: '" & repr(loop_block) & "'"
+        error("loop: Invalid syntax: '" & repr(loop_block) & "'", loop_block)
 
     let 
         index_or_num = loop_block[1]
@@ -200,7 +187,7 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
     
     #loop a This returns a when statement to allow to use
     #loop a when a is not a number, but for example is Data
-    elif index_or_num_kind == nnkIdent:
+    elif index_or_num_kind == nnkIdent or index_or_num_kind == nnkDotExpr or index_or_num_kind == nnkBracketExpr:
         find_and_replace_underscore(code_block, unique_index)
         return when_stmt_loop(unique_index, index_or_num)
 
@@ -238,11 +225,6 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                     code_block
                 )
 
-            #loop i a ... This returns a when statement to allow to use
-            #loop i a when a is not a number, but for example is Data
-            elif num_kind == nnkIdent:
-                return when_stmt_loop(index, num)
-            
             #loop i 0..4
             elif num_kind == nnkInfix:
                 let infix_str = num[0].strVal()
@@ -265,18 +247,10 @@ proc omni_loop_inner*(loop_block : NimNode) : NimNode {.compileTime.} =
                         code_block
                     ) 
 
-            #Any other case
+            #Any other case, including Datas
             else:
-                return nnkForStmt.newTree(
-                    index,
-                    nnkInfix.newTree(
-                        newIdentNode("..<"),
-                        newLit(0),
-                        num
-                    ),
-                    code_block
-                )
+                return when_stmt_loop(index, num)
         else:
-            error "loop: Invalid identifier '" & repr(index) & "' in ' " & repr(index_or_num) & "'"
+            error("loop: Invalid identifier '" & repr(index) & "' in ' " & repr(index_or_num) & "'", index)
     else:
-        error "loop: Invalid syntax: '" & repr(loop_block) & "'"
+        error("loop: Invalid syntax: '" & repr(loop_block) & "'", loop_block)

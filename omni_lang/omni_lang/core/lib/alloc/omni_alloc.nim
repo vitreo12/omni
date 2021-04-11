@@ -27,38 +27,52 @@
 {.localPassc: "-O3".}
 {.passC: "-O3".}
 
+import ../print/omni_print
+import ../auto_mem/omni_auto_mem_objs
+
 proc omni_alloc_C*(size : csize_t)  : pointer {.importc: "omni_alloc_C", cdecl.}
 proc omni_free_C*(in_ptr : pointer) : void    {.importc: "omni_free_C", cdecl.}
 
-proc omni_alloc*[N : SomeNumber](size : N)  : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_alloc*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = nil)  : pointer {.inline, noSideEffect, raises:[].} =
     when N is csize_t:
-      return omni_alloc_C(size)
+        let mem = omni_alloc_C(size)
     else:
-      return omni_alloc_C(csize_t(size))
+        let mem = omni_alloc_C(csize_t(size))
 
-proc omni_alloc0*[N : SomeNumber](size : N) : pointer {.inline, noSideEffect, raises:[].} =
+    if mem.isNil:
+        omni_print_str("ERROR: Omni: Nil allocation.")
+        if not omni_auto_mem.isNil:
+            omni_longjmp(omni_auto_mem.jmp_buf, 1)
+
+    return mem
+
+proc omni_alloc0*[N : SomeNumber](size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
     when N is csize_t:
-      let long_size = size
+        let long_size = size
     else:
-      let long_size = csize_t(size)
+        let long_size = csize_t(size)
     
     let mem = omni_alloc_C(long_size)
 
     if not mem.isNil:
         zeroMem(mem, long_size)
-    return mem
+        return mem
+
+    omni_print_str("ERROR: Omni: Nil allocation.")
+    if not omni_auto_mem.isNil:
+        omni_longjmp(omni_auto_mem.jmp_buf, 1)
 
 #Custom realloc implementation: it is only needed in Omni_AutoMem when surpassing the limit of
 #objects, so it does not need to be performant. It's just more convenient when writing a parser to
 #just pass a "alloc" and a "free" function.
-proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
     if in_ptr.isNil:
         return nil
     
     when N is csize_t:
-      let long_size = size
+        let long_size = size
     else:
-      let long_size = csize_t(size)
+        let long_size = csize_t(size)
     
     let new_mem = omni_alloc_C(long_size)
     
@@ -67,17 +81,19 @@ proc omni_realloc*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inlin
         omni_free_C(in_ptr)
         return new_mem
 
+    omni_print_str("ERROR: Omni: Nil allocation.")
     omni_free_C(in_ptr)
-    return nil
+    if not omni_auto_mem.isNil:
+        omni_longjmp(omni_auto_mem.jmp_buf, 1)
 
-proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inline, noSideEffect, raises:[].} =
+proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N, omni_auto_mem : Omni_AutoMem = nil) : pointer {.inline, noSideEffect, raises:[].} =
     if in_ptr.isNil:
         return nil
 
     when N is csize_t:
-      let long_size = size
+        let long_size = size
     else:
-      let long_size = csize_t(size)
+        let long_size = csize_t(size)
     
     let new_mem = omni_alloc0(long_size)
     
@@ -86,10 +102,13 @@ proc omni_realloc0*[N : SomeNumber](in_ptr : pointer, size : N) : pointer {.inli
         omni_free_C(in_ptr)
         return new_mem
 
+    omni_print_str("ERROR: Omni: Nil allocation.")
     omni_free_C(in_ptr)
-    return nil
+    if not omni_auto_mem.isNil:
+        omni_longjmp(omni_auto_mem.jmp_buf, 1)
 
 proc omni_free*(in_ptr : pointer) : void {.inline, noSideEffect, raises:[].} =
+    if in_ptr.isNil: return
     omni_free_C(in_ptr)
 
 # ===================================================== #

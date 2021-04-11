@@ -31,7 +31,13 @@
 
 //Needed for .dll export
 #ifdef _WIN32
-    #define OMNI_DLL_EXPORT __declspec(dllexport)
+    //MSVC
+    #ifdef _MSC_VER
+        #define OMNI_DLL_EXPORT __declspec(dllexport)
+    //MinGW
+    #else
+        #define OMNI_DLL_EXPORT __attribute__((visibility("default")))
+    #endif
 #else
     #define OMNI_DLL_EXPORT __attribute__ ((visibility("default")))
 #endif

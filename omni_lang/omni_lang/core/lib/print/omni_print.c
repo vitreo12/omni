@@ -65,3 +65,11 @@ OMNI_DLL_EXPORT void omni_print_int_C(int value)
     snprintf(char_value, sizeof(char_value), "%d", value);
     omni_print_func("%s\n", char_value);
 }
+
+OMNI_DLL_EXPORT void omni_print_bool_C(int value)
+{
+    if(value == 0)
+        omni_print_func("false\n");
+    else
+        omni_print_func("true\n");
+}
