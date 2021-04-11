@@ -75,7 +75,7 @@ After compiling the omni code with
 the `Buffer` interface will look like so:
 
 <p align="left">
-  <img width="559" height="444" src="/images/max_buffer.png">
+  <img width="710" height="472" src="/images/omnimax_buffer.png">
 </p>
 
 <br>
