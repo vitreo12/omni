@@ -9,7 +9,7 @@ layout: page
 *Omni* is a cross-platform *DSL* (Domain Specific Language) for low level audio programming. 
 It aims to be a new, expressive and easy to use programming language to code audio algorithms in.
 
-*Omni* leverages on *Nim* and *C* to compile self-contained static or shared libraries that can then be loaded and used anywhere. So far, two wrappers have already been written to compile omni code to *[SuperCollider](https://supercollider.github.io/) UGens* (*[OmniCollider](https://github.com/vitreo12/omnicollider)*), or *[Max](https://cycling74.com/) objects* (*[OmniMax](https://github.com/vitreo12/omnimax)*).
+*Omni* leverages *Nim* and *C* to compile self-contained static or shared libraries that can then be loaded and used anywhere. So far, two wrappers have already been written to compile omni code to *[SuperCollider](https://supercollider.github.io/) UGens* (*[OmniCollider](https://github.com/vitreo12/omnicollider)*), or *[Max](https://cycling74.com/) objects* (*[OmniMax](https://github.com/vitreo12/omnimax)*).
 
 Also, a basic syntax highlighting *[VSCode](https://code.visualstudio.com/)* plugin is available by simply looking for *[omni](https://github.com/vitreo12/vscode-omni)* in the Extensions Marketplace.
 
