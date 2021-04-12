@@ -5,6 +5,8 @@ title: Data
 
 `Data` is an in-built `struct` that allows to allocate a certain amount of memory to be used and accessed as an array.
 
+It is possible to loop around the entry of a `Data` with either a `for` loop or the `loop` construct.
+
 ``` 
 params: 
     numOfPhasors {1, 1, 100}
@@ -21,15 +23,11 @@ init:
     
     data4 = Data[Data[float]](10)      # 10 Data[float] elements
     loop data4:                        # loop around all elements and initialize Datas
-        _ = Data(10)  
+        _ = Data(10)
     
     data5 = Data[Phasor](numOfPhasors) # dynamic count according to value of param 'numOfPhasors'
-    #[ 
-    Note that there is no need of looping around data5 to initialize all entries explicitly by
-    calling 'Phasor()', Omni will detect all non-initialized entries and automatically initialize
-    them at the end of the init block. However, if one needs to initialize the entries with a
-    value that is not the default 'Phasor()', perhaps 'Phasor(10)', this must be done explicitly 
-    ]#
+    for phasor in data5:               # loop around all elements and initialize Phasors
+        phasor = Phasor()
 
     data6 = Data(10, 2)                # 20 total elements: 10 float elements per channel
 
@@ -57,6 +55,8 @@ init:
 
     #a[1] is already initialized, will not re-initialize it and print warning
     a[1] = Something()
+
+    #All the remaining entries [0, 2, 3, 4, 5, 6, 7, 8] will be initialized here
 ```
 
 <br>
