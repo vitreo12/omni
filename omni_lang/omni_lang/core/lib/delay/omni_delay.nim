@@ -25,7 +25,7 @@ import ../alloc/omni_alloc
 import ../data/omni_data
 import ../auto_mem/omni_auto_mem
 import ../math/omni_math
-from   ../stdlib/omni_stdlib import cubic_interp
+from   ../stdlib/omni_stdlib import linear_interp
 
 type
     Delay_omni_struct* = object
@@ -68,7 +68,7 @@ proc Delay_omni_struct_new*[S : SomeNumber](size : S = int(0), samplerate : floa
 proc omni_check_datas_validity*(obj : Delay, samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void =
     discard
 
-#Read proc (uses cubic interp)
+#Read proc (uses linear interp)
 proc read*[Y : SomeNumber](delay : Delay, delay_time : Y) : float {.inline.} =
     let 
         float_delay_time = float(delay_time)
@@ -76,10 +76,8 @@ proc read*[Y : SomeNumber](delay : Delay, delay_time : Y) : float {.inline.} =
         index  = (delay.phase - int(delay_time))
         index1 = index and delay.mask
         index2 = (index + 1) and delay.mask
-        index3 = (index + 2) and delay.mask
-        index4 = (index + 3) and delay.mask
 
-    return float(cubic_interp(frac, delay.data[index1], delay.data[index2], delay.data[index3], delay.data[index4]))
+    return float(linear_interp(frac, delay.data[index1], delay.data[index2]))
 
 #Write proc
 proc write*[Y : SomeNumber](delay : Delay, val : Y) : void {.inline.} =
