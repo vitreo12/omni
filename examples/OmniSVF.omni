@@ -1,9 +1,6 @@
-ins:
-    input
+params:
     cutoff {2000, 10, 20000}
     resonance {0.5, 0.005, 1}
-
-params:
     filter_type {0, 0, 2}
 
 init:
@@ -13,22 +10,22 @@ init:
     DIV2_INVERSE_SAMPLERATE = 2.0 / INVERSE_SAMPLERATE
     INVERSE_SAMPLERATE_DIV2 = INVERSE_SAMPLERATE / 2.0
 
-sample:
-    g = cutoff
+perform:
     r = 1.0 - resonance
-
-    g = (DIV2_INVERSE_SAMPLERATE * tan((g * TWOPI) * INVERSE_SAMPLERATE_DIV2) * INVERSE_SAMPLERATE_DIV2)
-    hp = (input - 2.0 * r * s1 - g * s1 - s2) / (1.0 + 2.0 * r * g + g * g)
     
-    bp = g * hp + s1
-    s1 = g * hp + bp
+    sample:
+        g = (DIV2_INVERSE_SAMPLERATE * tan((cutoff * TWOPI) * INVERSE_SAMPLERATE_DIV2) * INVERSE_SAMPLERATE_DIV2)
+        hp = (in1 - 2.0 * r * s1 - g * s1 - s2) / (1.0 + 2.0 * r * g + g * g)
+        
+        bp = g * hp + s1
+        s1 = g * hp + bp
 
-    lp = g * bp + s2
-    s2 = g * bp + lp
+        lp = g * bp + s2
+        s2 = g * bp + lp
 
-    if filter_type == 0:
-        out1 = lp
-    elif filter_type == 1:
-        out1 = hp
-    else:
-        out1 = bp
+        if filter_type == 0:
+            out1 = lp
+        elif filter_type == 1:
+            out1 = hp
+        else:
+            out1 = bp
