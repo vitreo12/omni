@@ -1,11 +1,11 @@
 params:
-    delay_length {1, 0, 2}
-    delay_time   {0.5, 0, 2}
-    feedback     {0.5, 0, 0.98}
-    damping      {0.5, 0, 0.98}
+    length     {1, 0, 2}
+    time       {0.5, 0, 1}
+    feedback   {0.5, 0, 0.98}
+    damping    {0.5, 0, 0.98}
 
 init:
-    dl = delay_length * samplerate
+    dl = length * samplerate
     delay = Delay(dl)
     prev_value = 0
 
@@ -13,21 +13,21 @@ init:
         delay
         prev_value
 
-sample:
-    dt = delay_time * samplerate
+perform:
+    dt = time * samplerate * length
 
-    #Read
-    read_value = delay.read(dt)
+    sample:
+        #Read
+        read_value = delay.read(dt)
+        out1 = read_value
 
-    out1 = read_value
+        #Apply FB and damping
+        feedback_value = read_value * feedback
+        write_value = in1 + feedback_value
+        write_value = ((1.0 - damping) * write_value) + (damping * prev_value)
 
-    #Apply FB and damping
-    feedback_value = read_value * feedback
-    write_value = in1 + feedback_value
-    write_value = ((1.0 - damping) * write_value) + (damping * prev_value)
+        #Write
+        delay.write(write_value)
 
-    #Write
-    delay.write(write_value)
-
-    #Store filter value for next iteration
-    prev_value = write_value
+        #Store filter value for next iteration
+        prev_value = write_value
