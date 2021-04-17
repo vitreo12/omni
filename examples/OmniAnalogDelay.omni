@@ -1,6 +1,6 @@
 params:
     length     {1, 0, 2}
-    time       {0.5, 0, 1}
+    time       {0.5, 0.0001, 1}
     feedback   {0.5, 0, 0.98}
     damping    {0.5, 0, 0.98}
 
