@@ -527,7 +527,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         max_vals     : seq[float]
 
     let ins_names_kind = ins_names.kind
-
+    
     #Must be an int literal OR nnkStmtListExpr (for ins: 1)
     if ins_number.kind == nnkIntLit: 
         ins_number_VAL = int(ins_number.intVal)     
@@ -579,8 +579,9 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
         if ins_names_kind == nnkStmtList:
             if zero_ins:
                 error("ins: Can't assign names when declaring 0 inputs.", ins_names)
-            
+
             for statement in ins_names.children():
+                
                 let statement_kind = statement.kind
 
                 #"freq" / freq
@@ -734,6 +735,11 @@ macro ins*(args : varargs[untyped]) : untyped =
         elif args_first.kind == nnkStmtList:
             ins_names = args_first
             ins_number = ins_names.len
+            # ins: 1
+            if ins_number == 1:
+                if ins_names[0].kind == nnkIntLit:
+                    ins_number = int(ins_names[0].intVal)
+                    ins_names  = nil
         else:
             error("ins: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
@@ -902,6 +908,11 @@ macro outs*(args : varargs[untyped]) : untyped =
         elif args_first.kind == nnkStmtList:
             outs_names = args_first
             outs_number = outs_names.len
+            # outs: 1
+            if outs_number == 1:
+                if outs_names[0].kind == nnkIntLit:
+                    outs_number = int(outs_names[0].intVal)
+                    outs_names  = nil
         else:
             error("outs: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
@@ -1835,6 +1846,11 @@ macro params*(args : varargs[untyped]) : untyped =
         elif args_first.kind == nnkStmtList:
             params_names = args_first
             params_number = params_names.len
+            # params: 1
+            if params_number == 1:
+                if params_names[0].kind == nnkIntLit:
+                    params_number = int(params_names[0].intVal)
+                    params_names  = nil
         else:
             error("params: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
@@ -2801,6 +2817,11 @@ macro buffers*(args : varargs[untyped]) : untyped =
         elif args_first.kind == nnkStmtList:
             buffers_names = args_first
             buffers_number = buffers_names.len
+            # buffers: 1
+            if buffers_number == 1:
+                if buffers_names[0].kind == nnkIntLit:
+                    buffers_number = int(buffers_names[0].intVal)
+                    buffers_names  = nil
         else:
             error("buffers: invalid syntax: '" & repr(args) & "'. It must either be an integer literal or a statement list.", args)
     
