@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-version       = "0.4.0"
+version       = "0.4.1"
 author        = "Francesco Cameli"
 description   = "omni_lang"
 license       = "MIT"
