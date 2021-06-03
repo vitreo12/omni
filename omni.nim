@@ -370,7 +370,7 @@ dispatch(
         "importModule" : "Import additional Nim modules to be compiled with the Omni file(s).",
         "passNim" : "Pass additional flags to the intermediate Nim compiler.",
         "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
-        "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib.",
+        "exportIO" : "Export the IO txt file together with the compiled lib.",
         "silent" : "CLIGEN-NOHELP"
     }
 )
