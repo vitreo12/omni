@@ -39,21 +39,18 @@ when defined(Linux):
         lib_prepend          = "lib"
         static_lib_extension = ".a"
         shared_lib_extension = ".so"
-        default_compiler     = "gcc"
 
-when defined(MacOSX) or defined(MacOS):
+elif defined(MacOSX) or defined(MacOS):
     const 
         lib_prepend          = "lib"
         static_lib_extension = ".a"
         shared_lib_extension = ".dylib"
-        default_compiler     = "clang"
 
-when defined(Windows):
+elif defined(Windows):
     const 
         lib_prepend          = ""           #Windows doesn't prepend "lib" to libraries
         static_lib_extension = ".lib"
         shared_lib_extension = ".dll"
-        default_compiler     = "gcc(MinGW)"
 
 #Generic error
 template printError(msg : string) : untyped =
@@ -84,7 +81,7 @@ proc parseAndPrintCompilationString(msg : string) : bool =
     return false
 
 #Actual compiler
-proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -120,15 +117,11 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         return 1
 
     #Check lib argument
-    var 
-        lib_nim : string
-        lib_extension : string
+    var lib_extension : string
     
     if lib == "shared":
-        lib_nim = "lib"
         lib_extension = shared_lib_extension
     elif lib == "static":
-        lib_nim = "staticLib"
         lib_extension = static_lib_extension
     else:
         printError("Invalid --lib argument: \"" & $lib & "\". Use 'shared' to build a shared library, or 'static' to build a static one.")
@@ -144,100 +137,66 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
     setCurrentDir(outDirFullPath)
 
-    #If architecture == native, also pass the mtune=native flag.
-    #If architecture == none, no architecture applied
-    var real_architecture = "--passC:-march=" & $architecture
-    if architecture == "native":
-        real_architecture = real_architecture & " --passC:-mtune=native"
-    #x86_64 / amd64 as aliases for x86-64
-    elif architecture == "x86_64" or architecture == "amd64":
-        real_architecture = "--passC:-march=x86-64"
-    elif architecture == "none":
-        real_architecture = ""
-
-    #Add -d:lto only on Linux and Windows (not working on OSX + Clang yet: https://github.com/nim-lang/Nim/issues/15578)
-    var lto = ""
-    when defined(Linux):
-        lto = "-d:lto"
-    elif defined(Windows):
-        #-ffat-lto-objects fixes issues with MinGW
-        lto = "-d:lto --passC:\"-ffat-lto-objects\" --passL:\"-ffat-lto-objects\""
-    
-    #Actual compile command.
-    var compile_command = 
-        "nim c --out:" & output_name & " --app:" & lib_nim & 
-        " --gc:none --noMain:on --panics:on --hints:off --checks:off --assertions:off" & 
-        " --opt:speed -d:release -d:danger " & lto & " --passC:-fPIC " & real_architecture &
-        " --warning[User]:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on"
-
-    #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
-    when defined(MacOSX) or defined(MacOS):
-        compile_command.add(" --passC:\"-flto\" --passL:\"-flto\"")
-
-    #Add compiler info if not default compiler (which is passed in already from nim.cfg)
-    if compiler != default_compiler:
-        compile_command.add(" --cc:" & compiler)
-
-    #Append additional definitions
-    for new_define in define:
-        #Look if -d has paths in it. Paths are expressed like so: -d:tempDir:"./"
-        let split_define = new_define.split(':')
+    ##Append additional definitions
+    #for new_define in define:
+    #    #Look if -d has paths in it. Paths are expressed like so: -d:tempDir:"./"
+    #    let split_define = new_define.split(':')
         
-        #Standard case -d:danger
-        if split_define.len() <= 1:
-            compile_command.add(" -d:" & $new_define)
+    #    #Standard case -d:danger
+    #    if split_define.len() <= 1:
+    #        compile_command.add(" -d:" & $new_define)
         
-        #Normal and unix paths
-        elif split_define.len() == 2:
-            let 
-                define_type  = split_define[0]
-                define_path  = split_define[1]
+    #    #Normal and unix paths
+    #    elif split_define.len() == 2:
+    #        let 
+    #            define_type  = split_define[0]
+    #            define_path  = split_define[1]
 
-            if define_path.contains('/') or define_path.contains('\\'):
-                compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
+    #        if define_path.contains('/') or define_path.contains('\\'):
+    #            compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
 
-        #Windows has C:\\
-        elif split_define.len() == 3:
-            let define_type  = split_define[0]
-            var define_path  = split_define[1]
+    #    #Windows has C:\\
+    #    elif split_define.len() == 3:
+    #        let define_type  = split_define[0]
+    #        var define_path  = split_define[1]
             
-            #Add the full path back
-            define_path.add(":" & $(split_define[2]))
+    #        #Add the full path back
+    #        define_path.add(":" & $(split_define[2]))
 
-            if define_path.contains('/') or define_path.contains('\\'):
-                compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
+    #        if define_path.contains('/') or define_path.contains('\\'):
+    #            compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
 
-    #Set performBits flag
-    if performBits == "32":
-        compile_command.add(" -d:omni_perform32")
-    elif performBits == "64":
-        compile_command.add(" -d:omni_perform64")
-    else:
-        compile_command.add(" -d:omni_perform32 -d:omni_perform64")
+    ##Set performBits flag
+    #if performBits == "32":
+    #    compile_command.add(" -d:omni_perform32")
+    #elif performBits == "64":
+    #    compile_command.add(" -d:omni_perform64")
+    #else:
+    #    compile_command.add(" -d:omni_perform32 -d:omni_perform64")
 
-    #Import omni_lang first
-    compile_command.add(" --import:omni_lang")
+    ##Import omni_lang first
+    #compile_command.add(" --import:omni_lang")
     
-    #Check if a wrapper has been specified. If it is, import it
-    if wrapper.isEmptyOrWhitespace.not:
-        compile_command.add(" --import:\"" & wrapper & "\"")
+    ##Check if a wrapper has been specified. If it is, import it
+    #if wrapper.isEmptyOrWhitespace.not:
+    #    compile_command.add(" --import:\"" & wrapper & "\"")
     
-    #Append additional imports
-    for new_importModule in importModule:
-        compile_command.add(" --import:\"" & $new_importModule & "\"")
+    ##Append additional imports
+    #for new_importModule in importModule:
+    #    compile_command.add(" --import:\"" & $new_importModule & "\"")
 
-    #Append additional flags for Nim compiler
-    for new_nim_flag in passNim:
-        compile_command.add(" " & $new_nim_flag)
+    ##Append additional flags for Nim compiler
+    #for new_nim_flag in passNim:
+    #    compile_command.add(" " & $new_nim_flag)
 
-    #Export IO
-    var omni_io_name = omniFileName & "_io.txt"
-    var omni_io : string
-    compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\" -d:omni_io_name:\"" & omni_io_name & "\"")
-    omni_io = outDirFullPath & "/" & omni_io_name
+    ##Export IO
+    #var omni_io_name = omniFileName & "_io.txt"
+    #var omni_io : string
+    #compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\" -d:omni_io_name:\"" & omni_io_name & "\"")
+    #omni_io = outDirFullPath & "/" & omni_io_name
 
-    #Finally, append the path to the actual omni file to compile:
-    compile_command.add(" \"" & $fileFullPath & "\"")
+    ##Finally, append the path to the actual omni file to compile:
+    #compile_command.add(" \"" & $fileFullPath & "\"")
 
     #Actually execute compilation. execCmdEx works fine on all OSes
     let (compilationString, failedOmniCompilation) = execCmdEx(compile_command)
@@ -288,7 +247,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
     #no files provided, print --version
     if files.len == 0:
         echo version_flag
@@ -302,9 +261,9 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
-                return omni_single_file(false, omniFileFullPath, outName, outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
+                return omni_single_file(false, omniFileFullPath, outName, outDir, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
             else:
-                if omni_single_file(true, omniFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
+                if omni_single_file(true, omniFileFullPath, "", outDir, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -316,7 +275,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(true, dirFileFullPath, "", outDir, lib, architecture, compiler, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
+                        if omni_single_file(true, dirFileFullPath, "", outDir, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                             return 1
 
         else:
@@ -363,7 +322,6 @@ dispatch(
         "outDir" : "Output folder. Defaults to the one of the Omni file(s) to compile.",
         "lib" : "Build a 'shared' or 'static' library.",
         "architecture" : "Build architecture.",
-        "compiler" : "Select a different C backend compiler to use. Omni supports all of Nim's C compilers.",
         "performBits" : "Set precision for 'ins' and 'outs' in the perform block. Accepted values are '32', '64' or '32/64'. Note that this option does not affect Omni's internal floating point precision.",
         "wrapper" : "Specify an Omni wrapper to use.",
         "define" : "Define additional symbols for the intermediate Nim compiler.",
