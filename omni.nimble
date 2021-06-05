@@ -1,3 +1,4 @@
+
 # MIT License
 # 
 # Copyright (c) 2020-2021 Francesco Cameli
@@ -29,8 +30,8 @@ requires "nim >= 1.4.0"
 requires "compiler == 1.4.8"
 requires "cligen >= 1.5.0"
 
-#Ignore omni_lang
-skipDirs = @["omni_lang"]
+#Ignore omni_lang, nim, misc folders
+skipDirs = @["omni_lang", "nim", "misc"]
 
 #Install examples
 installDirs = @["examples"]

@@ -131,7 +131,9 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     else:
         output_name = $lib_prepend & $outName & $lib_extension
     
-
+    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
+    setCurrentDir(outDirFullPath)
+    
     ##Append additional definitions
     #for new_define in define:
     #    #Look if -d has paths in it. Paths are expressed like so: -d:tempDir:"./"
