@@ -22,6 +22,8 @@
 
 import cligen, terminal, os, strutils, osproc
 
+import nim/compiler/omni_nim_compiler
+
 #Package version is passed as argument when building. It will be constant and set correctly
 const 
     NimblePkgVersion {.strdefine.} = ""
@@ -80,6 +82,10 @@ proc parseAndPrintCompilationString(msg : string) : bool =
 
     return false
 
+#full path
+template absPath(path : untyped) : untyped =
+    path.normalizedPath().expandTilde().absolutePath()
+
 #Actual compiler
 proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
 
@@ -102,7 +108,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     if outDir == "": #Check if outDir is empty. Use .omni's file path in that case.
         outDirFullPath = omniFileDir
     else:
-        outDirFullPath = outDir.normalizedPath().expandTilde().absolutePath()
+        outDirFullPath = outDir.absPath()
     
     #Check if dir exists
     if not outDirFullPath.dirExists():
@@ -125,13 +131,14 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         return 1
 
     #Set output name
-    var output_name : string
+    var outputName : string
     if outName == "":
-        output_name = $lib_prepend & $omniFileName & $lib_extension
+        outputName = $lib_prepend & $omniFileName & $lib_extension
     else:
-        output_name = $lib_prepend & $outName & $lib_extension
+        outputName = $lib_prepend & $outName & $lib_extension
     
     #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
+    #Even though the bug is fixed, apparently the issue remains. Keep this.
     setCurrentDir(outDirFullPath)
     
     ##Append additional definitions
@@ -163,13 +170,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     #        if define_path.contains('/') or define_path.contains('\\'):
     #            compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
 
-    ##Set performBits flag
-    #if performBits == "32":
-    #    compile_command.add(" -d:omni_perform32")
-    #elif performBits == "64":
-    #    compile_command.add(" -d:omni_perform64")
-    #else:
-    #    compile_command.add(" -d:omni_perform32 -d:omni_perform64")
 
     ##Import omni_lang first
     #compile_command.add(" --import:omni_lang")
@@ -187,19 +187,29 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     #    compile_command.add(" " & $new_nim_flag)
 
     ##Export IO
-    #var omni_io_name = omniFileName & "_io.txt"
-    #var omni_io : string
-    #compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\" -d:omni_io_name:\"" & omni_io_name & "\"")
-    #omni_io = outDirFullPath & "/" & omni_io_name
+    var 
+        omni_io_name = omniFileName & "_io.txt"
+        omni_io = outDirFullPath & "/" & omni_io_name
 
-    ##Finally, append the path to the actual omni file to compile:
-    #compile_command.add(" \"" & $fileFullPath & "\"")
-
-    #Actually execute compilation. execCmdEx works fine on all OSes
-    let (compilationString, failedOmniCompilation) = execCmdEx(compile_command)
+    #Actually execute compilation.
+    let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
+        omniFileDir,
+        fileFullPath,
+        omniIoName,
+        outputName,
+        outDirFullPath,
+        lib,
+        architecture,
+        performBits,
+        wrapper,
+        define,
+        importModule,
+        exportHeader,
+        exportIO
+    )
 
     #Path to compiled shared / static lib
-    let pathToCompiledLib = outDirFullPath & "/" & $output_name
+    let pathToCompiledLib = outDirFullPath & "/" & $outputName
     template removeCompiledLib() : untyped =
         removeFile(pathToCompiledLib)
         removeFile(omni_io)
@@ -212,7 +222,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         return 1
     
     #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
-    if failedOmniCompilation > 0:
+    if failedOmniCompilation:
         #No need to removeCompiledLib() as compilation failed anyway
         if is_multi:
             printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
@@ -234,12 +244,12 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     #Export omni.h too
     if exportHeader:
         let 
-            omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
+            omni_header_path     = (getAppDir() & "/omni_lang/omni_lang/core/omni.h")
             omni_header_out_path = outDirFullPath & "/omni.h"
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
-    printDone("'" & output_name & "' has been compiled to folder \"" & $outDirFullPath & "\".")
+    printDone("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
@@ -252,7 +262,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
 
     for omniFile in files:
         #Get full extended path
-        let omniFileFullPath = omniFile.normalizedPath().expandTilde().absolutePath()
+        let omniFileFullPath = omniFile.absPath()
 
         #If it's a file or list of files, compile it / them
         if omniFileFullPath.fileExists():
@@ -268,7 +278,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
             for kind, dirFile in walkDir(omniFileFullPath):
                 if kind == pcFile:
                     let 
-                        dirFileFullPath = dirFile.normalizedPath().expandTilde().absolutePath()
+                        dirFileFullPath = dirFile.absPath()
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":

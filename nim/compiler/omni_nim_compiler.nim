@@ -4,7 +4,7 @@ include "nim_compiler.nim"
 include "captureStdout"
 import compiler/condsyms
 
-proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : tuple[output: string, success: bool] =
+proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   let conf = newConfigRef()
 
   ########################
@@ -94,17 +94,25 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   ###########
 
   #omni_io
+  defineSymbol(conf.symbols, "omni_export_io")
+  defineSymbol(conf.symbols, "tempDir:\"" & outDir & "\"")
+  defineSymbol(conf.symbols, "omni_io_name:\"" & omniIoName & "\"")
 
+  #performBits
+  if performBits == "32":
+    defineSymbol(conf.symbols, "omni_perform32")
+  elif performBits == "64":
+    defineSymbol(conf.symbols, "omni_perform64")
+  else:
+    defineSymbol(conf.symbols, "omni_perform32")
+    defineSymbol(conf.symbols, "omni_perform64")
 
   #########
   # Paths #
   #########
 
   #These could all be calculated and set at compile time
-  # conf.searchPaths = @[
-  #   AbsoluteDir("~/.choosenim/toolchains/nim-1.4.8/lib/core".absPath())
-  # ] #add search paths here for stdlib modules
-  # conf.libpath = AbsoluteDir("~/.choosenim/toolchains/nim-1.4.8/lib".absPath())
+  conf.libpath = AbsoluteDir(getAppDir() & "/nim/lib")
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
   conf.outDir = AbsoluteDir(outDir) #output dir

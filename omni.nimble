@@ -27,7 +27,7 @@ description   = "omni is a DSL for low-level audio programming."
 license       = "MIT"
 
 requires "nim >= 1.4.0"
-requires "compiler == 1.4.8"
+requires "compiler == 1.4.8" #This needs to be in sync with nim/lib
 requires "cligen >= 1.5.0"
 
 #Ignore omni_lang, nim, misc folders
