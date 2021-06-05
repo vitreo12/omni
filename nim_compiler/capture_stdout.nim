@@ -1,10 +1,11 @@
-#These should work with zigcc everywhere
+#These should work with zigcc on all OSes
 proc dup(oldfd: FileHandle): FileHandle {.importc, header: "unistd.h".}
 proc dup2(oldfd: FileHandle, newfd: FileHandle): cint {.importc, header: "unistd.h".}
 
 template captureStdout*(ident: untyped, body: untyped) =
   # tmp file. Use addr of something to generate a random number
   let tmpFileName = "/tmp/nim_compiler" & $(cast[culong](stdout.unsafeAddr)) & ".txt"
+  # stdout handle
   var stdout_fileno = stdout.getFileHandle()
   # Duplicate stoud_fileno
   var stdout_dupfd = dup(stdout_fileno)

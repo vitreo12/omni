@@ -2,7 +2,7 @@
 include compiler/nim
 
 #Same as handleCmdLine but without stdin handle and paramCount() == 0 (which triggers help file)
-proc nim_compile(cache: IdentCache; conf: ConfigRef) =
+proc nim_compile*(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     supportsStdinFile: false, #it is true here for normal nim
     processCmdLine: processCmdLine

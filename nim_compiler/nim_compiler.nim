@@ -14,7 +14,7 @@ proc nim_compile_file(fileFolderFullPath : string, fileFullPath : string, outNam
   #C compilation
   conf.command = "c"
 
-  #Force gcc (replaced with zigcc)
+  #Force gcc (to be replaced with zigcc)
   conf.cCompiler = ccGcc
   # defineSymbol(conf.symbols, "zigcc") #use the zigcc compiler (switched on in nim.cfg)
 

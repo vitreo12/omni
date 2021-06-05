@@ -99,9 +99,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         return 1
     
     var outDirFullPath : string
-
-    #Check if outDir is empty. Use .omni's file path in that case.
-    if outDir == "":
+    if outDir == "": #Check if outDir is empty. Use .omni's file path in that case.
         outDirFullPath = omniFileDir
     else:
         outDirFullPath = outDir.normalizedPath().expandTilde().absolutePath()
@@ -118,7 +116,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Check lib argument
     var lib_extension : string
-    
     if lib == "shared":
         lib_extension = shared_lib_extension
     elif lib == "static":
@@ -127,15 +124,13 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         printError("Invalid --lib argument: \"" & $lib & "\". Use 'shared' to build a shared library, or 'static' to build a static one.")
         return 1
 
-    #Set output name:
+    #Set output name
     var output_name : string
     if outName == "":
         output_name = $lib_prepend & $omniFileName & $lib_extension
     else:
         output_name = $lib_prepend & $outName & $lib_extension
     
-    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
-    setCurrentDir(outDirFullPath)
 
     ##Append additional definitions
     #for new_define in define:
