@@ -60,14 +60,19 @@ after build:
     withDir("build"):
       mkDir("omni")
       withDir("omni"):
-        mvFile((getPkgDir() & "/omni").toExe, (getCurrentDir() & "/omni").toExe) #cpFile won't apply same permissions.. File wouldn't be executable
+        cpFile((getPkgDir() & "/omni").toExe, (getCurrentDir() & "/omni").toExe) 
+        #cpFile won't apply file exec permissions. File wouldn't be executable... Needs to see if
+        #Windows works. Ticket at: https://github.com/nim-lang/Nim/issues/18211
+        when defined(Linux) or defined(MacOS) or defined(MacOSX):
+          exec "chmod +x ./omni"
+
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
         cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
     
 #Needed for the walkDir function
 import os
 
-#Run all tests in tests/ folder
+#Run all tests in tests/ folder. To run tests, nim and omni_lang need to be installed on machine
 proc runTestsInFolder(path : string, top_level : bool = false) : void =
   for kind, file in walkDir(path):
     let splitFile = file.splitFile
