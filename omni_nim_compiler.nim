@@ -32,6 +32,7 @@ const
 #Used when can't find the bundled version of omninim.
 #omni_ver is available cause this file is included in omni.nim
 const omninim_nimble = "~/.nimble/pkgs/omninim-" & omni_ver & "/omninim/omninim/lib"
+# const omni_lang_nimble = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
 proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Config file
@@ -163,14 +164,15 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   if dirExists(omninim_bundle):
     conf.libpath = AbsoluteDir(omninim_bundle)
   else:
-    conf.libpath = AbsoluteDir(omninim_nimble)
+    conf.libpath = AbsoluteDir(omninim_nimble.expandTilde().absolutePath())
+
+  #nimble path (so that --import from a nimble pkg works)
 
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
   conf.outDir = AbsoluteDir(outDir) #output dir
   conf.outFile = RelativeFile(outName) #output file
-
-
+  
   ########
   # Misc #
   ########
