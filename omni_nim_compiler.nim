@@ -40,12 +40,19 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   #########
   # Paths #
   #########
+  
+  #nimble path (so that --import from a nimble pkg works)
+  let nimble_pkgs_abs = nimble_pkgs.normalizedPath().expandTilde().absolutePath()
+  if dirExists(nimble_pkgs_abs):
+    nimblePath(conf, AbsoluteDir(nimble_pkgs_abs), newLineInfo(FileIndex(-3), 0, 0))
 
   #system lib path
   let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
   var omninim_path : string
+  #bundle
   if dirExists(omninim_bundle):
     omninim_path = omninim_bundle
+  #nimble
   else:
     omninim_path = omninim_nimble.normalizedPath().expandTilde().absolutePath()
 
@@ -55,11 +62,6 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/collections"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
-
-  #nimble path (so that --import from a nimble pkg works)
-  let nimble_pkgs_abs = nimble_pkgs.normalizedPath().expandTilde().absolutePath()
-  if dirExists(nimble_pkgs_abs):
-    nimblePath(conf, AbsoluteDir(nimble_pkgs_abs), newLineInfo(FileIndex(-3), 0, 0))
 
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
@@ -149,8 +151,10 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
 
   #omni_lang
   let omni_lang_bundle = getAppDir() & "/omni_lang/omni_lang"
+  #from bundle
   if dirExists(omni_lang_bundle):
     conf.implicitImports.add findModule(conf, omni_lang_bundle, toFullPath(conf, FileIndex(-3))).string
+  #from nimble
   else:
     conf.implicitImports.add findModule(conf, "omni_lang", toFullPath(conf, FileIndex(-3))).string
   

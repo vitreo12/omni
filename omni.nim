@@ -196,8 +196,10 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     if exportHeader:
         let omni_header_path_bundle = getAppDir() & "/omni_lang/omni_lang/core/omni.h"
         var omni_header_path : string
+        #bundle
         if fileExists(omni_header_path_bundle):
           omni_header_path = omni_header_path_bundle
+        #nimble
         else:
           omni_header_path = omni_header_path_nimble.absPath()
         
