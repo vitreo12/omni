@@ -29,6 +29,8 @@ const
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
+const omni_header_path_nimble = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang/core/omni.h"
+
 #-v / --version
 let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020-2021 Francesco Cameli"
 
@@ -192,9 +194,14 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Export omni.h too
     if exportHeader:
-        let 
-            omni_header_path     = (getAppDir() & "/omni_lang/omni_lang/core/omni.h")
-            omni_header_out_path = outDirFullPath & "/omni.h"
+        let omni_header_path_bundle = getAppDir() & "/omni_lang/omni_lang/core/omni.h"
+        var omni_header_path : string
+        if fileExists(omni_header_path_bundle):
+          omni_header_path = omni_header_path_bundle
+        else:
+          omni_header_path = omni_header_path_nimble.absPath()
+        
+        let omni_header_out_path = outDirFullPath & "/omni.h"
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!

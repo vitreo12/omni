@@ -29,13 +29,43 @@ const
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
-const nimble_pkgs = "~/.nimble/pkgs/"
-const omninim_nimble = nimble_pkgs & "omninim-" & omni_ver & "/omninim/omninim/lib"
-# const omni_lang_nimble = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
+const 
+  nimble_pkgs = "~/.nimble/pkgs/"
+  omninim_nimble = nimble_pkgs & "omninim-" & omni_ver & "/omninim/omninim/lib"
 
 proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Config file
   let conf = newConfigRef()
+  
+  #########
+  # Paths #
+  #########
+
+  #system lib path
+  let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
+  var omninim_path : string
+  if dirExists(omninim_bundle):
+    omninim_path = omninim_bundle
+  else:
+    omninim_path = omninim_nimble.normalizedPath().expandTilde().absolutePath()
+
+  conf.libpath = AbsoluteDir(omninim_path)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/core"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/posix"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/collections"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
+
+  #nimble path (so that --import from a nimble pkg works)
+  let nimble_pkgs_abs = nimble_pkgs.normalizedPath().expandTilde().absolutePath()
+  if dirExists(nimble_pkgs_abs):
+    nimblePath(conf, AbsoluteDir(nimble_pkgs_abs), newLineInfo(FileIndex(-3), 0, 0))
+
+  conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
+  conf.projectFull = AbsoluteFile(fileFullPath) #input file
+  conf.outDir = AbsoluteDir(outDir) #output dir
+  conf.outFile = RelativeFile(outName) #output file
+  
 
   ########################
   # Nim Compiler options #
@@ -139,8 +169,8 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
 
   #omni_io
   defineSymbol(conf.symbols, "omni_export_io")
-  defineSymbol(conf.symbols, "tempDir:\"" & outDir & "\"")
-  defineSymbol(conf.symbols, "omni_io_name:\"" & omniIoName & "\"")
+  defineSymbol(conf.symbols, "tempDir", outDir)
+  defineSymbol(conf.symbols, "omni_io_name", omniIoName)
 
   #performBits
   if performBits == "32":
@@ -155,24 +185,6 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   for define_user in defines:
     defineSymbol(conf.symbols, define_user)
 
-  #########
-  # Paths #
-  #########
-
-  let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
-  if dirExists(omninim_bundle):
-    conf.libpath = AbsoluteDir(omninim_bundle)
-  else:
-    conf.libpath = AbsoluteDir(omninim_nimble.expandTilde().absolutePath())
-
-  #nimble path (so that --import from a nimble pkg works)
-  nimblePath(conf, AbsoluteDir(nimble_pkgs.expandTilde().absolutePath()), FileIndex(-3))
-
-  conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
-  conf.projectFull = AbsoluteFile(fileFullPath) #input file
-  conf.outDir = AbsoluteDir(outDir) #output dir
-  conf.outFile = RelativeFile(outName) #output file
-  
   ########
   # Misc #
   ########
@@ -203,7 +215,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   ###############
 
   #Actually run compilation
-  let failure = omniNimCompile(newIdentCache(), conf)
+  let failure = omniNimCompile(conf)
 
   #Error string is contained in conf.compilationOutput
   return (conf.compilationOutput, failure)
