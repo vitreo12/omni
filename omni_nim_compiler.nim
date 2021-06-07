@@ -20,13 +20,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# nim c -d:nimcore -d:release -d:danger omni_nim_compiler.nim
-
 import os, strutils
 
 import omninim/omninim
 
+#Package version is passed as argument when building. It will be constant and set correctly
+const 
+    NimblePkgVersion {.strdefine.} = ""
+    omni_ver = NimblePkgVersion
+
+#Used when can't find the bundled version of omninim.
+#omni_ver is available cause this file is included in omni.nim
+const omninim_nimble = "~/.nimble/pkgs/omninim-" & omni_ver & "/omninim/omninim/lib"
+
 proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
+  #Config file
   let conf = newConfigRef()
 
   ########################
@@ -110,7 +118,11 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   ###########
 
   #omni_lang
-  conf.implicitImports.add findModule(conf, getAppDir() & "/omni_lang/omni_lang", toFullPath(conf, FileIndex(-3))).string
+  let omni_lang_bundle = getAppDir() & "/omni_lang/omni_lang"
+  if dirExists(omni_lang_bundle):
+    conf.implicitImports.add findModule(conf, omni_lang_bundle, toFullPath(conf, FileIndex(-3))).string
+  else:
+    conf.implicitImports.add findModule(conf, "omni_lang", toFullPath(conf, FileIndex(-3))).string
   
   #wrapper
   if not wrapper.isEmptyOrWhitespace:
@@ -147,7 +159,12 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   # Paths #
   #########
 
-  conf.libpath = AbsoluteDir(getAppDir() & "/nim/lib")
+  let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
+  if dirExists(omninim_bundle):
+    conf.libpath = AbsoluteDir(omninim_bundle)
+  else:
+    conf.libpath = AbsoluteDir(omninim_nimble)
+
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
   conf.outDir = AbsoluteDir(outDir) #output dir
@@ -186,4 +203,5 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   #Actually run compilation
   let failure = omniNimCompile(newIdentCache(), conf)
 
-  return (conf.compilation_output, failure)
+  #Error string is contained in conf.compilationOutput
+  return (conf.compilationOutput, failure)

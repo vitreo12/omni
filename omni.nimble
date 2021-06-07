@@ -27,11 +27,10 @@ description   = "omni is a DSL for low-level audio programming."
 license       = "MIT"
 
 requires "nim >= 1.4.0"
-requires "compiler == 1.4.8" #This needs to be in sync with nim/lib
 requires "cligen >= 1.5.0"
 
-#Ignore omni_lang, nim, misc folders
-skipDirs = @["omni_lang", "nim", "misc"]
+#Ignore omni_lang, omninim, misc folders
+skipDirs = @["omni_lang", "omninim", "misc"]
 
 #Install examples
 installDirs = @["examples"]
@@ -39,14 +38,31 @@ installDirs = @["examples"]
 #Compiler executable
 bin = @["omni"]
 
-#Make sure omni-lang is getting installed first
-before install:
+#Before build
+before build:
+  #Install omni_lang (in case user uses omni from nimble)
   withDir(getPkgDir() & "/omni_lang"):
     exec "nimble install -Y"
 
-#before / after are BOTH needed for any of the two to work
-after install:
-  discard
+  #Install omninim (in case user uses omni from nimble)
+  withDir(getPkgDir() & "/omninim"):
+    exec "nimble install -Y"
+  
+  #remove build directory if exists
+  if dirExists(getPkgDir() & "/build"):
+    rmDir(getPkgDir() & "/build")
+
+#After build
+after build:
+  #create build directory and move relevant binaries / folders there
+  withDir(getPkgDir()):
+    mkDir("build")
+    withDir("build"):
+      mkDir("omni")
+      withDir("omni"):
+        mvFile((getPkgDir() & "/omni").toExe, (getCurrentDir() & "/omni").toExe) #cpFile won't apply same permissions.. File wouldn't be executable
+        cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
+        cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
     
 #Needed for the walkDir function
 import os
