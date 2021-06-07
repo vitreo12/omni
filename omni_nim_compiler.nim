@@ -1,8 +1,6 @@
-# nim c -d:nimcore -d:selftest -d:release -d:danger nim_compiler.nim
+# nim c -d:nimcore -d:release -d:danger nim_compiler.nim
 
-include "nim_compiler.nim"
-include "captureStdout"
-import compiler/condsyms
+import omninim
 
 proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   let conf = newConfigRef()
@@ -86,7 +84,16 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   # Imports #
   ###########
 
-  #Wrapper
+  #omni_lang
+  conf.implicitImports.add findModule(conf, getAppDir() & "/omni_lang/omni_lang", toFullPath(conf, FileIndex(-3))).string
+  
+  #wrapper
+  if wrapper.isEmptyOrWhitespace.not:
+    conf.implicitImports.add findModule(conf, wrapper, toFullPath(conf, FileIndex(-3))).string
+
+  #user imports
+  for import_user in imports:
+    conf.implicitImports.add findModule(conf, import_user, toFullPath(conf, FileIndex(-3))).string
 
   
   ###########
@@ -106,6 +113,10 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   else:
     defineSymbol(conf.symbols, "omni_perform32")
     defineSymbol(conf.symbols, "omni_perform64")
+
+  #user defines
+  for define_user in defines:
+    defineSymbol(conf.symbols, define_user)
 
   #########
   # Paths #
@@ -134,7 +145,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   excl(conf.options, {optHints})
 
   #--stdout:on
-  incl(conf.globalOptions, {optStdout}) 
+  # incl(conf.globalOptions, {optStdout}) 
 
   #--colors:off
   excl(conf.globalOptions, {optUseColors})
@@ -158,5 +169,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   var compilation_output : string
   captureStdout(compilation_output):
     nim_compile(newIdentCache(), conf)
+
+  echo conf.errorCounter
   
   return (compilation_output, conf.errorCounter > 0)

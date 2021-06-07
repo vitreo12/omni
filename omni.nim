@@ -20,9 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import cligen, terminal, os, strutils, osproc
+import cligen, terminal, os, strutils
 
-import nim/compiler/omni_nim_compiler
+import omninim
 
 #Package version is passed as argument when building. It will be constant and set correctly
 const 
@@ -141,51 +141,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     #Even though the bug is fixed, apparently the issue remains. Keep this.
     setCurrentDir(outDirFullPath)
     
-    ##Append additional definitions
-    #for new_define in define:
-    #    #Look if -d has paths in it. Paths are expressed like so: -d:tempDir:"./"
-    #    let split_define = new_define.split(':')
-        
-    #    #Standard case -d:danger
-    #    if split_define.len() <= 1:
-    #        compile_command.add(" -d:" & $new_define)
-        
-    #    #Normal and unix paths
-    #    elif split_define.len() == 2:
-    #        let 
-    #            define_type  = split_define[0]
-    #            define_path  = split_define[1]
-
-    #        if define_path.contains('/') or define_path.contains('\\'):
-    #            compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
-
-    #    #Windows has C:\\
-    #    elif split_define.len() == 3:
-    #        let define_type  = split_define[0]
-    #        var define_path  = split_define[1]
-            
-    #        #Add the full path back
-    #        define_path.add(":" & $(split_define[2]))
-
-    #        if define_path.contains('/') or define_path.contains('\\'):
-    #            compile_command.add(" -d:" & $define_type & ":\"" & $define_path & "\"")
-
-
-    ##Import omni_lang first
-    #compile_command.add(" --import:omni_lang")
-    
-    ##Check if a wrapper has been specified. If it is, import it
-    #if wrapper.isEmptyOrWhitespace.not:
-    #    compile_command.add(" --import:\"" & wrapper & "\"")
-    
-    ##Append additional imports
-    #for new_importModule in importModule:
-    #    compile_command.add(" --import:\"" & $new_importModule & "\"")
-
-    ##Append additional flags for Nim compiler
-    #for new_nim_flag in passNim:
-    #    compile_command.add(" " & $new_nim_flag)
-
     ##Export IO
     var 
         omni_io_name = omniFileName & "_io.txt"
@@ -208,48 +163,50 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         exportIO
     )
 
-    #Path to compiled shared / static lib
-    let pathToCompiledLib = outDirFullPath & "/" & $outputName
-    template removeCompiledLib() : untyped =
-        removeFile(pathToCompiledLib)
-        removeFile(omni_io)
+    echo compilationString
 
-    #Check for GcMem warnings and print errors out 
-    if parseAndPrintCompilationString(compilationString):
-        removeCompiledLib()
-        if is_multi:
-            printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
-        return 1
+    ##Path to compiled shared / static lib
+    #let pathToCompiledLib = outDirFullPath & "/" & $outputName
+    #template removeCompiledLib() : untyped =
+    #    removeFile(pathToCompiledLib)
+    #    removeFile(omni_io)
+
+    ##Check for GcMem warnings and print errors out 
+    #if parseAndPrintCompilationString(compilationString):
+    #    removeCompiledLib()
+    #    if is_multi:
+    #        printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
+    #    return 1
     
-    #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
-    if failedOmniCompilation:
-        #No need to removeCompiledLib() as compilation failed anyway
-        if is_multi:
-            printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
-        return 1
+    ##Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
+    #if failedOmniCompilation:
+    #    #No need to removeCompiledLib() as compilation failed anyway
+    #    if is_multi:
+    #        printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
+    #    return 1
 
-    #If sample / perform are undefined, omni_io will not exist
-    var failedOmniIOPerformCheck = true
-    if fileExists(omni_io):
-        failedOmniIOPerformCheck = false
-        if not exportIO: removeFile(omni_io)
+    ##If sample / perform are undefined, omni_io will not exist
+    #var failedOmniIOPerformCheck = true
+    #if fileExists(omni_io):
+    #    failedOmniIOPerformCheck = false
+    #    if not exportIO: removeFile(omni_io)
 
-    if failedOmniIOPerformCheck:
-        printError("Undefined 'perform' or 'sample' blocks.\n")
-        removeCompiledLib()
-        if is_multi:
-            printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
-        return 1
+    #if failedOmniIOPerformCheck:
+    #    printError("Undefined 'perform' or 'sample' blocks.\n")
+    #    removeCompiledLib()
+    #    if is_multi:
+    #        printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
+    #    return 1
 
-    #Export omni.h too
-    if exportHeader:
-        let 
-            omni_header_path     = (getAppDir() & "/omni_lang/omni_lang/core/omni.h")
-            omni_header_out_path = outDirFullPath & "/omni.h"
-        copyFile(omni_header_path, omni_header_out_path)
+    ##Export omni.h too
+    #if exportHeader:
+    #    let 
+    #        omni_header_path     = (getAppDir() & "/omni_lang/omni_lang/core/omni.h")
+    #        omni_header_out_path = outDirFullPath & "/omni.h"
+    #    copyFile(omni_header_path, omni_header_out_path)
 
-    #Done!
-    printDone("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
+    ##Done!
+    #printDone("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
