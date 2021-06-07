@@ -1,4 +1,28 @@
-# nim c -d:nimcore -d:release -d:danger nim_compiler.nim
+# MIT License
+# 
+# Copyright (c) 2020-2021 Francesco Cameli
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# nim c -d:nimcore -d:release -d:danger omni_nim_compiler.nim
+
+import os, strutils
 
 import omninim
 
@@ -29,7 +53,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   #-d:danger (from commands.nim -> specialDefine)
   defineSymbol(conf.symbols, "danger")
   conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck, optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
-  # conf.globalOptions.excl {optCDebug}
+  conf.globalOptions.excl {optCDebug}
 
   #--opt:speed (from commands.nim -> processSwitch) 
   incl(conf.options, optOptimizeSpeed)
@@ -48,7 +72,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
     excl(conf.globalOptions, optGenGuiApp)
     defineSymbol(conf.symbols, "library")
     defineSymbol(conf.symbols, "staticlib")
-    # incl(conf.globalOptions, optNoLinking)   #This is for zigcc: --noLinking, done afterwards.
+    # incl(conf.globalOptions, optNoLinking)   #This is for zigcc: --noLinking
     # incl(conf.globalOptions, optCompileOnly) #This is for zigcc: --compileOnly.
   
   
@@ -77,6 +101,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   when not defined(MacOS) and not defined(MacOSX):
     defineSymbol(conf.symbols, "lto")
 
+  #C compiler and linker additional options
   conf.compileOptions = "-w -fPIC " & lto & " " & real_architecture #no warnings + lto + fPIC + arch
   conf.linkOptions = "-fPIC " & lto #lto + fPIC
 
@@ -88,7 +113,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   conf.implicitImports.add findModule(conf, getAppDir() & "/omni_lang/omni_lang", toFullPath(conf, FileIndex(-3))).string
   
   #wrapper
-  if wrapper.isEmptyOrWhitespace.not:
+  if not wrapper.isEmptyOrWhitespace:
     conf.implicitImports.add findModule(conf, wrapper, toFullPath(conf, FileIndex(-3))).string
 
   #user imports
@@ -122,7 +147,6 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   # Paths #
   #########
 
-  #These could all be calculated and set at compile time
   conf.libpath = AbsoluteDir(getAppDir() & "/nim/lib")
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
@@ -144,12 +168,6 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   #--hints:off
   excl(conf.options, {optHints})
 
-  #--stdout:on
-  # incl(conf.globalOptions, {optStdout}) 
-
-  #--colors:off
-  excl(conf.globalOptions, {optUseColors})
-
   #--warning[User]:off
   excl(conf.notes, warnUser)
   excl(conf.mainPackageNotes, warnUser)
@@ -166,10 +184,6 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   ###############
 
   #Actually run compilation
-  var compilation_output : string
-  captureStdout(compilation_output):
-    nim_compile(newIdentCache(), conf)
+  let failure = omniNimCompile(newIdentCache(), conf)
 
-  echo conf.errorCounter
-  
-  return (compilation_output, conf.errorCounter > 0)
+  return (conf.compilation_output, failure)

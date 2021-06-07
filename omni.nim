@@ -22,7 +22,7 @@
 
 import cligen, terminal, os, strutils
 
-import omninim
+import omni_nim_compiler
 
 #Package version is passed as argument when building. It will be constant and set correctly
 const 
@@ -163,50 +163,45 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         exportIO
     )
 
-    echo compilationString
+    #Path to compiled shared / static lib
+    let pathToCompiledLib = outDirFullPath & "/" & $outputName
+    template removeCompiledLib() : untyped =
+        removeFile(pathToCompiledLib)
+        removeFile(omni_io)
 
-    ##Path to compiled shared / static lib
-    #let pathToCompiledLib = outDirFullPath & "/" & $outputName
-    #template removeCompiledLib() : untyped =
-    #    removeFile(pathToCompiledLib)
-    #    removeFile(omni_io)
-
-    ##Check for GcMem warnings and print errors out 
-    #if parseAndPrintCompilationString(compilationString):
-    #    removeCompiledLib()
-    #    if is_multi:
-    #        printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
-    #    return 1
+    #Check for GcMem warnings and print errors out 
+    if parseAndPrintCompilationString(compilationString):
+        removeCompiledLib()
+        if is_multi: printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
+        return 1
     
-    ##Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
-    #if failedOmniCompilation:
-    #    #No need to removeCompiledLib() as compilation failed anyway
-    #    if is_multi:
-    #        printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
-    #    return 1
+    #Error code from execCmd is usually some 8bit number saying what error arises. It's not important for now.
+    if failedOmniCompilation:
+        #No need to removeCompiledLib() as compilation failed anyway
+        if is_multi: printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
+        return 1
 
-    ##If sample / perform are undefined, omni_io will not exist
-    #var failedOmniIOPerformCheck = true
-    #if fileExists(omni_io):
-    #    failedOmniIOPerformCheck = false
-    #    if not exportIO: removeFile(omni_io)
+    #If sample / perform are undefined, omni_io will not exist
+    var failedOmniIOPerformCheck = true
+    if fileExists(omni_io):
+        failedOmniIOPerformCheck = false
+        if not exportIO: removeFile(omni_io)
 
-    #if failedOmniIOPerformCheck:
-    #    printError("Undefined 'perform' or 'sample' blocks.\n")
-    #    removeCompiledLib()
-    #    if is_multi:
-    #        printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
-    #    return 1
+    if failedOmniIOPerformCheck:
+        printError("Undefined 'perform' or 'sample' blocks.\n")
+        removeCompiledLib()
+        if is_multi: printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
+        return 1
 
-    ##Export omni.h too
-    #if exportHeader:
-    #    let 
-    #        omni_header_path     = (getAppDir() & "/omni_lang/omni_lang/core/omni.h")
-    #        omni_header_out_path = outDirFullPath & "/omni.h"
-    #    copyFile(omni_header_path, omni_header_out_path)
+    #Export omni.h too
+    if exportHeader:
+        let 
+            omni_header_path     = (getAppDir() & "/omni_lang/omni_lang/core/omni.h")
+            omni_header_out_path = outDirFullPath & "/omni.h"
+        copyFile(omni_header_path, omni_header_out_path)
 
-    ##Done!
-    #printDone("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
+    #Done!
+    printDone("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 
