@@ -24,16 +24,24 @@ import os, strutils
 
 import omninim/omninim
 
-#Package version is passed as argument when building. It will be constant and set correctly
 const 
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
 const 
-  nimble_pkgs = "~/.nimble/pkgs/"
-  omninim_nimble = nimble_pkgs & "omninim-" & omni_ver & "/omninim/omninim/lib"
+  nimble_pkgs_tilde = "~/.nimble/pkgs/"
+  omninim_nimble_tilde = nimble_pkgs_tilde & "omninim-" & omni_ver & "/omninim/omninim/lib"
+
+template absPath(path : untyped) : untyped =
+    path.normalizedPath().expandTilde().absolutePath()
 
 proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
+  #OMNIDIR (has precedence)
+  let 
+    OMNIDIR = getEnv("OMNIDIR").absPath()
+    omninim_nimble = omninim_nimble_tilde.absPath()
+    nimble_pkgs = nimble_pkgs_tilde.absPath()
+
   #Config file
   let conf = newConfigRef()
   
@@ -42,26 +50,33 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   #########
   
   #nimble path (so that --import from a nimble pkg works)
-  let nimble_pkgs_abs = nimble_pkgs.normalizedPath().expandTilde().absolutePath()
-  if dirExists(nimble_pkgs_abs):
-    nimblePath(conf, AbsoluteDir(nimble_pkgs_abs), newLineInfo(FileIndex(-3), 0, 0))
+  if dirExists(nimble_pkgs):
+    nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
 
   #system lib path
   let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
   var omninim_path : string
+  #OMNIDIR
+  if dirExists(OMNIDIR):
+    omninim_path = OMNIDIR
   #bundle
-  if dirExists(omninim_bundle):
+  elif dirExists(omninim_bundle):
     omninim_path = omninim_bundle
   #nimble
-  else:
-    omninim_path = omninim_nimble.normalizedPath().expandTilde().absolutePath()
+  elif dirExists(omninim_nimble):
+    omninim_path = omninim_nimble
+  #.local/share (Linux) - Documents (MacOS / Windows)
 
+
+  #There probabl is a leaner way to set all these paths
   conf.libpath = AbsoluteDir(omninim_path)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/core"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/posix"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/collections"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
+
+  #nimcacheDir
 
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
@@ -150,11 +165,17 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   ###########
 
   #omni_lang
-  let omni_lang_bundle = getAppDir() & "/omni_lang/omni_lang"
-  #from bundle
-  if dirExists(omni_lang_bundle):
+  let 
+    omni_lang_path = OMNIDIR & "/omni_lang/omni_lang"
+    omni_lang_bundle = getAppDir() & "/omni_lang/omni_lang"
+
+  #OMNIDIR
+  if dirExists(omni_lang_path):
+    conf.implicitImports.add findModule(conf, omni_lang_path, toFullPath(conf, FileIndex(-3))).string
+  #bundle
+  elif dirExists(omni_lang_bundle):
     conf.implicitImports.add findModule(conf, omni_lang_bundle, toFullPath(conf, FileIndex(-3))).string
-  #from nimble
+  #nimble
   else:
     conf.implicitImports.add findModule(conf, "omni_lang", toFullPath(conf, FileIndex(-3))).string
   
