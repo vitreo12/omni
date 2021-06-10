@@ -111,7 +111,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
     nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
 
   #system lib path
-  let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
+  let omninim_bundle = getAppDir() & "/omninim/omninim/lib"
   var omninim_path : string
   #OMNIDIR
   if dirExists(OMNIDIR):
