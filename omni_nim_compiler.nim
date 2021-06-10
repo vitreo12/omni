@@ -35,54 +35,22 @@ const
 template absPath(path : untyped) : untyped =
     path.normalizedPath().expandTilde().absolutePath()
 
-proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, omniIoName : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
-  #OMNIDIR (has precedence)
+proc getOsCacheDir(): string =
+  when defined(posix):
+    result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
+  else:
+    result = getHomeDir() / genSubDir.string
+
+proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
+  #Some common paths
   let 
-    OMNIDIR = getEnv("OMNIDIR").absPath()
+    OMNIDIR = getEnv("OMNIDIR").normalizedPath().expandTilde() #no absolutePath: it would be $HOME
     omninim_nimble = omninim_nimble_tilde.absPath()
     nimble_pkgs = nimble_pkgs_tilde.absPath()
 
   #Config file
   let conf = newConfigRef()
-  
-  #########
-  # Paths #
-  #########
-  
-  #nimble path (so that --import from a nimble pkg works)
-  if dirExists(nimble_pkgs):
-    nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
 
-  #system lib path
-  let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
-  var omninim_path : string
-  #OMNIDIR
-  if dirExists(OMNIDIR):
-    omninim_path = OMNIDIR
-  #bundle
-  elif dirExists(omninim_bundle):
-    omninim_path = omninim_bundle
-  #nimble
-  elif dirExists(omninim_nimble):
-    omninim_path = omninim_nimble
-  #.local/share (Linux) - Documents (MacOS / Windows)
-
-
-  #There probabl is a leaner way to set all these paths
-  conf.libpath = AbsoluteDir(omninim_path)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/core"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/posix"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/collections"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
-
-  #nimcacheDir
-
-  conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
-  conf.projectFull = AbsoluteFile(fileFullPath) #input file
-  conf.outDir = AbsoluteDir(outDir) #output dir
-  conf.outFile = RelativeFile(outName) #output file
-  
 
   ########################
   # Nim Compiler options #
@@ -92,7 +60,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   conf.command = "c"
 
   #Force gcc (to be replaced with zigcc)
-  conf.cCompiler = ccGcc
+  # conf.cCompiler = ccGcc
   # defineSymbol(conf.symbols, "zigcc") #use the zigcc compiler (switched on in nim.cfg)
 
   #--gc:none (from commnds.nim -> processSwitch)
@@ -131,6 +99,47 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
     # incl(conf.globalOptions, optCompileOnly) #This is for zigcc: --compileOnly.
   
   
+  #########
+  # Paths #
+  #########
+  
+  #nimble path (so that --import from a nimble pkg works)
+  if dirExists(nimble_pkgs):
+    nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
+
+  #system lib path
+  let omninim_bundle = getAppDir() & "/omninim/omninim/omninim/lib"
+  var omninim_path : string
+  #OMNIDIR
+  if dirExists(OMNIDIR):
+    omninim_path = OMNIDIR
+  #bundle
+  elif dirExists(omninim_bundle):
+    omninim_path = omninim_bundle
+  #nimble
+  elif dirExists(omninim_nimble):
+    omninim_path = omninim_nimble
+  #.local/share (Linux) - Documents (MacOS / Windows)
+
+  
+  #don't set conf.projectName as that would expect the extension to be .nim
+  conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
+  conf.projectFull = AbsoluteFile(fileFullPath) #input file
+  conf.outDir = AbsoluteDir(outDir) #output dir
+  conf.outFile = RelativeFile(outName) #output file
+
+  #There probably is a leaner way to set all these paths
+  conf.libpath = AbsoluteDir(omninim_path)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/core"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/posix"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/collections"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
+
+  #nimcacheDir ... Manually patch the name cause setting conf.projectName would expect the extension to be .nim
+  conf.nimcacheDir = AbsoluteDir(getOsCacheDir() / omniFileName)
+
+
   ######################
   # C Compiler options #
   ######################
@@ -160,6 +169,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   conf.compileOptions = "-w -fPIC " & lto & " " & real_architecture #no warnings + lto + fPIC + arch
   conf.linkOptions = "-fPIC " & lto #lto + fPIC
 
+  
   ###########
   # Imports #
   ###########
@@ -193,6 +203,7 @@ proc omni_compile_nim_file*(fileFolderFullPath : string, fileFullPath : string, 
   ###########
 
   #omni_io
+  var omniIoName = omniFileName & "_io.txt"
   defineSymbol(conf.symbols, "omni_export_io")
   defineSymbol(conf.symbols, "tempDir", outDir)
   defineSymbol(conf.symbols, "omni_io_name", omniIoName)

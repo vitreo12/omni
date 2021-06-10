@@ -140,16 +140,16 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     #Even though the bug is fixed, apparently the issue remains. Keep this.
     setCurrentDir(outDirFullPath)
     
-    ##Export IO
+    #Export IO
     var 
         omni_io_name = omniFileName & "_io.txt"
         omni_io = outDirFullPath & "/" & omni_io_name
 
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
+        omniFileName,
         omniFileDir,
         fileFullPath,
-        omniIoName,
         outputName,
         outDirFullPath,
         lib,
