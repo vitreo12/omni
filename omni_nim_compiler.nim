@@ -95,9 +95,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
     excl(conf.globalOptions, optGenGuiApp)
     defineSymbol(conf.symbols, "library")
     defineSymbol(conf.symbols, "staticlib")
-    # incl(conf.globalOptions, optNoLinking)   #This is for zigcc: --noLinking
-    # incl(conf.globalOptions, optCompileOnly) #This is for zigcc: --compileOnly.
-  
+
   
   #########
   # Paths #
