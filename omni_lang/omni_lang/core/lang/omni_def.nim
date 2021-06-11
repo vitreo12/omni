@@ -223,6 +223,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                     
                     arg_name = statement[0][0]
                     arg_type_proc = statement[0][1]
+                    arg_type_templ = arg_type_proc #same as proc: this allows for parametrization
                 
                 #a = 0.5
                 else:
@@ -235,6 +236,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
             elif statement_kind == nnkCommand:
                 arg_name = statement[0]
                 arg_type_proc = statement[1]
+                arg_type_templ = arg_type_proc #same as proc: this allows for parametrization
                 arg_value = newEmptyNode()
 
             #a -> a : auto
@@ -259,6 +261,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                             generic_mapping = generics_mapping.getOrDefault(ident_str)
                         if generic_mapping != nil:
                             arg_type_proc = generic_mapping 
+                            arg_type_templ = newIdentNode("auto") # re-set template to auto. It can't be generic as it's not defined yet.
 
             #only add check for current type if is not a generic one
             if not arg_type_is_generic:
@@ -306,6 +309,7 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
                 arg_value
             )
 
+            #new arg for templ entry
             new_arg_templ = nnkIdentDefs.newTree(
                 arg_name,
                 arg_type_templ,
@@ -387,8 +391,6 @@ macro omni_def_inner*(function_signature : untyped, code_block : untyped, omni_c
         
         #Add function body (with checks for var/lets macro)
         proc_def.add(proc_body)
-
-        # error repr proc_def
 
         # ================= #
         # BUILD EXPORT PROC #
