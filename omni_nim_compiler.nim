@@ -59,12 +59,9 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   #C compilation
   conf.command = "c"
 
-  # Use zig
-  # if zigcc exists:
-  # conf.setConfigVar("gcc.exe", "zigcc")
-  # conf.setConfigVar("clang.exe", "zigcc")
-  # conf.setConfigVar("gcc.linkerexe", "zigcc")
-  # conf.setConfigVar("clang.linkerexe", "zigcc")
+  #Use Zig
+  #if ~/.local/share/omni/zig/zig exists
+  conf.cCompiler = ccOmniZigcc
 
   #--gc:none (from commnds.nim -> processSwitch)
   conf.selectedGC = gcNone
