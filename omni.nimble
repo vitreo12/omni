@@ -38,19 +38,16 @@ installDirs = @["examples"]
 #Compiler executable
 bin = @["omni"]
 
-#Needed for the walkDir and string functions
+
+#########
+# Build #
+#########
+
+#walkDir / startsWith / endsWith
 import os, strutils
 
 #Before build
 before build:
-  #Install omni_lang (in case user uses omni from nimble)
-  withDir(getPkgDir() & "/omni_lang"):
-    exec "nimble install -Y"
-
-  #Install omninim (in case user uses omni from nimble)
-  withDir(getPkgDir() & "/omninim"):
-    exec "nimble install -Y"
-
   #Download the zig compiler
   withDir(getPkgDir() & "/omnizig"):
     exec "nim c -r downloadZig.nim"
@@ -58,8 +55,16 @@ before build:
     for kind, path in walkDir("./"):
       if path.startsWith("./zig") and path.endsWith("tar.xz"): #file downloaded correctly
         success = true
-    if not success:
+    if not success: #failed download, exit the entire build process
       quit 1
+  
+  #Install omni_lang (in case user uses omni from nimble)
+  withDir(getPkgDir() & "/omni_lang"):
+    exec "nimble install -Y"
+
+  #Install omninim (in case user uses omni from nimble)
+  withDir(getPkgDir() & "/omninim"):
+    exec "nimble install -Y"
   
   #remove build directory if exists
   if dirExists(getPkgDir() & "/build"):
@@ -81,7 +86,11 @@ after build:
 
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
         cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
-    
+
+ 
+#########
+# Tests #
+#########
 
 #Run all tests in tests/ folder. To run tests, nim and omni_lang need to be installed on machine
 proc runTestsInFolder(path : string, top_level : bool = false) : void =
