@@ -1,3 +1,5 @@
+## 0.5.0
+
 ## 0.4.1
 
 1) Deprecate the use of `nm` to check the presence of 'perform' / 'sample' blocks

@@ -26,9 +26,8 @@ template omni_export_io*() : untyped {.dirty.} =
         
         #static == compile time block
         static:
-            const 
-                omni_io_name {.strdefine.} = ""
-            
+            const omni_io_name {.strdefine.} = ""
+
             #ins
             var text = $omni_inputs & "\n" & $omni_inputs_names_const & "\n" 
             for index, default_val in omni_inputs_defaults_const:
@@ -58,4 +57,5 @@ template omni_export_io*() : untyped {.dirty.} =
 
             #this has been passed in as command argument with -d:tempDir
             let fullPathToNewFolder = getTempDir()
-            writeFile($fullPathToNewFolder & omni_io_name, text)
+            if dirExists(fullPathToNewFolder):
+                writeFile($fullPathToNewFolder & omni_io_name, text)
