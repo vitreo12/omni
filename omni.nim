@@ -140,9 +140,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         output_name = $lib_prepend & $omniFileName & $lib_extension
     else:
         output_name = $lib_prepend & $outName & $lib_extension
-    
-    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
-    setCurrentDir(outDirFullPath)
 
     #If architecture == native, also pass the mtune=native flag.
     #If architecture == none, no architecture applied
@@ -165,7 +162,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     
     #Actual compile command.
     var compile_command = 
-        "nim c --out:" & output_name & " --app:" & lib_nim & 
+        "nim c --out:" & output_name & " --outDir:" & outDirFullPath & " --app:" & lib_nim & 
         " --gc:none --noMain:on --panics:on --hints:off --checks:off --assertions:off" & 
         " --opt:speed -d:release -d:danger " & lto & " --passC:-fPIC " & real_architecture &
         " --warning[User]:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on"
