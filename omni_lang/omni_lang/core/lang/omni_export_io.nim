@@ -57,4 +57,5 @@ template omni_export_io*() : untyped {.dirty.} =
 
             #this has been passed in as command argument with -d:tempDir
             let fullPathToNewFolder = getTempDir()
-            writeFile($fullPathToNewFolder & omni_io_name, text)
+            if dirExists(fullPathToNewFolder):
+                writeFile($fullPathToNewFolder & omni_io_name, text)
