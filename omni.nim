@@ -141,10 +141,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         omni_io_name = omniFileName & "_io.txt"
         omni_io = outDirFullPath / omni_io_name
 
-    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
-    #Even though the bug is fixed, apparently the issue remains. Keep this.
-    setCurrentDir(outDirFullPath)
-
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
         omniFileName,

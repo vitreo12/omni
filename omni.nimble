@@ -49,14 +49,14 @@ import os, strutils
 #Before build
 before build:
   #Download the zig compiler
-  withDir(getPkgDir() & "/omnizig"):
-    exec "nim c -r downloadZig.nim"
-    var success = false
-    for kind, path in walkDir("./"):
-      if path.startsWith("./zig") and path.endsWith("tar.xz"): #file downloaded correctly
-        success = true
-    if not success: #failed download, exit the entire build process
-      quit 1
+  # withDir(getPkgDir() & "/omnizig"):
+  #   exec "nim c -r downloadZig.nim"
+  #   var success = false
+  #   for kind, path in walkDir("./"):
+  #     if path.startsWith("./zig") and path.endsWith("tar.xz"): #file downloaded correctly
+  #       success = true
+  #   if not success: #failed download, exit the entire build process
+  #     quit 1
   
   #Install omni_lang (in case user uses omni from nimble)
   withDir(getPkgDir() & "/omni_lang"):
