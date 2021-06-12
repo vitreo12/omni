@@ -30,13 +30,16 @@ requires "nim >= 1.4.0"
 requires "cligen >= 1.5.0"
 
 #Ignore omni_lang, omninim, misc folders
-skipDirs = @["omni_lang", "omninim", "misc"]
+skipDirs = @["omni_lang", "omninim", "omnizig", "misc"]
 
 #Install examples
 installDirs = @["examples"]
 
 #Compiler executable
 bin = @["omni"]
+
+#Needed for the walkDir and string functions
+import os, strutils
 
 #Before build
 before build:
@@ -47,6 +50,16 @@ before build:
   #Install omninim (in case user uses omni from nimble)
   withDir(getPkgDir() & "/omninim"):
     exec "nimble install -Y"
+
+  #Download the zig compiler
+  withDir(getPkgDir() & "/omnizig"):
+    exec "nim c -r downloadZig.nim"
+    var success = false
+    for kind, path in walkDir("./"):
+      if path.startsWith("./zig") and path.endsWith("tar.xz"): #file downloaded correctly
+        success = true
+    if not success:
+      quit 1
   
   #remove build directory if exists
   if dirExists(getPkgDir() & "/build"):
@@ -69,8 +82,6 @@ after build:
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
         cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
     
-#Needed for the walkDir function
-import os
 
 #Run all tests in tests/ folder. To run tests, nim and omni_lang need to be installed on machine
 proc runTestsInFolder(path : string, top_level : bool = false) : void =

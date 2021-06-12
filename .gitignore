@@ -6,3 +6,9 @@
 *.exe
 
 omni
+
+omnizig/downloadZig
+
+*.xz
+*.gz
+

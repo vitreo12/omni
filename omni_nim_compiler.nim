@@ -163,7 +163,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
       conf.target.targetCPU = cpuArm
   elif architecture == "wasm" or architecture == "wasm32": #doesn't work on zig, just leaving it here for the future
       c_architecture = "--target=wasm32"
-      conf.target.targetCPU = cpuWasm32 #
+      conf.target.targetCPU = cpuWasm32
   elif architecture == "none":
       c_architecture = ""
       conf.target.targetCPU = cpuNone
