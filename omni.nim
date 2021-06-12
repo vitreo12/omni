@@ -100,7 +100,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Check file extension
     if not(omniFileExt == ".omni") and not(omniFileExt == ".oi"):
-        printError($fileFullPath & " is not an Omni file.")
+        printError(fileFullPath & " is not an Omni file.")
         return 1
     
     var outDirFullPath : string
@@ -111,7 +111,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     
     #Check if dir exists
     if not outDirFullPath.dirExists():
-        printError("outDir: " & $outDirFullPath & " does not exist.")
+        printError("outDir: " & outDirFullPath & " does not exist.")
         return 1
 
     #Check performBits argument
@@ -136,14 +136,14 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     else:
         outputName = $lib_prepend & $outName & $lib_extension
     
-    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
-    #Even though the bug is fixed, apparently the issue remains. Keep this.
-    setCurrentDir(outDirFullPath)
-    
     #Export IO
     var 
         omni_io_name = omniFileName & "_io.txt"
-        omni_io = outDirFullPath & "/" & omni_io_name
+        omni_io = outDirFullPath / omni_io_name
+
+    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
+    #Even though the bug is fixed, apparently the issue remains. Keep this.
+    setCurrentDir(outDirFullPath)
 
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
@@ -163,7 +163,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     )
 
     #Path to compiled shared / static lib
-    let pathToCompiledLib = outDirFullPath & "/" & $outputName
+    let pathToCompiledLib = outDirFullPath / outputName
     template removeCompiledLib() : untyped =
         removeFile(pathToCompiledLib)
         removeFile(omni_io)
@@ -194,7 +194,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Export omni.h too
     if exportHeader:
-        let omni_header_path_bundle = getAppDir() & "/omni_lang/omni_lang/core/omni.h"
+        let omni_header_path_bundle = getAppDir() / "omni_lang/omni_lang/core/omni.h"
         var omni_header_path : string
         #bundle
         if fileExists(omni_header_path_bundle):
@@ -203,7 +203,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         else:
           omni_header_path = omni_header_path_nimble.absPath()
         
-        let omni_header_out_path = outDirFullPath & "/omni.h"
+        let omni_header_out_path = outDirFullPath / "omni.h"
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
