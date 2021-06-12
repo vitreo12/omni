@@ -60,7 +60,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   conf.command = "c"
 
   #Use Zig
-  #if ~/.local/share/omni/zig/zig exists
+  #when compiled with zig 
   conf.cCompiler = ccOmniZigcc
 
   #--gc:none (from commnds.nim -> processSwitch)
@@ -143,14 +143,32 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   ######################
   
   #arch
-  var real_architecture = "-march=" & $architecture
+  var c_architecture : string
   if architecture == "native":
-      real_architecture = real_architecture & " -mtune=native"
-  #x86_64 / amd64 as aliases for x86-64
-  elif architecture == "x86_64" or architecture == "amd64":
-      real_architecture = "-march=x86-64"
+      c_architecture = "-march=native -mtune=native"
+  elif architecture == "x86-64" or architecture == "x86_64" or architecture == "amd64":
+      c_architecture = "-march=x86-64"
+      conf.target.targetCPU = cpuAmd64
+  elif architecture == "i386":
+      c_architecture = "--target=i386"
+      conf.target.targetCPU = cpuI386
+  elif architecture == "aarch64":
+      c_architecture = "--target=aarch64" #-march needs to be tested on arm. not so sure about --target either
+      conf.target.targetCPU = cpuArm64
+  elif architecture == "arm64":
+      c_architecture = "--target=arm64" #-march needs to be tested on arm. not so sure about --target either
+      conf.target.targetCPU = cpuArm64
+  elif architecture == "arm":
+      c_architecture = "--target=arm" #-march needs to be tested on arm. not so sure about --target either
+      conf.target.targetCPU = cpuArm
+  elif architecture == "wasm" or architecture == "wasm32": #doesn't work on zig, just leaving it here for the future
+      c_architecture = "--target=wasm32"
+      conf.target.targetCPU = cpuWasm32 #
   elif architecture == "none":
-      real_architecture = ""
+      c_architecture = ""
+      conf.target.targetCPU = cpuNone
+  else:
+      c_architecture = "--target=" & architecture
 
   #lto
   var lto : string
@@ -164,7 +182,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
     defineSymbol(conf.symbols, "lto")
 
   #C compiler and linker additional options
-  conf.compileOptions = "-w -fPIC " & lto & " " & real_architecture #no warnings + lto + fPIC + arch
+  conf.compileOptions = "-w -fPIC " & lto & " " & c_architecture #no warnings + lto + fPIC + arch
   conf.linkOptions = "-fPIC " & lto #lto + fPIC
 
   
