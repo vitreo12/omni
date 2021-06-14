@@ -119,11 +119,10 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
     omninim_path = omninim_nimble
   #.local/share (Linux) - Documents (MacOS / Windows)
 
-  
   #don't set conf.projectName as that would expect the extension to be .nim
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
-  conf.outDir = AbsoluteDir(outDir) #output dir... this apparently segfaults when path is in the omni source directory?
+  conf.outDir = AbsoluteDir(outDir) #output dir
   conf.outFile = RelativeFile(outName) #output file
 
   #There probably is a leaner way to set all these paths
