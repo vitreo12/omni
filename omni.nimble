@@ -48,9 +48,16 @@ import os, strutils
 
 proc zigTarExists() : bool =
   for kind, path in walkDir(getPkgDir() & "/omnizig"):
-    let pathname = path.splitFile.name
-    if pathname.startsWith("zig") and pathname.endsWith("tar"):
-      return true
+    let 
+      pathSplit = path.splitFile
+      pathname = pathSplit.name
+      pathext = pathSplit.ext
+    when defined(Windows):
+      if pathname.startsWith("zig") and pathext == "zip":
+        return true
+    else:
+      if pathname.startsWith("zig") and pathext == "xz":
+        return true
   return false
 
 proc getZigTarName() : string =
@@ -59,8 +66,12 @@ proc getZigTarName() : string =
       pathSplit = path.splitFile
       pathname = pathSplit.name
       pathext = pathSplit.ext
-    if pathname.startsWith("zig") and pathname.endsWith("tar"):
-      return pathname & pathext
+    when defined(Windows):
+      if pathname.startsWith("zig") and pathext == "zip":
+        return pathname & pathext
+    else:
+      if pathname.startsWith("zig") and pathext == "xz":
+        return pathname & pathext
 
 #Before build
 before build:

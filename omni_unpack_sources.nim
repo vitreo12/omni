@@ -21,12 +21,14 @@
 # SOFTWARE.
 
 import os, strutils
+import std/sha1
 
-#When defined(omni_embed), embed files in executable
 when defined(omni_embed):
   const omni_tar = staticRead("build/omni.tar.xz")
 
 template renameZigDir() =
+  if dirExists("zig"):
+    removeDir("zig")
   for kind, path in walkDir(getCurrentDir()):
     let 
       pathSplit = path.splitFile
@@ -34,6 +36,9 @@ template renameZigDir() =
     if kind == pcDir:
       if pathname.startsWith("zig"):
         moveDir(pathname, "zig")
+
+template checkZigSha() =
+  echo $secureHashFile("zig.tar.xz")
 
 #Unpack all source files to the correct omni_dir, according to OS
 proc omniUnpackSourceFiles*(omni_dir : string) =
@@ -48,7 +53,11 @@ proc omniUnpackSourceFiles*(omni_dir : string) =
       echo "ERROR: could not unpack omni.tar.xz"
       quit 1
     setCurrentDir("omni")
-    let failed_zig_tar = bool execShellCmd("tar -xf zig.tar.xz")
+    checkZigSha()
+    when defined(Windows):
+      let failed_zig_tar = bool execShellCmd("tar -xf zig.zip")
+    else:
+      let failed_zig_tar = bool execShellCmd("tar -xf zig.tar.xz")
     if failed_zig_tar:
       echo "ERROR: could not unpack zig.tar.xz"
       quit 1

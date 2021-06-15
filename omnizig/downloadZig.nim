@@ -35,10 +35,13 @@ proc downloadZig() : Future[bool] {.async.} =
 
   when defined(Linux):
     let os = "linux"
+    let ext = "tar.xz"
   elif defined(MacOS) or defined(MacOSX):
     let os = "macos"
+    let ext = "tar.xz"
   elif defined(Windows):
     let os = "windows"
+    let ext = "zip"
   else:
     {.fatal: "invalid OS: " & hostOS.}
 
@@ -49,12 +52,12 @@ proc downloadZig() : Future[bool] {.async.} =
   else:
     let cpu = hostCPU
 
-  let link = "https://ziglang.org/download/0.8.0/zig-" & os & "-" & cpu & "-0.8.0.tar.xz"
+  let link = "https://ziglang.org/download/0.8.0/zig-" & os & "-" & cpu & "-0.8.0." & ext
 
   echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
 
   try:
-    await downloadFile(client, link, "zig.tar.xz")
+    await downloadFile(client, link, "zig." & ext)
     return true
   except:
     echo "ERROR: no internet connection or invalid link: " & link & "\n"
