@@ -126,20 +126,20 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     elif lib == "static":
         lib_extension = static_lib_extension
     else:
-        printError("Invalid --lib argument: \"" & $lib & "\". Use 'shared' to build a shared library, or 'static' to build a static one.")
+        printError("Invalid --lib argument: \"" & lib & "\". Use 'shared' to build a shared library, or 'static' to build a static one.")
         return 1
 
     #Set output name
     var outputName : string
     if outName == "":
-        outputName = $lib_prepend & $omniFileName & $lib_extension
+        outputName = lib_prepend & omniFileName & lib_extension
     else:
-        outputName = $lib_prepend & $outName & $lib_extension
+        outputName = lib_prepend & outName & lib_extension
     
     #Export IO
     var 
         omni_io_name = omniFileName & "_io.txt"
-        omni_io = outDirFullPath / omni_io_name
+        omni_io = outDirFullPath & "/" & omni_io_name
 
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
@@ -159,7 +159,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     )
 
     #Path to compiled shared / static lib
-    let pathToCompiledLib = outDirFullPath / outputName
+    let pathToCompiledLib = outDirFullPath & "/" & outputName
     template removeCompiledLib() : untyped =
         removeFile(pathToCompiledLib)
         removeFile(omni_io)
@@ -190,7 +190,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Export omni.h too
     if exportHeader:
-        let omni_header_path_bundle = getAppDir() / "omni_lang/omni_lang/core/omni.h"
+        let omni_header_path_bundle = getAppDir() & "/omni_lang/omni_lang/core/omni.h"
         var omni_header_path : string
         #bundle
         if fileExists(omni_header_path_bundle):
@@ -199,7 +199,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         else:
           omni_header_path = omni_header_path_nimble.absPath()
         
-        let omni_header_out_path = outDirFullPath / "omni.h"
+        let omni_header_out_path = outDirFullPath & "/omni.h"
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!

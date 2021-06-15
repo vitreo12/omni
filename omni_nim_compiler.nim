@@ -24,6 +24,8 @@ import os, strutils
 
 import omninim/omninim
 
+import omni_unpack_sources
+
 const 
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
@@ -35,12 +37,6 @@ const
 template absPath(path : untyped) : untyped =
     path.normalizedPath().expandTilde().absolutePath()
 
-proc getOsCacheDir(): string =
-  when defined(posix):
-    result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
-  else:
-    result = getHomeDir() / genSubDir.string
-
 proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Some common paths
   let 
@@ -48,9 +44,19 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
     omninim_nimble = omninim_nimble_tilde.absPath()
     nimble_pkgs = nimble_pkgs_tilde.absPath()
 
+
+  #omni dir path
+  when defined(Linux):
+    let omni_dir = "~/.local/share/omni".absPath()
+  else:
+    let omni_dir = "~/Documents/omni".absPath()
+  
+  #Unpack files if needed
+  # if not dirExists(omni_dir):
+  omniUnpackSourceFiles(omni_dir) 
+
   #Config file
   let conf = newConfigRef()
-
 
   ########################
   # Nim Compiler options #
@@ -61,6 +67,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
 
   #Use Zig
   #when compiled with zig 
+  conf.cCompilerPath = omni_dir & "/zig"
   conf.cCompiler = ccOmniZigcc
 
   #--gc:none (from commnds.nim -> processSwitch)
@@ -134,7 +141,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
 
   #nimcacheDir ... Manually patch the name cause setting conf.projectName would expect the extension to be .nim
-  conf.nimcacheDir = AbsoluteDir(getOsCacheDir() / omniFileName)
+  conf.nimcacheDir = AbsoluteDir(omni_dir & "/cache/" & omniFileName)
 
 
   ######################

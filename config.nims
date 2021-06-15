@@ -1,6 +1,9 @@
 #nimcore, needed for omninim
 --define:nimcore
 
+#embed source files
+--define:omni_embed
+
 #needed for omninim on windows
 when defined(windows):
   -cincludes:"$lib/wrappers/libffi/common"

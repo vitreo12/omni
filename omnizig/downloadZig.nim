@@ -54,7 +54,7 @@ proc downloadZig() : Future[bool] {.async.} =
   echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
 
   try:
-    await downloadFile(client, link, "zig-0.8.0.tar.xz")
+    await downloadFile(client, link, "zig.tar.xz")
     return true
   except:
     echo "ERROR: no internet connection or invalid link: " & link & "\n"
