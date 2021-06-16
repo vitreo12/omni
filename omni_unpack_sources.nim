@@ -24,7 +24,11 @@ import os, strutils
 import std/sha1
 
 when defined(omni_embed):
-  const omni_tar = staticRead("build/omni.tar.xz")
+  # const omni_tar = staticRead("build/omni.tar.xz")
+  {.emit: ["""const char* omni_tar __attribute__((section(".omni_tar"))) = """, staticRead("omni_tar.txt").static, ";" ].}
+  let 
+    omni_tar {.importc, nodecl.}: cstring
+    omni_tar_str = $omni_tar
 
 template renameZigDir() =
   if dirExists("zig"):
@@ -41,13 +45,13 @@ template checkZigSha() =
   echo $secureHashFile("zig.tar.xz")
 
 #Unpack all source files to the correct omni_dir, according to OS
-proc omniUnpackSourceFiles*(omni_dir : string) =
+proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
   echo "\nUnpacking all Omni source files..."
   echo "This process will only be done once.\n"
   createDir(omni_dir)
   if dirExists(omni_dir):
     setCurrentDir(omni_dir)
-    writeFile("omni.tar.xz", omni_tar) #unpack tar from const
+    writeFile("omni.tar.xz", omni_tar_str) #unpack tar from const
     let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
     if failed_omni_tar:
       echo "ERROR: could not unpack omni.tar.xz"

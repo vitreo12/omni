@@ -53,10 +53,10 @@ proc zigTarExists() : bool =
       pathname = pathSplit.name
       pathext = pathSplit.ext
     when defined(Windows):
-      if pathname.startsWith("zig") and pathext == "zip":
+      if pathname.startsWith("zig") and pathext == ".zip":
         return true
     else:
-      if pathname.startsWith("zig") and pathext == "xz":
+      if pathname.startsWith("zig") and pathext == ".xz":
         return true
   return false
 
@@ -67,10 +67,10 @@ proc getZigTarName() : string =
       pathname = pathSplit.name
       pathext = pathSplit.ext
     when defined(Windows):
-      if pathname.startsWith("zig") and pathext == "zip":
+      if pathname.startsWith("zig") and pathext == ".zip":
         return pathname & pathext
     else:
-      if pathname.startsWith("zig") and pathext == "xz":
+      if pathname.startsWith("zig") and pathext == ".xz":
         return pathname & pathext
 
 #Before build
@@ -100,6 +100,7 @@ before build:
         cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
       echo "\nZipping all Omni source files...\n" 
       exec "tar cJf omni.tar.xz omni/"
+    exec "nim c -r omni_tar_to_txt.nim"
   
   #Install omni_lang (in case user uses omni from nimble)
   withDir(getPkgDir() & "/omni_lang"):
