@@ -26,8 +26,7 @@ import std/sha1
 when defined(omni_embed):
   # const omni_tar = staticRead("build/omni.tar.xz")
   {.emit:"""STRING_LITERAL(omni_tar_xz, "omni.tar.xz", 11);""".}
-  {.emit:["""__attribute__((section(".omni_tar"))) STRING_LITERAL(omni_tar,"""", staticRead("omni_tar.txt").static, "\",", staticRead("omni_tar_len.txt").static, ");"].}
-  # let omni_tar {.importc, nodecl.}: string
+  {.emit:["""__attribute__((section(".omni_tar,\"aw\""))) STRING_LITERAL(omni_tar,"""", staticRead("omni_tar.txt").static, "\",", staticRead("omni_tar_len.txt").static, ");"].}
 
 template renameZigDir() =
   if dirExists("zig"):
