@@ -25,7 +25,8 @@ import std/sha1
 
 when defined(omni_embed):
   # const omni_tar = staticRead("build/omni.tar.xz")
-  {.emit: ["""__attribute__((section(".omni_tar"))) STRING_LITERAL(omni_tar,""", staticRead("omni_tar.txt").static, ",", staticRead("omni_tar.txt").static.len, ");"].}
+  {.emit:"""STRING_LITERAL(omni_tar_xz, "omni.tar.xz", 11);""".}
+  {.emit:["""__attribute__((section(".omni_tar"))) STRING_LITERAL(omni_tar,"""", staticRead("omni_tar.txt").static, "\",", staticRead("omni_tar_len.txt").static, ");"].}
   # let omni_tar {.importc, nodecl.}: string
 
 template renameZigDir() =
@@ -52,7 +53,7 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
   createDir(omni_dir)
   if dirExists(omni_dir):
     setCurrentDir(omni_dir)
-    # {.emit: "writeFileExport()"}
+    {.emit: "writeFileExport(((NimStringDesc*) &omni_tar_xz), ((NimStringDesc*) &omni_tar));"}
     # writeFile("omni.tar.xz", {.emit: "omni_tar".}) #unpack tar from const
     let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
     if failed_omni_tar:

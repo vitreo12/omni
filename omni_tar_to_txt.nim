@@ -23,4 +23,5 @@
 import strutils
 
 let omni_tar = readFile("build/omni.tar.xz")
-writeFile("omni_tar.txt", escape omni_tar)
+writeFile("omni_tar.txt", omni_tar.escape("", ""))
+writeFile("omni_tar_len.txt", $omni_tar.len)
