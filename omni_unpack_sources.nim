@@ -56,7 +56,7 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
       quit 1
     let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
     if failed_omni_tar:
-      echo "ERROR: could not unpack omni.tar.xz"
+      printError "Could not unpack omni.tar.xz"
       quit 1
     setCurrentDir("omni")
     checkZigSha()
@@ -65,9 +65,9 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
     else:
       let failed_zig_tar = bool execShellCmd("tar -xf zig.tar.xz")
     if failed_zig_tar:
-      echo "ERROR: could not unpack zig.tar.xz"
+      printError "Could not unpack zig.tar.xz"
       quit 1
     renameZigDir()
   else:
-    echo "ERROR: could not create the directory: " & omni_dir
+    printError "Could not create the directory: " & omni_dir
     quit 1
