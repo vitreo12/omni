@@ -53,7 +53,11 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   
   #Unpack files if needed
   # if not dirExists(omni_dir):
-  omniUnpackSourceFiles(omni_dir) 
+  try:
+    omniUnpackSourceFiles(omni_dir) 
+  except OmniStripException: #If stripped from the executable, this exception is raised
+    echo "The Omni sources have already been unpacked.\n\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
+    quit 1
 
   #Config file
   let conf = newConfigRef()

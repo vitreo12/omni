@@ -23,11 +23,24 @@
 import os, strutils
 import std/sha1
 
-when defined(omni_embed):
-  # const omni_tar = staticRead("build/omni.tar.xz")
-  {.emit:"""STRING_LITERAL(omni_tar_xz, "omni.tar.xz", 11);""".}
-  {.emit:["""__attribute__((section(".omni_tar,\"aw\""))) STRING_LITERAL(omni_tar,"""", staticRead("omni_tar.txt").static, "\",", staticRead("omni_tar_len.txt").static, ");"].}
+type OmniStripException* = ref object of CatchableError
 
+when defined(omni_embed):
+  const omni_tar = staticRead("build/omni.tar.xz")
+
+  #Redefining STRING_LITERAL to be including __attribute__(section)...
+  #HOWEVER each of the strings here declared will also be affected by this, making the command
+  #unusable after strip has been run. The try / except statement around writeFile catches this.
+  {.emit:
+  """
+#define STRING_LITERAL(name, str, length) \
+  __attribute__((section(".omni_tar,\"aw\""))) static const struct {                   \
+    TGenericSeq Sup;                      \
+    NIM_CHAR data[(length) + 1];          \
+} name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
+  """ 
+  .}
+  
 template renameZigDir() =
   if dirExists("zig"):
     removeDir("zig")
@@ -47,13 +60,14 @@ proc writeFileExport(name : string, contents : string) : void {.exportc.} =
 
 #Unpack all source files to the correct omni_dir, according to OS
 proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
-  echo "\nUnpacking all Omni source files..."
-  echo "This process will only be done once.\n"
   createDir(omni_dir)
   if dirExists(omni_dir):
     setCurrentDir(omni_dir)
-    {.emit: "writeFileExport(((NimStringDesc*) &omni_tar_xz), ((NimStringDesc*) &omni_tar));"}
-    # writeFile("omni.tar.xz", {.emit: "omni_tar".}) #unpack tar from const
+    try:
+      echo "\nUnpacking all Omni source files...\nThis process will only be done once.\n"
+      writeFile("omni.tar.xz", omni_tar)
+    except:
+      raise OmniStripException() 
     let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
     if failed_omni_tar:
       echo "ERROR: could not unpack omni.tar.xz"
