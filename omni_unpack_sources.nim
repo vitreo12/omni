@@ -20,12 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import omni_tar_xz
 import os, strutils
 import std/sha1
 
-type OmniStripException* = ref object of CatchableError
-  
+import omni_print_styled
+import omni_tar_xz
+
 template renameZigDir() =
   if dirExists("zig"):
     removeDir("zig")
@@ -50,10 +50,10 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
     setCurrentDir(omni_dir)
     try:
       echo "\nUnpacking all Omni source files...\nThis process will only be done once.\n"
-      omni_write_tar_xz_file()
-    except:
-      echo "The Omni source files have already been unpacked.\n\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
-      raise OmniStripException() 
+      omniUnpackTarXz()
+    except OmniStripException:
+      printError "The Omni source files have already been unpacked.\n\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
+      quit 1
     let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
     if failed_omni_tar:
       echo "ERROR: could not unpack omni.tar.xz"

@@ -20,29 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-when defined(omni_embed):
-  #Redefining STRING_LITERAL to be including __attribute__(section).
-  #It needs to be in its own module or it will overwrite all implementations of STRING_LITERAL
-  {.emit:
-  """
-#define STRING_LITERAL(name, str, length) \
-  __attribute__((section(".omni_tar,\"aw\""))) static const struct {                   \
-    TGenericSeq Sup;                      \
-    NIM_CHAR data[(length) + 1];          \
-} name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
-  """ 
-  .}
+import terminal
 
-  #Embed the tar.xz file
-  const omni_tar_xz_file* = staticRead("build/omni.tar.xz")
+#Generic error
+proc printError*(msg : string) {.inline.} =
+    setForegroundColor(fgRed)
+    writeStyled("ERROR: ", {styleBright}) 
+    setForegroundColor(fgWhite, true)
+    writeStyled(msg & "\n")
 
-  #Throw / catch the exception where needed
-  type OmniStripException* = ref object of CatchableError
-    
-  #Keep the write function local so that the const will be defined in this module, instead of being
-  #copied over to where it's used! writeFile will raise an exception after 'strip' has been used
-  proc omniUnpackTarXz*() =
-    try:
-      writeFile("omni.tar.xz", omni_tar_xz_file) 
-    except:
-      raise OmniStripException()
+#Generic success
+proc printSuccess*(msg : string) {.inline.} =
+    setForegroundColor(fgGreen)
+    writeStyled("SUCCESS: ", {styleBright}) 
+    setForegroundColor(fgWhite, true)
+    writeStyled(msg & "\n")

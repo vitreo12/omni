@@ -20,8 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import cligen, terminal, os, strutils
+import cligen, os, strutils
 
+import omni_print_styled
 import omni_nim_compiler
 
 #Package version is passed as argument when building. It will be constant and set correctly
@@ -52,21 +53,6 @@ elif defined(Windows):
         lib_prepend          = ""           #Windows doesn't prepend "lib" to libraries
         static_lib_extension = ".lib"
         shared_lib_extension = ".dll"
-
-#Generic error
-template printError(msg : string) : untyped =
-    setForegroundColor(fgRed)
-    writeStyled("ERROR: ", {styleBright}) 
-    setForegroundColor(fgWhite, true)
-    writeStyled(msg & "\n")
-
-#Generic success
-template printDone(msg : string) : untyped =
-    if not silent:
-        setForegroundColor(fgGreen)
-        writeStyled("SUCCESS: ", {styleBright}) 
-        setForegroundColor(fgWhite, true)
-        writeStyled(msg & "\n")
 
 #Parse compilation output for Gc allocations and pretty print it with colors
 proc parseAndPrintCompilationString(msg : string) : bool =
@@ -203,7 +189,8 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
-    printDone("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
+    if not silent:
+      printSuccess("'" & outputName & "' has been compiled to folder \"" & $outDirFullPath & "\".")
 
     return 0
 

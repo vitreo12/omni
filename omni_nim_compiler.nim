@@ -53,10 +53,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   
   #Unpack files if needed
   # if not dirExists(omni_dir):
-  try:
-    omniUnpackSourceFiles(omni_dir) 
-  except OmniStripException: #If stripped from the executable, this exception is raised
-    quit 1
+  omniUnpackSourceFiles(omni_dir) 
 
   #Config file
   let conf = newConfigRef()
