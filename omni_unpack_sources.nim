@@ -20,26 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import omni_tar_xz
 import os, strutils
 import std/sha1
 
 type OmniStripException* = ref object of CatchableError
-
-when defined(omni_embed):
-  const omni_tar = staticRead("build/omni.tar.xz")
-
-  #Redefining STRING_LITERAL to be including __attribute__(section)...
-  #HOWEVER each of the strings here declared will also be affected by this, making the command
-  #unusable after strip has been run. The try / except statement around writeFile catches this.
-  {.emit:
-  """
-#define STRING_LITERAL(name, str, length) \
-  __attribute__((section(".omni_tar,\"aw\""))) static const struct {                   \
-    TGenericSeq Sup;                      \
-    NIM_CHAR data[(length) + 1];          \
-} name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
-  """ 
-  .}
   
 template renameZigDir() =
   if dirExists("zig"):
@@ -65,8 +50,9 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
     setCurrentDir(omni_dir)
     try:
       echo "\nUnpacking all Omni source files...\nThis process will only be done once.\n"
-      writeFile("omni.tar.xz", omni_tar)
+      omni_write_tar_xz_file()
     except:
+      echo "The Omni source files have already been unpacked.\n\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
       raise OmniStripException() 
     let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
     if failed_omni_tar:
