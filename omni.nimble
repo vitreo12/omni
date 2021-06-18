@@ -97,7 +97,7 @@ before build:
   #Download the zig compiler
   withDir(getPkgDir() & "/utilities"):
     if not zigTarExists():
-      exec "nim c -r downloadZig.nim"
+      exec "nim c -r omni_download_zig.nim"
       var success = false
       if zigTarExists():
           success = true
@@ -106,25 +106,23 @@ before build:
 
     #If windows, download strip too
     when defined(Windows):
-      exec "nim x -r downloadStrip.nim"
+      exec "nim c -r omni_download_strip.nim"
       var success_strip = false
       if stripTarExists():
           success_strip = true
       if not success_strip: #failed download, exit the entire build process
         quit 1
   
-  #remove build directory if exists
-  if dirExists(getPkgDir() & "/build"):
-    rmDir(getPkgDir() & "/build")
-
   #Copy the zig .tar and create the .tar file for the source files. On windows, strip is also copied
   #over.
   withDir(getPkgDir()):
     mkDir("build")
     withDir("build"):
       cpFile(getPkgDir() & "/utilities/" & getZigTarName(), getCurrentDir() & "/" & getZigTarName())
+      # rmFile(getPkgDir() & "/utilities/" & getZigTarName())
       when defined(Windows):
         cpFile(getPkgDir() & "/utilities/" & getStripTarName(), getCurrentDir() & "/" & getStripTarName())
+        # rmFile(getPkgDir() & "/utilities/" & getStripTarName())
       mkDir("omni")
       withDir("omni"):
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
@@ -135,14 +133,10 @@ before build:
       else:
         exec "tar cJf omni.tar.xz omni/"
 
-  #Install omni_lang (in case user uses omni from nimble)
+  #Install omni_lang (used for tests, mainly)
   withDir(getPkgDir() & "/omni_lang"):
     exec "nimble install -Y"
 
-  #Install omninim (in case user uses omni from nimble)
-  withDir(getPkgDir() & "/omninim"):
-    exec "nimble install -Y"
-  
 
 #########
 # Tests #

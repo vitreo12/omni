@@ -20,3 +20,7 @@ omni_tar_to_txt
 omni_tar_len.txt
 
 utilities/downloadZig
+
+utilities/omni_download_zig
+
+utilities/omni_download_strip

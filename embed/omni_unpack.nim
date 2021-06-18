@@ -28,6 +28,8 @@ import ../omni_print_styled
 import omni_sources_tar
 import omni_zig_tar
 
+export omniHasBeenStripped
+
 when defined(Windows):
   import omni_strip_tar
 
@@ -46,13 +48,14 @@ template renameZigDir() =
 # template checkZigSha() =
 #   echo $secureHashFile("zig.tar.xz")
 
-proc omniUnpackZig(omni_dir : string) =
+proc omniUnpackZig*(omni_dir : string) =
   echo "\nUnpacking the Zig compiler..."
 
   let omni_zig_dir = omni_dir & "/zig"
   createDir(omni_zig_dir)
 
   if dirExists(omni_zig_dir):
+    #If strip, this will raise an exception
     try:
       omniUnpackZigTar()
     except OmniStripException:
@@ -115,14 +118,14 @@ when defined(Windows):
 
     removeFile(omni_strip_tar)
 
-proc executeStripCmd() =
+proc omniExecuteStripCmd() =
   when defined(Windows):
     omniUnpackStrip(omni_dir)
     let omni_strip_cmd = "./strip/strip.exe -R .omni_zig_tar " & getAppFilename().normalizedPath().expandTilde().absolutePath()
   else:
     let omni_strip_cmd = "strip -R .omni_zig_tar " & getAppFilename().normalizedPath().expandTilde().absolutePath()
 
-  echo "\nExecuting the strip command..."
+  echo "\nFound the Zig compiler in the executable. Executing the strip command..."
   let failed_omni_strip_cmd = bool execShellCmd(omni_strip_cmd)
 
   if failed_omni_strip_cmd:
@@ -136,10 +139,22 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_ver : string) =
   echo "\nUnpacking the Zig compiler and all Omni source files. This process will only be executed once."
   if not dirExists(omni_dir):
     createDir(omni_dir)
-    setCurrentDir(omni_dir)
-    omniUnpackZig(omni_dir)
-    omniUnpackSources(omni_dir, omni_ver)
-    executeStripCmd()
-  else:
-    printError "Could not create the directory: " & omni_dir
-    quit 1
+  setCurrentDir(omni_dir)
+  omniUnpackSources(omni_dir, omni_ver)
+  omniUnpackZig(omni_dir)
+  omniExecuteStripCmd()
+  createDir("wrappers")
+
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) {.inline.}=
+  #Unpack it all if the version for this release is not defined
+  if not dirExists(omni_sources_dir):
+    omniUnpackAllFiles(omni_dir, omni_ver)
+
+  #Release exists, but the executable has not been stripped yet
+  elif not omniHasBeenStripped():
+    #zig dir does not exist (user deleted it)
+    if not dirExists(omni_zig_dir): 
+      setCurrentDir(omni_dir)
+      omniUnpackZig(omni_dir)
+    omniExecuteStripCmd()
+  
