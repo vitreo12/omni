@@ -26,6 +26,7 @@ import os, strutils
 import omni_print_styled
 import omni_tar
 
+#Rename all the zig-linux... directory to just zig/
 template renameZigDir() =
   if dirExists("zig"):
     removeDir("zig")
@@ -53,7 +54,7 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
       echo "\nUnpacking all Omni source files...\nThis process will only be done once.\n"
       omniUnpackTar()
     except OmniStripException:
-      printError "The Omni source files have already been unpacked.\n\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
+      printError "The Omni source files have already been unpacked.\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
       quit 1
 
     when defined(Windows):

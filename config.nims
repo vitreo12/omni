@@ -9,7 +9,7 @@ when defined(windows):
   -cincludes:"$lib/wrappers/libffi/common"
 
 ##arch
-#when defined(amd64):
+#when defined(amd64) or defined(x86_64):
 #  --passC:"-march=x86-64"
 #  --passL:"-march=x86-64"
 #  --cpu:amd64
