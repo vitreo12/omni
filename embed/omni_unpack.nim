@@ -150,7 +150,9 @@ proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni
   if not dirExists(omni_sources_dir):
     omniUnpackAllFiles(omni_dir, omni_ver)
 
-  #Release exists, but the executable has not been stripped yet
+  #Release exists, but the executable has not been stripped yet... It's a neglegible overhead, 
+  #but perhaps I should add a silent --strip flag to omni to do this process? It basically only happens 
+  #when using a different omni binary or libomni.so / libomni.a
   elif not omniHasBeenStripped():
     #zig dir does not exist (user deleted it)
     if not dirExists(omni_zig_dir): 
