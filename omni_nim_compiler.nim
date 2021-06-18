@@ -24,7 +24,7 @@ import os, strutils
 
 import omninim/omninim
 
-import omni_unpack
+import embed/omni_unpack
 
 const 
     NimblePkgVersion {.strdefine.} = ""

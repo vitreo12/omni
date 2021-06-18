@@ -30,7 +30,7 @@ requires "nim >= 1.4.0"
 requires "cligen >= 1.5.0"
 
 #Ignore omni_lang, omninim, misc folders
-skipDirs = @["omni_lang", "omninim", "omnizig", "misc"]
+skipDirs = @["omni_lang", "omninim", "embed", "utilities", "misc"]
 
 #Install examples
 installDirs = @["examples"]
@@ -47,7 +47,7 @@ bin = @["omni"]
 import os, strutils
 
 proc zigTarExists() : bool =
-  for kind, path in walkDir(getPkgDir() & "/omnizig"):
+  for kind, path in walkDir(getPkgDir() & "/utilities"):
     let 
       pathSplit = path.splitFile
       pathname = pathSplit.name
@@ -61,7 +61,7 @@ proc zigTarExists() : bool =
   return false
 
 proc getZigTarName() : string =
-  for kind, path in walkDir(getPkgDir() & "/omnizig"):
+  for kind, path in walkDir(getPkgDir() & "/utilities"):
     let 
       pathSplit = path.splitFile
       pathname = pathSplit.name
@@ -73,10 +73,29 @@ proc getZigTarName() : string =
       if pathname.startsWith("zig") and pathext == ".xz":
         return pathname & pathext
 
-#Before build
+proc stripTarExists() : bool =
+  for kind, path in walkDir(getPkgDir() & "/utilities"):
+    let 
+      pathSplit = path.splitFile
+      pathname = pathSplit.name
+      pathext = pathSplit.ext
+    if pathname.startsWith("strip") and pathext == ".gz":
+      return true
+  return false
+
+proc getStripTarName() : string =
+  for kind, path in walkDir(getPkgDir() & "/utilities"):
+    let 
+      pathSplit = path.splitFile
+      pathname = pathSplit.name
+      pathext = pathSplit.ext
+    if pathname.startsWith("strip") and pathext == ".gz":
+      return pathname & pathext
+
+#pre-build setup
 before build:
   #Download the zig compiler
-  withDir(getPkgDir() & "/omnizig"):
+  withDir(getPkgDir() & "/utilities"):
     if not zigTarExists():
       exec "nim c -r downloadZig.nim"
       var success = false
@@ -85,25 +104,27 @@ before build:
       if not success: #failed download, exit the entire build process
         quit 1
 
-  #If windows, download strip too
-  # when defined(Windows):
-  #   exec "nim x -r downloadStrip.nim"
-  #     var success = false
-  #     if zigTarExists():
-  #         success = true
-  #     if not success: #failed download, exit the entire build process
-  #       quit 1
-
+    #If windows, download strip too
+    when defined(Windows):
+      exec "nim x -r downloadStrip.nim"
+      var success_strip = false
+      if stripTarExists():
+          success_strip = true
+      if not success_strip: #failed download, exit the entire build process
+        quit 1
   
   #remove build directory if exists
   if dirExists(getPkgDir() & "/build"):
     rmDir(getPkgDir() & "/build")
 
-  #Copy the zig .tar and create the .tar file for the source files
+  #Copy the zig .tar and create the .tar file for the source files. On windows, strip is also copied
+  #over.
   withDir(getPkgDir()):
     mkDir("build")
     withDir("build"):
-      cpFile(getPkgDir() & "/omnizig/" & getZigTarName(), getCurrentDir() & "/" & getZigTarName())
+      cpFile(getPkgDir() & "/utilities/" & getZigTarName(), getCurrentDir() & "/" & getZigTarName())
+      when defined(Windows):
+        cpFile(getPkgDir() & "/utilities/" & getStripTarName(), getCurrentDir() & "/" & getStripTarName())
       mkDir("omni")
       withDir("omni"):
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")

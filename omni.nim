@@ -73,7 +73,6 @@ template absPath(path : untyped) : untyped =
 
 #Actual compiler
 proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
-
     var 
         omniFile     = splitFile(fileFullPath)
         omniFileDir  = omniFile.dir

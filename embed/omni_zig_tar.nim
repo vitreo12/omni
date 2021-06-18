@@ -36,9 +36,9 @@ when defined(omni_embed):
 
   #Embed the tar file
   when defined(Windows):
-    const omni_zig_tar_file* = staticRead("build/zig.tar.gz")
+    const omni_zig_tar_file* = staticRead("../build/zig.tar.gz")
   else:
-    const omni_zig_tar_file* = staticRead("build/zig.tar.xz")
+    const omni_zig_tar_file* = staticRead("../build/zig.tar.xz")
 
   #Throw / catch the exception where needed
   type OmniStripException* = ref object of CatchableError

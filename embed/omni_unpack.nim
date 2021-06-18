@@ -23,10 +23,13 @@
 import os, strutils
 # import std/sha1
 
-import omni_print_styled
+import ../omni_print_styled
 
 import omni_sources_tar
 import omni_zig_tar
+
+when defined(Windows):
+  import omni_strip_tar
 
 #Rename the zig-linux(...) directory to just zig
 template renameZigDir() =
@@ -76,7 +79,7 @@ proc omniUnpackZig(omni_dir : string) =
     quit 1
 
 proc omniUnpackSources(omni_dir : string, omni_ver : string) =
-  echo "\nUnpacking all Omni source files...\n"
+  echo "\nUnpacking all Omni source files..."
 
   omniUnpackSourcesTar()
 
@@ -96,6 +99,38 @@ proc omniUnpackSources(omni_dir : string, omni_ver : string) =
 
   removeFile(omni_sources_tar)
 
+when defined(Windows):
+  proc omniUnpackStrip(omni_dir : string) =
+    echo "\nUnpacking the strip utility..."
+
+    omniUnpackStripTar()
+
+    let omni_strip_tar = "strip.tar.gz"
+
+    let failed_omni_strip_tar = bool execShellCmd("tar -xf " & omni_sources_tar)
+
+    if failed_omni_strip_tar:
+      printError "Could not unpack the strip tar file"
+      quit 1
+
+    removeFile(omni_strip_tar)
+
+proc executeStripCmd() =
+  when defined(Windows):
+    omniUnpackStrip(omni_dir)
+    let omni_strip_cmd = "./strip/strip.exe -R .omni_zig_tar " & getAppFilename().normalizedPath().expandTilde().absolutePath()
+  else:
+    let omni_strip_cmd = "strip -R .omni_zig_tar " & getAppFilename().normalizedPath().expandTilde().absolutePath()
+
+  echo "\nExecuting the strip command..."
+  let failed_omni_strip_cmd = bool execShellCmd(omni_strip_cmd)
+
+  if failed_omni_strip_cmd:
+    printError "Failed to strip the omni executable"
+    quit 1
+
+  echo ""
+
 #Unpack all source files to the correct omni_dir, according to OS and omni_ver
 proc omniUnpackAllFiles*(omni_dir : string, omni_ver : string) =
   echo "\nUnpacking the Zig compiler and all Omni source files. This process will only be executed once."
@@ -104,6 +139,7 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_ver : string) =
     setCurrentDir(omni_dir)
     omniUnpackZig(omni_dir)
     omniUnpackSources(omni_dir, omni_ver)
+    executeStripCmd()
   else:
     printError "Could not create the directory: " & omni_dir
     quit 1

@@ -22,13 +22,8 @@
 
 #Embed the tar file
 when defined(Windows):
-  const omni_sources_tar_file* = staticRead("build/omni.tar.gz")
-else:
-  const omni_sources_tar_file* = staticRead("build/omni.tar.xz")
+  const omni_sources_tar_file* = staticRead("build/strip.tar.gz")
 
-#Unpack the file
-proc omniUnpackSourcesTar*() =
-  when defined(Windows):
-    writeFile("omni.tar.gz", omni_sources_tar_file) 
-  else:
-    writeFile("omni.tar.xz", omni_sources_tar_file) 
+  #Unpack the file
+  proc omniUnpackStripTar*() =
+      writeFile("strip.tar.xz", omni_sources_tar_file) 
