@@ -180,9 +180,10 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   # Imports #
   ###########
 
-  #omni_lang
-  let omni_lang_dir = omni_dir & "/omni_lang/omni_lang"
-  conf.implicitImports.add findModule(conf, omni_lang_dir, toFullPath(conf, FileIndex(-3))).string
+  #omni_lang... If nim can't find it, it will throw a cryptic "Error: cannot open file "" "... This
+  #is actually due to it not finding omni_lang, due to the fake FileIndex mechanism
+  let omni_lang = omni_sources_dir & "/omni_lang/omni_lang"
+  conf.implicitImports.add findModule(conf, omni_lang, toFullPath(conf, FileIndex(-3))).string
   
   #wrapper
   if not wrapper.isEmptyOrWhitespace:
