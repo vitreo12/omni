@@ -84,18 +84,28 @@ before build:
           success = true
       if not success: #failed download, exit the entire build process
         quit 1
+
+  #If windows, download strip too
+  # when defined(Windows):
+  #   exec "nim x -r downloadStrip.nim"
+  #     var success = false
+  #     if zigTarExists():
+  #         success = true
+  #     if not success: #failed download, exit the entire build process
+  #       quit 1
+
   
   #remove build directory if exists
   if dirExists(getPkgDir() & "/build"):
     rmDir(getPkgDir() & "/build")
 
-  #Create the .tar file
+  #Copy the zig .tar and create the .tar file for the source files
   withDir(getPkgDir()):
     mkDir("build")
     withDir("build"):
+      cpFile(getPkgDir() & "/omnizig/" & getZigTarName(), getCurrentDir() & "/" & getZigTarName())
       mkDir("omni")
       withDir("omni"):
-        cpFile(getPkgDir() & "/omnizig/" & getZigTarName(), getCurrentDir() & "/" & getZigTarName())
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
         cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
       echo "\nZipping all Omni source files...\n" 
@@ -103,7 +113,7 @@ before build:
         exec "tar czf omni.tar.gz omni/"
       else:
         exec "tar cJf omni.tar.xz omni/"
-  
+
   #Install omni_lang (in case user uses omni from nimble)
   withDir(getPkgDir() & "/omni_lang"):
     exec "nimble install -Y"

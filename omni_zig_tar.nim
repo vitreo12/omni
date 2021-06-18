@@ -27,7 +27,7 @@ when defined(omni_embed):
   {.emit:
   """
 #define STRING_LITERAL(name, str, length) \
-  __attribute__((section(".omni_tar,\"aw\""))) static const struct {                   \
+  __attribute__((section(".omni_zig_tar,\"aw\""))) static const struct {                   \
     TGenericSeq Sup;                      \
     NIM_CHAR data[(length) + 1];          \
 } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
@@ -36,20 +36,20 @@ when defined(omni_embed):
 
   #Embed the tar file
   when defined(Windows):
-    const omni_tar_file* = staticRead("build/omni.tar.gz")
+    const omni_zig_tar_file* = staticRead("build/zig.tar.gz")
   else:
-    const omni_tar_file* = staticRead("build/omni.tar.xz")
+    const omni_zig_tar_file* = staticRead("build/zig.tar.xz")
 
   #Throw / catch the exception where needed
   type OmniStripException* = ref object of CatchableError
     
   #Keep the write function local so that the const will be defined in this module, instead of being
   #copied over to where it's used! writeFile will raise an exception after 'strip' has been used
-  proc omniUnpackTar*() =
+  proc omniUnpackZigTar*() =
     try:
       when defined(Windows):
-        writeFile("omni.tar.gz", omni_tar_file) 
+        writeFile("zig.tar.gz", omni_zig_tar_file) 
       else:
-        writeFile("omni.tar.xz", omni_tar_file) 
+        writeFile("zig.tar.xz", omni_zig_tar_file) 
     except:
       raise OmniStripException()

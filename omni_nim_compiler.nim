@@ -24,36 +24,31 @@ import os, strutils
 
 import omninim/omninim
 
-import omni_unpack_sources
+import omni_unpack
 
 const 
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
-const 
-  nimble_pkgs_tilde = "~/.nimble/pkgs/"
-  omninim_nimble_tilde = nimble_pkgs_tilde & "omninim-" & omni_ver & "/omninim/omninim/lib"
+# const nimble_pkgs_tilde = "~/.nimble/pkgs/"
 
 template absPath(path : untyped) : untyped =
     path.normalizedPath().expandTilde().absolutePath()
 
 proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
-  #Some common paths
-  let 
-    OMNIDIR = getEnv("OMNIDIR").normalizedPath().expandTilde() #no absolutePath: it would be $HOME
-    omninim_nimble = omninim_nimble_tilde.absPath()
-    nimble_pkgs = nimble_pkgs_tilde.absPath()
-
-
   #omni dir path
   when defined(Linux):
-    let omni_dir = "~/.local/share/omni".absPath()
+    let omni_dir = "~/.local/share/omni/".absPath()
   else:
-    let omni_dir = "~/Documents/omni".absPath()
+    let omni_dir = "~/Documents/omni/".absPath()
+
+  let 
+    omni_sources_dir = omni_dir & "/" & omni_ver
+    omni_zig_dir = omni_dir & "/zig"
   
   #Unpack files if needed
-  # if not dirExists(omni_dir):
-  omniUnpackSourceFiles(omni_dir) 
+  if not dirExists(omni_sources_dir):
+    omniUnpackAllFiles(omni_dir, omni_ver)
 
   #Config file
   let conf = newConfigRef()
@@ -66,8 +61,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   conf.command = "c"
 
   #Use Zig
-  #when compiled with zig 
-  conf.cCompilerPath = omni_dir & "/zig"
+  conf.cCompilerPath = omni_zig_dir
   conf.cCompiler = ccOmniZigcc
 
   #--gc:none (from commnds.nim -> processSwitch)
@@ -109,36 +103,26 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   #########
   
   #nimble path (so that --import from a nimble pkg works)
-  if dirExists(nimble_pkgs):
-    nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
+  # let nimble_pkgs = nimble_pkgs_tilde.absPath()
+  # if dirExists(nimble_pkgs):
+  #   nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
 
   #system lib path
-  let omninim_bundle = getAppDir() & "/omninim/omninim/lib"
-  var omninim_path : string
-  #OMNIDIR
-  if dirExists(OMNIDIR):
-    omninim_path = OMNIDIR
-  #bundle
-  elif dirExists(omninim_bundle):
-    omninim_path = omninim_bundle
-  #nimble
-  elif dirExists(omninim_nimble):
-    omninim_path = omninim_nimble
-  #.local/share (Linux) - Documents (MacOS / Windows)
+  let omninim_lib_dir = omni_sources_dir & "/omninim/omninim/lib"
+  
+  #There probably is a leaner way to set all these paths
+  conf.libpath = AbsoluteDir(omninim_lib_dir)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/core"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/posix"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/collections"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/concurrency"), 0)
 
   #don't set conf.projectName as that would expect the extension to be .nim
   conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
   conf.projectFull = AbsoluteFile(fileFullPath) #input file
   conf.outDir = AbsoluteDir(outDir) #output dir
   conf.outFile = RelativeFile(outName) #output file
-
-  #There probably is a leaner way to set all these paths
-  conf.libpath = AbsoluteDir(omninim_path)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/core"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/posix"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/collections"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_path & "/pure/concurrency"), 0)
 
   #nimcacheDir ... Manually patch the name cause setting conf.projectName would expect the extension to be .nim
   conf.nimcacheDir = AbsoluteDir(omni_dir & "/cache/" & omniFileName)
@@ -184,8 +168,8 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
       lto = "-flto -ffat-lto-objects" #-ffat-lto-objects fixes issues with MinGW
 
   #Clang has problem with this. When using zig, this will be fine
-  when not defined(MacOS) and not defined(MacOSX):
-    defineSymbol(conf.symbols, "lto")
+  # when not defined(MacOS) and not defined(MacOSX):
+  defineSymbol(conf.symbols, "lto")
 
   #C compiler and linker additional options
   conf.compileOptions = "-w -fPIC " & lto & " " & c_architecture #no warnings + lto + fPIC + arch
@@ -197,23 +181,13 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   ###########
 
   #omni_lang
-  let 
-    omni_lang_path = OMNIDIR & "/omni_lang/omni_lang"
-    omni_lang_bundle = getAppDir() & "/omni_lang/omni_lang"
-
-  #OMNIDIR
-  if dirExists(omni_lang_path):
-    conf.implicitImports.add findModule(conf, omni_lang_path, toFullPath(conf, FileIndex(-3))).string
-  #bundle
-  elif dirExists(omni_lang_bundle):
-    conf.implicitImports.add findModule(conf, omni_lang_bundle, toFullPath(conf, FileIndex(-3))).string
-  #nimble
-  else:
-    conf.implicitImports.add findModule(conf, "omni_lang", toFullPath(conf, FileIndex(-3))).string
+  let omni_lang_dir = omni_dir & "/omni_lang/omni_lang"
+  conf.implicitImports.add findModule(conf, omni_lang_dir, toFullPath(conf, FileIndex(-3))).string
   
   #wrapper
   if not wrapper.isEmptyOrWhitespace:
-    conf.implicitImports.add findModule(conf, wrapper, toFullPath(conf, FileIndex(-3))).string
+    let omni_wrapper_dir = omni_dir & "/wrappers/" & wrapper & "/" & wrapper #omnicollider/omnicollider
+    conf.implicitImports.add findModule(conf, omni_wrapper_dir, toFullPath(conf, FileIndex(-3))).string
 
   #user imports
   for import_user in imports:

@@ -20,47 +20,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import math, asyncdispatch, httpclient, os, strutils
+import asyncdispatch, httpclient
 
-proc toMb(num : SomeNumber) : float =
-  return round(float(num) / 1048576.0, 1)
-
-proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
-  echo("Progress: ", progress.toMb, " / ", total.toMb, " mb")
-  echo("Speed: ", speed.toMb, " mb/s\n")
-
-proc downloadZig() : Future[bool] {.async.} =
+proc downloadStrip() : Future[bool] {.async.} =
   let client = newAsyncHttpClient()
-  client.onProgressChanged = onProgressChanged
-
-  when defined(Linux):
-    let os = "linux"
-    let ext = "tar.xz"
-  elif defined(MacOS) or defined(MacOSX):
-    let os = "macos"
-    let ext = "tar.xz"
-  elif defined(Windows):
-    let os = "windows"
-    let ext = "zip"
-  else:
-    {.fatal: "invalid OS: " & hostOS.}
 
   when hostCPU == "amd64":
-    let cpu = "x86_64"
-  elif hostCPU == "arm64":
-    let cpu = "aarch64"
-  else:
-    let cpu = hostCPU
+    let cpu = "64"
+  elif hostCPU == "i386":
+    let cpu = "32"
 
-  let link = "https://ziglang.org/download/0.8.0/zig-" & os & "-" & cpu & "-0.8.0." & ext
-
-  echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
+  let link = "https://github.com/vitreo12/windows-strip/releases/download/9.0.0/strip" & cpu & ".tar.gz"
 
   try:
-    await downloadFile(client, link, "zig." & ext)
+    await downloadFile(client, link, "strip.tar.gz")
     return true
   except:
     echo "ERROR: no internet connection or invalid link: " & link & "\n"
     return false
 
-discard waitFor downloadZig()
+discard waitFor downloadStrip()
