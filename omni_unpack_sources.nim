@@ -21,11 +21,12 @@
 # SOFTWARE.
 
 import os, strutils
-import std/sha1
+# import std/sha1
 
-when defined(omni_embed):
-  const omni_tar = staticRead("build/omni.tar.xz")
+import omni_print_styled
+import omni_tar
 
+#Rename all the zig-linux... directory to just zig/
 template renameZigDir() =
   if dirExists("zig"):
     removeDir("zig")
@@ -37,31 +38,49 @@ template renameZigDir() =
       if pathname.startsWith("zig"):
         moveDir(pathname, "zig")
 
-template checkZigSha() =
-  echo $secureHashFile("zig.tar.xz")
+# template checkZigSha() =
+#   echo $secureHashFile("zig.tar.xz")
+
+proc writeFileExport(name : string, contents : string) : void {.exportc.} =
+  writeFile(name, contents)
 
 #Unpack all source files to the correct omni_dir, according to OS
-proc omniUnpackSourceFiles*(omni_dir : string) =
-  echo "\nUnpacking all Omni source files..."
-  echo "This process will only be done once.\n"
+proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
   createDir(omni_dir)
   if dirExists(omni_dir):
     setCurrentDir(omni_dir)
-    writeFile("omni.tar.xz", omni_tar) #unpack tar from const
-    let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
-    if failed_omni_tar:
-      echo "ERROR: could not unpack omni.tar.xz"
+
+    try:
+      echo "\nUnpacking all Omni source files...\nThis process will only be done once.\n"
+      omniUnpackTar()
+    except OmniStripException:
+      printError "The Omni source files have already been unpacked.\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
       quit 1
+
+    when defined(Windows):
+      let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.gz")
+    else:
+      let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
+
+    if failed_omni_tar:
+      printError "Could not unpack the omni tar file"
+      quit 1
+
     setCurrentDir("omni")
-    checkZigSha()
+    
+    # checkZigSha()
+
     when defined(Windows):
       let failed_zig_tar = bool execShellCmd("tar -xf zig.zip")
     else:
       let failed_zig_tar = bool execShellCmd("tar -xf zig.tar.xz")
+
     if failed_zig_tar:
-      echo "ERROR: could not unpack zig.tar.xz"
+      printError "Could not unpack the zig tar file"
       quit 1
+
     renameZigDir()
+
   else:
-    echo "ERROR: could not create the directory: " & omni_dir
+    printError "Could not create the directory: " & omni_dir
     quit 1
