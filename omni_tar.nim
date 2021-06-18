@@ -23,6 +23,7 @@
 when defined(omni_embed):
   #Redefining STRING_LITERAL to be including __attribute__(section).
   #It needs to be in its own module or it will overwrite all implementations of STRING_LITERAL
+  #\"aw\" is what does the trick. Taken from: https://stackoverflow.com/questions/40372977/why-does-objcopy-exclude-one-section-but-not-another
   {.emit:
   """
 #define STRING_LITERAL(name, str, length) \
