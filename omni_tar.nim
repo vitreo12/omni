@@ -33,16 +33,22 @@ when defined(omni_embed):
   """ 
   .}
 
-  #Embed the tar.xz file
-  const omni_tar_xz_file* = staticRead("build/omni.tar.xz")
+  #Embed the tar file
+  when defined(Windows):
+    const omni_tar_file* = staticRead("build/omni.tar.gz")
+  else:
+    const omni_tar_file* = staticRead("build/omni.tar.xz")
 
   #Throw / catch the exception where needed
   type OmniStripException* = ref object of CatchableError
     
   #Keep the write function local so that the const will be defined in this module, instead of being
   #copied over to where it's used! writeFile will raise an exception after 'strip' has been used
-  proc omniUnpackTarXz*() =
+  proc omniUnpackTar*() =
     try:
-      writeFile("omni.tar.xz", omni_tar_xz_file) 
+      when defined(Windows):
+        writeFile("omni.tar.gz", omni_tar_file) 
+      else:
+        writeFile("omni.tar.xz", omni_tar_file) 
     except:
       raise OmniStripException()

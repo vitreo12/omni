@@ -21,10 +21,10 @@
 # SOFTWARE.
 
 import os, strutils
-import std/sha1
+# import std/sha1
 
 import omni_print_styled
-import omni_tar_xz
+import omni_tar
 
 template renameZigDir() =
   if dirExists("zig"):
@@ -37,8 +37,8 @@ template renameZigDir() =
       if pathname.startsWith("zig"):
         moveDir(pathname, "zig")
 
-template checkZigSha() =
-  echo $secureHashFile("zig.tar.xz")
+# template checkZigSha() =
+#   echo $secureHashFile("zig.tar.xz")
 
 proc writeFileExport(name : string, contents : string) : void {.exportc.} =
   writeFile(name, contents)
@@ -48,26 +48,38 @@ proc omniUnpackSourceFiles*(omni_dir : string) {.exportc.}=
   createDir(omni_dir)
   if dirExists(omni_dir):
     setCurrentDir(omni_dir)
+
     try:
       echo "\nUnpacking all Omni source files...\nThis process will only be done once.\n"
-      omniUnpackTarXz()
+      omniUnpackTar()
     except OmniStripException:
       printError "The Omni source files have already been unpacked.\n\nIf you have deleted them, run `omni download` to download them again. They will be installed to: '" & omni_dir & "'"
       quit 1
-    let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
+
+    when defined(Windows):
+      let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.gz")
+    else:
+      let failed_omni_tar = bool execShellCmd("tar -xf omni.tar.xz")
+
     if failed_omni_tar:
-      printError "Could not unpack omni.tar.xz"
+      printError "Could not unpack the omni tar file"
       quit 1
+
     setCurrentDir("omni")
-    checkZigSha()
+    
+    # checkZigSha()
+
     when defined(Windows):
       let failed_zig_tar = bool execShellCmd("tar -xf zig.zip")
     else:
       let failed_zig_tar = bool execShellCmd("tar -xf zig.tar.xz")
+
     if failed_zig_tar:
-      printError "Could not unpack zig.tar.xz"
+      printError "Could not unpack the zig tar file"
       quit 1
+
     renameZigDir()
+
   else:
     printError "Could not create the directory: " & omni_dir
     quit 1

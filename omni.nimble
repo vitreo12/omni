@@ -99,8 +99,10 @@ before build:
         cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
         cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
       echo "\nZipping all Omni source files...\n" 
-      exec "tar cJf omni.tar.xz omni/"
-    exec "nim c -r omni_tar_to_txt.nim"
+      when defined(Windows):
+        exec "tar czf omni.tar.gz omni/"
+      else:
+        exec "tar cJf omni.tar.xz omni/"
   
   #Install omni_lang (in case user uses omni from nimble)
   withDir(getPkgDir() & "/omni_lang"):
