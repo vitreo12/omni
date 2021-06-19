@@ -4,10 +4,6 @@
 #embed source files
 --define:omni_embed
 
-#needed for omninim on windows
-when defined(windows):
-  -cincludes:"$lib/wrappers/libffi/common"
-
 #arch
 when defined(amd64) or defined(x86_64):
   --passC:"-march=x86-64"
