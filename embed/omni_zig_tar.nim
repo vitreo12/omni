@@ -67,5 +67,6 @@ inline char get_addr_##length() { \
   proc get_addr_10() : cchar {.importc.}
   
   #Check first entry is not 'z' (first letter of the "zig.tar.xz" string literal)
+  #{.inline.} would fail the C compiler here, probably a bug with nim
   proc omniHasBeenStripped*() : bool =
     return get_addr_10() != 'z'

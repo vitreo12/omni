@@ -5,19 +5,19 @@
 --define:omni_embed
 
 #arch
-when defined(amd64) or defined(x86_64):
+when defined(arch_amd64) or defined(arch_x86_64):
   --passC:"-march=x86-64"
   --passL:"-march=x86-64"
   --cpu:amd64
-elif defined(i386): #needs testing
+elif defined(arch_i386): #needs testing
   --passC:"-march=i386"
   --passL:"-march=i386"
   --cpu:i386
-elif defined(arm64): #needs testing
+elif defined(arch_arm64): #needs testing
   --passC:"-march=arm64"
   --passL:"-march=arm64"
   --cpu:arm64
-elif defined(arm): #needs testing
+elif defined(arch_arm): #needs testing
   --passC:"-march=arm"
   --passL:"-march=arm"
   --cpu:arm
