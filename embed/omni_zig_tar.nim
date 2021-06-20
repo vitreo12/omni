@@ -50,18 +50,19 @@ inline char get_addr_##length() { \
     const omni_zig_tar_file* = staticRead("../build/zig.tar.xz")
 
   #Throw / catch the exception where needed
-  type OmniStripException* = ref object of CatchableError
+  # type OmniStripException* = ref object of CatchableError
     
   #Keep the write function local so that the const will be defined in this module, instead of being
   #copied over to where it's used! writeFile will raise an exception after 'strip' has been used
-  proc omniUnpackZigTar*() =
+  proc omniUnpackZigTar*() : bool =
     try:
       when defined(Windows):
         writeFile("zig.tar.gz", omni_zig_tar_file) 
       else:
         writeFile("zig.tar.xz", omni_zig_tar_file) 
+      return true
     except:
-      raise OmniStripException()
+      return false
 
   #Import the function from C
   proc get_addr_10() : cchar {.importc.}

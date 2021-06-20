@@ -55,9 +55,7 @@ proc omniUnpackZig*(omni_dir : string, omni_zig_dir : string) : bool =
 
   if dirExists(omni_zig_dir):
     #If strip, this will raise an exception
-    try:
-      omniUnpackZigTar()
-    except OmniStripException:
+    if not omniUnpackZigTar():
       printError "The Zig compiler has already been unpacked. If you have deleted it, run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
       return false
 
@@ -127,14 +125,13 @@ proc omniExecuteStripCmd() : bool =
   else:
     let omni_strip_cmd = "strip -R .omni_zig_tar " & getAppFilename().normalizedPath().expandTilde().absolutePath()
 
-  echo "\nFound the Zig compiler in the executable. Executing the strip command..."
+  echo "\nFound the Zig compiler in the executable. Executing the strip command...\n"
   let failed_omni_strip_cmd = bool execShellCmd(omni_strip_cmd)
 
   if failed_omni_strip_cmd:
     printError "Failed to strip the omni executable"
     return false
 
-  echo ""
   return true
 
 #Unpack all source files to the correct omni_dir, according to OS and omni_ver
@@ -149,7 +146,7 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_zig_dir : string, omni_ver : st
   createDir("wrappers")
   return true
 
-proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) : bool {.inline.} =
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) : bool =
   #Unpack it all if the version for this release is not defined
   if not dirExists(omni_sources_dir):
     return omniUnpackAllFiles(omni_dir, omni_zig_dir, omni_ver)
