@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os, strutils
+import strutils
 
 import omninim/omninim
 
@@ -32,19 +32,7 @@ const
 
 # const nimble_pkgs_tilde = "~/.nimble/pkgs/"
 
-template absPath(path : untyped) : untyped =
-    path.normalizedPath().expandTilde().absolutePath()
-
-proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
-  when defined(Linux):
-    let omni_dir = "~/.local/share/omni/".absPath()
-  else:
-    let omni_dir = "~/Documents/omni/".absPath()
-
-  let 
-    omni_sources_dir = omni_dir & "/" & omni_ver
-    omni_zig_dir = omni_dir & "/zig"
-  
+proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_zig_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Unpack all files only if needed (if directories are not defined, etc...)
   let unpack_success = omniUnpackFilesIfNeeded(
     omni_dir, 

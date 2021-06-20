@@ -126,8 +126,21 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         omni_io_name = omniFileName & "_io.txt"
         omni_io = outDirFullPath & "/" & omni_io_name
 
+    #Paths to omni sources and zig compiler
+    when defined(Linux):
+      let omni_dir = "~/.local/share/omni/".absPath()
+    else:
+      let omni_dir = "~/Documents/omni/".absPath()
+
+    let 
+      omni_sources_dir = omni_dir & "/" & omni_ver
+      omni_zig_dir = omni_dir & "/zig"
+
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
+        omni_dir,
+        omni_sources_dir,
+        omni_zig_dir,
         omniFileName,
         omniFileDir,
         fileFullPath,
@@ -175,16 +188,9 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Export omni.h too
     if exportHeader:
-        let omni_header_path_bundle = getAppDir() & "/omni_lang/omni_lang/core/omni.h"
-        var omni_header_path : string
-        #bundle
-        if fileExists(omni_header_path_bundle):
-          omni_header_path = omni_header_path_bundle
-        #nimble
-        else:
-          omni_header_path = omni_header_path_nimble.absPath()
-        
-        let omni_header_out_path = outDirFullPath & "/omni.h"
+        let 
+          omni_header_path = omni_sources_dir & "/omni_lang/omni_lang/core/omni.h"
+          omni_header_out_path = outDirFullPath & "/omni.h"
         copyFile(omni_header_path, omni_header_out_path)
 
     #Done!

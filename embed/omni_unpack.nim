@@ -35,8 +35,6 @@ when defined(Windows):
 
 #Rename the zig-linux(...) directory to just zig
 template renameZigDir() =
-  if dirExists("zig"):
-    removeDir("zig")
   for kind, path in walkDir(getCurrentDir()):
     let 
       pathSplit = path.splitFile
@@ -51,35 +49,27 @@ template renameZigDir() =
 proc omniUnpackZig*(omni_dir : string, omni_zig_dir : string) : bool =
   echo "\nUnpacking the Zig compiler..."
 
-  createDir(omni_zig_dir)
-
-  if dirExists(omni_zig_dir):
-    #If strip, this will raise an exception
-    if not omniUnpackZigTar():
-      echo ""
-      printError "The Zig compiler has already been unpacked but it has been deleted from ' " & omni_zig_dir & "'. Run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
-      removeDir(omni_zig_dir)
-      return false
-
-    when defined(Windows):
-      let omni_zig_tar = "zig.tar.gz"
-    else:
-      let omni_zig_tar = "zig.tar.xz"
-
-    let failed_zig_tar = bool execShellCmd("tar -xf " & omni_zig_tar)
-
-    if failed_zig_tar:
-      printError "Could not unpack the zig tar file"
-      return false
-
-    renameZigDir()
-
-    removeFile(omni_zig_tar)
-    return true
-
-  else:
-    printError "Could not create the directory: " & omni_zig_dir
+  #If strip, this will raise an exception
+  if not omniUnpackZigTar():
+    echo ""
+    printError "The Zig compiler has already been unpacked but it has been deleted from '" & omni_zig_dir & "'. Run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
     return false
+
+  when defined(Windows):
+    let omni_zig_tar = "zig.tar.gz"
+  else:
+    let omni_zig_tar = "zig.tar.xz"
+
+  let failed_zig_tar = bool execShellCmd("tar -xf " & omni_zig_tar)
+
+  if failed_zig_tar:
+    printError "Could not unpack the zig tar file"
+    return false
+
+  renameZigDir()
+
+  removeFile(omni_zig_tar)
+  return true
 
 proc omniUnpackSources(omni_dir : string, omni_ver : string) : bool =
   echo "\nUnpacking all Omni source files..."
@@ -149,10 +139,8 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_zig_dir : string, omni_ver : st
   return true
 
 proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) : bool =
-  #Unpack it all if the version for this release is not defined or the zig directory has been
-  #deleted... Perhaps checking the zig too is overkill, but the overhead is so small that it's
-  #probably worth checking
-  if not dirExists(omni_sources_dir) or not dirExists(omni_zig_dir):
+  #Unpack it all if the version for this release is not defined 
+  if not dirExists(omni_sources_dir):
     return omniUnpackAllFiles(omni_dir, omni_zig_dir, omni_ver)
 
   #Release exists, but the executable has not been stripped yet... It's a neglegible overhead, 
