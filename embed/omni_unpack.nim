@@ -48,10 +48,9 @@ template renameZigDir() =
 # template checkZigSha() =
 #   echo $secureHashFile("zig.tar.xz")
 
-proc omniUnpackZig*(omni_dir : string) =
+proc omniUnpackZig*(omni_dir : string, omni_zig_dir : string) : bool =
   echo "\nUnpacking the Zig compiler..."
 
-  let omni_zig_dir = omni_dir & "/zig"
   createDir(omni_zig_dir)
 
   if dirExists(omni_zig_dir):
@@ -60,7 +59,7 @@ proc omniUnpackZig*(omni_dir : string) =
       omniUnpackZigTar()
     except OmniStripException:
       printError "The Zig compiler has already been unpacked. If you have deleted it, run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
-      quit 1
+      return false
 
     when defined(Windows):
       let omni_zig_tar = "zig.tar.gz"
@@ -71,17 +70,18 @@ proc omniUnpackZig*(omni_dir : string) =
 
     if failed_zig_tar:
       printError "Could not unpack the zig tar file"
-      quit 1
+      return false
 
     renameZigDir()
 
     removeFile(omni_zig_tar)
+    return true
 
   else:
     printError "Could not create the directory: " & omni_zig_dir
-    quit 1
+    return false
 
-proc omniUnpackSources(omni_dir : string, omni_ver : string) =
+proc omniUnpackSources(omni_dir : string, omni_ver : string) : bool =
   echo "\nUnpacking all Omni source files..."
 
   omniUnpackSourcesTar()
@@ -95,15 +95,16 @@ proc omniUnpackSources(omni_dir : string, omni_ver : string) =
 
   if failed_omni_tar:
     printError "Could not unpack the omni tar file"
-    quit 1
+    return false
 
   #Call folder with omni_ver
   moveDir("omni", omni_ver)
 
   removeFile(omni_sources_tar)
+  return true
 
 when defined(Windows):
-  proc omniUnpackStrip(omni_dir : string) =
+  proc omniUnpackStrip(omni_dir : string) : bool =
     echo "\nUnpacking the strip utility..."
 
     omniUnpackStripTar()
@@ -114,11 +115,12 @@ when defined(Windows):
 
     if failed_omni_strip_tar:
       printError "Could not unpack the strip tar file"
-      quit 1
+      return false
 
     removeFile(omni_strip_tar)
+    return true
 
-proc omniExecuteStripCmd() =
+proc omniExecuteStripCmd() : bool =
   when defined(Windows):
     omniUnpackStrip(omni_dir)
     let omni_strip_cmd = "./strip/strip.exe -R .omni_zig_tar " & getAppFilename().normalizedPath().expandTilde().absolutePath()
@@ -130,25 +132,27 @@ proc omniExecuteStripCmd() =
 
   if failed_omni_strip_cmd:
     printError "Failed to strip the omni executable"
-    quit 1
+    return false
 
   echo ""
+  return true
 
 #Unpack all source files to the correct omni_dir, according to OS and omni_ver
-proc omniUnpackAllFiles*(omni_dir : string, omni_ver : string) =
+proc omniUnpackAllFiles*(omni_dir : string, omni_zig_dir : string, omni_ver : string) : bool =
   echo "\nUnpacking the Zig compiler and all Omni source files. This process will only be executed once."
   if not dirExists(omni_dir):
     createDir(omni_dir)
   setCurrentDir(omni_dir)
-  omniUnpackSources(omni_dir, omni_ver)
-  omniUnpackZig(omni_dir)
-  omniExecuteStripCmd()
+  if not omniUnpackSources(omni_dir, omni_ver): return false
+  if not omniUnpackZig(omni_dir, omni_zig_dir): return false
+  if not omniExecuteStripCmd(): return false
   createDir("wrappers")
+  return true
 
-proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) {.inline.}=
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) : bool {.inline.} =
   #Unpack it all if the version for this release is not defined
   if not dirExists(omni_sources_dir):
-    omniUnpackAllFiles(omni_dir, omni_ver)
+    return omniUnpackAllFiles(omni_dir, omni_zig_dir, omni_ver)
 
   #Release exists, but the executable has not been stripped yet... It's a neglegible overhead, 
   #but perhaps I should add a silent --strip flag to omni to do this process? It basically only happens 
@@ -157,6 +161,8 @@ proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni
     #zig dir does not exist (user deleted it)
     if not dirExists(omni_zig_dir): 
       setCurrentDir(omni_dir)
-      omniUnpackZig(omni_dir)
-    omniExecuteStripCmd()
+      if not omniUnpackZig(omni_dir, omni_zig_dir): return false
+    if not omniExecuteStripCmd(): return false
   
+  return true
+

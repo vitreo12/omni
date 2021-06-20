@@ -46,12 +46,15 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
     omni_zig_dir = omni_dir & "/zig"
   
   #Unpack all files only if needed (if directories are not defined, etc...)
-  omniUnpackFilesIfNeeded(
+  let unpack_success = omniUnpackFilesIfNeeded(
     omni_dir, 
     omni_sources_dir, 
     omni_zig_dir, 
     omni_ver
   )
+
+  if not unpack_success:
+    return ("ERROR: Failed to run the unpack procedures.", true)
 
   ########################
   # Nim Compiler options #
