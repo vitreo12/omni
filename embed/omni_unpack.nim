@@ -56,7 +56,8 @@ proc omniUnpackZig*(omni_dir : string, omni_zig_dir : string) : bool =
   if dirExists(omni_zig_dir):
     #If strip, this will raise an exception
     if not omniUnpackZigTar():
-      printError "The Zig compiler has already been unpacked. If you have deleted it, run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
+      echo ""
+      printError "The Zig compiler has already been unpacked. Run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
       return false
 
     when defined(Windows):
@@ -140,8 +141,8 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_zig_dir : string, omni_ver : st
   if not dirExists(omni_dir):
     createDir(omni_dir)
   setCurrentDir(omni_dir)
-  if not omniUnpackSources(omni_dir, omni_ver): return false
   if not omniUnpackZig(omni_dir, omni_zig_dir): return false
+  if not omniUnpackSources(omni_dir, omni_ver): return false
   if not omniExecuteStripCmd(): return false
   createDir("wrappers")
   return true

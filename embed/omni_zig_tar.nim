@@ -61,10 +61,12 @@ inline char get_addr_##length() { \
     except:
       return false
 
-  #Import the function from C
+  #Import the function from C. This function must only be called locally to this module in order not
+  #to export anything regarding the omni_zig_tar_file const (making it a copy) to other modules.
   proc get_addr_10() : cchar {.importc.}
   
   #Check first entry is not 'z' (first letter of the "zig.tar.xz" string literal)
-  #{.inline.} would fail the C compiler here, probably a bug with nim
+  #{.inline.} would fail the C compiler here, probably a bug with nim. Also, the function
+  #get_addr_10() should only be called locally in order not to export the const to other modules!
   proc omniHasBeenStripped*() : bool =
     return get_addr_10() != 'z'

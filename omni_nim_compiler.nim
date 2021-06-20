@@ -54,7 +54,7 @@ proc omni_compile_nim_file*(omniFileName : string, fileFolderFullPath : string, 
   )
 
   if not unpack_success:
-    return ("ERROR: Failed to run the unpack procedures.", true)
+    return ("\nERROR: Failed to run the unpack procedures.", true)
 
   ########################
   # Nim Compiler options #
