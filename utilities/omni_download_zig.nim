@@ -20,47 +20,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import math, asyncdispatch, httpclient, os, strutils
+import os, httpclient
 
-proc toMb(num : SomeNumber) : float =
-  return round(float(num) / 1048576.0, 1)
+when defined(Linux):
+  let OS = "linux"
+  let ext = ".tar.xz"
+elif defined(MacOS) or defined(MacOSX):
+  let OS = "macos"
+  let ext = ".tar.xz"
+elif defined(Windows):
+  let OS = "windows"
+  let ext = ".zip"
+else:
+  {.fatal: "invalid OS: " & hostOS.}
 
-proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
-  echo("Progress: ", progress.toMb, " / ", total.toMb, " mb")
-  echo("Speed: ", speed.toMb, " mb/s\n")
+when hostCPU == "amd64":
+  let cpu = "x86_64"
+elif hostCPU == "arm64":
+  let cpu = "aarch64"
+else:
+  let cpu = hostCPU
 
-proc downloadZig() : Future[bool] {.async.} =
-  let client = newAsyncHttpClient()
-  client.onProgressChanged = onProgressChanged
+let link = "https://ziglang.org/download/0.8.0/zig-" & OS & "-" & cpu & "-0.8.0" & ext
 
-  when defined(Linux):
-    let os = "linux"
-    let ext = "tar.xz"
-  elif defined(MacOS) or defined(MacOSX):
-    let os = "macos"
-    let ext = "tar.xz"
-  elif defined(Windows):
-    let os = "windows"
-    let ext = "zip"
-  else:
-    {.fatal: "invalid OS: " & hostOS.}
+echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
 
-  when hostCPU == "amd64":
-    let cpu = "x86_64"
-  elif hostCPU == "arm64":
-    let cpu = "aarch64"
-  else:
-    let cpu = hostCPU
+#Check if link exists, perhaps os / cpu combo is wrong
+var client = newHttpClient()
+let response = client.request(link, httpMethod=HttpHead).code
+if response.is4xx or response.is5xx:
+  echo "Error: no connection or invalid link: " & link & "\n"
+  quit 0
 
-  let link = "https://ziglang.org/download/0.8.0/zig-" & os & "-" & cpu & "-0.8.0." & ext
-
-  echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
-
-  try:
-    await downloadFile(client, link, "zig." & ext)
-    return true
-  except:
-    echo "ERROR: no internet connection or invalid link: " & link & "\n"
-    return false
-
-discard waitFor downloadZig()
+#Link exists and connection works, download it
+quit execShellCmd("curl " & link & " -o ./zig" & ext)

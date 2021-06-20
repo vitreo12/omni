@@ -20,23 +20,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import asyncdispatch, httpclient
+import os, httpclient
 
-proc downloadStrip() : Future[bool] {.async.} =
-  let client = newAsyncHttpClient()
+when hostCPU == "amd64":
+  let cpu = "64"
+elif hostCPU == "i386":
+  let cpu = "32"
 
-  when hostCPU == "amd64":
-    let cpu = "64"
-  elif hostCPU == "i386":
-    let cpu = "32"
+let link = "https://github.com/vitreo12/windows-strip/releases/download/9.0.0/strip" & cpu & ".tar.gz"
 
-  let link = "https://github.com/vitreo12/windows-strip/releases/download/9.0.0/strip" & cpu & ".tar.gz"
+#Check if link exists, perhaps os / cpu combo is wrong
+var client = newHttpClient()
+let response = client.request(link, httpMethod=HttpHead).code
+if response.is4xx or response.is5xx:
+  echo "Error: no connection or invalid link: " & link & "\n"
+  quit 0
 
-  try:
-    await downloadFile(client, link, "strip.tar.gz")
-    return true
-  except:
-    echo "ERROR: no internet connection or invalid link: " & link & "\n"
-    return false
-
-discard waitFor downloadStrip()
+#Link exists and connection works, download it
+quit execShellCmd("curl " & link & " -o ./strip.tar.gz")
