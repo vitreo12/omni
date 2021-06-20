@@ -29,6 +29,8 @@ elif hostCPU == "i386":
 
 let link = "https://github.com/vitreo12/windows-strip/releases/download/9.0.0/strip" & cpu & ".tar.gz"
 
+echo "\nDownloading the strip utility from " & link & " ...\n"
+
 #Check if link exists, perhaps os / cpu combo is wrong
 var client = newHttpClient()
 let response = client.request(link, httpMethod=HttpHead).code
