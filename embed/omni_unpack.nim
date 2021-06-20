@@ -57,7 +57,8 @@ proc omniUnpackZig*(omni_dir : string, omni_zig_dir : string) : bool =
     #If strip, this will raise an exception
     if not omniUnpackZigTar():
       echo ""
-      printError "The Zig compiler has already been unpacked. Run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
+      printError "The Zig compiler has already been unpacked but it has been deleted from ' " & omni_zig_dir & "'. Run `omni download` to download it again. It will be installed to: '" & omni_zig_dir & "'"
+      removeDir(omni_zig_dir)
       return false
 
     when defined(Windows):
@@ -148,8 +149,10 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_zig_dir : string, omni_ver : st
   return true
 
 proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) : bool =
-  #Unpack it all if the version for this release is not defined
-  if not dirExists(omni_sources_dir):
+  #Unpack it all if the version for this release is not defined or the zig directory has been
+  #deleted... Perhaps checking the zig too is overkill, but the overhead is so small that it's
+  #probably worth checking
+  if not dirExists(omni_sources_dir) or not dirExists(omni_zig_dir):
     return omniUnpackAllFiles(omni_dir, omni_zig_dir, omni_ver)
 
   #Release exists, but the executable has not been stripped yet... It's a neglegible overhead, 
