@@ -139,8 +139,9 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_zig_dir : string, omni_ver : st
   return true
 
 proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_zig_dir, omni_ver : string) : bool =
-  #Unpack it all if the version for this release is not defined 
-  if not dirExists(omni_sources_dir):
+  #Unpack it all if the version for this release is not defined or the zig dir is not defined.
+  #Perhaps this last check can be removed, but the overhead is way to little for it to make senes, probably.
+  if not dirExists(omni_sources_dir) or not dirExists(omni_zig_dir):
     return omniUnpackAllFiles(omni_dir, omni_zig_dir, omni_ver)
 
   #Release exists, but the executable has not been stripped yet... It's a neglegible overhead, 
