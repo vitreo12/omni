@@ -23,18 +23,19 @@
 import os
 import ../omni_print_styled
 import omni_sources_tar
+import omni_tcc_tar
 
-proc omniUnpackSources(omni_dir : string, omni_ver : string) : bool =
+proc omniUnpackSources(omni_ver : string) : bool =
   echo "\nUnpacking all Omni source files..."
 
   omniUnpackSourcesTar()
 
   when defined(Windows):
-    let omni_sources_tar = "omni.tar.gz"
+    let omni_sources_tar_file = "omni.tar.gz"
   else:
-    let omni_sources_tar = "omni.tar.xz"
+    let omni_sources_tar_file = "omni.tar.xz"
 
-  let failed_omni_tar = bool execShellCmd("tar -xf " & omni_sources_tar)
+  let failed_omni_tar = bool execShellCmd("tar -xf " & omni_sources_tar_file)
 
   if failed_omni_tar:
     printError "Could not unpack the omni tar file"
@@ -43,23 +44,54 @@ proc omniUnpackSources(omni_dir : string, omni_ver : string) : bool =
   #Call folder with omni_ver
   moveDir("omni", omni_ver)
 
-  removeFile(omni_sources_tar)
+  removeFile(omni_sources_tar_file)
+  return true
+
+proc omniUnpackTcc() : bool =
+  echo "\nUnpacking the tcc compiler..."
+
+  omniUnpackTccTar()
+
+  when defined(Windows):
+    let omni_tcc_tar_file = "tcc.tar.gz"
+  else:
+    let omni_tcc_tar_file = "tcc.tar.xz"
+
+  let failed_omni_tar = bool execShellCmd("tar -xf " & omni_tcc_tar_file)
+
+  if failed_omni_tar:
+    printError "Could not unpack the omni tar file"
+    return false
+
+  removeFile(omni_tcc_tar_file)
   return true
 
 #Unpack all source files to the correct omni_dir, according to OS and omni_ver
-proc omniUnpackAllFiles*(omni_dir : string, omni_ver : string) : bool =
+proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver : string) : bool =
   echo "\nUnpacking the tcc compiler and all Omni source files. This process will only be executed once."
+
+  let cwd = getCurrentDir()
+
   if not dirExists(omni_dir):
     createDir(omni_dir)
   setCurrentDir(omni_dir)
-  if not omniUnpackSources(omni_dir, omni_ver): return false
-  createDir("wrappers")
+  if not omniUnpackSources(omni_ver): return false
+  if not dirExists("wrappers"):
+    createDir("wrappers")
+
+  if not dirExists(omni_compiler_dir):
+    createDir(omni_compiler_dir)
+  setCurrentDir(omni_compiler_dir)
+  if not omniUnpackTcc(): return false
+
+  setCurrentDir(cwd)
+
   return true
 
-proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_ver : string) : bool =
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_ver : string) : bool =
   #Unpack it all if the version for this release is not defined. 
-  if not dirExists(omni_sources_dir):
-    return omniUnpackAllFiles(omni_dir, omni_ver)
+  if not dirExists(omni_sources_dir) or not dirExists(omni_compiler_dir):
+    return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
 
   return true
 

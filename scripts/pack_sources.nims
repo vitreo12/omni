@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+rmDir("build")
 mkDir("build")
 withDir("build"):
   mkDir("omni")
@@ -32,20 +33,20 @@ withDir("build"):
   else:
     exec "tar cJf omni.tar.xz omni"
 
-  mkDir("compiler")
-  withDir("compiler"):
-    mkDir("tcc")
-    withDir("tcc"):
-      when defined(Windos):
-        mvFile(getPkgDir() & "/tcc/win32/tcc".toExe, getCurrentDir() & "/tcc".toExe)
-        cpDir(getPkgDir() & "/tcc/win32/include", getCurrentDir() & "/include")
-        cpDir(getPkgDir() & "/tcc/win32/lib", getCurrentDir() & "/lib")
-      else:
-        mvFile(getPkgDir() & "/tcc/tcc".toExe, getCurrentDir() & "/tcc".toExe)
-        cpDir(getPkgDir() & "/tcc/include", getCurrentDir() & "/include")
-        cpDir(getPkgDir() & "/tcc/lib", getCurrentDir() & "/lib") #is lib necessary too?
+  mkDir("tcc")
+  withDir("tcc"):
+    when defined(Windos):
+      mvFile(getPkgDir() & "/tcc/win32/tcc".toExe, getCurrentDir() & "/tcc".toExe)
+      cpDir(getPkgDir() & "/tcc/win32/include", getCurrentDir() & "/include")
+      # cpDir(getPkgDir() & "/tcc/win32/lib", getCurrentDir() & "/lib") #is lib necessary too?
+    else:
+      mvFile(getPkgDir() & "/tcc/tcc".toExe, getCurrentDir() & "/tcc".toExe) #need to use mvFile cause cpFile does not copy file permissions...
+      cpDir(getPkgDir() & "/tcc/include", getCurrentDir() & "/include")
+      # cpDir(getPkgDir() & "/tcc/lib", getCurrentDir() & "/lib") #is lib necessary too?
+      mvFile(getPkgDir() & "/tcc/libtcc.a", getCurrentDir() & "/libtcc.a") #need to use mvFile cause cpFile does not copy file permissions...
+      mvFile(getPkgDir() & "/tcc/libtcc1.a", getCurrentDir() & "/libtcc1.a") #need to use mvFile cause cpFile does not copy file permissions...
   echo "Zipping the tcc compiler...\n"
   when defined(Windows):
-    exec "tar czf compiler.tar.gz compiler"
+    exec "tar czf tcc.tar.gz tcc"
   else:
-    exec "tar cJf compiler.tar.xz compiler"
+    exec "tar cJf tcc.tar.xz tcc"

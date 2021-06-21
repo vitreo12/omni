@@ -34,10 +34,11 @@ const
 # const nimble_pkgs_tilde = "~/.nimble/pkgs/"
 
 proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = "zig", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
-  #Unpack all files only if needed (if directories are not defined, etc...)
+  #Unpack all files only if needed 
   let unpack_success = omniUnpackFilesIfNeeded(
     omni_dir, 
     omni_sources_dir, 
+    omni_compiler_dir,
     omni_ver
   )
 
@@ -55,11 +56,14 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   conf.command = "c"
 
   #Use zig / tcc / default
+  var compilerPath = omni_compiler_dir
   if compiler == "zig":
-    conf.cCompilerPath = omni_compiler_dir & "/zig"
+    compilerPath.add "/zig"
+    conf.cCompilerPath = compilerPath
     conf.cCompiler = ccOmniZigcc
   elif compiler == "tcc":
-    conf.cCompilerPath = omni_compiler_dir & "/tcc"
+    compilerPath.add "/tcc"
+    conf.cCompilerPath = compilerPath
     conf.cCompiler = ccOmniTcc
   else:
     printWarn "Unknown compiler option: '" & compiler & "'. Omni will attempt to use the system's default."
@@ -109,7 +113,7 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   #   nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
 
   #system lib path
-  let omninim_lib_dir = omni_sources_dir & "/omninim/omninim/lib"
+  let omninim_lib_dir = omni_sources_dir & "/lib"
   
   #There probably is a leaner way to set all these paths
   conf.libpath = AbsoluteDir(omninim_lib_dir)
@@ -164,17 +168,21 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   #lto
   var lto : string
   when not defined(Windows): #MacOS / Linux
-      lto = "-flto"
+      lto = "-flto "
   else: #Windows
-      lto = "-flto -ffat-lto-objects" #-ffat-lto-objects fixes issues with MinGW
+      lto = "-flto -ffat-lto-objects " #-ffat-lto-objects fixes issues with MinGW
 
   #Clang has problem with this. When using zig, this will be fine
-  # when not defined(MacOS) and not defined(MacOSX):
   defineSymbol(conf.symbols, "lto")
 
-  #C compiler and linker additional options
-  conf.compileOptions = "-w -fPIC " & lto & " " & c_architecture #no warnings + lto + fPIC + arch
-  conf.linkOptions = "-fPIC " & lto #lto + fPIC
+  #C compiler and linker additional options. When using tcc, the compiler folder must also be passed for it
+  #to retrive includes and libtcc.a. Zig already retrieves everything by just calling the executable.
+  if compiler == "tcc":
+    conf.compileOptions = "-I" & compilerPath & "/include -w -fPIC " & lto & c_architecture 
+    conf.linkOptions = "-B" & compilerPath & " -fPIC " & lto 
+  else:
+    conf.compileOptions = "-w -fPIC " & lto & c_architecture 
+    conf.linkOptions = "-fPIC " & lto 
 
   
   ###########

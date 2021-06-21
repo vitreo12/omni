@@ -58,7 +58,7 @@ before build:
     include "scripts/pack_sources.nims"
 
     #Install omni_lang (used for tests, mainly)
-    withDir("/omni_lang"):
+    withDir("omni_lang"):
       exec "nimble install -Y"
 
 #pre-build install

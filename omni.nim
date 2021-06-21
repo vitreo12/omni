@@ -136,6 +136,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
       omni_sources_dir = omni_dir & "/" & omni_ver
       omni_compiler_dir = omni_dir & "/compiler"
 
+    #This will be a CLI option
     let compiler = "tcc"
 
     #Actually execute compilation.
