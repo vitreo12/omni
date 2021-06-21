@@ -30,8 +30,6 @@ const
     NimblePkgVersion {.strdefine.} = ""
     omni_ver = NimblePkgVersion
 
-const omni_header_path_nimble = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang/core/omni.h"
-
 #-v / --version
 let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020-2021 Francesco Cameli"
 
