@@ -1,4 +1,3 @@
-
 # MIT License
 # 
 # Copyright (c) 2020-2021 Francesco Cameli
@@ -46,96 +45,26 @@ bin = @["omni"]
 #walkDir / startsWith / endsWith
 import os, strutils
 
-proc zigTarExists() : bool =
-  for kind, path in walkDir(getPkgDir() & "/utilities"):
-    let 
-      pathSplit = path.splitFile
-      pathname = pathSplit.name
-      pathext = pathSplit.ext
-    when defined(Windows):
-      if pathname.startsWith("zig") and pathext == ".zip":
-        return true
-    else:
-      if pathname.startsWith("zig") and pathext == ".xz":
-        return true
-  return false
-
-proc getZigTarName() : string =
-  for kind, path in walkDir(getPkgDir() & "/utilities"):
-    let 
-      pathSplit = path.splitFile
-      pathname = pathSplit.name
-      pathext = pathSplit.ext
-    when defined(Windows):
-      if pathname.startsWith("zig") and pathext == ".zip":
-        return pathname & pathext
-    else:
-      if pathname.startsWith("zig") and pathext == ".xz":
-        return pathname & pathext
-
-proc stripTarExists() : bool =
-  for kind, path in walkDir(getPkgDir() & "/utilities"):
-    let 
-      pathSplit = path.splitFile
-      pathname = pathSplit.name
-      pathext = pathSplit.ext
-    if pathname.startsWith("strip") and pathext == ".gz":
-      return true
-  return false
-
-proc getStripTarName() : string =
-  for kind, path in walkDir(getPkgDir() & "/utilities"):
-    let 
-      pathSplit = path.splitFile
-      pathname = pathSplit.name
-      pathext = pathSplit.ext
-    if pathname.startsWith("strip") and pathext == ".gz":
-      return pathname & pathext
-
 #pre-build setup
 before build:
-  #Download the zig compiler
-  withDir(getPkgDir() & "/utilities"):
-    if not zigTarExists():
-      exec "nim c -r omni_download_zig.nim"
-      var success = false
-      if zigTarExists():
-          success = true
-      if not success: #failed download, exit the entire build process
-        quit 1
-
-    #If windows, download strip too
-    when defined(Windows):
-      exec "nim c -r omni_download_strip.nim"
-      var success_strip = false
-      if stripTarExists():
-          success_strip = true
-      if not success_strip: #failed download, exit the entire build process
-        quit 1
-  
-  #Copy the zig .tar and create the .tar file for the source files. On windows, strip is also copied
-  #over.
   withDir(getPkgDir()):
-    mkDir("build")
-    withDir("build"):
-      cpFile(getPkgDir() & "/utilities/" & getZigTarName(), getCurrentDir() & "/" & getZigTarName())
-      # rmFile(getPkgDir() & "/utilities/" & getZigTarName())
-      when defined(Windows):
-        cpFile(getPkgDir() & "/utilities/" & getStripTarName(), getCurrentDir() & "/" & getStripTarName())
-        # rmFile(getPkgDir() & "/utilities/" & getStripTarName())
-      mkDir("omni")
-      withDir("omni"):
-        cpDir(getPkgDir() & "/omninim", getCurrentDir() & "/omninim")
-        cpDir(getPkgDir() & "/omni_lang", getCurrentDir() & "/omni_lang")
-      echo "\nZipping all Omni source files...\n" 
-      when defined(Windows):
-        exec "tar czf omni.tar.gz omni/"
-      else:
-        exec "tar cJf omni.tar.xz omni/"
+    #Update submodules
+    exec "git submodule update --init --recursive"
 
-  #Install omni_lang (used for tests, mainly)
-  withDir(getPkgDir() & "/omni_lang"):
-    exec "nimble install -Y"
+    #Build the tcc compiler
+    include "scripts/build_tcc.nims"
+
+    #Pack sources and tcc
+    include "scripts/pack_sources.nims"
+
+    #Install omni_lang (used for tests, mainly)
+    withDir("/omni_lang"):
+      exec "nimble install -Y"
+
+#pre-build install
+before install:
+  discard
+  #when install, also install zig!
 
 
 #########

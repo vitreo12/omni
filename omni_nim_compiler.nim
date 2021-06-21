@@ -35,15 +35,14 @@ const
 
 proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = "zig", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Unpack all files only if needed (if directories are not defined, etc...)
-  # let unpack_success = omniUnpackFilesIfNeeded(
-  #   omni_dir, 
-  #   omni_sources_dir, 
-  #   omni_zig_dir, 
-  #   omni_ver
-  # )
+  let unpack_success = omniUnpackFilesIfNeeded(
+    omni_dir, 
+    omni_sources_dir, 
+    omni_ver
+  )
 
-  # if not unpack_success:
-  #   return ("\nERROR: Failed to run the unpack procedures.", true)
+  if not unpack_success:
+    return ("\nERROR: Failed to run the unpack procedures.", true)
 
   ########################
   # Nim Compiler options #

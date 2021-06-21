@@ -9,9 +9,10 @@ omni
 
 omnizig/downloadZig
 
+build/
+
 *.xz
 *.gz
-
 
 omni_tar.txt
 

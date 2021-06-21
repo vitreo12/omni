@@ -20,10 +20,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-#Embed the tar file
-when defined(Windows):
-  const omni_sources_tar_file* = staticRead("build/strip.tar.gz")
+when not defined(notcc):
+  withDir("tcc"):
+    var tcc_cc_flags = "-O3 -flto"
+    when defined(arch_amd64) or defined(arch_x86_64):
+      tcc_cc_flags.add " -march=x86-64"
+    elif defined(arch_i386): #needs testing
+      tcc_cc_flags.add " -march=i386"
+    # elif defined(arch_arm64): #needs testing
+    # elif defined(arch_arm): #needs testing
+    else: #default: native build
+      tcc_cc_flags.add " -march=native -mtune=native" 
+    
+    echo "\nBuilding the tcc compiler...\n" 
 
-  #Unpack the file
-  proc omniUnpackStripTar*() =
-      writeFile("strip.tar.xz", omni_sources_tar_file) 
+    #configure 
+    when defined(Windows):
+      withDir("./win32"):
+        exec "./build-tcc.bat" #Check if the flags are the same
+    else:
+      exec "./configure --extra-cflags=\"" & tcc_cc_flags & "\" --extra-ldflags=\"" & tcc_cc_flags & "\""
+      exec "make"
