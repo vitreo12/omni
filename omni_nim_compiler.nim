@@ -24,6 +24,7 @@ import strutils
 
 import omninim/omninim
 
+import omni_print_styled
 import embed/omni_unpack
 
 const 
@@ -32,17 +33,17 @@ const
 
 # const nimble_pkgs_tilde = "~/.nimble/pkgs/"
 
-proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_zig_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
+proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = "zig", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Unpack all files only if needed (if directories are not defined, etc...)
-  let unpack_success = omniUnpackFilesIfNeeded(
-    omni_dir, 
-    omni_sources_dir, 
-    omni_zig_dir, 
-    omni_ver
-  )
+  # let unpack_success = omniUnpackFilesIfNeeded(
+  #   omni_dir, 
+  #   omni_sources_dir, 
+  #   omni_zig_dir, 
+  #   omni_ver
+  # )
 
-  if not unpack_success:
-    return ("\nERROR: Failed to run the unpack procedures.", true)
+  # if not unpack_success:
+  #   return ("\nERROR: Failed to run the unpack procedures.", true)
 
   ########################
   # Nim Compiler options #
@@ -54,9 +55,16 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_z
   #C compilation
   conf.command = "c"
 
-  #Use Zig
-  conf.cCompilerPath = omni_zig_dir
-  conf.cCompiler = ccOmniZigcc
+  #Use zig / tcc / default
+  if compiler == "zig":
+    conf.cCompilerPath = omni_compiler_dir & "/zig"
+    conf.cCompiler = ccOmniZigcc
+  elif compiler == "tcc":
+    conf.cCompilerPath = omni_compiler_dir & "/tcc"
+    conf.cCompiler = ccOmniTcc
+  else:
+    printWarn "Unknown compiler option: '" & compiler & "'. Omni will attempt to use the system's default."
+
 
   #--gc:none (from commnds.nim -> processSwitch)
   conf.selectedGC = gcNone

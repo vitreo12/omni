@@ -29,6 +29,13 @@ proc printError*(msg : string) {.inline.} =
     setForegroundColor(fgWhite, true)
     writeStyled(msg & "\n")
 
+#Generic warning
+proc printWarn*(msg : string) {.inline.} =
+    setForegroundColor(fgYellow)
+    writeStyled("WARNING: ", {styleBright}) 
+    setForegroundColor(fgWhite, true)
+    writeStyled(msg & "\n")
+
 #Generic success
 proc printSuccess*(msg : string) {.inline.} =
     setForegroundColor(fgGreen)

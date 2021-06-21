@@ -134,13 +134,15 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     let 
       omni_sources_dir = omni_dir & "/" & omni_ver
-      omni_zig_dir = omni_dir & "/zig"
+      omni_compiler_dir = omni_dir & "/compiler"
+
+    let compiler = "tcc"
 
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
         omni_dir,
         omni_sources_dir,
-        omni_zig_dir,
+        omni_compiler_dir,
         omniFileName,
         omniFileDir,
         fileFullPath,
@@ -148,6 +150,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         outDirFullPath,
         lib,
         architecture,
+        compiler,
         performBits,
         wrapper,
         define,
