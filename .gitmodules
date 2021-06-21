@@ -1,3 +1,6 @@
 [submodule "omninim"]
 	path = omninim
 	url = https://github.com/vitreo12/omninim
+[submodule "tcc"]
+	path = tcc
+	url = https://github.com/TinyCC/tinycc
