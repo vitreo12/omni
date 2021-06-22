@@ -50,25 +50,34 @@ proc omniUnpackSources(omni_ver : string) : bool =
   return true
 
 proc omniUnpackTcc() : bool =
-  echo "\nUnpacking the tcc compiler..."
+  when not defined(no_tcc):
+    echo "\nUnpacking the tcc compiler..."
 
-  if dirExists("tcc"): removeDir("tcc")
+    if dirExists("tcc"): removeDir("tcc")
 
-  omniUnpackTccTar()
+    omniUnpackTccTar()
 
-  when defined(Windows):
-    let omni_tcc_tar_file = "tcc.tar.gz"
+    when defined(Windows):
+      let omni_tcc_tar_file = "tcc.tar.gz"
+    else:
+      let omni_tcc_tar_file = "tcc.tar.xz"
+
+    let failed_omni_tar = bool execShellCmd("tar -xf " & omni_tcc_tar_file)
+
+    if failed_omni_tar:
+      printError "Could not unpack the omni tar file"
+      return false
+
+    removeFile(omni_tcc_tar_file)
   else:
-    let omni_tcc_tar_file = "tcc.tar.xz"
-
-  let failed_omni_tar = bool execShellCmd("tar -xf " & omni_tcc_tar_file)
-
-  if failed_omni_tar:
-    printError "Could not unpack the omni tar file"
-    return false
-
-  removeFile(omni_tcc_tar_file)
+    echo "\nCannot unpack the tcc compiler: Omni has been built with the 'no_tcc' definition."
   return true
+
+template omniMoveZigDownloader() =
+  when defined(Windows):
+    moveFile(omni_ver & "/omni_download_zig.exe", "compiler/omni_download_zig.exe")
+  else:
+    moveFile(omni_ver & "/omni_download_zig", "compiler/omni_download_zig")
 
 #Unpack all source files to the correct omni_dir, according to OS and omni_ver
 proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver : string) : bool =
@@ -77,23 +86,32 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver
   let cwd = getCurrentDir()
 
   if not dirExists(omni_dir): createDir(omni_dir)
-  setCurrentDir(omni_dir)
-  if not omniUnpackSources(omni_ver): return false
-
   if not dirExists(omni_compiler_dir): createDir(omni_compiler_dir)
-  setCurrentDir(omni_compiler_dir)
-  if not omniUnpackTcc(): return false
+
+  setCurrentDir(omni_dir)
 
   if not dirExists("wrappers"): createDir("wrappers")
 
+  if not omniUnpackSources(omni_ver): return false
+
+  omniMoveZigDownloader()
+
+  setCurrentDir(omni_compiler_dir)
+
+  if not omniUnpackTcc(): return false
+  
   setCurrentDir(cwd)
 
   return true
 
-proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_tcc_dir : string, is_tcc : bool, omni_ver : string) : bool =
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_tcc_dir : string, is_zig : bool, is_tcc : bool, omni_ver : string) : bool =
   #Unpack it all if the version for this release is not defined or tcc dir is not defined.
-  if not dirExists(omni_sources_dir) or (is_tcc and not dirExists(omni_tcc_dir)):
-    return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
+  when not defined(no_tcc):
+    if not dirExists(omni_sources_dir) or (is_tcc and not dirExists(omni_tcc_dir)):
+      return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
+  else:
+    if not dirExists(omni_sources_dir):
+      return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
 
   return true
 

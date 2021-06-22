@@ -20,37 +20,102 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os, httpclient
+import ../omni_print_styled
+import os, httpclient, strutils
 
-when defined(Linux):
-  let OS = "linux"
-  let ext = ".tar.xz"
-elif defined(MacOS) or defined(MacOSX):
-  let OS = "macos"
-  let ext = ".tar.xz"
-elif defined(Windows):
-  let OS = "windows"
-  let ext = ".zip"
-else:
-  {.fatal: "invalid OS: " & hostOS.}
+proc zigTarExists() : bool =
+  for kind, path in walkDir(getCurrentDir()):
+    let 
+      pathSplit = path.splitFile
+      pathname = pathSplit.name
+      pathext = pathSplit.ext
+    when defined(Windows):
+      if pathname.startsWith("zig") and pathext == ".zip":
+        return true
+    else:
+      if pathname.startsWith("zig") and pathext == ".xz":
+        return true
+  return false
 
-when hostCPU == "amd64":
-  let cpu = "x86_64"
-elif hostCPU == "arm64":
-  let cpu = "aarch64"
-else:
-  let cpu = hostCPU
+proc getZigTarName() : string =
+  for kind, path in walkDir(getCurrentDir()):
+    let 
+      pathSplit = path.splitFile
+      pathname = pathSplit.name
+      pathext = pathSplit.ext
+    when defined(Windows):
+      if pathname.startsWith("zig") and pathext == ".zip":
+        return pathname & pathext
+    else:
+      if pathname.startsWith("zig") and pathext == ".xz":
+        return pathname & pathext
 
-let link = "https://ziglang.org/download/0.8.0/zig-" & OS & "-" & cpu & "-0.8.0" & ext
+template deleteZigTarIfExists() =
+  if zigTarExists():
+    removeFile(getZigTarName())
 
-echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
+template renameZigDir() =
+  for kind, path in walkDir(getCurrentDir()):
+    let 
+      pathSplit = path.splitFile
+      pathname = pathSplit.name & pathSplit.ext #zig directory ends with version number, which is (falsely) interpreted as a file extension
+    if kind == pcDir:
+      if pathname.startsWith("zig"):
+        moveDir(pathname, "zig")
+
+#set dir to where script is
+setCurrentDir(getAppDir())
 
 #Check if link exists, perhaps os / cpu combo is wrong
-var client = newHttpClient()
-let response = client.request(link, httpMethod=HttpHead).code
-if response.is4xx or response.is5xx:
-  echo "Error: no connection or invalid link: " & link & "\n"
-  quit 0
+if not zigTarExists():
+  when defined(Linux):
+    let OS = "linux"
+    let ext = ".tar.xz"
+  elif defined(MacOS) or defined(MacOSX):
+    let OS = "macos"
+    let ext = ".tar.xz"
+  elif defined(Windows):
+    let OS = "windows"
+    let ext = ".zip"
+  else:
+    {.fatal: "invalid OS: " & hostOS.}
 
-#Link exists and connection works, download it
-quit execShellCmd("curl " & link & " -o ./zig" & ext)
+  when hostCPU == "amd64":
+    let cpu = "x86_64"
+  elif hostCPU == "arm64":
+    let cpu = "aarch64"
+  else:
+    let cpu = hostCPU
+
+  let link = "https://ziglang.org/download/0.8.0/zig-" & OS & "-" & cpu & "-0.8.0" & ext
+
+  echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
+
+  var client = newHttpClient()
+  let response = client.request(link, httpMethod=HttpHead).code
+  if response.is4xx or response.is5xx:
+    printError "Could not download the zig compiler. No connection or invalid link: " & link & "\n"
+    deleteZigTarIfExists()
+    quit 1
+
+  #Link exists and connection works, download it
+  let failed_curl = bool execShellCmd("curl " & link & " -o zig" & ext)
+
+  if failed_curl:
+    printError "Could not download the zig compiler. No connection or invalid link: " & link & "\n"
+    deleteZigTarIfExists()
+    quit 1
+
+#Unpack it
+if zigTarExists():
+  echo "\nUnpacking the zig.tar file..."
+  let failed_tar = bool execShellCmd("tar -xf zig.tar.xz")
+  if failed_tar:
+    printError "Failed to unpack the zig compiler."
+    deleteZigTarIfExists()
+    quit 1
+  if dirExists("zig"): removeDir("zig")
+  renameZigDir()
+  deleteZigTarIfExists()
+
+

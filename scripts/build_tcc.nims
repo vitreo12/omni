@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-when not defined(tcc_off):
+when not defined(no_tcc):
   withDir("tcc"):
     var tcc_cc_flags = "-O3 -flto"
     when defined(arch_amd64) or defined(arch_x86_64):

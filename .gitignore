@@ -1,27 +1,15 @@
 .vscode/
 
+build/
+utilities/omni_download_zig
+utilities/zig/
+
+omni
+
 *.so
 *.dylib
 *.dll
 *.exe
-
-omni
-
-omnizig/downloadZig
-
-build/
-
 *.xz
 *.gz
 
-omni_tar.txt
-
-omni_tar_to_txt
-
-omni_tar_len.txt
-
-utilities/downloadZig
-
-utilities/omni_download_zig
-
-utilities/omni_download_strip

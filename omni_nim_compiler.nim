@@ -43,8 +43,10 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   #Use zig / tcc / others
   var 
     compilerPath = omni_compiler_dir
+    is_zig = false
     is_tcc = false
   if compiler == "zig":
+    is_zig = true
     compilerPath.add("/zig")
     conf.cCompilerPath = compilerPath
     conf.cCompiler = ccOmniZigcc
@@ -66,6 +68,7 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
     omni_sources_dir, 
     omni_compiler_dir,
     compilerPath, #this is not the tcc path if is_tcc == false
+    is_zig,
     is_tcc,
     omni_ver
   )
