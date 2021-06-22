@@ -86,9 +86,9 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver
 
   return true
 
-proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_ver : string) : bool =
-  #Unpack it all if the version for this release is not defined. 
-  if not dirExists(omni_sources_dir) or not dirExists(omni_compiler_dir):
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_tcc_dir : string, is_tcc : bool, omni_ver : string) : bool =
+  #Unpack it all if the version for this release is not defined or tcc dir is not defined.
+  if not dirExists(omni_sources_dir) or (is_tcc and not dirExists(omni_tcc_dir)):
     return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
 
   return true

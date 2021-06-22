@@ -34,21 +34,6 @@ const
 # const nimble_pkgs_tilde = "~/.nimble/pkgs/"
 
 proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = "zig", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
-  #Unpack all files only if needed 
-  let unpack_success = omniUnpackFilesIfNeeded(
-    omni_dir, 
-    omni_sources_dir, 
-    omni_compiler_dir,
-    omni_ver
-  )
-
-  if not unpack_success:
-    return ("\nERROR: Failed to run the unpack procedures.", true)
-
-  ########################
-  # Nim Compiler options #
-  ########################
-
   #Config file
   let conf = newConfigRef()
   
@@ -56,13 +41,16 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   conf.command = "c"
 
   #Use zig / tcc / others
-  var compilerPath = omni_compiler_dir
+  var 
+    compilerPath = omni_compiler_dir
+    is_tcc = false
   if compiler == "zig":
-    compilerPath.add "/zig"
+    compilerPath.add("/zig")
     conf.cCompilerPath = compilerPath
     conf.cCompiler = ccOmniZigcc
   elif compiler == "tcc":
-    compilerPath.add "/tcc"
+    is_tcc = true
+    compilerPath.add("/tcc")
     conf.cCompilerPath = compilerPath
     conf.cCompiler = ccOmniTcc
   elif compiler == "gcc":
@@ -71,7 +59,24 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
     conf.cCompiler = ccCLang
   else:
     printWarn "Unknown compiler option: '" & compiler & "'. Omni will attempt to use the system's default."
+  
+  #Unpack all files only if needed 
+  let unpack_success = omniUnpackFilesIfNeeded(
+    omni_dir, 
+    omni_sources_dir, 
+    omni_compiler_dir,
+    compilerPath, #this is not the tcc path if is_tcc == false
+    is_tcc,
+    omni_ver
+  )
 
+  if not unpack_success:
+    return ("\nERROR: Failed to run the unpack procedures.", true)
+
+
+  ########################
+  # Nim Compiler options #
+  ########################
 
   #--gc:none (from commnds.nim -> processSwitch)
   conf.selectedGC = gcNone
@@ -105,36 +110,6 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
     excl(conf.globalOptions, optGenGuiApp)
     defineSymbol(conf.symbols, "library")
     defineSymbol(conf.symbols, "staticlib")
-
-  
-  #########
-  # Paths #
-  #########
-  
-  #nimble path (so that --import from a nimble pkg works)
-  # let nimble_pkgs = nimble_pkgs_tilde.absPath()
-  # if dirExists(nimble_pkgs):
-  #   nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
-
-  #system lib path
-  let omninim_lib_dir = omni_sources_dir & "/lib"
-  
-  #There probably is a leaner way to set all these paths
-  conf.libpath = AbsoluteDir(omninim_lib_dir)
-  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/core"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/posix"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/collections"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/concurrency"), 0)
-
-  #don't set conf.projectName as that would expect the extension to be .nim
-  conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
-  conf.projectFull = AbsoluteFile(fileFullPath) #input file
-  conf.outDir = AbsoluteDir(outDir) #output dir
-  conf.outFile = RelativeFile(outName) #output file
-
-  #nimcacheDir ... Manually patch the name cause setting conf.projectName would expect the extension to be .nim
-  conf.nimcacheDir = AbsoluteDir(omni_dir & "/cache/" & omniFileName)
 
 
   ######################
@@ -187,6 +162,36 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   else:
     conf.compileOptions = "-w -fPIC " & lto & c_architecture 
     conf.linkOptions = "-fPIC " & lto 
+
+  
+  #########
+  # Paths #
+  #########
+  
+  #nimble path (so that --import from a nimble pkg works)
+  # let nimble_pkgs = nimble_pkgs_tilde.absPath()
+  # if dirExists(nimble_pkgs):
+  #   nimblePath(conf, AbsoluteDir(nimble_pkgs), newLineInfo(FileIndex(-3), 0, 0))
+
+  #system lib path
+  let omninim_lib_dir = omni_sources_dir & "/lib"
+  
+  #There probably is a leaner way to set all these paths
+  conf.libpath = AbsoluteDir(omninim_lib_dir)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/core"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/posix"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/collections"), 0)
+  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/concurrency"), 0)
+
+  #don't set conf.projectName as that would expect the extension to be .nim
+  conf.projectPath = AbsoluteDir(fileFolderFullPath) #dir of input file
+  conf.projectFull = AbsoluteFile(fileFullPath) #input file
+  conf.outDir = AbsoluteDir(outDir) #output dir
+  conf.outFile = RelativeFile(outName) #output file
+
+  #nimcacheDir ... Manually patch the name cause setting conf.projectName would expect the extension to be .nim
+  conf.nimcacheDir = AbsoluteDir(omni_dir & "/cache/" & omniFileName)
 
   
   ###########
