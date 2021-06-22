@@ -72,17 +72,15 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver
 
   let cwd = getCurrentDir()
 
-  if not dirExists(omni_dir):
-    createDir(omni_dir)
+  if not dirExists(omni_dir): createDir(omni_dir)
   setCurrentDir(omni_dir)
   if not omniUnpackSources(omni_ver): return false
-  if not dirExists("wrappers"):
-    createDir("wrappers")
 
-  if not dirExists(omni_compiler_dir):
-    createDir(omni_compiler_dir)
+  if not dirExists(omni_compiler_dir): createDir(omni_compiler_dir)
   setCurrentDir(omni_compiler_dir)
   if not omniUnpackTcc(): return false
+
+  if not dirExists("wrappers"): createDir("wrappers")
 
   setCurrentDir(cwd)
 

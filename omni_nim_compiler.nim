@@ -55,7 +55,7 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   #C compilation
   conf.command = "c"
 
-  #Use zig / tcc / default
+  #Use zig / tcc / others
   var compilerPath = omni_compiler_dir
   if compiler == "zig":
     compilerPath.add "/zig"
@@ -65,6 +65,10 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
     compilerPath.add "/tcc"
     conf.cCompilerPath = compilerPath
     conf.cCompiler = ccOmniTcc
+  elif compiler == "gcc":
+    conf.cCompiler = ccGcc
+  elif compiler == "clang":
+    conf.cCompiler = ccCLang
   else:
     printWarn "Unknown compiler option: '" & compiler & "'. Omni will attempt to use the system's default."
 

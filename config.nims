@@ -27,28 +27,28 @@ else: #default: native build
   --passL:"-march=native"
   --passL:"-mtune=native"
 
-#generic flags
---panics:on
---checks:off
---passC:"-flto"
---passL:"-flto"
+##generic flags
+#--panics:on
+#--checks:off
+#--passC:"-flto"
+#--passL:"-flto"
 
-#danger
---define:danger
---objChecks:off
---fieldChecks:off
---rangeChecks:off
---boundChecks:off
---overflowChecks:off
---assertions:off
---stacktrace:off
---linetrace:off
---debugger:off
---lineDir:off
---deadCodeElim:on
---nilchecks:off
+##danger
+#--define:danger
+#--objChecks:off
+#--fieldChecks:off
+#--rangeChecks:off
+#--boundChecks:off
+#--overflowChecks:off
+#--assertions:off
+#--stacktrace:off
+#--linetrace:off
+#--debugger:off
+#--lineDir:off
+#--deadCodeElim:on
+#--nilchecks:off
 
-#release
---define:release
---excessiveStackTrace:off
---opt:speed
+##release
+#--define:release
+#--excessiveStackTrace:off
+#--opt:speed
