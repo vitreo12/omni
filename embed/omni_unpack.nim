@@ -28,6 +28,8 @@ import omni_tcc_tar
 proc omniUnpackSources(omni_ver : string) : bool =
   echo "\nUnpacking all Omni source files..."
 
+  if dirExists(omni_ver): removeDir(omni_ver)
+
   omniUnpackSourcesTar()
 
   when defined(Windows):
@@ -49,6 +51,8 @@ proc omniUnpackSources(omni_ver : string) : bool =
 
 proc omniUnpackTcc() : bool =
   echo "\nUnpacking the tcc compiler..."
+
+  if dirExists("tcc"): removeDir("tcc")
 
   omniUnpackTccTar()
 
