@@ -33,6 +33,14 @@ const
 
 # const nimble_pkgs_tilde = "~/.nimble/pkgs/"
 
+#Needed
+when declared(GC_setMaxPause):
+  GC_setMaxPause 2_000
+
+#Needed (it's faster!), from nim.nim
+when compileOption("gc", "refc"):
+  GC_disableMarkAndSweep()
+
 proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omniFileName : string, fileFolderFullPath : string, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", compiler : string = "zig", performBits : string = "32/64", wrapper : string = "", defines : seq[string] = @[], imports : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false) : tuple[output: string, failure: bool] =
   #Config file
   let conf = newConfigRef()
