@@ -41,6 +41,8 @@ proc omniUnpackSources(omni_ver : string) : bool =
 
   if failed_omni_tar:
     printError "Could not unpack the omni tar file"
+    if fileExists(omni_sources_tar_file): removeFile(omni_sources_tar_file)
+    if dirExists("omni"): removeDir("omni")
     return false
 
   #Call folder with omni_ver
@@ -65,6 +67,8 @@ proc omniUnpackTcc() : bool =
 
   if failed_omni_tar:
     printError "Could not unpack the omni tar file"
+    if fileExists(omni_tcc_tar_file): removeFile(omni_tcc_tar_file)
+    if dirExists("tcc"): removeDir("tcc")
     return false
 
   removeFile(omni_tcc_tar_file)
@@ -107,7 +111,7 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, is_zig :
       echo "\nCannot unpack the tcc compiler: Omni has been built with the 'no_tcc' definition."
 
   if is_zig:
-    if not omniExecuteZigDownloader(): echo "nope"; return false
+    if not omniExecuteZigDownloader():  return false
   
   setCurrentDir(cwd)
 
