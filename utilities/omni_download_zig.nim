@@ -117,5 +117,6 @@ if zigTarExists():
   if dirExists("zig"): removeDir("zig")
   renameZigDir()
   deleteZigTarIfExists()
+  quit 0
 
 

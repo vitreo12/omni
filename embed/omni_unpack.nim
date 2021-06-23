@@ -50,28 +50,24 @@ proc omniUnpackSources(omni_ver : string) : bool =
   return true
 
 proc omniUnpackTcc() : bool =
-  when not defined(no_tcc):
-    echo "\nUnpacking the tcc compiler..."
+  echo "\nUnpacking the tcc compiler..."
 
-    if dirExists("tcc"): removeDir("tcc")
+  if dirExists("tcc"): removeDir("tcc")
 
-    omniUnpackTccTar()
+  omniUnpackTccTar()
 
-    when defined(Windows):
-      let omni_tcc_tar_file = "tcc.tar.gz"
-    else:
-      let omni_tcc_tar_file = "tcc.tar.xz"
-
-    let failed_omni_tar = bool execShellCmd("tar -xf " & omni_tcc_tar_file)
-
-    if failed_omni_tar:
-      printError "Could not unpack the omni tar file"
-      return false
-
-    removeFile(omni_tcc_tar_file)
+  when defined(Windows):
+    let omni_tcc_tar_file = "tcc.tar.gz"
   else:
-    echo "\nCannot unpack the tcc compiler: Omni has been built with the 'no_tcc' definition."
-  return true
+    let omni_tcc_tar_file = "tcc.tar.xz"
+
+  let failed_omni_tar = bool execShellCmd("tar -xf " & omni_tcc_tar_file)
+
+  if failed_omni_tar:
+    printError "Could not unpack the omni tar file"
+    return false
+
+  removeFile(omni_tcc_tar_file)
 
 template omniMoveZigDownloader() =
   when defined(Windows):
@@ -79,8 +75,14 @@ template omniMoveZigDownloader() =
   else:
     moveFile(omni_ver & "/omni_download_zig", "compiler/omni_download_zig")
 
+proc omniExecuteZigDownloader() : bool =
+  when defined(Windows):
+    return not(bool execShellCmd("./omni_download_zig.exe"))
+  else:
+    return not(bool execShellCmd("./omni_download_zig"))
+
 #Unpack all source files to the correct omni_dir, according to OS and omni_ver
-proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver : string) : bool =
+proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, is_zig : bool, is_tcc : bool, omni_ver : string) : bool =
   echo "\nUnpacking the tcc compiler and all Omni source files. This process will only be executed once."
 
   let cwd = getCurrentDir()
@@ -98,20 +100,23 @@ proc omniUnpackAllFiles*(omni_dir : string, omni_compiler_dir : string, omni_ver
 
   setCurrentDir(omni_compiler_dir)
 
-  if not omniUnpackTcc(): return false
+  if is_tcc:
+    when not defined(no_tcc):
+      if not omniUnpackTcc(): return false
+    else:
+      echo "\nCannot unpack the tcc compiler: Omni has been built with the 'no_tcc' definition."
+
+  if is_zig:
+    if not omniExecuteZigDownloader(): echo "nope"; return false
   
   setCurrentDir(cwd)
 
   return true
 
-proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_tcc_dir : string, is_zig : bool, is_tcc : bool, omni_ver : string) : bool =
-  #Unpack it all if the version for this release is not defined or tcc dir is not defined.
-  when not defined(no_tcc):
-    if not dirExists(omni_sources_dir) or (is_tcc and not dirExists(omni_tcc_dir)):
-      return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
-  else:
-    if not dirExists(omni_sources_dir):
-      return omniUnpackAllFiles(omni_dir, omni_compiler_dir, omni_ver)
-
+proc omniUnpackFilesIfNeeded*(omni_dir : string, omni_sources_dir : string, omni_compiler_dir : string, omni_zig_or_tcc_dir : string, is_zig : bool, is_tcc : bool, omni_ver : string) : bool =
+  #Unpack it all if the version for this release is not defined or zig / tcc dir is not defined.
+  if not dirExists(omni_sources_dir) or not dirExists(omni_zig_or_tcc_dir):
+    return omniUnpackAllFiles(omni_dir, omni_compiler_dir, is_zig, is_tcc, omni_ver)
+    
   return true
 

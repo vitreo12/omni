@@ -135,7 +135,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
       omni_compiler_dir = omni_dir & "/compiler"
 
     #This will be a CLI option
-    let compiler = "tcc"
+    let compiler = "zig"
 
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(

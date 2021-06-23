@@ -67,7 +67,7 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
     omni_dir, 
     omni_sources_dir, 
     omni_compiler_dir,
-    compilerPath, #this is not the tcc path if is_tcc == false
+    compilerPath, #this is either zig's or tcc's path
     is_zig,
     is_tcc,
     omni_ver
