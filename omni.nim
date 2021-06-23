@@ -70,7 +70,7 @@ template absPath(path : untyped) : untyped =
     path.normalizedPath().expandTilde().absolutePath()
 
 #Actual compiler
-proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", compiler : string, lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
     var 
         omniFile     = splitFile(fileFullPath)
         omniFileDir  = omniFile.dir
@@ -133,9 +133,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     let 
       omni_sources_dir = omni_dir & "/" & omni_ver
       omni_compiler_dir = omni_dir & "/compiler"
-
-    #This will be a CLI option
-    let compiler = "zig"
 
     #Actually execute compilation.
     let (compilationString, failedOmniCompilation) = omni_compile_nim_file(
@@ -202,7 +199,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     return 0
 
 #Unpack files arg and pass it to compiler
-proc omni(files : seq[string], outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+proc omni(files : seq[string], outName : string = "", outDir : string = "", compiler : string = "zig", lib : string = "shared", architecture : string = "native", performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[], exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
     #no files provided, print --version
     if files.len == 0:
         echo version_flag
@@ -216,9 +213,9 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
         if omniFileFullPath.fileExists():
             #if just one file in CLI, also pass the outName flag
             if files.len == 1:
-                return omni_single_file(false, omniFileFullPath, outName, outDir, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
+                return omni_single_file(false, omniFileFullPath, outName, outDir, compiler, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent)
             else:
-                if omni_single_file(true, omniFileFullPath, "", outDir, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
+                if omni_single_file(true, omniFileFullPath, "", outDir, compiler, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                     return 1
 
         #If it's a dir, compile all .omni/.oi files in it
@@ -230,7 +227,7 @@ proc omni(files : seq[string], outName : string = "", outDir : string = "", lib 
                         dirFileExt = dirFileFullPath.splitFile().ext
                     
                     if dirFileExt == ".omni" or dirFileExt == ".oi":
-                        if omni_single_file(true, dirFileFullPath, "", outDir, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
+                        if omni_single_file(true, dirFileFullPath, "", outDir, compiler, lib, architecture, performBits, wrapper, define, importModule, passNim, exportHeader, exportIO, silent) > 0:
                             return 1
 
         else:
@@ -275,6 +272,7 @@ dispatch(
         "version" : "CLIGEN-NOHELP",
         "outName" : "Name for the output library. Defaults to the name of the input file with 'lib' prepended to it (e.g. 'OmniSaw.omni' -> 'libOmniSaw" & $shared_lib_extension & "'). This argument does not work for directories or multiple files.",
         "outDir" : "Output folder. Defaults to the one of the Omni file(s) to compile.",
+        "compiler" : "Choose the backend C compiler to use. Accepted values are 'tcc', 'zig', 'gcc' and 'clang'. Note that 'tcc' is shipped with Omni, while 'zig' will be downloaded the first time it is used.",
         "lib" : "Build a 'shared' or 'static' library.",
         "architecture" : "Build architecture.",
         "performBits" : "Set precision for 'ins' and 'outs' in the perform block. Accepted values are '32', '64' or '32/64'. Note that this option does not affect Omni's internal floating point precision.",
