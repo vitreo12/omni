@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import os
-import ../omni_print_styled
+import ../utilities/omni_print_styled
 import omni_sources_tar
 import omni_tcc_tar
 

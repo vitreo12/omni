@@ -22,7 +22,7 @@
 
 import cligen, os, strutils
 
-import omni_print_styled
+import utilities/omni_print_styled
 import omni_nim_compiler
 
 #Package version is passed as argument when building. It will be constant and set correctly

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import ../omni_print_styled
+import ../utilities/omni_print_styled
 import os, httpclient, strutils
 
 proc zigTarExists() : bool =

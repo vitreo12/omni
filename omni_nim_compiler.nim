@@ -24,7 +24,7 @@ import strutils
 
 import omninim/omninim
 
-import omni_print_styled
+import utilities/omni_print_styled
 import embed/omni_unpack
 
 const 
