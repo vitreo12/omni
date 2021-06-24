@@ -36,8 +36,8 @@ when not defined(no_tcc):
 
     #configure 
     when defined(Windows):
-      withDir("./win32"):
-        exec "./build-tcc.bat" #Check if the flags are the same
+      withDir("win32"):
+        exec "build-tcc.bat" #Check if the flags are the same
     else:
       exec "./configure --extra-cflags=\"" & tcc_cc_flags & "\" --extra-ldflags=\"" & tcc_cc_flags & "\""
       exec "make"

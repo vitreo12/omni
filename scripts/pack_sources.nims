@@ -42,7 +42,7 @@ withDir("build"):
   when not defined(no_tcc):
     mkDir("tcc")
     withDir("tcc"):
-      when defined(Windos):
+      when defined(Windows):
         mvFile(getPkgDir() & "/tcc/win32/tcc".toExe, getCurrentDir() & "/tcc".toExe)
         cpDir(getPkgDir() & "/tcc/win32/include", getCurrentDir() & "/include")
         # cpDir(getPkgDir() & "/tcc/win32/lib", getCurrentDir() & "/lib") #is lib necessary too?

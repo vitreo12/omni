@@ -109,7 +109,10 @@ if not zigTarExists():
 #Unpack it
 if zigTarExists():
   echo "\nUnpacking the zig.tar file..."
-  let failed_tar = bool execShellCmd("tar -xf zig.tar.xz")
+  when defined(Windows):
+    let failed_tar = bool execShellCmd("tar -xf zig.zip")
+  else:
+    let failed_tar = bool execShellCmd("tar -xf zig.tar.xz")
   if failed_tar:
     printError "Failed to unpack the zig compiler."
     deleteZigTarIfExists()
