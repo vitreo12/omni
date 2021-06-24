@@ -156,11 +156,10 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
       c_architecture = "--target=" & architecture
 
   #lto
-  var lto : string
-  when not defined(Windows): #MacOS / Linux
-      lto = "-flto "
-  else: #Windows
-      lto = "-flto -ffat-lto-objects " #-ffat-lto-objects fixes issues with MinGW
+  var lto = "-flto "
+  if defined(Windows):
+    if compiler == "gcc":
+      lto.add "-ffat-lto-objects " #needed for Mingw on windows
 
   #Clang has problem with this. When using zig, this will be fine
   defineSymbol(conf.symbols, "lto")
