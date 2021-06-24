@@ -72,6 +72,7 @@ proc omniUnpackTcc() : bool =
     return false
 
   removeFile(omni_tcc_tar_file)
+  return true
 
 template omniMoveZigDownloader() =
   when defined(Windows):
