@@ -30,7 +30,7 @@ withDir("build"):
     cpDir(getPkgDir() & "/omninim/omninim/lib", getCurrentDir() & "/lib")
     #zig downloader
     withDir(getPkgDir() & "/utilities"):
-      exec "nim c --warning[GcMem]:off omni_download_zig.nim"
+      exec "nim c --skipParentCfg:on --warning[GcMem]:off omni_download_zig.nim"
     mvFile(getPkgDir() & "/utilities/omni_download_zig".toExe, getCurrentDir() & "/omni_download_zig".toExe) #gotta move cause cpFile doesn't copy permissions
   echo "\nZipping all Omni source files...\n" 
   when defined(Windows):
