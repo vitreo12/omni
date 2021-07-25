@@ -90,43 +90,55 @@ import macros, ../../lang/omni_parser, ../../lang/omni_macros_utilities
 
 #Initialize object of type T at entry
 macro omni_data_generic_default(t : typed, validity_or_getter : bool = false) : untyped =
-  let validity_or_getter_bool = validity_or_getter.boolVal
-  
-  var type_instance = t.getTypeInst[1]
+    let validity_or_getter_bool = validity_or_getter.boolVal
+    
+    var type_instance = t.getTypeInst[1]
 
-  #Convert everything to idents, or omni_find_struct_constructor_call won't work
-  type_instance = typed_to_untyped(type_instance)[0]
-  
-  let omni_type_instance_call = omni_find_struct_constructor_call(
-          nnkCall.newTree(
-              type_instance
-          )
-      )
-  
-  #omni_check_datas_validity
-  if not validity_or_getter_bool:
-      # let print_warning = nnkCall.newTree(
-      #     newIdentNode("omni_print_str"),
-      #     newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Not all entries have been explicitly initialized. Setting uninitialized entries to '" & $repr(type_instance) & "()'"),
-      # )
+    #Convert everything to idents, or omni_find_struct_constructor_call won't work
+    type_instance = typed_to_untyped(type_instance)[0]
+    
+    let omni_type_instance_call = omni_find_struct_constructor_call(
+        nnkCall.newTree(
+            type_instance
+        )
+    )
+    
+    #omni_check_datas_validity
+    if not validity_or_getter_bool:
+        # let print_warning = nnkCall.newTree(
+        #     newIdentNode("omni_print_str"),
+        #     newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Not all entries have been explicitly initialized. Setting uninitialized entries to '" & $repr(type_instance) & "()'"),
+        # )
 
-      return quote do:
-          data[i, y] = `omni_type_instance_call`
-          # if not print_once:
-              # `print_warning`
-              # print_once = true
+        return quote do:
+            data[i, y] = `omni_type_instance_call`
+            # if not print_once:
+                # `print_warning`
+                # print_once = true
 
-  #getter
-  else:
-      let print_warning = nnkCall.newTree(
-          newIdentNode("omni_print"),
-          newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Uninitialized entry at %d. Initializing it to '" & $repr(type_instance) & "()'\n"),
-          newIdentNode("actual_index")
-      )
+    #getter
+    else:
+        let print_warning = nnkStmtList.newTree(
+            nnkCall.newTree(
+                newIdentNode("omni_print"),
+                newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Uninitialized entry at index "),
+            ),
+            nnkCall.newTree(
+                newIdentNode("omni_print_int_no_newline"),
+                nnkCall.newTree(
+                    newIdentNode("cint"),
+                    newIdentNode("actual_index")
+                )
+            ),
+            nnkCall.newTree(
+                newIdentNode("omni_print"),
+                newLit(". Initializing it to '" & $repr(type_instance) & "()'\n"),
+            )  
+        )
 
-      return quote do:
-          data.data[actual_index] = `omni_type_instance_call`
-          `print_warning`
+        return quote do:
+            data.data[actual_index] = `omni_type_instance_call`
+            `print_warning`
 
 #Core of omni_check_datas_validity
 proc omni_check_datas_validity*[T](data : Data[T], samplerate : float, bufsize : int, omni_auto_mem : Omni_AutoMem, omni_call_type : typedesc[Omni_CallType] = Omni_InitCall) : void {.inline.} =
@@ -169,13 +181,24 @@ macro omni_data_out_of_bounds_getter(t : typed, first_or_last : bool = false) : 
     var type_instance = t.getTypeInst[1]
     
     var first_or_last_str = "first"
-    if first_or_last.boolVal:
-        first_or_last_str = "last"
+    if first_or_last.boolVal: first_or_last_str = "last"
 
-    let print_warning = nnkCall.newTree(
-        newIdentNode("omni_print"),
-        newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Trying to access out of bounds element at %d. Returning " & first_or_last_str & " element instead.\n"),
-        newIdentNode("actual_index")
+    let print_warning = nnkStmtList.newTree(
+        nnkCall.newTree(
+            newIdentNode("omni_print"),
+            newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Trying to access out of bounds element at index "),
+        ),
+        nnkCall.newTree(
+            newIdentNode("omni_print_int_no_newline"),
+            nnkCall.newTree(
+                newIdentNode("cint"),
+                newIdentNode("actual_index")
+            )
+        ),
+        nnkCall.newTree(
+            newIdentNode("omni_print"),
+            newLit(". Returning " & first_or_last_str & " element instead.\n"),
+        )
     )
 
     return print_warning
@@ -193,7 +216,7 @@ proc getter*[T](data : Data[T], channel : int = 0, index : int = 0, samplerate :
     
     if actual_index >= 0 and actual_index < data.size:
         #Dynamic allocation on access in init block IF entry is nil!
-        #This means that, if trying to access a nil entry, it will initialized with the default
+        #This means that, if trying to access a nil entry, it will be initialized with the default
         #constructor of type T, same as it's done for omni_check_datas_validity.
         when omni_call_type is Omni_InitCall:
             let value = data.data[actual_index]

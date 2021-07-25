@@ -66,6 +66,15 @@ OMNI_DLL_EXPORT void omni_print_int_C(int value)
     omni_print_func("%s\n", char_value);
 }
 
+OMNI_DLL_EXPORT void omni_print_int_no_newline_C(int value)
+{
+    //Make sure to run conversions here, as the omni_print_func provided might not be 
+    //suitable for %d conversion (as it is for omnicollider's, for example)
+    char char_value[16];
+    snprintf(char_value, sizeof(char_value), "%d", value);
+    omni_print_func("%s", char_value);
+}
+
 OMNI_DLL_EXPORT void omni_print_bool_C(int value)
 {
     if(value == 0)

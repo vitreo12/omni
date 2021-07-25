@@ -31,6 +31,7 @@ proc omni_print*(format_string : cstring) : void {.importc: "omni_print_C", cdec
 proc omni_print_str*(value : cstring) : void {.importc: "omni_print_str_C", cdecl.}
 proc omni_print_float*(value : cfloat) : void {.importc: "omni_print_float_C", cdecl.}
 proc omni_print_int*(value : cint) : void {.importc: "omni_print_int_C", cdecl.}
+proc omni_print_int_no_newline*(value : cint) : void {.importc: "omni_print_int_no_newline_C", cdecl.} #Used for index printing in Data (no \n)
 proc omni_print_bool*(value : cint) : void {.importc: "omni_print_bool_C", cdecl.}
 
 #string
