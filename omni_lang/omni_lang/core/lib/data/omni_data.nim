@@ -120,20 +120,14 @@ macro omni_data_generic_default(t : typed, validity_or_getter : bool = false) : 
     else:
         let print_warning = nnkStmtList.newTree(
             nnkCall.newTree(
-                newIdentNode("omni_print"),
+                newIdentNode("omni_print_compose_int"),
                 newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Uninitialized entry at index "),
-            ),
-            nnkCall.newTree(
-                newIdentNode("omni_print_int_no_newline"),
                 nnkCall.newTree(
                     newIdentNode("cint"),
                     newIdentNode("actual_index")
-                )
-            ),
-            nnkCall.newTree(
-                newIdentNode("omni_print"),
-                newLit(". Initializing it to '" & $repr(type_instance) & "()'\n"),
-            )  
+                ),
+                newLit(". Initializing it to '" & $repr(type_instance) & "()'")
+            )
         )
 
         return quote do:
@@ -185,19 +179,13 @@ macro omni_data_out_of_bounds_getter(t : typed, first_or_last : bool = false) : 
 
     let print_warning = nnkStmtList.newTree(
         nnkCall.newTree(
-            newIdentNode("omni_print"),
+            newIdentNode("omni_print_compose_int"),
             newLit("WARNING: Omni: 'Data[" & $repr(type_instance) & "]': Trying to access out of bounds element at index "),
-        ),
-        nnkCall.newTree(
-            newIdentNode("omni_print_int_no_newline"),
             nnkCall.newTree(
                 newIdentNode("cint"),
                 newIdentNode("actual_index")
-            )
-        ),
-        nnkCall.newTree(
-            newIdentNode("omni_print"),
-            newLit(". Returning " & first_or_last_str & " element instead.\n"),
+            ),
+            newLit(". Returning " & first_or_last_str & " element instead.")
         )
     )
 

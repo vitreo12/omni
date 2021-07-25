@@ -31,12 +31,14 @@ proc omni_print*(format_string : cstring) : void {.importc: "omni_print_C", cdec
 proc omni_print_str*(value : cstring) : void {.importc: "omni_print_str_C", cdecl.}
 proc omni_print_float*(value : cfloat) : void {.importc: "omni_print_float_C", cdecl.}
 proc omni_print_int*(value : cint) : void {.importc: "omni_print_int_C", cdecl.}
-proc omni_print_int_no_newline*(value : cint) : void {.importc: "omni_print_int_no_newline_C", cdecl.} #Used for index printing in Data (no \n)
 proc omni_print_bool*(value : cint) : void {.importc: "omni_print_bool_C", cdecl.}
+proc omni_print_label_float*(label : cstring, value : cfloat) : void {.importc: "omni_print_label_float_C", cdecl.}
+proc omni_print_label_int*(label : cstring, value : cint) : void {.importc: "omni_print_label_int_C", cdecl.}
+proc omni_print_compose_int*(label : cstring, value : cint, post : cstring) : void {.importc: "omni_print_compose_int_C", cdecl.} #Used in Data for printing
 
 #string
 template print*(str : string) : untyped =
-    omni_print_str(cstring(str))
+    omni_print_str(str)
 
 #float
 template print*[T : SomeFloat](val : T) : untyped =
@@ -49,3 +51,11 @@ template print*[T : SomeInteger](val : T) : untyped =
 #bool
 template print*(val : bool) : untyped =
     omni_print_bool(cint(val))
+
+#label float
+template print*[T : SomeFloat](label : string, val : T) : untyped =
+    omni_print_label_float(label, cfloat(val))
+
+#label int
+template print*[T : SomeInteger](label : string, val : T) : untyped =
+    omni_print_label_int(label, cint(val))
