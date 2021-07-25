@@ -444,14 +444,21 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
                 asgn_right_kind = asgn_right.kind
 
             #Support all calling syntaxes and int / float literals
-            if asgn_right_kind == nnkIdent or asgn_right_kind == nnkCall or asgn_right_kind == nnkCommand or asgn_right_kind == nnkDotExpr or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
-                #bool support
+            if asgn_right_kind == nnkIdent or asgn_right_kind == nnkCall or asgn_right_kind == nnkCommand or asgn_right_kind == nnkDotExpr or asgn_right_kind == nnkInfix or asgn_right_kind == nnkFloatLit or asgn_right_kind == nnkIntLit:
+                #a = true
                 if asgn_right_kind == nnkIdent:
-                    let bool_val = asgn_right.strVal()
-                    if bool_val != "false" and bool_val != "true":
-                        error("struct '" & repr(ptr_name) & "': Invalid ident: '" & repr(asgn_right) & "'", asgn_right)
-                    var_type = newIdentNode("bool")
-                    is_bool  = true
+                    let ident_val = asgn_right.strVal()
+                    #Explicit bool
+                    if ident_val == "false" or ident_val == "true":
+                        var_type = newIdentNode("bool")
+                        is_bool  = true
+                    #Otherwise, assume the ident is a float (for consts)
+                    else:
+                        var_type = newIdentNode("float")
+
+                #a = 10 * 20 ... Only support floats (for now...)
+                elif asgn_right_kind == nnkInfix:
+                    var_type = newIdentNode("float")
                         
                 #Temporarily set var_init, it's parsed later
                 var_init = asgn_right

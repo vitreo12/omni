@@ -1,8 +1,9 @@
-struct Something: a
+#struct Something: a
 
 #struct Something: a = PI
 
-#struct Something: a = PI * 2
+struct Something: 
+    a = (PI * 2) + 25
 
 #omni_debug_macros:
 init:
