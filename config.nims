@@ -27,7 +27,7 @@ else: #default: native build
   --passL:"-march=native"
   --passL:"-mtune=native"
 
-#[ #generic flags
+#generic flags
 --panics:on
 --checks:off
 --passC:"-flto"
@@ -52,4 +52,3 @@ else: #default: native build
 --define:release
 --excessiveStackTrace:off
 --opt:speed
- ]#
