@@ -156,11 +156,10 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
       c_architecture = "--target=" & architecture
 
   #lto
-  var lto : string
-  when not defined(Windows): #MacOS / Linux
-      lto = "-flto "
-  else: #Windows
-      lto = "-flto -ffat-lto-objects " #-ffat-lto-objects fixes issues with MinGW
+  var lto = "-flto "
+  if defined(Windows):
+    if compiler == "gcc":
+      lto.add "-ffat-lto-objects " #needed for Mingw on windows
 
   #Clang has problem with this. When using zig, this will be fine
   defineSymbol(conf.symbols, "lto")
@@ -190,7 +189,10 @@ proc omni_compile_nim_file*(omni_dir : string, omni_sources_dir : string, omni_c
   #There probably is a leaner way to set all these paths
   conf.libpath = AbsoluteDir(omninim_lib_dir)
   conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/core"), 0)
-  conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/posix"), 0)
+  when defined(Windows):
+    conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/windows"), 0)
+  else:
+    conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/posix"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/collections"), 0)
   conf.searchPaths.insert(AbsoluteDir(omninim_lib_dir & "/pure/concurrency"), 0)

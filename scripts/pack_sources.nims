@@ -42,14 +42,19 @@ withDir("build"):
   when not defined(no_tcc):
     mkDir("tcc")
     withDir("tcc"):
-      when defined(Windos):
-        mvFile(getPkgDir() & "/tcc/win32/tcc".toExe, getCurrentDir() & "/tcc".toExe)
+      when defined(Windows):
         cpDir(getPkgDir() & "/tcc/win32/include", getCurrentDir() & "/include")
         # cpDir(getPkgDir() & "/tcc/win32/lib", getCurrentDir() & "/lib") #is lib necessary too?
+        mvFile(getPkgDir() & "/tcc/win32/tcc".toExe, getCurrentDir() & "/tcc".toExe)
+        mvFile(getPkgDir() & "/tcc/win32/libtcc.dll", getCurrentDir() & "/libtcc.dll")
+        mkDir("lib") #On windows the libtcc.a files must be in a lib/ directory next to libtcc.dll and tcc.exe
+        withDir("lib"):
+          mvFile(getPkgDir() & "/tcc/win32/lib/libtcc1-64.a", getCurrentDir() & "/libtcc1-64.a")
+          mvFile(getPkgDir() & "/tcc/win32/lib/libtcc1-32.a", getCurrentDir() & "/libtcc1-32.a")
       else:
-        mvFile(getPkgDir() & "/tcc/tcc".toExe, getCurrentDir() & "/tcc".toExe) #need to use mvFile cause cpFile does not copy file permissions...
         cpDir(getPkgDir() & "/tcc/include", getCurrentDir() & "/include")
         # cpDir(getPkgDir() & "/tcc/lib", getCurrentDir() & "/lib") #is lib necessary too?
+        mvFile(getPkgDir() & "/tcc/tcc".toExe, getCurrentDir() & "/tcc".toExe) #need to use mvFile cause cpFile does not copy file permissions...
         mvFile(getPkgDir() & "/tcc/libtcc.a", getCurrentDir() & "/libtcc.a") #need to use mvFile cause cpFile does not copy file permissions...
         mvFile(getPkgDir() & "/tcc/libtcc1.a", getCurrentDir() & "/libtcc1.a") #need to use mvFile cause cpFile does not copy file permissions...
     echo "Zipping the tcc compiler...\n"

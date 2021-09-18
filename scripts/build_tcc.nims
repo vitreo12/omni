@@ -22,7 +22,7 @@
 
 when not defined(no_tcc):
   withDir("tcc"):
-    var tcc_cc_flags = "-O3 -flto"
+    var tcc_cc_flags = "-O3 -flto -s"
     when defined(arch_amd64) or defined(arch_x86_64):
       tcc_cc_flags.add " -march=x86-64"
     elif defined(arch_i386): #needs testing
@@ -36,8 +36,10 @@ when not defined(no_tcc):
 
     #configure 
     when defined(Windows):
-      withDir("./win32"):
-        exec "./build-tcc.bat" #Check if the flags are the same
+      withDir("win32"):
+        var cc = getEnv("CC")
+        if cc == "": cc = "gcc" #try to use gcc by default, if CC is not set
+        exec "build-tcc.bat -c \"" & cc & " " & tcc_cc_flags & " -static\""
     else:
       exec "./configure --extra-cflags=\"" & tcc_cc_flags & "\" --extra-ldflags=\"" & tcc_cc_flags & "\""
       exec "make"

@@ -87,7 +87,7 @@ if not zigTarExists():
   else:
     let cpu = hostCPU
 
-  let link = "https://ziglang.org/download/0.8.0/zig-" & OS & "-" & cpu & "-0.8.0" & ext
+  let link = "https://ziglang.org/download/0.8.1/zig-" & OS & "-" & cpu & "-0.8.1" & ext
 
   echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
 
@@ -109,7 +109,10 @@ if not zigTarExists():
 #Unpack it
 if zigTarExists():
   echo "\nUnpacking the zig.tar file..."
-  let failed_tar = bool execShellCmd("tar -xf zig.tar.xz")
+  when defined(Windows):
+    let failed_tar = bool execShellCmd("tar -xf zig.zip")
+  else:
+    let failed_tar = bool execShellCmd("tar -xf zig.tar.xz")
   if failed_tar:
     printError "Failed to unpack the zig compiler."
     deleteZigTarIfExists()

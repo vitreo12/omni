@@ -82,7 +82,7 @@ template omniMoveZigDownloader() =
 
 proc omniExecuteZigDownloader() : bool =
   when defined(Windows):
-    return not(bool execShellCmd("./omni_download_zig.exe"))
+    return not(bool execShellCmd("omni_download_zig.exe"))
   else:
     return not(bool execShellCmd("./omni_download_zig"))
 
