@@ -31,8 +31,8 @@ requires "cligen >= 1.5.0"
 #Ignore omni_lang, omninim, misc folders
 skipDirs = @["omni_lang", "omninim", "embed", "utilities", "misc"]
 
-#Install examples
-installDirs = @["examples"]
+#Install examples and scripts
+installDirs = @["examples", "scripts"]
 
 #Compiler executable
 bin = @["omni"]
@@ -60,12 +60,6 @@ before build:
     #Install omni_lang (used for tests, mainly)
     withDir("omni_lang"):
       exec "nimble install -Y"
-
-#pre-build install
-before install:
-  discard
-  #when install, also install zig!
-
 
 #########
 # Tests #

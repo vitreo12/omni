@@ -87,7 +87,7 @@ if not zigTarExists():
   else:
     let cpu = hostCPU
 
-  let link = "https://ziglang.org/download/0.8.1/zig-" & OS & "-" & cpu & "-0.8.1" & ext
+  let link = "https://ziglang.org/download/0.9.0/zig-" & OS & "-" & cpu & "-0.9.0" & ext
 
   echo "\nDownloading the zig compiler from https://ziglang.org ...\n"
 
