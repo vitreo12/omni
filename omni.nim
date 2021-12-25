@@ -31,7 +31,9 @@ const
 let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020-2021 Francesco Cameli"
 
 #Path to omni_lang
-const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
+let nimble_dir = if existsEnv("NIMBLE_DIR"): getEnv("NIMBLE_DIR")
+                 else: "~/.nimble"
+let omni_lang_pkg_path = nimble_dir & "/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
 #Extension for static lib
 when defined(Linux):
