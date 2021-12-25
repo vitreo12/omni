@@ -168,7 +168,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         "nim c --out:" & output_name & " --app:" & lib_nim & 
         " --gc:none --noMain:on --panics:on --hints:off --checks:off --assertions:off" & 
         " --opt:speed -d:release -d:danger " & lto & " --passC:-fPIC " & real_architecture &
-        " --warning[User]:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on"
+        " --warning[User]:off --warning[UnusedImport]:off --colors:off --stdout:on"
 
     #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
     when defined(MacOSX) or defined(MacOS):
