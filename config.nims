@@ -16,7 +16,6 @@
 --linetrace:off
 --debugger:off
 --lineDir:off
---deadCodeElim:on
 --nilchecks:off
 
 #release

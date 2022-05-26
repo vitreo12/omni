@@ -31,7 +31,9 @@ const
 let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020-2021 Francesco Cameli"
 
 #Path to omni_lang
-const omni_lang_pkg_path = "~/.nimble/pkgs/omni_lang-" & omni_ver & "/omni_lang"
+let nimble_dir = if existsEnv("NIMBLE_DIR"): getEnv("NIMBLE_DIR")
+                 else: "~/.nimble"
+let omni_lang_pkg_path = nimble_dir & "/pkgs/omni_lang-" & omni_ver & "/omni_lang"
 
 #Extension for static lib
 when defined(Linux):
@@ -146,14 +148,21 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #If architecture == native, also pass the mtune=native flag.
     #If architecture == none, no architecture applied
-    var real_architecture = "--passC:-march=" & $architecture
-    if architecture == "native":
-        real_architecture = real_architecture & " --passC:-mtune=native"
-    #x86_64 / amd64 as aliases for x86-64
-    elif architecture == "x86_64" or architecture == "amd64":
-        real_architecture = "--passC:-march=x86-64"
-    elif architecture == "none":
+
+    var real_architecture = ""
+    if compiler == "clang" and architecture == "native" and hostCPU != "amd64":
+        # clang on various non-x86 platforms doesn't like -march=native
+        # see https://stackoverflow.com/questions/65966969/why-does-march-native-not-work-on-apple-m1
         real_architecture = ""
+    else:
+        real_architecture = "--passC:-march=" & $architecture
+        if architecture == "native":
+            real_architecture = real_architecture & " --passC:-mtune=native"
+        #x86_64 / amd64 as aliases for x86-64
+        elif architecture == "x86_64" or architecture == "amd64":
+            real_architecture = "--passC:-march=x86-64"
+        elif architecture == "none":
+            real_architecture = ""
 
     #Add -d:lto only on Linux and Windows (not working on OSX + Clang yet: https://github.com/nim-lang/Nim/issues/15578)
     var lto = ""
@@ -168,7 +177,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         "nim c --out:" & output_name & " --app:" & lib_nim & 
         " --gc:none --noMain:on --panics:on --hints:off --checks:off --assertions:off" & 
         " --opt:speed -d:release -d:danger " & lto & " --passC:-fPIC " & real_architecture &
-        " --warning[User]:off --warning[UnusedImport]:off --deadCodeElim:on --colors:off --stdout:on"
+        " --warning[User]:off --warning[UnusedImport]:off --colors:off --stdout:on"
 
     #Fix for -d:lto not working yet on OSX + Clang: https://github.com/nim-lang/Nim/issues/15578
     when defined(MacOSX) or defined(MacOS):

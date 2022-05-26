@@ -1,6 +1,20 @@
 name: Omni - Test Suite
 
-on: push
+on:
+    push:
+        paths:
+            - '**/*.nim'
+            - '**/*.nims'
+            - '**/*.cfg'
+            - '**/*.nimble'
+            - '**/*.yml'
+    pull_request:
+        paths:
+            - '**/*.nim'
+            - '**/*.nims'
+            - '**/*.cfg'
+            - '**/*.nimble'
+            - '**/*.yml'
 
 jobs:
     All_Linux:
@@ -16,13 +30,19 @@ jobs:
 
     All_MacOS:
         name: All Tests - MacOS
-        runs-on: macos-latest 
+        runs-on: macos-latest
         steps:
             - uses: actions/checkout@v2
-            - uses: jiro4989/setup-nim-action@v1
+            - name: Install Nim
+              uses: asdf-vm/actions/install@v1
               with:
-                  nim-version: 'stable'
-            - run: nimble install -Y
+                  tool_versions: |
+                      nim latest
+            - name: nimble install -Y
+              run: |
+                . "${HOME}/.asdf/asdf.sh"
+                asdf local nim latest
+                nimble install -Y
             - run: nimble test -Y
 
     #Windows does not work well
