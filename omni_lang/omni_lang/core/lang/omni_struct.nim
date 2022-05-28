@@ -279,8 +279,8 @@ macro struct*(struct_name : untyped, code_block : untyped) : untyped =
         obj_bracket_expr : NimNode
 
     var
-        var_names      = nnkStmtList.newTree()
-        fields_untyped = nnkStmtList.newTree()
+        var_names      = nnkStmtListExpr.newTree()
+        fields_untyped = nnkStmtListExpr.newTree()
         fields_typed   : seq[NimNode]
         var_inits      = nnkStmtList.newTree()
 
