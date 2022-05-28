@@ -142,9 +142,6 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         output_name = $lib_prepend & $omniFileName & $lib_extension
     else:
         output_name = $lib_prepend & $outName & $lib_extension
-    
-    #CD into out dir. This is needed by nim compiler to do --app:staticLib due to this bug: https://github.com/nim-lang/Nim/issues/12745
-    setCurrentDir(outDirFullPath)
 
     #If architecture == native, also pass the mtune=native flag.
     #If architecture == none, no architecture applied
@@ -174,7 +171,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     
     #Actual compile command.
     var compile_command = 
-        "nim c --out:" & output_name & " --app:" & lib_nim & 
+        "nim c --out:" & output_name & " --outDir:" & outDirFullPath & " --app:" & lib_nim & 
         " --gc:none --noMain:on --panics:on --hints:off --checks:off --assertions:off" & 
         " --opt:speed -d:release -d:danger " & lto & " --passC:-fPIC " & real_architecture &
         " --warning[User]:off --warning[UnusedImport]:off --colors:off --stdout:on"
@@ -240,10 +237,10 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
         compile_command.add(" " & $new_nim_flag)
 
     #Export IO
+    var omni_io_name = omniFileName & "_io.txt"
     var omni_io : string
-    if exportIO:
-        compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\"")
-        omni_io = outDirFullPath & "/omni_io.txt"
+    compile_command.add(" -d:omni_export_io -d:tempDir:\"" & $outDirFullPath & "\" -d:omni_io_name:\"" & omni_io_name & "\"")
+    omni_io = outDirFullPath & "/" & omni_io_name
 
     #Finally, append the path to the actual omni file to compile:
     compile_command.add(" \"" & $fileFullPath & "\"")
@@ -255,7 +252,7 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
     let pathToCompiledLib = outDirFullPath & "/" & $output_name
     template removeCompiledLib() : untyped =
         removeFile(pathToCompiledLib)
-        if exportIO: removeFile(omni_io)
+        removeFile(omni_io)
 
     #Check for GcMem warnings and print errors out 
     if parseAndPrintCompilationString(compilationString):
@@ -271,16 +268,13 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
             printError("Failed compilation of '" & omniFileName & omniFileExt & "'.")
         return 1
 
-    #Check if Omni_UGenPerform32/64 are present, meaning perform/sample has been correctly specified. nm works with both shared and static libs!
-    when not defined(Windows):
-        let failedOmniCheckPerform = execCmd("nm \"" & $pathToCompiledLib & "\" | grep -q -F Omni_UGenPerform")            # -q == silent output
-    else:
-        let failedOmniCheckPerform = execShellCmd("nm \"" & $pathToCompiledLib & "\" | findstr Omni_UGenPerform >$null")   # >$null == silent output
-        if fileExists("$null"):
-            removeFile("$null")
+    #If sample / perform are undefined, omni_io will not exist
+    var failedOmniIOPerformCheck = true
+    if fileExists(omni_io):
+        failedOmniIOPerformCheck = false
+        if not exportIO: removeFile(omni_io)
 
-    #grep / findstr returns 0 if it finds the string, 1 if it doesn't
-    if failedOmniCheckPerform > 0:
+    if failedOmniIOPerformCheck:
         printError("Undefined 'perform' or 'sample' blocks.\n")
         removeCompiledLib()
         if is_multi:
@@ -382,7 +376,7 @@ dispatch(
         "importModule" : "Import additional Nim modules to be compiled with the Omni file(s).",
         "passNim" : "Pass additional flags to the intermediate Nim compiler.",
         "exportHeader" : "Export the 'omni.h' header file together with the compiled lib.",
-        "exportIO" : "Export the 'omni_io.txt' file together with the compiled lib.",
+        "exportIO" : "Export the IO txt file together with the compiled lib.",
         "silent" : "CLIGEN-NOHELP"
     }
 )

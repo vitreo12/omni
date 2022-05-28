@@ -1,3 +1,7 @@
+## 0.4.1
+
+1) Deprecate the use of `nm` to check the presence of 'perform' / 'sample' blocks
+
 ## 0.4.0
 
 1) `def` now supports generics instantiation:

@@ -1702,7 +1702,9 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                     )
                 )
                 
+                # Immutability in perform block ???
                 #Declare immutable Data entry
+                #[ 
                 var for_loop_body_perform = nnkStmtList.newTree(
                     nnkLetSection.newTree(
                         nnkIdentDefs.newTree(
@@ -1713,6 +1715,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                     ),
                     for_loop_body_init.copy
                 )
+                ]#
 
                 #Replace all entries with Data access
                 omni_substitute_for_loop(for_loop_body_init, entry, bracket_expr)
@@ -1747,6 +1750,11 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                         data_name
                                     )
                                 ),
+
+                                for_loop_body_init
+
+                                # Immutability in perform block ???
+                                #[
                                 nnkWhenStmt.newTree(
                                     nnkElifBranch.newTree(
                                         nnkInfix.newTree(
@@ -1760,6 +1768,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                         for_loop_body_init
                                     )
                                 )
+                                ]#
                             )
                         )
                     )
@@ -1853,6 +1862,11 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                 data_name
                             )
                         ),
+
+                        for_loop_body_init
+                        
+                        # Immutability in perform block ??
+                        #[
                         nnkWhenStmt.newTree(
                             nnkElifBranch.newTree(
                                 nnkInfix.newTree(
@@ -1866,6 +1880,7 @@ proc omni_parse_typed_for(statement : NimNode, level : var int, is_init_block : 
                                 for_loop_body_init
                             )
                         )
+                        ]#
                     )
                 )
 

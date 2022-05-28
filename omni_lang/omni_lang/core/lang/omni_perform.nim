@@ -223,7 +223,8 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
                 omni_unlock_buffers()
 
     #Write IO infos to txt file.
-    #It should be fine here in perform, as any omni file must provide a perform/sample block to be compiled.
+    #It's essential that it is here, as the existence of the io file is also used to check if peform
+    #and sample blocks are defined!
     omni_export_io()
 
 #Need to use a template with {.dirty.} pragma to not hygienize the symbols to be like "ugen1123123", but just as written, "omni_ugen".
@@ -232,7 +233,7 @@ template perform*(code_block : untyped) {.dirty.} =
         let omni_declared_perform {.compileTime.} = true
         omni_perform_inner(code_block)
     else:
-        {.fatal: "perform: there already is a 'perform' or 'sample' block declared.".}
+        {.fatal: "perform: there already is a 'perform' or 'sample' block.".}
 
 #Run perform inner, but directly to the for loop
 template sample*(code_block : untyped) {.dirty.} =
@@ -240,4 +241,4 @@ template sample*(code_block : untyped) {.dirty.} =
         let omni_declared_sample {.compileTime.} = true
         omni_perform_inner(code_block)
     else:
-        {.fatal: "sample: there already is a 'perform' or 'sample' block declared.".}
+        {.fatal: "sample: there already is a 'perform' or 'sample' block.".}

@@ -19,6 +19,8 @@ struct Something:
   o int = 10
   p bool = false
   q = true
+  r = PI * 2.5
+  s = PI
 
   data Data
   val int
@@ -28,5 +30,6 @@ struct Something:
 init:
   a = Something()
   print a.q
+  print a.a[0]
 
 sample: discard
