@@ -1,3 +1,7 @@
+## 0.4.2
+
+1) Abort if using a nim version != 1.6.0. 
+
 ## 0.4.1
 
 1) Remove the use of `nm` to check the presence of `perform` / `sample` blocks.

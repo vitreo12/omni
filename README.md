@@ -20,30 +20,7 @@ Also, a basic syntax highlighting [VSCode](https://code.visualstudio.com/) plugi
 1) [nim](https://nim-lang.org/)
 2) [git](https://git-scm.com/)
 
-### **Linux**
-
-Refer to your distribution's package manager and make sure you've got `nim` and `git` installed.
-
-### **MacOS**
-
-To install dependencies on MacOS it is suggested to use a package manager like [brew](https://brew.sh/). 
-
-After `brew` has been installed, run the following command in the `Terminal` app to install `nim`:
-
-    brew install nim
-
-Then, make sure that the `~/.nimble/bin` directory is set in your shell `$PATH`.
-If using bash (the default shell in MacOS), you can simply run this command:
-
-    echo 'export PATH=$PATH:~/.nimble/bin' >> ~/.bash_profile
-
-### **Windows:**
-
-To install dependencies on Windows it is suggested to use a package manager like [chocolatey](https://community.chocolatey.org/).
-
-After `chocolatey` has been installed, open `PowerShell` as administrator and run this command to install `nim` and `git`:
-
-    choco install nim git -y
+Note that `omni` only supports `nim` version 1.6.0. It is recommended to install it via [choosenim](https://github.com/dom96/choosenim).
 
 ## **Installation**
 
@@ -59,7 +36,7 @@ Run `omni -h` to get help on all the available flags.
 
 When running the `omni` compiler, the output is either a static or shared library (depending on the `--lib` flag). Along with it, an `omni.h` file (depending on the `--exportHeader` flag) containing all the callable functions in the shared/static library will be exported.
 
-    omni ~/.nimble/pkgs/omni-0.4.1/examples/OmniSaw.omni -o:./
+    omni ~/.nimble/pkgs/omni-0.4.2/examples/OmniSaw.omni -o:./
 
 This command will compile an antialiased sawtooth oscillator (part of the examples) to a shared library (`libOmniSaw.so/dylib/dll`), together with a header file (`omni.h`), in the current folder.
 

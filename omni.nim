@@ -85,8 +85,15 @@ proc parseAndPrintCompilationString(msg : string) : bool =
 
     return false
 
+proc isCorrectNimVersion(): bool =
+    let (nimVersion, _) = execCmdEx("nim --version")
+    return nimVersion.contains("1.6.0")
+
 #Actual compiler
 proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
+    if not isCorrectNimVersion():
+        printError("Invalid nim version. Only 1.6.0 is currently supported. Switch your active nim compiler with choosenim.")
+        return 1
 
     var 
         omniFile     = splitFile(fileFullPath)
