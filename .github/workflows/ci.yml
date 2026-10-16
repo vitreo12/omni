@@ -25,16 +25,27 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        nim-version: ['1.6.20', '2.0.14', '2.2.12', 'devel']
+        nim-version: ['1.6.20', '2.0.14', '2.2.10', '2.2.12', 'devel']
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Nim
-        uses: jiro4989/setup-nim-action@v2
+      - name: Setup Nim via vfox-nim
+        uses: elijahr/vfox-nim@main
         with:
-          nim-version: ${{ matrix.nim-version }}
+          version: ${{ matrix.nim-version }}
+
+      - name: Cache vfox toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.version-fox/cache/nim
+            ~/.vfox/cache/nim
+          key: vfox-${{ runner.os }}-${{ matrix.nim-version }}-${{ hashFiles('omni.nimble') }}
+          restore-keys: |
+            vfox-${{ runner.os }}-${{ matrix.nim-version }}-
+            vfox-${{ runner.os }}-
 
       - name: Cache Nimble packages
         uses: actions/cache@v4
@@ -58,8 +69,98 @@ jobs:
 
       - name: Install dependencies and build
         run: |
-          nimble install -Y
+          set -o pipefail
+          nimble_run() {
+            local logfile
+            logfile="$(mktemp)"
+            "$@" 2>&1 | tee "$logfile"
+            local rc=${PIPESTATUS[0]}
+            if [[ $rc -ne 0 ]]; then
+              return $rc
+            fi
+            if grep -Eq '^[[:space:]]*Error:' "$logfile"; then
+              echo "::error::nimble reported an error but exited 0; failing the step."
+              return 1
+            fi
+          }
+          export PATH="$HOME/.nimble/bin:$PATH"
+          nimble_run nimble install -Y
 
       - name: Run test suite
         run: |
-          nimble test -Y
+          set -o pipefail
+          nimble_run() {
+            local logfile
+            logfile="$(mktemp)"
+            "$@" 2>&1 | tee "$logfile"
+            local rc=${PIPESTATUS[0]}
+            if [[ $rc -ne 0 ]]; then
+              return $rc
+            fi
+            if grep -Eq '^[[:space:]]*Error:' "$logfile"; then
+              echo "::error::nimble reported an error but exited 0; failing the step."
+              return 1
+            fi
+          }
+          export PATH="$HOME/.nimble/bin:$PATH"
+          nimble_run nimble test -Y
+
+  nimony:
+    name: 'Nimony Aufbruch (informational)'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Nim stable (2.2.12) via vfox-nim
+        uses: elijahr/vfox-nim@main
+        with:
+          version: '2.2.12'
+
+      - name: Cache Nimble packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nimble/pkgs2
+            ~/.nimble/pkgs
+            ~/.nimble/bin
+          key: nimble-${{ runner.os }}-nimony-${{ hashFiles('omni.nimble') }}
+          restore-keys: |
+            nimble-${{ runner.os }}-nimony-
+
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.nimble/bin:$PATH"
+          nimble install -Y
+
+      - name: Install Nimony nightly via vfox
+        run: |
+          vfox install --yes nim@nimony
+          for search_dir in "$HOME/.version-fox" "$HOME/.vfox"; do
+            if [ -d "$search_dir/cache/nim" ]; then
+              nimony_bin="$(find "$search_dir/cache/nim" -type f -name nimony 2>/dev/null | head -n 1)"
+              if [ -n "$nimony_bin" ]; then
+                bin_dir="$(dirname "$nimony_bin")"
+                echo "$bin_dir" >> "$GITHUB_PATH"
+                echo "Added Nimony directory to GITHUB_PATH: $bin_dir"
+                break
+              fi
+            fi
+          done
+
+      - name: Verify parser and macros under Nimony
+        run: |
+          set -o pipefail
+          echo "::group::nimony aufbruch verification"
+          NIMONY_BIN="$(command -v nimony 2>/dev/null || find "$HOME/.version-fox/cache/nim" "$HOME/.vfox/cache/nim" -type f -name nimony 2>/dev/null | head -n 1)"
+          if [ -n "$NIMONY_BIN" ] && [ -x "$NIMONY_BIN" ]; then
+            echo "Using nimony binary at: $NIMONY_BIN"
+            "$NIMONY_BIN" c -r tests/parser/test_parser.nim || echo "::warning::nimony test run exited non-zero (informational)"
+          else
+            echo "::warning::nimony binary not found or not executable (informational fallback)"
+            nim c --mm:arc --threads:on -r tests/parser/test_parser.nim || true
+          fi
+          echo "::endgroup::"
