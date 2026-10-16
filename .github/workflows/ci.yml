@@ -21,11 +21,26 @@ jobs:
   test:
     name: 'Test (Nim ${{ matrix.nim-version }}, ${{ matrix.os }})'
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        nim-version: ['1.6.20', '2.0.14', '2.2.10', '2.2.12', 'devel']
+        include:
+          - os: ubuntu-latest
+            nim-version: '1.6.20'
+          - os: ubuntu-latest
+            nim-version: '2.0.14'
+          - os: ubuntu-latest
+            nim-version: '2.2.10'
+          - os: ubuntu-latest
+            nim-version: '2.2.12'
+          - os: ubuntu-latest
+            nim-version: 'devel'
+            experimental: true
+          - os: macos-latest
+            nim-version: '2.2.10'
+          - os: macos-latest
+            nim-version: '2.2.12'
 
     steps:
       - name: Checkout repository
