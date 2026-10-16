@@ -485,12 +485,28 @@ proc omni_build_default_min_max_arrays(num_of_inputs : int, default_vals : seq[f
     #Declare min max as const, the array as both const (for static IO at the end of perform) and let (so i can get its memory address for Omni_UGenDefaults())
     result.add(default_min_max_const_section)
 
+proc getConstStrVal*(node: NimNode): string {.compileTime.} =
+    if node.kind in {nnkStrLit, nnkRStrLit, nnkTripleStrLit}:
+        return node.strVal
+    let impl = node.getImpl
+    if impl.kind in {nnkStrLit, nnkRStrLit, nnkTripleStrLit}:
+        return impl.strVal
+    if impl.kind == nnkConstDef and impl.len >= 3:
+        if impl[2].kind in {nnkStrLit, nnkRStrLit, nnkTripleStrLit}:
+            return impl[2].strVal
+        elif impl[2].kind == nnkIdent:
+            return impl[2].strVal
+    try:
+        return node.strVal
+    except:
+        return ""
+
 #This should be moved into its own "generate" function, as it is done for params and buffers...
 #Right now, this is explicitly called in the parser for perform / sample functions 
 macro omni_unpack_ins_perform*(ins_names : typed) : untyped =
     result = nnkStmtList.newTree()
 
-    let ins_names_seq = ins_names.getImpl.strVal.split(',')
+    let ins_names_seq = getConstStrVal(ins_names).split(',')
     
     for i, in_name in ins_names_seq:
         let in_number_name = ("in" & $(i+1))
@@ -713,7 +729,7 @@ macro omni_ins_inner*(ins_number : typed, ins_names : untyped = nil) : untyped =
                 return int32(omni_inputs)
 
             proc Omni_UGenInputsNames() : ptr cchar {.exportc: "Omni_UGenInputsNames", dynlib, raises:[].} =
-                return cast[ptr cchar](omni_inputs_names_const)
+                return cast[ptr cchar](cstring(omni_inputs_names_const))
 
             proc Omni_UGenInputsDefaults() : ptr cfloat {.exportc: "Omni_UGenInputsDefaults", dynlib, raises:[].} =
                 return cast[ptr cfloat](omni_inputs_defaults_const.unsafeAddr)
@@ -889,7 +905,7 @@ macro omni_outs_inner*(outs_number : typed, outs_names : untyped = nil) : untype
                 return int32(omni_outputs)
 
             proc Omni_UGenOutputsNames() : ptr cchar {.exportc: "Omni_UGenOutputsNames", dynlib, raises:[].} =
-                return cast[ptr cchar](omni_outputs_names_const)
+                return cast[ptr cchar](cstring(omni_outputs_names_const))
         else:
             {.fatal: "outs: Already defined once.".}
 
@@ -1824,7 +1840,7 @@ macro omni_params_inner*(params_number : typed, params_names : untyped) : untype
                 return int32(omni_params)
 
             proc Omni_UGenParamsNames() : ptr cchar {.exportc: "Omni_UGenParamsNames", dynlib, raises:[].} =
-                return cast[ptr cchar](omni_params_names_const)
+                return cast[ptr cchar](cstring(omni_params_names_const))
 
             proc Omni_UGenParamsDefaults() : ptr cfloat {.exportc: "Omni_UGenParamsDefaults", dynlib, raises:[].} =
                 return cast[ptr cfloat](omni_params_defaults_const.unsafeAddr)
@@ -2796,10 +2812,10 @@ macro omni_buffers_inner*(buffers_number : typed, buffers_names : untyped) : unt
                 return int32(omni_buffers)
 
             proc Omni_UGenBuffersNames() : ptr cchar {.exportc: "Omni_UGenBuffersNames", dynlib, raises:[].} =
-                return cast[ptr cchar](omni_buffers_names_const)
+                return cast[ptr cchar](cstring(omni_buffers_names_const))
             
             proc Omni_UGenBuffersDefaults() : ptr cchar {.exportc: "Omni_UGenBuffersDefaults", dynlib, raises:[].} =
-                return cast[ptr cchar](omni_buffers_defaults_const_unpacked) #used the unpacked version (single string)
+                return cast[ptr cchar](cstring(omni_buffers_defaults_const_unpacked)) #used the unpacked version (single string)
         else:
             {.fatal: "buffers: Already defined once.".}
 

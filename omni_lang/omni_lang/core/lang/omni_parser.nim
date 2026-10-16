@@ -412,6 +412,9 @@ proc omni_parse_untyped_expr_eq_expr(statement : NimNode, level : var int, decla
     var parsed_statement = omni_parser_untyped_loop(statement, level, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
     return parsed_statement
 
+#Forward declaration
+proc omni_parse_untyped_assign(statement : NimNode, level : var int, declared_vars : var seq[string], is_init_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.}
+
 #Parse the command syntax... Disabled it... Variables must ALWAYS been initialized
 proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_vars : var seq[string], is_init_block : bool = false, is_perform_block : bool = false, is_sample_block : bool = false, is_def_block : bool = false, extra_data : NimNode) : NimNode {.compileTime.} =
     var 
@@ -426,6 +429,16 @@ proc omni_parse_untyped_command(statement : NimNode, level : var int, declared_v
         if command_name_kind == nnkIdent:
             if command_name.strVal() == "build":
                 error("init: the 'build' call, if used, must only be one and at the last position of the 'init' block.", statement)
+
+    #In Nim 2, typed variable declaration commands like `a float = 0.0` or `d int = 3`
+    #are parsed as `Command(a, ExprEqExpr(float, 0.0))` rather than `Asgn(Command(a, float), 0.0)`.
+    #Normalize them back into `Asgn(Command(a, float), 0.0)` and route to `omni_parse_untyped_assign`.
+    if statement.len == 2 and statement[1].kind == nnkExprEqExpr:
+        let asgn = nnkAsgn.newTree(
+            nnkCommand.newTree(statement[0], statement[1][0]),
+            statement[1][1]
+        )
+        return omni_parse_untyped_assign(asgn, level, declared_vars, is_init_block, is_perform_block, is_sample_block, is_def_block, extra_data)
 
     #ident statements: "loop", "new"
     if command_name.kind == nnkIdent:
@@ -987,7 +1000,18 @@ proc omni_parse_untyped_block_inner(code_block : NimNode, declared_vars : var se
         if parsed_statement != nil:
             code_block[index] = parsed_statement
 
-macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : typed = false, is_perform_block_typed : typed = false, is_sample_block_typed : typed = false, is_def_block_typed : typed = false, extra_data : untyped = nil) : untyped =
+proc getBoolFromNode(n: NimNode): bool {.compileTime.} =
+    if n.kind == nnkIdent:
+        return n.strVal == "true"
+    elif n.kind == nnkIntLit:
+        return n.intVal != 0
+    else:
+        try:
+            return n.boolVal()
+        except:
+            return false
+
+macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : untyped = false, is_perform_block_typed : untyped = false, is_sample_block_typed : untyped = false, is_def_block_typed : untyped = false, extra_data : untyped = nil) : untyped =
     var 
         #used to wrap the whole code_block in a block: statement to create a closed environment to be semantically checked, and not pollute outer scope with symbols.
         final_block = nnkBlockStmt.newTree(
@@ -999,10 +1023,10 @@ macro omni_parse_block_untyped*(code_block_in : untyped, is_init_block_typed : t
         declared_vars : seq[string]
 
     let 
-        is_init_block = is_init_block_typed.boolVal()
-        is_perform_block = is_perform_block_typed.boolVal()
-        is_sample_block = is_sample_block_typed.boolVal()
-        is_def_block = is_def_block_typed.boolVal()
+        is_init_block = getBoolFromNode(is_init_block_typed)
+        is_perform_block = getBoolFromNode(is_perform_block_typed)
+        is_sample_block = getBoolFromNode(is_sample_block_typed)
+        is_def_block = getBoolFromNode(is_def_block_typed)
 
     #Sample block without perform
     if is_sample_block:

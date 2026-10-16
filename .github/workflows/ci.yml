@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    paths-ignore:
+      - '*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: 'Test (Nim ${{ matrix.nim-version }}, ${{ matrix.os }})'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nim-version: ['1.6.20', '2.0.14', '2.2.12', 'devel']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Nim
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: ${{ matrix.nim-version }}
+
+      - name: Cache Nimble packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nimble/pkgs2
+            ~/.nimble/pkgs
+            ~/.nimble/bin
+          key: nimble-${{ runner.os }}-${{ matrix.nim-version }}-${{ hashFiles('omni.nimble') }}
+          restore-keys: |
+            nimble-${{ runner.os }}-${{ matrix.nim-version }}-
+            nimble-${{ runner.os }}-
+
+      - name: Cache Nim cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/nim
+          key: nimcache-${{ runner.os }}-${{ matrix.nim-version }}-${{ hashFiles('**/*.nim') }}
+          restore-keys: |
+            nimcache-${{ runner.os }}-${{ matrix.nim-version }}-
+
+      - name: Install dependencies and build
+        run: |
+          nimble install -Y
+
+      - name: Run test suite
+        run: |
+          nimble test -Y
