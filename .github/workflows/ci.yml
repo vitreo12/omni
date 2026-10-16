@@ -31,14 +31,10 @@ jobs:
           - os: ubuntu-latest
             nim-version: '2.0.14'
           - os: ubuntu-latest
-            nim-version: '2.2.10'
-          - os: ubuntu-latest
             nim-version: '2.2.12'
           - os: ubuntu-latest
             nim-version: 'devel'
             experimental: true
-          - os: macos-latest
-            nim-version: '2.2.10'
           - os: macos-latest
             nim-version: '2.2.12'
 
