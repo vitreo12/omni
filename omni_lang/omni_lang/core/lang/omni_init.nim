@@ -385,7 +385,7 @@ macro omni_init_inner*(code_block_stmt_list : untyped) : untyped =
             
             let omni_auto_mem    {.inject.} : Omni_AutoMem = omni_ugen.omni_auto_mem
 
-            var omni_call_type   {.inject, noinit.} : typedesc[Omni_InitCall]
+            type omni_call_type   {.inject.} = Omni_InitCall
 
             #Try statement, inspired by http://groups.di.unipi.it/~nids/docs/longjump_try_trow_catch.html
             if not bool(omni_setjmp(omni_auto_mem.jmp_buf)):
@@ -456,7 +456,7 @@ macro init*(code_block : untyped) : untyped =
                 buffer_interface   {.inject.} : pointer        = nil
                 omni_auto_mem      {.inject.} : Omni_AutoMem   = nil
             
-            var omni_call_type     {.inject, noinit.} : typedesc[Omni_CallType]
+            type omni_call_type    {.inject.} = Omni_CallType
 
             #Generate fictional let names for params (so that parser won't complain when using them)
             omni_unpack_params_pre_init()
