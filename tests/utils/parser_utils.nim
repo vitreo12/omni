@@ -64,11 +64,12 @@ macro compareOmniNim*(code : untyped) : untyped =
 
   return quote do:
     block:
+      type
+        omni_call_type {.inject.} = Omni_InitCall
       var
         samplerate     {.inject.} = 0.0
         bufsize        {.inject.} = 0
         omni_auto_mem  {.inject.} = cast[Omni_AutoMem](0) 
-        omni_call_type {.inject.} : typedesc[Omni_InitCall]
       compareOmniNim_inner(omni_parse_block_untyped(`omni_code`), `nim_code`)
 
 #init comparison
@@ -77,11 +78,12 @@ macro compareOmniNim_init*(code : untyped) : untyped =
 
   return quote do:
     block:
+      type
+        omni_call_type {.inject.} = Omni_InitCall
       var
         samplerate     {.inject.} = 0.0
         bufsize        {.inject.} = 0
         omni_auto_mem  {.inject.} = cast[Omni_AutoMem](0) 
-        omni_call_type {.inject.} : typedesc[Omni_InitCall]
       compareOmniNim_inner(omni_parse_block_untyped(`omni_code`, is_init_block_typed=true), `nim_code`)
 
 #perform comparison
@@ -90,9 +92,11 @@ macro compareOmniNim_perform*(code : untyped) : untyped =
   
   return quote do:
     block:
+      type
+        omni_call_type {.inject.} = Omni_PerformCall
       var
         samplerate     {.inject.} = 0.0
         bufsize        {.inject.} = 0
         omni_auto_mem  {.inject.} = cast[Omni_AutoMem](0) 
-        omni_call_type {.inject.} : typedesc[Omni_PerformCall]
       compareOmniNim_inner(omni_parse_block_untyped(`omni_code`, is_perform_block_typed=true), `nim_code`)
+
