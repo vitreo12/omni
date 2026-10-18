@@ -181,7 +181,7 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
     when defined(omni_perform32):
         proc Omni_UGenPerform32*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cfloat, outs_ptr : ptr ptr cfloat, bufsize : cint) : void {.exportc: "Omni_UGenPerform32", dynlib, raises:[].} =    
             #Needed to be passed to all defs
-            var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
+            type omni_call_type {.inject.} = Omni_PerformCall
 
             #Unpack everything
             let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)
@@ -203,7 +203,7 @@ template omni_perform_inner*(code_block : untyped) {.dirty.} =
     when defined(omni_perform64):
         proc Omni_UGenPerform64*(omni_ugen_ptr : pointer, ins_ptr : ptr ptr cdouble, outs_ptr : ptr ptr cdouble, bufsize : cint) : void {.exportc: "Omni_UGenPerform64", dynlib, raises:[].} =    
             #Needed to be passed to all defs
-            var omni_call_type {.inject, noinit.} : typedesc[Omni_PerformCall]
+            type omni_call_type {.inject.} = Omni_PerformCall
 
             #Unpack everything
             let omni_ugen = cast[Omni_UGen](omni_ugen_ptr)

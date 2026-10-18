@@ -31,9 +31,34 @@ const
 let version_flag = "Omni - version " & $omni_ver & "\n(c) 2020-2021 Francesco Cameli"
 
 #Path to omni_lang
-let nimble_dir = if existsEnv("NIMBLE_DIR"): getEnv("NIMBLE_DIR")
-                 else: "~/.nimble"
-let omni_lang_pkg_path = nimble_dir & "/pkgs/omni_lang-" & omni_ver & "/omni_lang"
+proc getOmniLangPkgPath(): string =
+    let nimble_dir = if existsEnv("NIMBLE_DIR"): getEnv("NIMBLE_DIR")
+                     else: "~/.nimble"
+    let p1 = (nimble_dir & "/pkgs/omni_lang-" & omni_ver & "/omni_lang").normalizedPath().expandTilde()
+    if dirExists(p1): return p1
+    let p2 = (nimble_dir & "/pkgs2/omni_lang-" & omni_ver & "/omni_lang").normalizedPath().expandTilde()
+    if dirExists(p2): return p2
+    let pkgs2Dir = (nimble_dir & "/pkgs2").normalizedPath().expandTilde()
+    if dirExists(pkgs2Dir):
+        for kind, path in walkDir(pkgs2Dir):
+            if kind == pcDir:
+                let base = path.extractFilename()
+                if base.startsWith("omni_lang-") or base.startsWith("omni_lang"):
+                    let candidate = path / "omni_lang"
+                    if dirExists(candidate):
+                        return candidate
+    let pkgsDir = (nimble_dir & "/pkgs").normalizedPath().expandTilde()
+    if dirExists(pkgsDir):
+        for kind, path in walkDir(pkgsDir):
+            if kind == pcDir:
+                let base = path.extractFilename()
+                if base.startsWith("omni_lang-") or base.startsWith("omni_lang"):
+                    let candidate = path / "omni_lang"
+                    if dirExists(candidate):
+                        return candidate
+    return p1
+
+let omni_lang_pkg_path = getOmniLangPkgPath()
 
 #Extension for static lib
 when defined(Linux):
@@ -85,15 +110,8 @@ proc parseAndPrintCompilationString(msg : string) : bool =
 
     return false
 
-proc isCorrectNimVersion(): bool =
-    let (nimVersion, _) = execCmdEx("nim --version")
-    return nimVersion.contains("1.6.0")
-
 #Actual compiler
 proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : string = "", outDir : string = "", lib : string = "shared", architecture : string = "native",  compiler : string = default_compiler, performBits : string = "32/64", wrapper : string = "", define : seq[string] = @[], importModule : seq[string] = @[], passNim : seq[string] = @[],exportHeader : bool = true, exportIO : bool = false, silent : bool = false) : int =
-    if not isCorrectNimVersion():
-        printError("Invalid nim version. Only 1.6.0 is currently supported. Switch your active nim compiler with choosenim.")
-        return 1
 
     var 
         omniFile     = splitFile(fileFullPath)
@@ -290,10 +308,14 @@ proc omni_single_file(is_multi : bool = false, fileFullPath : string, outName : 
 
     #Export omni.h too
     if exportHeader:
-        let 
-            omni_header_path     = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
-            omni_header_out_path = outDirFullPath & "/omni.h"
-        copyFile(omni_header_path, omni_header_out_path)
+        var omni_header_path = (omni_lang_pkg_path & "/core/omni.h").normalizedPath().expandTilde().absolutePath()
+        if not omni_header_path.fileExists():
+            let localHeader = currentSourcePath().parentDir / "omni_lang/omni_lang/core/omni.h"
+            if localHeader.fileExists():
+                omni_header_path = localHeader
+        let omni_header_out_path = outDirFullPath & "/omni.h"
+        if omni_header_path.fileExists():
+            copyFile(omni_header_path, omni_header_out_path)
 
     #Done!
     printDone("'" & output_name & "' has been compiled to folder \"" & $outDirFullPath & "\".")

@@ -50,7 +50,8 @@ proc omni_find_data_generics_bottom(statement : NimNode, how_many_datas : var in
             return statement
             
         let
-            type_name = type_impl[0]
+            raw_type_name = type_impl[0]
+            type_name = if raw_type_name.kind == nnkPostfix and raw_type_name.len > 1: raw_type_name[1] else: raw_type_name
             type_generics = type_impl[1]
 
         var final_stmt = nnkBracketExpr.newTree(
